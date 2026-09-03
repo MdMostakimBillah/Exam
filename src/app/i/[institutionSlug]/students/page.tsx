@@ -12,10 +12,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getStudentsByInstitution } from "@/lib/storage/students";
 import { Users, Search, UserPlus, Download, GraduationCap } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 
 export default function InstitutionStudentsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
@@ -45,28 +48,28 @@ export default function InstitutionStudentsPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-blue-400" />
+              <Users className={`h-4 w-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Total Students</p>
             </div>
-            <p className="text-3xl font-bold text-zinc-100">{students.length}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{students.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <GraduationCap className="h-4 w-4 text-emerald-400" />
+              <GraduationCap className={`h-4 w-4 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Active</p>
             </div>
-            <p className="text-3xl font-bold text-emerald-400">{students.filter(s => s.status === 'ACTIVE').length}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{students.filter(s => s.status === 'ACTIVE').length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-zinc-400" />
+              <Users className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Classes</p>
             </div>
-            <p className="text-3xl font-bold text-zinc-100">{classes.length}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{classes.length}</p>
           </CardContent>
         </Card>
       </div>
@@ -74,7 +77,7 @@ export default function InstitutionStudentsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
           <Input
             placeholder="Search by name or ID..."
             value={search}
@@ -99,7 +102,7 @@ export default function InstitutionStudentsPage() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<Users className="h-6 w-6 text-zinc-600" />}
+          icon={<Users className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
           title="No students found"
           description="Add students to get started or try adjusting your filters."
         />
@@ -121,18 +124,18 @@ export default function InstitutionStudentsPage() {
                 <TableRow key={student.id} className="group">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center text-[10px] font-semibold text-zinc-400">
+                      <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${isDark ? "from-zinc-800 to-zinc-900" : "from-zinc-200 to-zinc-300"} flex items-center justify-center text-[10px] font-semibold ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
                         {student.firstName.charAt(0)}
                       </div>
-                      <span className="text-sm text-zinc-200 group-hover:text-white transition-colors">
+                      <span className={`text-sm ${isDark ? "text-zinc-200 group-hover:text-white" : "text-zinc-700 group-hover:text-zinc-900"} transition-colors`}>
                         {student.firstName} {student.lastName}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs font-mono text-zinc-500">{student.studentId}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{student.class}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{student.section}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{student.roll}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{student.class}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{student.section}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{student.roll}</TableCell>
                   <TableCell><Badge status={student.status} /></TableCell>
                 </TableRow>
               ))}

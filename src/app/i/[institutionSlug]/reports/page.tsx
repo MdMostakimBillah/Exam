@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart3, FileText, Download, Users, GraduationCap, TrendingUp, CreditCard } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 
 export default function InstitutionReportsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -56,10 +59,10 @@ export default function InstitutionReportsPage() {
   };
 
   const iconColorMap: Record<string, string> = {
-    blue: 'text-blue-400',
-    emerald: 'text-emerald-400',
+    blue: isDark ? 'text-blue-400' : 'text-blue-600',
+    emerald: isDark ? 'text-emerald-400' : 'text-emerald-600',
     amber: 'text-amber-400',
-    green: 'text-green-400',
+    green: isDark ? 'text-green-400' : 'text-green-600',
   };
 
   return (
@@ -68,14 +71,14 @@ export default function InstitutionReportsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {reports.map((report) => (
-          <Card key={report.id} className="group hover:border-white/[0.08] transition-all duration-300 cursor-pointer">
+          <Card key={report.id} className={`group ${isDark ? "hover:border-white/[0.08]" : "hover:border-zinc-300"} transition-all duration-300 cursor-pointer`}>
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
                 <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${colorMap[report.color]} flex items-center justify-center border`}>
                   <report.icon className={`h-6 w-6 ${iconColorMap[report.color]}`} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-medium text-zinc-100 mb-1">{report.title}</h3>
+                  <h3 className={`text-sm font-medium mb-1 ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{report.title}</h3>
                   <p className="text-xs text-zinc-500 leading-relaxed">{report.description}</p>
                 </div>
               </div>

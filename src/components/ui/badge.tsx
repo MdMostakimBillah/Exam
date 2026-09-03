@@ -28,7 +28,7 @@ function Badge({ className, status, variant = 'default', children, ...props }: B
     <div
       className={cn(
         'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-all duration-200',
-        status ? getStatusClasses(status) : 'bg-gray-100 text-gray-600 border-gray-200',
+        status ? getStatusClasses(status) : 'dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 bg-zinc-100 text-zinc-600 border-zinc-200',
         className
       )}
       {...props}

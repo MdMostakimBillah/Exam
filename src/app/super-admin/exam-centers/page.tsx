@@ -11,8 +11,13 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { getExamCenters, createExamCenter, updateExamCenter } from "@/lib/storage/exam-centers";
 import { School, Plus, Pencil } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function ExamCentersPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -65,17 +70,17 @@ export default function ExamCentersPage() {
           <TableBody>
             {centers.map(c => (
               <TableRow key={c.id}>
-                <TableCell className="text-sm font-medium text-zinc-200">{c.name}</TableCell>
+                <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{c.name}</TableCell>
                 <TableCell className="text-xs text-zinc-500">{c.address}</TableCell>
-                <TableCell className="text-sm text-zinc-400">{c.capacity}</TableCell>
-                <TableCell className="text-sm text-zinc-400">{c.allocated}</TableCell>
-                <TableCell className="text-sm text-zinc-400">{c.capacity - c.allocated}</TableCell>
+                <TableCell className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{c.capacity}</TableCell>
+                <TableCell className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{c.allocated}</TableCell>
+                <TableCell className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{c.capacity - c.allocated}</TableCell>
                 <TableCell>
                   <div className="w-20">
-                    <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className={`h-1.5 rounded-full ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'} overflow-hidden`}>
                       <div className="h-full rounded-full bg-white/[0.2]" style={{ width: `${(c.allocated / c.capacity) * 100}%` }} />
                     </div>
-                    <span className="text-[10px] text-zinc-600">{Math.round((c.allocated / c.capacity) * 100)}%</span>
+                    <span className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{Math.round((c.allocated / c.capacity) * 100)}%</span>
                   </div>
                 </TableCell>
                 <TableCell>

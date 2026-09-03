@@ -11,8 +11,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getCertificates } from "@/lib/storage/certificates";
 import { Award, Search, Download, QrCode } from "lucide-react";
 import { formatDate } from "@/lib/storage/storage";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function CertificatesPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -39,19 +44,19 @@ export default function CertificatesPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Total Generated</p>
-            <p className="text-3xl font-bold text-zinc-100 mt-2">{certificates.length}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"} mt-2`}>{certificates.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Verified</p>
-            <p className="text-3xl font-bold text-emerald-400 mt-2">{certificates.filter(c => c.status === 'VERIFIED').length}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"} mt-2`}>{certificates.filter(c => c.status === 'VERIFIED').length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">2026</p>
-            <p className="text-3xl font-bold text-zinc-100 mt-2">{certificates.filter(c => c.examYear === '2026').length}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"} mt-2`}>{certificates.filter(c => c.examYear === '2026').length}</p>
           </CardContent>
         </Card>
       </div>
@@ -59,7 +64,7 @@ export default function CertificatesPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
           <Input
             placeholder="Search by student or certificate number..."
             value={search}
@@ -81,7 +86,7 @@ export default function CertificatesPage() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<Award className="h-6 w-6 text-zinc-600" />}
+          icon={<Award className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
           title="No certificates found"
           description="Certificates will appear here once results are published."
         />
@@ -104,15 +109,15 @@ export default function CertificatesPage() {
                 <TableRow key={cert.id} className="group">
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <QrCode className="h-4 w-4 text-zinc-600" />
+                      <QrCode className={`h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
                       <span className="text-xs font-mono text-zinc-500">{cert.certificateNumber}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-zinc-200 group-hover:text-white transition-colors">{cert.studentName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{cert.institutionName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{cert.examName}</TableCell>
+                  <TableCell className={`text-sm ${isDark ? "text-zinc-200" : "text-zinc-700"} group-hover:text-white transition-colors`}>{cert.studentName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{cert.institutionName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{cert.examName}</TableCell>
                   <TableCell>
-                    <span className="text-xs font-bold text-amber-400">#{cert.position}</span>
+                    <span className={`text-xs font-bold ${isDark ? "text-amber-400" : "text-amber-600"}`}>#{cert.position}</span>
                   </TableCell>
                   <TableCell className="text-xs text-zinc-500">{formatDate(cert.issueDate)}</TableCell>
                   <TableCell><Badge status={cert.status} /></TableCell>

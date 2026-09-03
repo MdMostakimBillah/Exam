@@ -164,7 +164,7 @@ export default function InstitutionsPage() {
                       </TableCell>
                       <TableCell><Badge status={inst.status} /></TableCell>
                       <TableCell>
-                        <Link href={`/super-admin/institutions/${inst.id}`} className={`text-xs ${textSec} hover:text-white transition-colors flex items-center gap-1`}>
+                        <Link href={`/super-admin/institutions/${inst.id}`} className={`text-xs ${textSec} ${isDark ? 'hover:text-white' : 'hover:text-zinc-900'} transition-colors flex items-center gap-1`}>
                           {isBn ? 'দেখুন' : 'View'} <ArrowRight className="h-3 w-3" />
                         </Link>
                       </TableCell>

@@ -51,8 +51,8 @@ export default function VerifyCertificatePage() {
           <div className="rounded-full bg-emerald-500/10 p-3 w-fit mx-auto mb-4">
             <ShieldCheck className="h-6 w-6 text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight mb-2">Verify Certificate</h1>
-          <p className="text-sm text-zinc-500">Enter a certificate number to verify its authenticity.</p>
+          <h1 className={`text-2xl font-bold tracking-tight mb-2 ${isDark ? "text-zinc-100" : "text-gray-900"}`}>Verify Certificate</h1>
+          <p className={`text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>Enter a certificate number to verify its authenticity.</p>
         </div>
 
         <Card>

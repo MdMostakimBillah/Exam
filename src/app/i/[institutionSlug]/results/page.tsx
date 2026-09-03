@@ -12,10 +12,13 @@ import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getResultsByInstitution } from "@/lib/storage/results";
 import { getExams } from "@/lib/storage/exams";
 import { Award, Trophy, TrendingUp, Download } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 
 export default function InstitutionResultsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [examFilter, setExamFilter] = useState("");
 
@@ -48,16 +51,16 @@ export default function InstitutionResultsPage() {
               <Trophy className="h-4 w-4 text-amber-400" />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Candidates</p>
             </div>
-            <p className="text-3xl font-bold text-zinc-100">{totalCandidates}</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{totalCandidates}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <TrendingUp className={`h-4 w-4 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Pass Rate</p>
             </div>
-            <p className="text-3xl font-bold text-emerald-400">{totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%</p>
           </CardContent>
         </Card>
         <Card>
@@ -72,10 +75,10 @@ export default function InstitutionResultsPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-blue-400" />
+              <TrendingUp className={`h-4 w-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Avg Score</p>
             </div>
-            <p className="text-3xl font-bold text-blue-400">{avgScore}%</p>
+            <p className={`text-3xl font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>{avgScore}%</p>
           </CardContent>
         </Card>
       </div>
@@ -96,7 +99,7 @@ export default function InstitutionResultsPage() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<Award className="h-6 w-6 text-zinc-600" />}
+          icon={<Award className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
           title="No results found"
           description="Results will appear here once published by the admin."
         />
@@ -118,16 +121,16 @@ export default function InstitutionResultsPage() {
               {filtered.map(result => (
                 <TableRow key={result.id} className="group">
                   <TableCell>
-                    <span className={`text-sm font-bold ${result.position <= 3 ? 'text-amber-400' : 'text-zinc-400'}`}>
+                    <span className={`text-sm font-bold ${result.position <= 3 ? 'text-amber-400' : (isDark ? 'text-zinc-400' : 'text-zinc-500')}`}>
                       #{result.position}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-zinc-200 group-hover:text-white transition-colors">{result.studentName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{result.className}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{result.totalMarks}/{result.totalFullMarks}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{result.percentage.toFixed(1)}%</TableCell>
+                  <TableCell className={`text-sm ${isDark ? "text-zinc-200 group-hover:text-white" : "text-zinc-700 group-hover:text-zinc-900"} transition-colors`}>{result.studentName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.className}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.totalMarks}/{result.totalFullMarks}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.percentage.toFixed(1)}%</TableCell>
                   <TableCell>
-                    <span className={`text-xs font-bold ${result.grade === 'F' ? 'text-red-400' : 'text-emerald-400'}`}>
+                    <span className={`text-xs font-bold ${result.grade === 'F' ? 'text-red-400' : (isDark ? 'text-emerald-400' : 'text-emerald-600')}`}>
                       {result.grade}
                     </span>
                   </TableCell>

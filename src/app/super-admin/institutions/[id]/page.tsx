@@ -30,8 +30,13 @@ export default function InstitutionDetailPage() {
 
   if (!mounted) return <InstitutionSkeleton isDark={isDark} />;
 
+  const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
+  const text = isDark ? "text-zinc-100" : "text-zinc-900";
+  const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
+  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
+
   const inst = getInstitutionById(params.id as string);
-  if (!inst) return <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a0b]' : 'bg-zinc-50'}`}><p className="text-zinc-500">Institution not found</p></div>;
+  if (!inst) return <div className={`min-h-screen flex items-center justify-center ${bg}`}><p className={textSec}>Institution not found</p></div>;
 
   const students = getStudentsByInstitution(inst.id);
   const regs = getRegistrationsByInstitution(inst.id);
@@ -41,11 +46,6 @@ export default function InstitutionDetailPage() {
 
   const totalPaid = payments.reduce((s, p) => s + (p.status === 'PAID' ? p.amount : 0), 0);
   const totalDue = payments.reduce((s, p) => s + (p.status === 'PENDING' ? p.amount : 0), 0);
-
-  const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
-  const text = isDark ? "text-zinc-100" : "text-zinc-900";
-  const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
-  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
   const glassCard = isDark 
     ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
     : "bg-white/70 backdrop-blur-xl border border-white/80";
@@ -66,7 +66,7 @@ export default function InstitutionDetailPage() {
 
       <div className="p-6 lg:p-8 relative z-10">
         <div className="flex items-center gap-3 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className={isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100'}>
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className={isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

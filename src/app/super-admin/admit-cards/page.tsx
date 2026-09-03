@@ -7,8 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getAdmitCards } from "@/lib/storage/admit-cards";
 import { FileCheck, Download, Printer, Eye } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function AdmitCardsPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return <div className="h-8 w-48 skeleton rounded" />;
@@ -37,13 +42,13 @@ export default function AdmitCardsPage() {
             {cards.map(card => (
               <TableRow key={card.id}>
                 <TableCell>
-                  <p className="text-sm text-zinc-200">{card.studentName}</p>
-                  <p className="text-[10px] text-zinc-600">{card.institutionName}</p>
+                  <p className={`text-sm ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{card.studentName}</p>
+                  <p className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{card.institutionName}</p>
                 </TableCell>
                 <TableCell className="text-xs text-zinc-500 font-mono">{card.registrationNumber}</TableCell>
                 <TableCell className="text-xs text-zinc-500 truncate max-w-[140px]">{card.examName}</TableCell>
-                <TableCell className="text-sm text-zinc-400">{card.className}</TableCell>
-                <TableCell className="text-sm text-zinc-400">{card.roll}</TableCell>
+                <TableCell className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{card.className}</TableCell>
+                <TableCell className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{card.roll}</TableCell>
                 <TableCell className="text-xs text-zinc-500 truncate max-w-[120px]">{card.examCenter}</TableCell>
                 <TableCell className="text-xs text-zinc-500">{new Date(card.examDate).toLocaleDateString()}</TableCell>
                 <TableCell>

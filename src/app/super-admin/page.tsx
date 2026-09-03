@@ -10,7 +10,7 @@ import { getRegistrations } from "@/lib/storage/registrations";
 import { getResults } from "@/lib/storage/results";
 import { getPayments } from "@/lib/storage/payments";
 import { getAuditLogs } from "@/lib/storage/audit-logs";
-import { Building2, Users, CreditCard, TrendingUp, Clock, CheckCircle, XCircle, ArrowRight, DollarSign, Wallet } from "lucide-react";
+import { Building2, Users, FileText, CheckCircle, Clock, DollarSign, ChevronRight, ArrowRight } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
@@ -46,70 +46,145 @@ export default function SuperAdminDashboard() {
   const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
   const text = isDark ? "text-zinc-100" : "text-zinc-900";
   const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
-  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
-  const glassCard = isDark 
-    ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
-    : "bg-white/60 backdrop-blur-xl border border-white/80";
+  const cardBg = isDark ? "bg-white/[0.03] border-white/[0.08]" : "bg-white border-zinc-200 shadow-sm";
 
-  const stats = [
-    { label: isBn ? 'মোট প্রতিষ্ঠান' : 'Institutions', value: institutions.length, icon: Building2 },
-    { label: isBn ? 'মোট শিক্ষার্থী' : 'Students', value: students.length, icon: Users },
-    { label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams, icon: TrendingUp },
-    { label: isBn ? 'আবেদন প্রতীক্ষা' : 'Pending', value: pendingStudents, icon: Clock },
-    { label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents, icon: CheckCircle },
-    { label: isBn ? 'মোট আয়' : 'Collected', value: '৳' + totalRevenue.toLocaleString(), icon: DollarSign },
-    { label: isBn ? 'বকেয়া' : 'Due Amount', value: '৳' + totalDue.toLocaleString(), icon: Wallet },
-    { label: isBn ? 'প্রত্যাখ্যান' : 'Rejected', value: registrations.filter(r => r.status === 'REJECTED').length, icon: XCircle },
+  const pendingActions = [
+    ...(pendingInstitutions > 0 ? [{ icon: Building2, label: isBn ? 'প্রতিষ্ঠান অনুমোদন' : 'Institution Approval', count: pendingInstitutions, href: '/super-admin/institutions', color: 'amber' }] : []),
+    ...(pendingStudents > 0 ? [{ icon: Users, label: isBn ? 'শিক্ষার্থী নিবন্ধন' : 'Student Registration', count: pendingStudents, href: '/super-admin/registrations', color: 'blue' }] : []),
+    ...(totalDue > 0 ? [{ icon: DollarSign, label: isBn ? 'বকেয়া পেমেন্ট' : 'Pending Payments', count: '৳' + totalDue.toLocaleString(), href: '/super-admin/payments', color: 'rose' }] : []),
   ];
 
   return (
     <div className={`min-h-screen ${bg}`}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px]" />
+        <div className={`absolute top-1/4 -left-32 w-96 h-96 rounded-full blur-[120px] ${isDark ? "bg-blue-500/5" : "bg-blue-500/[0.03]"}`} />
+        <div className={`absolute bottom-1/4 -right-32 w-96 h-96 rounded-full blur-[120px] ${isDark ? "bg-purple-500/5" : "bg-purple-500/[0.03]"}`} />
       </div>
 
       <div className="p-6 lg:p-8 relative z-10">
         <div className="mb-8">
           <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${text}`}>
-            {t("brand")}
+            {isBn ? 'ড্যাশবোর্ড' : 'Dashboard'}
           </h1>
+          <p className={`text-sm mt-1 ${textSec}`}>
+            {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন পরিচালনা করুন' : 'Manage Bangladesh Education Society operations'}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label} className={`${glassCard} hover:-translate-y-0.5 transition-all duration-200`}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${isDark ? 'bg-white/10' : 'bg-zinc-100'}`}>
-                    <stat.icon className={`h-5 w-5 ${textSec}`} />
+        {/* Revenue Hero */}
+        <div className={`rounded-2xl p-6 mb-6 border ${isDark ? "bg-gradient-to-br from-white/[0.05] to-white/[0.02] border-white/[0.08]" : "bg-gradient-to-br from-zinc-900 to-zinc-800 border-zinc-700"}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className={`text-sm font-medium ${isDark ? "text-zinc-400" : "text-zinc-300"}`}>
+                {isBn ? 'মোট আয়' : 'Total Revenue'}
+              </p>
+              <p className="text-3xl lg:text-4xl font-bold mt-1 text-white">
+                ৳{totalRevenue.toLocaleString()}
+              </p>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="text-xs text-emerald-400">
+                  {isBn ? 'সংগৃহীত' : 'Collected'}
+                </span>
+                <span className="text-xs text-amber-400">
+                  {isBn ? 'বকেয়া' : 'Due'}: ৳{totalDue.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <Link
+              href="/super-admin/payments"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/10 text-white hover:bg-white/15"
+            >
+              {isBn ? 'পেমেন্ট দেখুন' : 'View Payments'} <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Key Metrics */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[
+            { icon: Building2, label: isBn ? 'প্রতিষ্ঠান' : 'Institutions', value: institutions.length, sub: `${pendingInstitutions} ${isBn ? 'বাকি' : 'pending'}`, href: '/super-admin/institutions', accent: 'blue' },
+            { icon: Users, label: isBn ? 'শিক্ষার্থী' : 'Students', value: students.length, sub: `${approvedStudents} ${isBn ? 'অনুমোদিত' : 'approved'}`, href: '/super-admin/students', accent: 'emerald' },
+            { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams, sub: `${exams.length} ${isBn ? 'মোট' : 'total'}`, href: '/super-admin/exams', accent: 'purple' },
+            { icon: CheckCircle, label: isBn ? 'ফলাফল' : 'Results', value: results.length, sub: `${verifiedRegs} ${isBn ? 'যাচাইকৃত' : 'verified'}`, href: '/super-admin/results', accent: 'amber' },
+          ].map((s) => (
+            <Link key={s.label} href={s.href}>
+              <Card className={`${cardBg} rounded-2xl border hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group`}>
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-zinc-100 border border-zinc-200'}`}>
+                      <s.icon className={`h-5 w-5 ${textSec}`} />
+                    </div>
+                    <ArrowRight className={`h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity ${textSec}`} />
                   </div>
-                  <div className="min-w-0">
-                    <p className={`text-xl font-semibold ${text}`}>{stat.value}</p>
-                    <p className={`text-xs ${textSec} truncate`}>{stat.label}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <p className={`text-2xl font-bold ${text}`}>{s.value}</p>
+                  <p className={`text-xs mt-0.5 ${textSec}`}>{s.label}</p>
+                  <p className={`text-[11px] mt-1 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{s.sub}</p>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
 
+        {/* Pending Actions + Activity */}
         <div className="grid grid-cols-12 gap-6 mb-6">
-          <div className="col-span-12 lg:col-span-8">
-            <Card className={`${glassCard}`}>
+          <div className="col-span-12 lg:col-span-4">
+            <Card className={`${cardBg} rounded-2xl border h-full`}>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className={`text-sm font-semibold ${text}`}>
+                    {isBn ? 'অপেক্ষমাণ কার্য' : 'Pending Actions'}
+                  </h3>
+                  {pendingActions.length > 0 && (
+                    <span className={`h-5 px-2 rounded-full flex items-center justify-center text-[10px] font-bold ${isDark ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-700"}`}>
+                      {pendingActions.length}
+                    </span>
+                  )}
+                </div>
+                {pendingActions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center mb-3 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+                      <CheckCircle className={`h-6 w-6 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    </div>
+                    <p className={`text-sm font-medium ${text}`}>{isBn ? 'সব আপ টু ডেট' : 'All caught up'}</p>
+                    <p className={`text-xs ${textSec}`}>{isBn ? 'কোনো অপেক্ষমাণ কার্য নেই' : 'No pending actions'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {pendingActions.map((action) => (
+                      <Link key={action.label} href={action.href} className={`flex items-center justify-between p-3 rounded-xl transition-all ${isDark ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-zinc-50 hover:bg-zinc-100 border border-zinc-100"}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isDark ? `bg-${action.color}-500/10` : `bg-${action.color}-50`}`}>
+                            <action.icon className={`h-4 w-4 text-${action.color}-500`} />
+                          </div>
+                          <span className={`text-sm font-medium ${text}`}>{action.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{action.count}</span>
+                          <ChevronRight className={`h-3.5 w-3.5 ${textSec}`} />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="col-span-12 lg:col-span-8">
+            <Card className={`${cardBg} rounded-2xl border`}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-5">
                   <h3 className={`text-sm font-semibold ${text}`}>
                     {isBn ? 'সাম্প্রতিক কার্যকলাপ' : 'Recent Activity'}
                   </h3>
-                  <Link href="/super-admin/notifications" className={`text-xs ${isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'} transition-colors`}>
+                  <Link href="/super-admin/notifications" className={`text-xs transition-colors ${isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'}`}>
                     {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline" />
                   </Link>
                 </div>
-                <div className="space-y-4">
-                  {logs.slice(0, 6).map((log, i) => (
-                    <div key={log.id} className={`flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0 ${isDark ? 'border-white/[0.04]' : 'border-zinc-100'}`}>
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-semibold ${isDark ? 'bg-white/10 text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                <div className="space-y-1">
+                  {logs.slice(0, 6).map((log) => (
+                    <div key={log.id} className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-zinc-50'}`}>
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-semibold shrink-0 ${isDark ? 'bg-white/10 text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                         {log.userName.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -127,69 +202,22 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
           </div>
-
-          <div className="col-span-12 lg:col-span-4">
-            <Card className={`${glassCard} mb-6`}>
-              <CardContent className="p-6">
-                <h3 className={`text-sm font-semibold mb-4 ${text}`}>
-                  {isBn ? 'নিবন্ধন' : 'Registrations'}
-                </h3>
-                <div className="flex items-end gap-1 h-20">
-                  {[40, 55, 70, 85, 60, 75, 90, 65, 80, 95, 70, 88].map((h, i) => (
-                    <div 
-                      key={i} 
-                      className={`flex-1 rounded-t transition-all duration-300 ${
-                        isDark ? 'bg-white/10 hover:bg-white/15' : 'bg-zinc-200 hover:bg-zinc-300'
-                      }`} 
-                      style={{ height: `${h}%` }} 
-                    />
-                  ))}
-                </div>
-                <div className="flex justify-between mt-3">
-                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map(m => (
-                    <span key={m} className={`text-[10px] ${textSec}`}>{m}</span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className={`${glassCard}`}>
-              <CardContent className="p-6">
-                <h3 className={`text-sm font-semibold mb-4 ${text}`}>
-                  {isBn ? 'দ্রুত পরিসংখ্যান' : 'Quick Stats'}
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm ${textSec}`}>{isBn ? 'অনুমোদন প্রতীক্ষা' : 'Pending Institutions'}</span>
-                    <span className={`text-sm font-medium ${text}`}>{pendingInstitutions}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm ${textSec}`}>{isBn ? 'যাচাইকৃত নিবন্ধন' : 'Verified'}</span>
-                    <span className={`text-sm font-medium ${text}`}>{verifiedRegs}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm ${textSec}`}>{isBn ? 'ফলাফল প্রকাশিত' : 'Results Published'}</span>
-                    <span className={`text-sm font-medium ${text}`}>{results.length}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
-        <Card className={`${glassCard}`}>
+        {/* Recent Institutions */}
+        <Card className={`${cardBg} rounded-2xl border`}>
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <h3 className={`text-sm font-semibold ${text}`}>
                 {isBn ? 'সাম্প্রতিক প্রতিষ্ঠান' : 'Recent Institutions'}
               </h3>
-              <Link href="/super-admin/institutions" className={`text-xs ${isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'} transition-colors`}>
+              <Link href="/super-admin/institutions" className={`text-xs transition-colors ${isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'}`}>
                 {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline" />
               </Link>
             </div>
             <Table>
               <TableHeader>
-                <TableRow className={border}>
+                <TableRow className={isDark ? 'border-white/[0.06]' : 'border-zinc-200'}>
                   <TableHead className={textSec}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
                   <TableHead className={textSec}>Code</TableHead>
                   <TableHead className={textSec}>{isBn ? 'শিক্ষার্থী' : 'Students'}</TableHead>
@@ -217,15 +245,20 @@ export default function SuperAdminDashboard() {
 function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
   const cardBg = isDark ? "bg-white/[0.03]" : "bg-white";
-  
+
   return (
     <div className={`min-h-screen ${bg}`}>
       <div className="p-6 lg:p-8">
         <div className={`h-8 w-32 rounded mb-8 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className={`h-20 rounded-lg ${cardBg}`} />
+        <div className={`h-32 rounded-2xl mb-6 ${isDark ? 'bg-white/[0.03]' : 'bg-zinc-200'}`} />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className={`h-28 rounded-2xl ${cardBg}`} />
           ))}
+        </div>
+        <div className="grid grid-cols-12 gap-6">
+          <div className={`col-span-12 lg:col-span-4 h-48 rounded-2xl ${cardBg}`} />
+          <div className={`col-span-12 lg:col-span-8 h-48 rounded-2xl ${cardBg}`} />
         </div>
       </div>
     </div>

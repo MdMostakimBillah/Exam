@@ -23,7 +23,7 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
     setAuthorized(true);
   }, [slug, router]);
 
-  if (!authorized) return <div className="min-h-screen bg-[#080808] flex items-center justify-center"><div className="h-6 w-32 skeleton rounded" /></div>;
+  if (!authorized) return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><div className="h-6 w-32 skeleton rounded" /></div>;
 
   return <AppShell>{children}</AppShell>;
 }

@@ -11,8 +11,13 @@ import { getExams } from "@/lib/storage/exams";
 import { getRegistrations } from "@/lib/storage/registrations";
 import { getMarks, createMark, updateMark } from "@/lib/storage/marks";
 import { BookOpen, Save, Download } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function MarksPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const { toast } = useToast();
   const [selectedExam, setSelectedExam] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -93,8 +98,8 @@ export default function MarksPage() {
                   const fullMarks = selectedExamData?.subjects.find(s => s.id === selectedSubject)?.fullMarks || 100;
                   return (
                     <TableRow key={reg.id}>
-                      <TableCell className="text-sm text-zinc-400">{reg.id.slice(-3)}</TableCell>
-                      <TableCell className="text-sm text-zinc-200">{reg.studentName}</TableCell>
+                      <TableCell className={`text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{reg.id.slice(-3)}</TableCell>
+                      <TableCell className={`text-sm ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{reg.studentName}</TableCell>
                       <TableCell className="text-xs text-zinc-500 font-mono">{reg.applicationId}</TableCell>
                       <TableCell>
                         <Input type="number" min={0} max={fullMarks} value={currentMarks || ''}
@@ -103,9 +108,9 @@ export default function MarksPage() {
                       </TableCell>
                       <TableCell>
                         {currentMarks !== undefined ? (
-                          <span className="text-[10px] text-emerald-400">Entered</span>
+                          <span className={`text-[10px] ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Entered</span>
                         ) : (
-                          <span className="text-[10px] text-zinc-600">Pending</span>
+                          <span className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>Pending</span>
                         )}
                       </TableCell>
                     </TableRow>

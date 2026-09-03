@@ -9,11 +9,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { Settings, Building2, Bell, Save } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 
 export default function InstitutionSettingsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [instName, setInstName] = useState("");
   const [email, setEmail] = useState("");
@@ -94,21 +97,21 @@ export default function InstitutionSettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Email Notifications</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Email Notifications</p>
                   <p className="text-xs text-zinc-500">Receive email updates for important events</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Registration Updates</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Registration Updates</p>
                   <p className="text-xs text-zinc-500">Notify when registrations are approved</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Result Publications</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Result Publications</p>
                   <p className="text-xs text-zinc-500">Notify when results are published</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" defaultChecked />

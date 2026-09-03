@@ -11,8 +11,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getRegistrations } from "@/lib/storage/registrations";
 import { ClipboardList, Search, Download, CheckCircle, Clock, XCircle } from "lucide-react";
 import { formatDate } from "@/lib/storage/storage";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function RegistrationsPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -43,14 +48,14 @@ export default function RegistrationsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total', value: statusCounts.all },
-          { label: 'Approved', value: statusCounts.APPROVED, color: 'text-emerald-400' },
+          { label: 'Approved', value: statusCounts.APPROVED, color: isDark ? 'text-emerald-400' : 'text-emerald-600' },
           { label: 'Verified', value: statusCounts.VERIFIED, color: 'text-blue-400' },
           { label: 'Pending', value: statusCounts.PENDING, color: 'text-amber-400' },
         ].map(stat => (
           <Card key={stat.label}>
             <CardContent className="p-5">
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">{stat.label}</p>
-              <p className={`text-3xl font-bold mt-2 ${stat.color || 'text-zinc-100'}`}>{stat.value}</p>
+              <p className={`text-3xl font-bold mt-2 ${stat.color || (isDark ? 'text-zinc-100' : 'text-zinc-900')}`}>{stat.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -59,7 +64,7 @@ export default function RegistrationsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`} />
           <Input
             placeholder="Search by student or application ID..."
             value={search}
@@ -87,7 +92,7 @@ export default function RegistrationsPage() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<ClipboardList className="h-6 w-6 text-zinc-600" />}
+          icon={<ClipboardList className={`h-6 w-6 ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`} />}
           title="No registrations found"
           description="Try adjusting your search or filters."
         />
@@ -109,9 +114,9 @@ export default function RegistrationsPage() {
               {filtered.slice(0, 20).map(reg => (
                 <TableRow key={reg.id} className="group">
                   <TableCell className="text-xs font-mono text-zinc-500">{reg.applicationId}</TableCell>
-                  <TableCell className="text-sm text-zinc-200 group-hover:text-white transition-colors">{reg.studentName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{reg.institutionName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{reg.examName}</TableCell>
+                  <TableCell className={`text-sm ${isDark ? 'text-zinc-200' : 'text-zinc-700'} group-hover:text-white transition-colors`}>{reg.studentName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{reg.institutionName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{reg.examName}</TableCell>
                   <TableCell className="text-xs text-zinc-500">{formatDate(reg.createdAt)}</TableCell>
                   <TableCell>
                     <Badge status={reg.paymentStatus} />

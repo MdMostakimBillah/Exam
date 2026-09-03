@@ -10,8 +10,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getPayments } from "@/lib/storage/payments";
 import { CreditCard, Search, Download, Wallet, CheckCircle } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function PaymentsPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -34,37 +39,37 @@ export default function PaymentsPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Wallet className="h-4 w-4 text-emerald-400" />
+              <Wallet className={`h-4 w-4 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Total Revenue</p>
             </div>
-            <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalRevenue)}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{formatCurrency(totalRevenue)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-blue-400" />
+              <CheckCircle className={`h-4 w-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Paid</p>
             </div>
-            <p className="text-2xl font-bold text-zinc-100">{payments.filter(p => p.status === 'PAID').length}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{payments.filter(p => p.status === 'PAID').length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="h-4 w-4 text-amber-400" />
+              <CreditCard className={`h-4 w-4 ${isDark ? "text-amber-400" : "text-amber-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Pending</p>
             </div>
-            <p className="text-2xl font-bold text-amber-400">{payments.filter(p => p.status === 'PENDING').length}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-amber-400" : "text-amber-600"}`}>{payments.filter(p => p.status === 'PENDING').length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="h-4 w-4 text-zinc-400" />
+              <CreditCard className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Pending Amount</p>
             </div>
-            <p className="text-2xl font-bold text-amber-400">{formatCurrency(pendingAmount)}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-amber-400" : "text-amber-600"}`}>{formatCurrency(pendingAmount)}</p>
           </CardContent>
         </Card>
       </div>
@@ -90,7 +95,7 @@ export default function PaymentsPage() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<CreditCard className="h-6 w-6 text-zinc-600" />}
+          icon={<CreditCard className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
           title="No payments found"
           description="Payment records will appear here."
         />
@@ -113,11 +118,11 @@ export default function PaymentsPage() {
               {filtered.map(payment => (
                 <TableRow key={payment.id} className="group">
                   <TableCell className="text-xs font-mono text-zinc-500">{payment.transactionId}</TableCell>
-                  <TableCell className="text-sm text-zinc-200 group-hover:text-white transition-colors">{payment.institutionName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{payment.examName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{payment.studentCount}</TableCell>
-                  <TableCell className="text-sm font-medium text-emerald-400">{formatCurrency(payment.amount)}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{payment.paymentMethod}</TableCell>
+                  <TableCell className={`text-sm ${isDark ? "text-zinc-200" : "text-zinc-700"} group-hover:text-white transition-colors`}>{payment.institutionName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.examName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.studentCount}</TableCell>
+                  <TableCell className={`text-sm font-medium ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{formatCurrency(payment.amount)}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.paymentMethod}</TableCell>
                   <TableCell className="text-xs text-zinc-500">{formatDate(payment.date)}</TableCell>
                   <TableCell><Badge status={payment.status} /></TableCell>
                 </TableRow>

@@ -12,10 +12,13 @@ import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getPaymentsByInstitution } from "@/lib/storage/payments";
 import { CreditCard, Wallet, CheckCircle, Download } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
+import { useTheme } from "@/contexts/theme-context";
 
 export default function InstitutionPaymentsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [mounted, setMounted] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -41,10 +44,10 @@ export default function InstitutionPaymentsPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Wallet className="h-4 w-4 text-emerald-400" />
+              <Wallet className={`h-4 w-4 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Total Paid</p>
             </div>
-            <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalPaid)}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{formatCurrency(totalPaid)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -59,19 +62,19 @@ export default function InstitutionPaymentsPage() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-blue-400" />
+              <CheckCircle className={`h-4 w-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Paid Transactions</p>
             </div>
-            <p className="text-2xl font-bold text-zinc-100">{payments.filter(p => p.status === 'PAID').length}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{payments.filter(p => p.status === 'PAID').length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="h-4 w-4 text-zinc-400" />
+              <CreditCard className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Pending Transactions</p>
             </div>
-            <p className="text-2xl font-bold text-zinc-100">{payments.filter(p => p.status === 'PENDING').length}</p>
+            <p className={`text-2xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{payments.filter(p => p.status === 'PENDING').length}</p>
           </CardContent>
         </Card>
       </div>
@@ -97,7 +100,7 @@ export default function InstitutionPaymentsPage() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<CreditCard className="h-6 w-6 text-zinc-600" />}
+          icon={<CreditCard className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
           title="No payments found"
           description="Payment records will appear here."
         />
@@ -119,10 +122,10 @@ export default function InstitutionPaymentsPage() {
               {filtered.map(payment => (
                 <TableRow key={payment.id} className="group">
                   <TableCell className="text-xs font-mono text-zinc-500">{payment.transactionId}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{payment.examName}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{payment.studentCount}</TableCell>
-                  <TableCell className="text-sm font-medium text-emerald-400">{formatCurrency(payment.amount)}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{payment.paymentMethod}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.examName}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.studentCount}</TableCell>
+                  <TableCell className={`text-sm font-medium ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{formatCurrency(payment.amount)}</TableCell>
+                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.paymentMethod}</TableCell>
                   <TableCell className="text-xs text-zinc-500">{formatDate(payment.date)}</TableCell>
                   <TableCell><Badge status={payment.status} /></TableCell>
                 </TableRow>

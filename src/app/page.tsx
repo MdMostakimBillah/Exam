@@ -26,14 +26,14 @@ export default function HomePage() {
 
   const glassBg = isDark 
     ? "bg-white/5 backdrop-blur-xl border border-white/10" 
-    : "bg-white/60 backdrop-blur-xl border border-white/70";
+    : "bg-white/80 backdrop-blur-xl border border-zinc-200";
   const glassCard = isDark 
     ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
-    : "bg-white/70 backdrop-blur-xl border border-white/80";
+    : "bg-white border border-zinc-200 shadow-sm shadow-zinc-200/50";
   const text = isDark ? "text-zinc-100" : "text-zinc-900";
   const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
   const textNav = isDark ? "text-zinc-400 hover:text-zinc-200" : "text-zinc-500 hover:text-zinc-900";
-  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
+  const border = isDark ? "border-white/[0.06]" : "border-zinc-200";
   const btnPrimary = isDark 
     ? "bg-white text-zinc-900 hover:bg-zinc-200 shadow-lg shadow-white/10" 
     : "bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-black/10";
@@ -69,7 +69,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className={`${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"} min-h-screen`}>
+    <div className={`${isDark ? "bg-[#0a0a0b]" : "bg-zinc-100/50"} min-h-screen`}>
       <style jsx>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(30px); }
@@ -129,8 +129,8 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative min-h-screen flex items-center pt-32 pb-20 px-6 overflow-hidden">
         {/* Background gradient orbs */}
-        <div className="absolute top-1/4 left-0 w-[500px] h-[500px] rounded-full blur-[120px] bg-blue-500/10" />
-        <div className="absolute bottom-1/4 right-0 w-[400px] h-[400px] rounded-full blur-[100px] bg-purple-500/10" />
+        <div className={`absolute top-1/4 left-0 w-[500px] h-[500px] rounded-full blur-[120px] ${isDark ? "bg-blue-500/10" : "bg-blue-500/5"}`} />
+        <div className={`absolute bottom-1/4 right-0 w-[400px] h-[400px] rounded-full blur-[100px] ${isDark ? "bg-purple-500/10" : "bg-purple-500/5"}`} />
         
         <div className="max-w-7xl mx-auto w-full relative">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -162,7 +162,7 @@ export default function HomePage() {
               <div className="flex items-center gap-4 pt-2">
                 <div className="flex -space-x-2">
                   {['RI', 'FB', 'AH', 'MK'].map((initials) => (
-                    <div key={initials} className={`h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 ${isDark ? 'border-zinc-950 bg-zinc-700' : 'border-white bg-zinc-300'}`}>
+                    <div key={initials} className={`h-9 w-9 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 ${isDark ? 'border-[#0a0a0b] bg-zinc-700' : 'border-white bg-zinc-800 text-white'}`}>
                       {initials}
                     </div>
                   ))}
@@ -187,14 +187,14 @@ export default function HomePage() {
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
           <span className={`text-[10px] uppercase tracking-widest ${textSec}`}>Scroll</span>
-          <div className={`w-6 h-10 rounded-full border flex justify-center pt-2 ${isDark ? 'border-white/20' : 'border-zinc-400'}`}>
-            <div className={`w-1 h-2 rounded-full animate-bounce ${isDark ? 'bg-white/40' : 'bg-zinc-400'}`} />
+          <div className={`w-6 h-10 rounded-full border flex justify-center pt-2 ${isDark ? 'border-white/20' : 'border-zinc-300'}`}>
+            <div className={`w-1 h-2 rounded-full animate-bounce ${isDark ? 'bg-white/40' : 'bg-zinc-500'}`} />
           </div>
         </div>
       </section>
 
       {/* Stats */}
-      <section className={`py-20 ${glassBg} border-y ${border}`}>
+      <section className={`py-20 ${isDark ? "bg-white/5 border-y border-white/[0.06]" : "bg-white border-y border-zinc-200"}`}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, i) => (
@@ -212,7 +212,7 @@ export default function HomePage() {
       <section id="features" className="py-24 sm:py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${glassCard}`}>
+            <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${isDark ? "bg-white/5 border border-white/10 text-zinc-400" : "bg-zinc-100 border border-zinc-200 text-zinc-500"}`}>
               Features
             </span>
             <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 ${text}`}>{t("features.sectionTitle")}</h2>
@@ -225,7 +225,7 @@ export default function HomePage() {
                 key={f.title}
                 className={`group rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard}`}
               >
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 ${isDark ? "bg-white/10" : "bg-zinc-100"}`}>
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 ${isDark ? "bg-white/10" : "bg-zinc-100 border border-zinc-200"}`}>
                   <f.icon className={`h-5 w-5 ${textSec}`} />
                 </div>
                 <h3 className={`text-sm font-semibold mb-2 ${text}`}>{f.title}</h3>
@@ -241,7 +241,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${glassCard}`}>
+              <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${isDark ? "bg-white/5 border border-white/10 text-zinc-400" : "bg-zinc-100 border border-zinc-200 text-zinc-500"}`}>
                 Platform
               </span>
               <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6 ${text}`}>
@@ -258,8 +258,8 @@ export default function HomePage() {
                   "Comprehensive analytics and reporting"
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3">
-                    <div className={`h-6 w-6 rounded-full flex items-center justify-center ${isDark ? "bg-emerald-500/20" : "bg-emerald-100"}`}>
-                      <Check className={`h-3.5 w-3.5 text-emerald-500`} />
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center ${isDark ? "bg-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}>
+                      <Check className={`h-3.5 w-3.5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
                     </div>
                     <span className={`text-sm ${text}`}>{item}</span>
                   </div>
@@ -268,7 +268,7 @@ export default function HomePage() {
             </div>
 
             <div className={`rounded-2xl overflow-hidden ${glassCard}`}>
-              <div className={`h-12 flex items-center gap-2 px-5 ${isDark ? "bg-white/5" : "bg-zinc-50/80"}`}>
+              <div className={`h-12 flex items-center gap-2 px-5 ${isDark ? "bg-white/5" : "bg-zinc-100"}`}>
                 <div className="h-3 w-3 rounded-full bg-red-500/80" />
                 <div className="h-3 w-3 rounded-full bg-amber-500/80" />
                 <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
@@ -280,13 +280,13 @@ export default function HomePage() {
                     { label: "Students", value: "2,240" },
                     { label: "Exams", value: "3" },
                   ].map((item) => (
-                    <div key={item.label} className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-100/80"}`}>
+                    <div key={item.label} className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
                       <p className={`text-xs ${textSec} mb-1`}>{item.label}</p>
                       <p className={`text-xl font-semibold ${text}`}>{item.value}</p>
                     </div>
                   ))}
                 </div>
-                <div className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-100/80"}`}>
+                <div className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
                   <p className={`text-xs ${textSec} mb-3`}>Registration Trends</p>
                   <div className="flex items-end gap-2 h-16">
                     {[40, 55, 70, 85, 60, 75, 90, 65, 80, 95, 70, 88].map((h, i) => (
@@ -313,7 +313,7 @@ export default function HomePage() {
           </div>
 
           <div className="relative">
-            <div className={`absolute top-8 left-0 right-0 h-px ${isDark ? "bg-white/10" : "bg-zinc-200"} hidden lg:block`} />
+            <div className={`absolute top-8 left-0 right-0 h-px ${isDark ? "bg-white/10" : "bg-zinc-300"} hidden lg:block`} />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
               {steps.map((step, i) => (
                 <div key={step} className="relative text-center">
@@ -346,7 +346,7 @@ export default function HomePage() {
                 </div>
                 <p className={`text-sm leading-relaxed mb-6 ${text}`}>「{testimonial.text}」</p>
                 <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white text-sm font-semibold ${isDark ? "bg-white/10" : "bg-zinc-800"}`}>
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm font-semibold ${isDark ? "bg-white/10 text-zinc-300" : "bg-zinc-900 text-white"}`}>
                     {testimonial.avatar}
                   </div>
                   <div>
@@ -364,8 +364,8 @@ export default function HomePage() {
       <section className="py-24 sm:py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className={`rounded-3xl p-12 sm:p-16 text-center ${glassCard} relative overflow-hidden`}>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] bg-blue-500/10" />
-            <div className="absolute bottom-0 right-0 w-[200px] h-[200px] rounded-full blur-[80px] bg-purple-500/10" />
+            <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] ${isDark ? "bg-blue-500/10" : "bg-blue-500/5"}`} />
+            <div className={`absolute bottom-0 right-0 w-[200px] h-[200px] rounded-full blur-[80px] ${isDark ? "bg-purple-500/10" : "bg-purple-500/5"}`} />
             <div className="relative z-10">
               <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6 ${text}`}>{t("cta.title")}</h2>
               <p className={`text-base mb-10 max-w-md mx-auto ${textSec}`}>{t("cta.subtitle")}</p>
@@ -378,7 +378,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className={`py-16 px-6 ${glassBg} border-t ${border}`}>
+      <footer className={`py-16 px-6 ${isDark ? "bg-white/5 border-t border-white/[0.06]" : "bg-white border-t border-zinc-200"}`}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>

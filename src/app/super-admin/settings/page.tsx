@@ -7,8 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { Settings, Globe, Bell, Shield, FileText, Save } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function SettingsPage() {
+  const { theme } = useTheme();
+  const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
   const { toast } = useToast();
   const [platformName, setPlatformName] = useState("Bangladesh Education Society");
   const [tagline, setTagline] = useState("Scholarship Examination Management Platform");
@@ -131,21 +136,21 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Email Notifications</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Email Notifications</p>
                   <p className="text-xs text-zinc-500">Receive email updates for important events</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Registration Alerts</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Registration Alerts</p>
                   <p className="text-xs text-zinc-500">Notify when new registrations are submitted</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Result Publications</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Result Publications</p>
                   <p className="text-xs text-zinc-500">Notify when results are published</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" defaultChecked />
@@ -171,7 +176,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-300">Two-Factor Authentication</p>
+                  <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>Two-Factor Authentication</p>
                   <p className="text-xs text-zinc-500">Require 2FA for admin accounts</p>
                 </div>
                 <input type="checkbox" className="h-4 w-4 rounded" />

@@ -59,8 +59,8 @@ export default function ResultPage() {
 
       <main className="max-w-2xl mx-auto px-6 py-16">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-zinc-100 tracking-tight mb-2">Scholarship Examination Result</h1>
-          <p className="text-sm text-zinc-500">Search for published results using your registration details.</p>
+          <h1 className={`text-2xl font-bold tracking-tight mb-2 ${isDark ? "text-zinc-100" : "text-gray-900"}`}>Scholarship Examination Result</h1>
+          <p className={`text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>Search for published results using your registration details.</p>
         </div>
 
         <Card>
