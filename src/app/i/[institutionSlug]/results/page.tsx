@@ -1,0 +1,158 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { getInstitutionBySlug } from "@/lib/storage/institutions";
+import { getResultsByInstitution } from "@/lib/storage/results";
+import { getExams } from "@/lib/storage/exams";
+import { Award, Trophy, TrendingUp, Download } from "lucide-react";
+
+export default function InstitutionResultsPage() {
+  const params = useParams();
+  const slug = params.institutionSlug as string;
+  const [mounted, setMounted] = useState(false);
+  const [examFilter, setExamFilter] = useState("");
+
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) return <ResultsSkeleton />;
+
+  const inst = getInstitutionBySlug(slug);
+  if (!inst) return null;
+
+  const results = getResultsByInstitution(inst.id);
+  const exams = getExams();
+
+  const filtered = examFilter ? results.filter(r => r.examId === examFilter) : results;
+
+  const totalCandidates = filtered.length;
+  const passed = filtered.filter(r => r.pass).length;
+  const scholarshipWinners = filtered.filter(r => r.scholarshipStatus === 'ELIGIBLE').length;
+  const avgScore = filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Results" description="View examination results for your institution." />
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy className="h-4 w-4 text-amber-400" />
+              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Candidates</p>
+            </div>
+            <p className="text-3xl font-bold text-zinc-100">{totalCandidates}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Pass Rate</p>
+            </div>
+            <p className="text-3xl font-bold text-emerald-400">{totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Award className="h-4 w-4 text-yellow-400" />
+              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Scholarship</p>
+            </div>
+            <p className="text-3xl font-bold text-yellow-400">{scholarshipWinners}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-blue-400" />
+              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Avg Score</p>
+            </div>
+            <p className="text-3xl font-bold text-blue-400">{avgScore}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Select
+          options={[{ label: 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))]}
+          value={examFilter}
+          onChange={(e) => setExamFilter(e.target.value)}
+          className="w-full sm:w-64"
+        />
+        <Button variant="outline" className="gap-2 ml-auto">
+          <Download className="h-4 w-4" /> Export Results
+        </Button>
+      </div>
+
+      {/* Table */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={<Award className="h-6 w-6 text-zinc-600" />}
+          title="No results found"
+          description="Results will appear here once published by the admin."
+        />
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Position</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Marks</TableHead>
+                <TableHead>Percentage</TableHead>
+                <TableHead>Grade</TableHead>
+                <TableHead>Scholarship</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(result => (
+                <TableRow key={result.id} className="group">
+                  <TableCell>
+                    <span className={`text-sm font-bold ${result.position <= 3 ? 'text-amber-400' : 'text-zinc-400'}`}>
+                      #{result.position}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-zinc-200 group-hover:text-white transition-colors">{result.studentName}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{result.className}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{result.totalMarks}/{result.totalFullMarks}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{result.percentage.toFixed(1)}%</TableCell>
+                  <TableCell>
+                    <span className={`text-xs font-bold ${result.grade === 'F' ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {result.grade}
+                    </span>
+                  </TableCell>
+                  <TableCell><Badge status={result.scholarshipStatus} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-8 w-48 skeleton rounded" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-24 skeleton rounded-2xl" />
+        ))}
+      </div>
+      <div className="h-10 w-full skeleton rounded-xl" />
+      <div className="h-96 skeleton rounded-2xl" />
+    </div>
+  );
+}
