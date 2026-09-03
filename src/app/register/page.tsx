@@ -124,7 +124,7 @@ export default function RegisterPage() {
           </div>
           <h1 className={`text-2xl font-bold mb-3 ${text}`}>Registration Complete</h1>
           <p className={`text-sm mb-8 leading-relaxed ${textSec}`}>
-            Your institution registration has been submitted successfully. We'll review your application and notify you once approved.
+            Your institution registration has been submitted successfully. We&#39;ll review your application and notify you once approved.
           </p>
           <Link href="/login" className={`inline-flex items-center gap-2 text-sm font-medium ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-700'} transition-colors`}>
             {mounted && <ArrowLeft className="h-4 w-4" />} Back to Sign in
@@ -302,7 +302,7 @@ export default function RegisterPage() {
                     </div>
                     <h2 className={`text-lg font-semibold mb-2 ${text}`}>Verify Your Email</h2>
                     <p className={`text-sm ${textSec}`}>
-                      We've sent a code to<br />
+                      We&#39;ve sent a code to<br />
                       <span className="text-blue-400 font-medium">{email}</span>
                     </p>
                   </div>

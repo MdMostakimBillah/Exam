@@ -29,7 +29,7 @@ function getSnapshot(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, () => "dark");
+  const theme = useSyncExternalStore(subscribe, getSnapshot, () => "dark" as Theme);
 
   useEffect(() => {
     const root = document.documentElement;

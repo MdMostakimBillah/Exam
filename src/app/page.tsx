@@ -344,7 +344,7 @@ export default function HomePage() {
                     <Star key={star} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className={`text-sm leading-relaxed mb-6 ${text}`}>"{testimonial.text}"</p>
+                <p className={`text-sm leading-relaxed mb-6 ${text}`}>「{testimonial.text}」</p>
                 <div className="flex items-center gap-3">
                   <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white text-sm font-semibold ${isDark ? "bg-white/10" : "bg-zinc-800"}`}>
                     {testimonial.avatar}

@@ -43,7 +43,7 @@ function getSnapshot(): Lang {
 }
 
 export function LangProvider({ children }: { children: ReactNode }) {
-  const lang = useSyncExternalStore(subscribe, getSnapshot, () => "en");
+  const lang = useSyncExternalStore(subscribe, getSnapshot, () => "en" as Lang);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
