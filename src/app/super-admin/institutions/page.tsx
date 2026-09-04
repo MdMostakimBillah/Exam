@@ -64,10 +64,6 @@ export default function InstitutionsPage() {
       </div>
 
       <div className="p-6 lg:p-8 relative z-10">
-        <div className="mb-8">
-          <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${text}`}>{t("brand")}</h1>
-        </div>
-
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((stat) => (
             <Card key={stat.label} className={`${glassCard}`}>
