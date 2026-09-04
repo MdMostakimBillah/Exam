@@ -89,7 +89,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <ArrowRight className={`h-3 w-3 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
                 </div>
-                <p className={`text-[10px] mt-0.5 ml-9 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-[10px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </Link>
           ))}
@@ -110,7 +110,7 @@ export default function SuperAdminDashboard() {
                 </div>
                 <p className={`text-base font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
               </div>
-              <p className={`text-[10px] mt-0.5 ml-9 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              <p className={`text-[10px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
             </div>
           ))}
         </div>
