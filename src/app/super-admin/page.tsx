@@ -117,6 +117,54 @@ export default function SuperAdminDashboard() {
 
         {/* Recent Institutions + Graph */}
         <div className="grid grid-cols-12 gap-6">
+          {/* Session Wise View */}
+          <div className="col-span-12 lg:col-span-5">
+            <div className={`${card} h-full`}>
+              <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  {isBn ? 'সেশন অনুযায়ী' : 'Session Wise'}
+                </h3>
+              </div>
+              <div className="p-4 space-y-2">
+                {(() => {
+                  const sessions: Record<string, { exams: number; students: number; revenue: number }> = {};
+                  exams.forEach(e => {
+                    const yr = e.academicYear || 'Unknown';
+                    if (!sessions[yr]) sessions[yr] = { exams: 0, students: 0, revenue: 0 };
+                    sessions[yr].exams++;
+                  });
+                  registrations.forEach(r => {
+                    const exam = exams.find(e => e.id === r.examId);
+                    const yr = exam?.academicYear || 'Unknown';
+                    if (!sessions[yr]) sessions[yr] = { exams: 0, students: 0, revenue: 0 };
+                    sessions[yr].students++;
+                    sessions[yr].revenue += r.paymentAmount || 0;
+                  });
+                  return Object.entries(sessions).sort((a, b) => b[0].localeCompare(a[0])).map(([year, data]) => (
+                    <div key={year} className={`p-3 rounded-xl transition-colors ${isDark ? "bg-white/[0.03] hover:bg-white/[0.05]" : "bg-zinc-50 hover:bg-zinc-100"}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{year}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? "bg-white/[0.06] text-zinc-400" : "bg-zinc-200 text-zinc-500"}`}>
+                          {data.exams} {isBn ? 'পরীক্ষা' : 'exams'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className={`text-lg font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{data.students}</p>
+                          <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'শিক্ষার্থী' : 'Students'}</p>
+                        </div>
+                        <div>
+                          <p className={`text-lg font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>৳{data.revenue.toLocaleString()}</p>
+                          <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'আয়' : 'Revenue'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+
           {/* Recent Institutions */}
           <div className="col-span-12 lg:col-span-7">
             <div className={`${card}`}>
