@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInstitutions, updateInstitution } from "@/lib/storage/institutions";
+import { getInstitutions, updateInstitution, deleteInstitution } from "@/lib/storage/institutions";
 import { Institution } from "@/lib/types";
-import { Building2, Search, Plus, MapPin, Users, Mail, Phone, ArrowRight, Check, X, Ban, Clock, MoreVertical } from "lucide-react";
+import { Building2, Search, Plus, MapPin, Users, Mail, Phone, ArrowRight, Check, X, Ban, Clock, MoreVertical, Trash2, Eye } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
@@ -73,6 +73,13 @@ export default function InstitutionsPage() {
   const handleStatusChange = (id: string, newStatus: string) => {
     updateInstitution(id, { status: newStatus as Institution['status'] });
     setRefreshKey(k => k + 1);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm(isBn ? 'আপনি কি নিশ্চিত?' : 'Are you sure?')) {
+      deleteInstitution(id);
+      setRefreshKey(k => k + 1);
+    }
   };
 
   return (
@@ -220,6 +227,20 @@ export default function InstitutionsPage() {
                                   <Check className="h-3.5 w-3.5" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
                                 </button>
                               )}
+                              <div className={`border-t my-0.5 ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`} />
+                              <Link
+                                href={`/super-admin/institutions/${inst.id}`}
+                                onClick={() => setOpenDropdown(null)}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-400 hover:bg-white/[0.04]' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                              >
+                                <Eye className="h-3.5 w-3.5" /> {isBn ? 'দেখুন' : 'View'}
+                              </Link>
+                              <button
+                                onClick={() => { handleDelete(inst.id); setOpenDropdown(null); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                              </button>
                             </div>
                           )}
                         </div>
