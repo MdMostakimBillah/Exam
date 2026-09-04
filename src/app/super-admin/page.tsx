@@ -48,6 +48,14 @@ export default function SuperAdminDashboard() {
   const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
   const cardBg = isDark ? "bg-white/[0.03] border-white/[0.08]" : "bg-white border-zinc-200 shadow-sm";
 
+  const colorMap: Record<string, { light: string; dark: string; text: string }> = {
+    amber: { light: "bg-amber-50", dark: "bg-amber-500/10", text: "text-amber-500" },
+    blue: { light: "bg-blue-50", dark: "bg-blue-500/10", text: "text-blue-500" },
+    rose: { light: "bg-rose-50", dark: "bg-rose-500/10", text: "text-rose-500" },
+    emerald: { light: "bg-emerald-50", dark: "bg-emerald-500/10", text: "text-emerald-500" },
+    purple: { light: "bg-purple-50", dark: "bg-purple-500/10", text: "text-purple-500" },
+  };
+
   const pendingActions = [
     ...(pendingInstitutions > 0 ? [{ icon: Building2, label: isBn ? 'প্রতিষ্ঠান অনুমোদন' : 'Institution Approval', count: pendingInstitutions, href: '/super-admin/institutions', color: 'amber' }] : []),
     ...(pendingStudents > 0 ? [{ icon: Users, label: isBn ? 'শিক্ষার্থী নিবন্ধন' : 'Student Registration', count: pendingStudents, href: '/super-admin/registrations', color: 'blue' }] : []),
@@ -75,7 +83,7 @@ export default function SuperAdminDashboard() {
         <div className={`rounded-2xl p-6 mb-6 border ${isDark ? "bg-gradient-to-br from-white/[0.05] to-white/[0.02] border-white/[0.08]" : "bg-gradient-to-br from-zinc-900 to-zinc-800 border-zinc-700"}`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className={`text-sm font-medium ${isDark ? "text-zinc-400" : "text-zinc-300"}`}>
+              <p className="text-sm font-medium text-zinc-400">
                 {isBn ? 'মোট আয়' : 'Total Revenue'}
               </p>
               <p className="text-3xl lg:text-4xl font-bold mt-1 text-white">
@@ -153,8 +161,8 @@ export default function SuperAdminDashboard() {
                     {pendingActions.map((action) => (
                       <Link key={action.label} href={action.href} className={`flex items-center justify-between p-3 rounded-xl transition-all ${isDark ? "bg-white/[0.03] hover:bg-white/[0.06]" : "bg-zinc-50 hover:bg-zinc-100 border border-zinc-100"}`}>
                         <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isDark ? `bg-${action.color}-500/10` : `bg-${action.color}-50`}`}>
-                            <action.icon className={`h-4 w-4 text-${action.color}-500`} />
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isDark ? colorMap[action.color].dark : colorMap[action.color].light}`}>
+                            <action.icon className={`h-4 w-4 ${colorMap[action.color].text}`} />
                           </div>
                           <span className={`text-sm font-medium ${text}`}>{action.label}</span>
                         </div>
@@ -244,13 +252,13 @@ export default function SuperAdminDashboard() {
 
 function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
-  const cardBg = isDark ? "bg-white/[0.03]" : "bg-white";
+  const cardBg = isDark ? "bg-white/[0.03]" : "bg-white border border-zinc-200 shadow-sm";
 
   return (
     <div className={`min-h-screen ${bg}`}>
       <div className="p-6 lg:p-8">
         <div className={`h-8 w-32 rounded mb-8 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-        <div className={`h-32 rounded-2xl mb-6 ${isDark ? 'bg-white/[0.03]' : 'bg-zinc-200'}`} />
+        <div className={`h-32 rounded-2xl mb-6 ${isDark ? 'bg-white/[0.03]' : 'bg-white border border-zinc-200 shadow-sm'}`} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className={`h-28 rounded-2xl ${cardBg}`} />
