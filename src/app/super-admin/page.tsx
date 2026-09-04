@@ -86,9 +86,9 @@ export default function SuperAdminDashboard() {
                   </div>
                   <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
                 </div>
-                <div className="mt-4">
+                <div className="flex items-center gap-3 mt-4">
                   <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                  <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                  <p className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
                 </div>
               </div>
             </Link>
@@ -104,14 +104,12 @@ export default function SuperAdminDashboard() {
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
             <div key={s.label} className={`${card} p-5`}>
-              <div className="flex items-center gap-3">
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
-                  <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
-                </div>
+              <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+                <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
               </div>
-              <div className="mt-4">
+              <div className="flex items-center gap-3 mt-4">
                 <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </div>
           ))}
