@@ -79,15 +79,15 @@ export default function SuperAdminDashboard() {
             { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: results.length, sub: `${verifiedRegs} ${isBn ? 'যাচাইকৃত' : 'verified'}`, href: '/super-admin/results' },
           ].map((s) => (
             <Link key={s.label} href={s.href} className="block">
-              <div className={`${card} ${cardHover} px-3 py-2.5 flex items-center gap-2.5`}>
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
-                  <s.icon className={`h-4 w-4 ${iconColor}`} />
+              <div className={`${card} ${cardHover} px-4 py-3 flex items-center gap-3`}>
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                  <s.icon className={`h-5 w-5 ${iconColor}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-base font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                  <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                  <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
                 </div>
-                <ArrowRight className={`h-3 w-3 shrink-0 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
+                <ArrowRight className={`h-4 w-4 shrink-0 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
               </div>
             </Link>
           ))}
@@ -101,13 +101,13 @@ export default function SuperAdminDashboard() {
             { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length },
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
-            <div key={s.label} className={`${card} px-3 py-2.5 flex items-center gap-2.5`}>
-              <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
-                <s.icon className={`h-4 w-4 ${iconColor}`} />
+            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-base font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </div>
           ))}
