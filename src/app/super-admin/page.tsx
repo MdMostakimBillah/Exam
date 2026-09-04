@@ -48,11 +48,13 @@ export default function SuperAdminDashboard() {
   const cardHover = isDark
     ? "hover:border-white/[0.1] transition-colors"
     : "hover:border-zinc-300 transition-colors";
+  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
+  const iconColor = isDark ? "text-white" : "text-zinc-900";
 
   const pendingActions = [
-    ...(pendingInstitutions > 0 ? [{ icon: Building2, label: isBn ? 'প্রতিষ্ঠান অনুমোদন' : 'Institution Approval', count: pendingInstitutions, href: '/super-admin/institutions', iconColor: isDark ? 'text-amber-400' : 'text-amber-600' }] : []),
-    ...(pendingStudents > 0 ? [{ icon: Users, label: isBn ? 'শিক্ষার্থী নিবন্ধন' : 'Student Registration', count: pendingStudents, href: '/super-admin/registrations', iconColor: isDark ? 'text-blue-400' : 'text-blue-600' }] : []),
-    ...(totalDue > 0 ? [{ icon: DollarSign, label: isBn ? 'বকেয়া পেমেন্ট' : 'Pending Payments', count: '৳' + totalDue.toLocaleString(), href: '/super-admin/payments', iconColor: isDark ? 'text-rose-400' : 'text-rose-600' }] : []),
+    ...(pendingInstitutions > 0 ? [{ icon: Building2, label: isBn ? 'প্রতিষ্ঠান অনুমোদন' : 'Institution Approval', count: pendingInstitutions, href: '/super-admin/institutions' }] : []),
+    ...(pendingStudents > 0 ? [{ icon: Users, label: isBn ? 'শিক্ষার্থী নিবন্ধন' : 'Student Registration', count: pendingStudents, href: '/super-admin/registrations' }] : []),
+    ...(totalDue > 0 ? [{ icon: DollarSign, label: isBn ? 'বকেয়া পেমেন্ট' : 'Pending Payments', count: '৳' + totalDue.toLocaleString(), href: '/super-admin/payments' }] : []),
   ];
 
   return (
@@ -71,20 +73,18 @@ export default function SuperAdminDashboard() {
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: Building2, label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', value: institutions.length, sub: `${pendingInstitutions} ${isBn ? 'বাকি' : 'pending'}`, href: '/super-admin/institutions', iconColor: isDark ? 'text-emerald-400' : 'text-emerald-600' },
-            { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length, sub: `${approvedStudents} ${isBn ? 'অনুমোদিত' : 'approved'}`, href: '/super-admin/students', iconColor: isDark ? 'text-blue-400' : 'text-blue-600' },
-            { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams, sub: `${exams.length} ${isBn ? 'মোট' : 'total'}`, href: '/super-admin/exams', iconColor: isDark ? 'text-purple-400' : 'text-purple-600' },
-            { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: results.length, sub: `${verifiedRegs} ${isBn ? 'যাচাইকৃত' : 'verified'}`, href: '/super-admin/results', iconColor: isDark ? 'text-amber-400' : 'text-amber-600' },
+            { icon: Building2, label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', value: institutions.length, sub: `${pendingInstitutions} ${isBn ? 'বাকি' : 'pending'}`, href: '/super-admin/institutions' },
+            { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length, sub: `${approvedStudents} ${isBn ? 'অনুমোদিত' : 'approved'}`, href: '/super-admin/students' },
+            { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams, sub: `${exams.length} ${isBn ? 'মোট' : 'total'}`, href: '/super-admin/exams' },
+            { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: results.length, sub: `${verifiedRegs} ${isBn ? 'যাচাইকৃত' : 'verified'}`, href: '/super-admin/results' },
           ].map((s) => (
             <Link key={s.label} href={s.href} className="block">
               <div className={`${card} ${cardHover} p-5`}>
-                <div className="flex items-center gap-3">
-                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
-                    <s.icon className={`h-4.5 w-4.5 ${s.iconColor}`} />
+                <div className="flex items-center justify-between">
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+                    <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
                   </div>
-                  <div className="ml-auto">
-                    <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
-                  </div>
+                  <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
                 </div>
                 <div className="mt-4">
                   <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
@@ -98,15 +98,15 @@ export default function SuperAdminDashboard() {
         {/* Revenue Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: TrendingUp, label: isBn ? 'মোট আয়' : 'Total Revenue', value: '৳' + totalRevenue.toLocaleString(), iconColor: isDark ? 'text-emerald-400' : 'text-emerald-600' },
-            { icon: DollarSign, label: isBn ? 'বকেয়া' : 'Total Due', value: '৳' + totalDue.toLocaleString(), iconColor: isDark ? 'text-amber-400' : 'text-amber-600' },
-            { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length, iconColor: isDark ? 'text-blue-400' : 'text-blue-600' },
-            { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents, iconColor: isDark ? 'text-purple-400' : 'text-purple-600' },
+            { icon: TrendingUp, label: isBn ? 'মোট আয়' : 'Total Revenue', value: '৳' + totalRevenue.toLocaleString() },
+            { icon: DollarSign, label: isBn ? 'বকেয়া' : 'Total Due', value: '৳' + totalDue.toLocaleString() },
+            { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length },
+            { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
             <div key={s.label} className={`${card} p-5`}>
               <div className="flex items-center gap-3">
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
-                  <s.icon className={`h-4.5 w-4.5 ${s.iconColor}`} />
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+                  <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
                 </div>
               </div>
               <div className="mt-4">
@@ -128,7 +128,7 @@ export default function SuperAdminDashboard() {
                     {isBn ? 'অপেক্ষমাণ কার্য' : 'Pending Actions'}
                   </h3>
                   {pendingActions.length > 0 && (
-                    <span className={`h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold ${isDark ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-700"}`}>
+                    <span className={`h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold ${isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white"}`}>
                       {pendingActions.length}
                     </span>
                   )}
@@ -137,8 +137,8 @@ export default function SuperAdminDashboard() {
               <div className="p-4">
                 {pendingActions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10">
-                    <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
-                      <CheckCircle className={`h-7 w-7 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                    <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
+                      <CheckCircle className={`h-7 w-7 ${iconColor}`} />
                     </div>
                     <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'সব আপ টু ডেট' : 'All caught up'}</p>
                     <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'কোনো অপেক্ষমাণ কার্য নেই' : 'No pending actions'}</p>
@@ -152,7 +152,7 @@ export default function SuperAdminDashboard() {
                         className={`group flex items-center justify-between p-3 rounded-xl transition-colors ${isDark ? "hover:bg-white/[0.04]" : "hover:bg-zinc-50"}`}
                       >
                         <div className="flex items-center gap-3">
-                          <action.icon className={`h-4 w-4 ${action.iconColor}`} />
+                          <action.icon className={`h-4 w-4 ${iconColor}`} />
                           <span className={`text-sm font-medium ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{action.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
