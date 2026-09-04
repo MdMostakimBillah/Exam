@@ -103,14 +103,14 @@ export default function SuperAdminDashboard() {
           ))}
         </div>
 
-        {/* Institutions Overview */}
+        {/* Institutions List */}
         <div className={`${card}`}>
           <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                  {isBn ? 'প্রতিষ্ঠান তালিকা' : 'Institutions Overview'}
+                  {isBn ? 'প্রতিষ্ঠান তালিকা' : 'Institutions'}
                 </h3>
               </div>
               <Link href="/super-admin/institutions" className={`text-xs font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
@@ -118,50 +118,22 @@ export default function SuperAdminDashboard() {
               </Link>
             </div>
           </div>
-          <div className="p-4 space-y-3">
-            {institutions.slice(0, 8).map((inst) => {
-              const instRegs = registrations.filter(r => r.institutionId === inst.id);
-              const instApproved = instRegs.filter(r => r.status === 'APPROVED').length;
-              const instPending = instRegs.filter(r => r.status === 'PENDING').length;
-              const total = inst.totalStudents || 1;
-              const approvedPct = Math.round((instApproved / total) * 100);
-              const pendingPct = Math.round((instPending / total) * 100);
-
-              return (
-                <div key={inst.id} className={`flex items-center gap-4 p-3 rounded-xl transition-colors ${isDark ? "hover:bg-white/[0.03]" : "hover:bg-zinc-50"}`}>
-                  {/* Institution Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{inst.name}</p>
-                      <Badge status={inst.status} />
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                        {isBn ? 'মোট' : 'Total'}: <span className={`font-semibold ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{inst.totalStudents}</span>
-                      </span>
-                      <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                        {isBn ? 'অনুমোদিত' : 'Approved'}: <span className={`font-semibold ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instApproved}</span>
-                      </span>
-                      <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                        {isBn ? 'বাকি' : 'Pending'}: <span className={`font-semibold ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instPending}</span>
-                      </span>
-                    </div>
+          <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
+            {institutions.slice(0, 8).map((inst) => (
+              <div key={inst.id} className={`flex items-center justify-between p-4 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{inst.name}</p>
+                    <Badge status={inst.status} />
                   </div>
-
-                  {/* Mini Bar Graph */}
-                  <div className="flex items-end gap-1 h-8 shrink-0">
-                    <div className="w-5 rounded-t-sm relative" style={{ height: `${Math.max(approvedPct, 5)}%` }}>
-                      <div className={`absolute inset-0 rounded-t-sm ${isDark ? "bg-white/40" : "bg-zinc-900/40"}`} />
-                    </div>
-                    <div className="w-5 rounded-t-sm relative" style={{ height: `${Math.max(pendingPct, 5)}%` }}>
-                      <div className={`absolute inset-0 rounded-t-sm ${isDark ? "bg-white/20" : "bg-zinc-400/40"}`} />
-                    </div>
-                  </div>
-
-                  <ChevronRight className={`h-4 w-4 shrink-0 ${isDark ? "text-zinc-600" : "text-zinc-300"}`} />
+                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.address}</p>
                 </div>
-              );
-            })}
+                <div className="text-right shrink-0 ml-4">
+                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.contactPerson}</p>
+                  <p className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{inst.phone}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
