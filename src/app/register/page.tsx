@@ -106,11 +106,12 @@ export default function RegisterPage() {
   const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
   const text = isDark ? "text-zinc-100" : "text-zinc-900";
   const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
-  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
+  const border = isDark ? "border-white/[0.06]" : "border-zinc-200";
   const glassCard = isDark 
     ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
-    : "bg-white/70 backdrop-blur-xl border border-white/80";
-  const inputBg = isDark ? "bg-white/[0.05]" : "bg-white";
+    : "bg-white border border-zinc-200 shadow-sm";
+  const inputBg = isDark ? "bg-white/[0.05] border border-white/[0.08]" : "bg-white border border-zinc-200 shadow-sm";
+  const linkBlue = isDark ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700";
 
   if (submitted) {
     return (
@@ -126,7 +127,7 @@ export default function RegisterPage() {
           <p className={`text-sm mb-8 leading-relaxed ${textSec}`}>
             Your institution registration has been submitted successfully. We&#39;ll review your application and notify you once approved.
           </p>
-          <Link href="/login" className={`inline-flex items-center gap-2 text-sm font-medium ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-700'} transition-colors`}>
+          <Link href="/login" className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${linkBlue}`}>
             {mounted && <ArrowLeft className="h-4 w-4" />} Back to Sign in
           </Link>
         </div>
@@ -154,22 +155,22 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Right Column - Contact & Principal */}
                   <div className="space-y-6">
-                    <div className="flex items-center gap-5 pb-5 border-b border-white/[0.06]">
+                    <div className={`flex items-center gap-5 pb-5 border-b ${border}`}>
                       <div className="relative">
                         {logoPreview ? (
-                          <div className="h-16 w-16 rounded-xl overflow-hidden border-2 border-white/10">
+                          <div className={`h-16 w-16 rounded-xl overflow-hidden ${isDark ? "border-2 border-white/10" : "border-2 border-zinc-200"}`}>
                             <img src={logoPreview} alt="Logo" className="h-full w-full object-cover" />
                           </div>
                         ) : (
-                          <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.06] flex items-center justify-center">
-                            {mounted && <Building2 className="h-6 w-6 text-zinc-600" />}
+                          <div className={`h-16 w-16 rounded-xl flex items-center justify-center ${isDark ? "bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.06]" : "bg-zinc-100 border border-zinc-200"}`}>
+                            {mounted && <Building2 className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
                           </div>
                         )}
                       </div>
                       <div>
                         <p className={`text-sm font-medium mb-1 ${text}`}>Institution Logo</p>
                         <p className={`text-xs ${textSec} mb-2`}>Upload your institution logo</p>
-                        <label className="inline-flex items-center gap-2 text-sm text-blue-400 cursor-pointer hover:text-blue-300 transition-colors">
+                        <label className={`inline-flex items-center gap-2 text-sm cursor-pointer transition-colors ${linkBlue}`}>
                           {mounted && <Upload className="h-4 w-4" />}
                           Choose file
                           <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
@@ -297,13 +298,13 @@ export default function RegisterPage() {
               ) : (
                 <div className="max-w-sm mx-auto py-4">
                   <div className="text-center mb-6">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-3">
-                      {mounted && <Mail className="h-6 w-6 text-blue-400" />}
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3 ${isDark ? "bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20" : "bg-blue-50 border border-blue-200"}`}>
+                      {mounted && <Mail className={`h-6 w-6 ${isDark ? "text-blue-400" : "text-blue-600"}`} />}
                     </div>
                     <h2 className={`text-lg font-semibold mb-2 ${text}`}>Verify Your Email</h2>
                     <p className={`text-sm ${textSec}`}>
                       We&#39;ve sent a code to<br />
-                      <span className="text-blue-400 font-medium">{email}</span>
+                      <span className={`font-medium ${isDark ? "text-blue-400" : "text-blue-600"}`}>{email}</span>
                     </p>
                   </div>
 
@@ -323,7 +324,7 @@ export default function RegisterPage() {
                       <button 
                         onClick={resendCode} 
                         disabled={countdown > 0}
-                        className={`text-blue-400 hover:text-blue-300 transition-colors ${countdown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`transition-colors ${linkBlue} ${countdown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         Resend code
                       </button>
@@ -346,7 +347,7 @@ export default function RegisterPage() {
 
                     <button 
                       onClick={() => setStep("form")} 
-                      className={`w-full text-sm ${textSec} hover:text-white transition-colors`}
+                      className={`w-full text-sm ${textSec} transition-colors ${isDark ? "hover:text-white" : "hover:text-zinc-700"}`}
                     >
                       Change email address
                     </button>
@@ -355,10 +356,10 @@ export default function RegisterPage() {
               )}
 
               {step === "form" && (
-                <div className="flex items-center justify-between pt-6 mt-6 border-t border-white/[0.06]">
+                <div className={`flex items-center justify-between pt-6 mt-6 border-t ${border}`}>
                   <p className={`text-sm ${textSec}`}>
                     Already registered?{" "}
-                    <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
+                    <Link href="/login" className={`font-medium transition-colors ${linkBlue}`}>
                       Sign in
                     </Link>
                   </p>
@@ -379,9 +380,9 @@ export default function RegisterPage() {
           <div className="text-center mt-6">
             <p className={`text-xs ${textSec}`}>
               By registering, you agree to our{" "}
-              <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">Terms of Service</a>
+              <a href="#" className={`transition-colors ${linkBlue}`}>Terms of Service</a>
               {" "}and{" "}
-              <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">Privacy Policy</a>
+              <a href="#" className={`transition-colors ${linkBlue}`}>Privacy Policy</a>
             </p>
           </div>
         </div>
