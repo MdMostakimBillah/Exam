@@ -79,17 +79,17 @@ export default function SuperAdminDashboard() {
             { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: results.length, sub: `${verifiedRegs} ${isBn ? 'যাচাইকৃত' : 'verified'}`, href: '/super-admin/results' },
           ].map((s) => (
             <Link key={s.label} href={s.href} className="block">
-              <div className={`${card} ${cardHover} p-5`}>
+              <div className={`${card} ${cardHover} px-4 py-3`}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
-                      <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
+                  <div className="flex items-center gap-2.5">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconBg}`}>
+                      <s.icon className={`h-4 w-4 ${iconColor}`} />
                     </div>
-                    <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                    <p className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
                   </div>
-                  <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
+                  <ArrowRight className={`h-3.5 w-3.5 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
                 </div>
-                <p className={`text-xs mt-2 ml-12 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-[11px] mt-1.5 ml-[42px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </Link>
           ))}
@@ -103,14 +103,14 @@ export default function SuperAdminDashboard() {
             { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length },
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
-            <div key={s.label} className={`${card} p-5`}>
-              <div className="flex items-center gap-3">
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
-                  <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
+            <div key={s.label} className={`${card} px-4 py-3`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconBg}`}>
+                  <s.icon className={`h-4 w-4 ${iconColor}`} />
                 </div>
-                <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
               </div>
-              <p className={`text-xs mt-2 ml-12 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              <p className={`text-[11px] mt-1.5 ml-[42px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
             </div>
           ))}
         </div>
