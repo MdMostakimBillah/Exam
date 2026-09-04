@@ -1,15 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { getResults } from "@/lib/storage/results";
 import { getExams } from "@/lib/storage/exams";
-import { Award, Search, Download, Trophy, TrendingUp } from "lucide-react";
+import { Award, Download } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -17,16 +13,15 @@ export default function ResultsPage() {
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
   const isDark = theme === "dark";
+  const isBn = language === "bn";
   const [mounted, setMounted] = useState(false);
   const [examFilter, setExamFilter] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted) return <ResultsSkeleton />;
+  if (!mounted) return <ResultsSkeleton isDark={isDark} />;
 
   const results = getResults();
   const exams = getExams();
-
   const filtered = examFilter ? results.filter(r => r.examId === examFilter) : results;
 
   const totalCandidates = filtered.length;
@@ -34,125 +29,132 @@ export default function ResultsPage() {
   const scholarshipWinners = filtered.filter(r => r.scholarshipStatus === 'ELIGIBLE').length;
   const avgScore = filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0;
 
+  const card = isDark
+    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
+    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
+  const iconColor = isDark ? "text-white" : "text-zinc-900";
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Results" description="View and publish examination results." />
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="p-6 lg:p-8">
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: isBn ? 'মোট প্রার্থী' : 'Total Candidates', value: totalCandidates },
+            { label: isBn ? 'পাসের হার' : 'Pass Rate', value: `${totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%` },
+            { label: isBn ? 'বৃত্তিপ্রাপ্ত' : 'Scholarship', value: scholarshipWinners },
+            { label: isBn ? 'গড় স্কোর' : 'Avg Score', value: `${avgScore}%` },
+          ].map((s) => (
+            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <Award className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className={`h-4 w-4 ${isDark ? "text-amber-400" : "text-amber-600"}`} />
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Total Candidates</p>
+        {/* Filters */}
+        <div className={`${card} p-4 mb-6`}>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
+              <Select
+                options={[{ label: isBn ? 'সব পরীক্ষা' : 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))]}
+                value={examFilter}
+                onChange={(e) => setExamFilter(e.target.value)}
+                className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}
+              />
             </div>
-            <p className={`text-3xl font-bold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{totalCandidates}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className={`h-4 w-4 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Pass Rate</p>
+            <div className="flex items-end">
+              <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
+                <Download className="h-3.5 w-3.5" /> {isBn ? 'ফলাফল এক্সপোর্ট' : 'Export Results'}
+              </button>
             </div>
-            <p className={`text-3xl font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Award className="h-4 w-4 text-yellow-400" />
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Scholarship Winners</p>
-            </div>
-            <p className="text-3xl font-bold text-yellow-400">{scholarshipWinners}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className={`h-4 w-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
-              <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Average Score</p>
-            </div>
-            <p className={`text-3xl font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>{avgScore}%</p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Select
-          options={[{ label: 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))]}
-          value={examFilter}
-          onChange={(e) => setExamFilter(e.target.value)}
-          className="w-full sm:w-64"
-        />
-        <Button variant="outline" className="gap-2 ml-auto">
-          <Download className="h-4 w-4" /> Export Results
-        </Button>
-      </div>
-
-      {/* Table */}
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Award className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
-          title="No results found"
-          description="Results will appear here once exams are published."
-        />
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Position</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Institution</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Total Marks</TableHead>
-                <TableHead>Percentage</TableHead>
-                <TableHead>Grade</TableHead>
-                <TableHead>Scholarship</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.slice(0, 20).map(result => (
-                <TableRow key={result.id} className="group">
-                  <TableCell>
-                    <span className={`text-sm font-bold ${result.position <= 3 ? (isDark ? "text-amber-400" : "text-amber-600") : (isDark ? "text-zinc-400" : "text-zinc-500")}`}>
-                      #{result.position}
-                    </span>
-                  </TableCell>
-                  <TableCell className={`text-sm ${isDark ? "text-zinc-200" : "text-zinc-700"} group-hover:text-white transition-colors`}>{result.studentName}</TableCell>
-                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.institutionName}</TableCell>
-                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.className}</TableCell>
-                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.totalMarks}/{result.totalFullMarks}</TableCell>
-                  <TableCell className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.percentage.toFixed(1)}%</TableCell>
-                  <TableCell>
-                    <span className={`text-xs font-bold ${result.grade === 'F' ? (isDark ? "text-red-400" : "text-red-600") : (isDark ? "text-emerald-400" : "text-emerald-600")}`}>
-                      {result.grade}
-                    </span>
-                  </TableCell>
-                  <TableCell><Badge status={result.scholarshipStatus} /></TableCell>
+        {/* Table */}
+        {filtered.length === 0 ? (
+          <div className={`${card} flex flex-col items-center justify-center py-16`}>
+            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
+              <Award className={`h-7 w-7 ${iconColor}`} />
+            </div>
+            <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No results found'}</p>
+            <p className={`text-[11px] mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'পরীক্ষা প্রকাশের পর ফলাফল এখানে দেখা যাবে।' : 'Results will appear here once exams are published.'}</p>
+          </div>
+        ) : (
+          <div className={`${card}`}>
+            <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+              <div className="flex items-center gap-2">
+                <Award className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  {isBn ? 'ফলাফল তালিকা' : 'Results'}
+                </h3>
+                <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({filtered.length})</span>
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'অবস্থান' : 'Position'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'মোট নম্বর' : 'Total'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শতাংশ' : '%'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'গ্রেড' : 'Grade'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'বৃত্তি' : 'Scholarship'}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+              </TableHeader>
+              <TableBody>
+                {filtered.slice(0, 20).map(result => (
+                  <TableRow key={result.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                    <TableCell>
+                      <span className={`text-sm font-bold ${result.position <= 3 ? (isDark ? "text-amber-400" : "text-amber-600") : (isDark ? "text-zinc-400" : "text-zinc-500")}`}>
+                        #{result.position}
+                      </span>
+                    </TableCell>
+                    <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{result.studentName}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.institutionName}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.className}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.totalMarks}/{result.totalFullMarks}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.percentage.toFixed(1)}%</TableCell>
+                    <TableCell>
+                      <span className={`text-[11px] font-bold ${result.grade === 'F' ? (isDark ? "text-red-400" : "text-red-600") : (isDark ? "text-emerald-400" : "text-emerald-600")}`}>
+                        {result.grade}
+                      </span>
+                    </TableCell>
+                    <TableCell><Badge status={result.scholarshipStatus} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function ResultsSkeleton() {
+function ResultsSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
+
   return (
-    <div className="space-y-6">
-      <div className="h-8 w-48 skeleton rounded" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 skeleton rounded-2xl" />
-        ))}
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="p-6 lg:p-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+          ))}
+        </div>
+        <div className={`${card} rounded-2xl h-12 mb-6`} />
+        <div className={`${card} rounded-2xl h-64`} />
       </div>
-      <div className="h-10 w-full skeleton rounded-xl" />
-      <div className="h-96 skeleton rounded-2xl" />
     </div>
   );
 }
