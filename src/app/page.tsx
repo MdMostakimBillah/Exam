@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { initializeDemoData } from "@/lib/storage/seed";
@@ -8,6 +8,24 @@ import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 import { EducationIllustration } from "@/components/ui/education-illustration";
 import { Building2, Users, FileText, Award, CreditCard, BarChart3, ArrowRight, BookOpen, ClipboardList, Sun, Moon, Globe, Check, Star } from "lucide-react";
+
+function useScrollReveal(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.unobserve(el); } },
+      { threshold }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, className: `scroll-reveal ${visible ? "is-visible" : ""}` };
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -68,6 +86,14 @@ export default function HomePage() {
     { name: "Abdul Hasan", role: "Principal", text: "Our students love the easy registration process. Results are published instantly.", avatar: "AH" },
   ];
 
+  const statsReveal = useScrollReveal(0.2);
+  const featuresReveal = useScrollReveal(0.1);
+  const platformTextReveal = useScrollReveal(0.2);
+  const platformCardReveal = useScrollReveal(0.2);
+  const workflowReveal = useScrollReveal(0.15);
+  const testimonialsReveal = useScrollReveal(0.15);
+  const ctaReveal = useScrollReveal(0.2);
+
   return (
     <div className={`${isDark ? "bg-[#0a0a0b]" : "bg-zinc-100/50"} min-h-screen`}>
       <style jsx>{`
@@ -83,6 +109,18 @@ export default function HomePage() {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
         }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
         .animate-fade-in-up {
           animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
@@ -97,6 +135,51 @@ export default function HomePage() {
         .animation-delay-300 { animation-delay: 0.3s; }
         .animation-delay-400 { animation-delay: 0.4s; }
         .animation-delay-500 { animation-delay: 0.5s; }
+
+        .scroll-reveal {
+          opacity: 0;
+          transform: translateY(30px);
+          transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .scroll-reveal.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .scroll-reveal-left {
+          opacity: 0;
+          transform: translateX(-40px);
+          transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .scroll-reveal-left.is-visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .scroll-reveal-right {
+          opacity: 0;
+          transform: translateX(40px);
+          transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .scroll-reveal-right.is-visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .scroll-reveal-scale {
+          opacity: 0;
+          transform: scale(0.95);
+          transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .scroll-reveal-scale.is-visible {
+          opacity: 1;
+          transform: scale(1);
+        }
+        .stagger-1 { transition-delay: 0.05s; }
+        .stagger-2 { transition-delay: 0.1s; }
+        .stagger-3 { transition-delay: 0.15s; }
+        .stagger-4 { transition-delay: 0.2s; }
+        .stagger-5 { transition-delay: 0.25s; }
+        .stagger-6 { transition-delay: 0.3s; }
+        .stagger-7 { transition-delay: 0.35s; }
+        .stagger-8 { transition-delay: 0.4s; }
       `}</style>
 
       {/* Header */}
@@ -195,10 +278,10 @@ export default function HomePage() {
 
       {/* Stats */}
       <section className={`py-20 ${isDark ? "bg-white/5 border-y border-white/[0.06]" : "bg-white border-y border-zinc-200"}`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto px-6" ref={statsReveal.ref}>
+          <div className={`grid grid-cols-2 md:grid-cols-4 gap-8 ${statsReveal.className}`}>
             {stats.map((stat, i) => (
-              <div key={stat.label} className="text-center">
+              <div key={stat.label} className={`text-center scroll-reveal-scale stagger-${i + 1}`}>
                 <stat.icon className={`h-6 w-6 mx-auto mb-3 ${textSec}`} />
                 <p className={`text-3xl sm:text-4xl font-bold ${text}`}>{stat.value}</p>
                 <p className={`text-sm ${textSec}`}>{stat.label}</p>
@@ -210,8 +293,8 @@ export default function HomePage() {
 
       {/* Features */}
       <section id="features" className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+        <div className="max-w-7xl mx-auto" ref={featuresReveal.ref}>
+          <div className={`text-center mb-16 scroll-reveal ${featuresReveal.className.replace("scroll-reveal", "")}`}>
             <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${isDark ? "bg-white/5 border border-white/10 text-zinc-400" : "bg-zinc-100 border border-zinc-200 text-zinc-500"}`}>
               Features
             </span>
@@ -223,7 +306,7 @@ export default function HomePage() {
             {features.map((f, i) => (
               <div
                 key={f.title}
-                className={`group rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard}`}
+                className={`group rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard} scroll-reveal stagger-${i + 1}`}
               >
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 ${isDark ? "bg-white/10" : "bg-zinc-100 border border-zinc-200"}`}>
                   <f.icon className={`h-5 w-5 ${textSec}`} />
@@ -240,7 +323,7 @@ export default function HomePage() {
       <section id="platform" className="py-24 sm:py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
+            <div ref={platformTextReveal.ref} className={`scroll-reveal-left ${platformTextReveal.className.replace("scroll-reveal", "")}`}>
               <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${isDark ? "bg-white/5 border border-white/10 text-zinc-400" : "bg-zinc-100 border border-zinc-200 text-zinc-500"}`}>
                 Platform
               </span>
@@ -256,9 +339,9 @@ export default function HomePage() {
                   "Real-time exam scheduling and updates",
                   "Secure certificate generation and verification",
                   "Comprehensive analytics and reporting"
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-3">
-                    <div className={`h-6 w-6 rounded-full flex items-center justify-center ${isDark ? "bg-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}>
+                ].map((item, i) => (
+                  <div key={item} className={`flex items-center gap-3 scroll-reveal stagger-${i + 1}`}>
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${isDark ? "bg-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}>
                       <Check className={`h-3.5 w-3.5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
                     </div>
                     <span className={`text-sm ${text}`}>{item}</span>
@@ -267,35 +350,37 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className={`rounded-2xl overflow-hidden ${glassCard}`}>
-              <div className={`h-12 flex items-center gap-2 px-5 ${isDark ? "bg-white/5" : "bg-zinc-100"}`}>
-                <div className="h-3 w-3 rounded-full bg-red-500/80" />
-                <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-                <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { label: "Institutions", value: "10" },
-                    { label: "Students", value: "2,240" },
-                    { label: "Exams", value: "3" },
-                  ].map((item) => (
-                    <div key={item.label} className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
-                      <p className={`text-xs ${textSec} mb-1`}>{item.label}</p>
-                      <p className={`text-xl font-semibold ${text}`}>{item.value}</p>
-                    </div>
-                  ))}
+            <div ref={platformCardReveal.ref} className={`scroll-reveal-right ${platformCardReveal.className.replace("scroll-reveal", "")}`}>
+              <div className={`rounded-2xl overflow-hidden ${glassCard}`}>
+                <div className={`h-12 flex items-center gap-2 px-5 ${isDark ? "bg-white/5" : "bg-zinc-100"}`}>
+                  <div className="h-3 w-3 rounded-full bg-red-500/80" />
+                  <div className="h-3 w-3 rounded-full bg-amber-500/80" />
+                  <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
                 </div>
-                <div className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
-                  <p className={`text-xs ${textSec} mb-3`}>Registration Trends</p>
-                  <div className="flex items-end gap-2 h-16">
-                    {[40, 55, 70, 85, 60, 75, 90, 65, 80, 95, 70, 88].map((h, i) => (
-                      <div
-                        key={i}
-                        className={`flex-1 rounded-t-sm ${isDark ? "bg-white/20" : "bg-zinc-300"}`}
-                        style={{ height: `${h}%` }}
-                      />
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { label: "Institutions", value: "10" },
+                      { label: "Students", value: "2,240" },
+                      { label: "Exams", value: "3" },
+                    ].map((item) => (
+                      <div key={item.label} className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                        <p className={`text-xs ${textSec} mb-1`}>{item.label}</p>
+                        <p className={`text-xl font-semibold ${text}`}>{item.value}</p>
+                      </div>
                     ))}
+                  </div>
+                  <div className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                    <p className={`text-xs ${textSec} mb-3`}>Registration Trends</p>
+                    <div className="flex items-end gap-2 h-16">
+                      {[40, 55, 70, 85, 60, 75, 90, 65, 80, 95, 70, 88].map((h, i) => (
+                        <div
+                          key={i}
+                          className={`flex-1 rounded-t-sm ${isDark ? "bg-white/20" : "bg-zinc-300"}`}
+                          style={{ height: `${h}%` }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -306,8 +391,8 @@ export default function HomePage() {
 
       {/* Workflow */}
       <section id="workflow" className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+        <div className="max-w-7xl mx-auto" ref={workflowReveal.ref}>
+          <div className={`text-center mb-16 scroll-reveal ${workflowReveal.className.replace("scroll-reveal", "")}`}>
             <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 ${text}`}>{t("workflow.title")}</h2>
             <p className={`text-base max-w-xl mx-auto ${textSec}`}>Simple six-step process to get your institution up and running</p>
           </div>
@@ -316,7 +401,7 @@ export default function HomePage() {
             <div className={`absolute top-8 left-0 right-0 h-px ${isDark ? "bg-white/10" : "bg-zinc-300"} hidden lg:block`} />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
               {steps.map((step, i) => (
-                <div key={step} className="relative text-center">
+                <div key={step} className={`relative text-center scroll-reveal stagger-${i + 1}`}>
                   <div className={`relative w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center backdrop-blur-xl ${glassCard} hover:scale-110 transition-transform`}>
                     <span className={`text-lg font-semibold ${text}`}>{i + 1}</span>
                   </div>
@@ -330,15 +415,15 @@ export default function HomePage() {
 
       {/* Testimonials */}
       <section className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+        <div className="max-w-7xl mx-auto" ref={testimonialsReveal.ref}>
+          <div className={`text-center mb-16 scroll-reveal ${testimonialsReveal.className.replace("scroll-reveal", "")}`}>
             <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 ${text}`}>Loved by administrators</h2>
             <p className={`text-base max-w-xl mx-auto ${textSec}`}>See what institutions are saying about ScholarX</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial) => (
-              <div key={testimonial.name} className={`rounded-2xl p-6 ${glassCard}`}>
+            {testimonials.map((testimonial, i) => (
+              <div key={testimonial.name} className={`rounded-2xl p-6 ${glassCard} scroll-reveal stagger-${i + 1}`}>
                 <div className="flex items-center gap-1 mb-4">
                   {[1,2,3,4,5].map((star) => (
                     <Star key={star} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -362,8 +447,8 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className={`rounded-3xl p-12 sm:p-16 text-center ${glassCard} relative overflow-hidden`}>
+        <div className="max-w-7xl mx-auto" ref={ctaReveal.ref}>
+          <div className={`rounded-3xl p-12 sm:p-16 text-center ${glassCard} relative overflow-hidden scroll-reveal-scale ${ctaReveal.className.replace("scroll-reveal", "")}`}>
             <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] ${isDark ? "bg-blue-500/10" : "bg-blue-500/5"}`} />
             <div className={`absolute bottom-0 right-0 w-[200px] h-[200px] rounded-full blur-[80px] ${isDark ? "bg-purple-500/10" : "bg-purple-500/5"}`} />
             <div className="relative z-10">
