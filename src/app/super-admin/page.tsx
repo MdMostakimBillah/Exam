@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { getInstitutions } from "@/lib/storage/institutions";
 import { getStudents } from "@/lib/storage/students";
@@ -7,13 +7,14 @@ import { getExams } from "@/lib/storage/exams";
 import { getRegistrations } from "@/lib/storage/registrations";
 import { getResults } from "@/lib/storage/results";
 import { getPayments } from "@/lib/storage/payments";
-import { Building2, Users, FileText, DollarSign, ArrowRight, TrendingUp, GraduationCap, CheckCircle, ChevronRight } from "lucide-react";
+import { Building2, Users, FileText, DollarSign, ArrowRight, TrendingUp, GraduationCap, CheckCircle, ChevronRight, Download, Check } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
 
 export default function SuperAdminDashboard() {
   const [mounted, setMounted] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
 
@@ -46,6 +47,43 @@ export default function SuperAdminDashboard() {
     : "hover:border-zinc-300 transition-colors";
   const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
   const iconColor = isDark ? "text-white" : "text-zinc-900";
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === institutions.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(institutions.map(i => i.id)));
+    }
+  };
+
+  const downloadCSV = () => {
+    const rows = institutions.map((inst, i) => ({
+      Serial: i + 1,
+      Name: inst.name,
+      Address: inst.address,
+      Contact: inst.contactPerson,
+      Phone: inst.phone,
+      Status: inst.status,
+    }));
+    const headers = Object.keys(rows[0] || {});
+    const csv = [headers.join(","), ...rows.map(r => headers.map(h => `"${(r as Record<string, string | number>)[h]}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "institutions.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -112,26 +150,59 @@ export default function SuperAdminDashboard() {
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                   {isBn ? 'প্রতিষ্ঠান তালিকা' : 'Institutions'}
                 </h3>
+                {selected.size > 0 && (
+                  <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({selected.size} selected)</span>
+                )}
               </div>
-              <Link href="/super-admin/institutions" className={`text-xs font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
-                {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline ml-0.5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={downloadCSV}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {isBn ? 'ডাউনলোড' : 'Download'}
+                </button>
+                <Link href="/super-admin/institutions" className={`text-xs font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                  {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline ml-0.5" />
+                </Link>
+              </div>
             </div>
           </div>
+
+          {/* Header Row */}
+          <div className={`flex items-center gap-4 px-5 py-2.5 border-b ${isDark ? "border-white/[0.04]" : "border-zinc-100"}`}>
+            <button onClick={toggleAll} className="shrink-0">
+              <div className={`h-4 w-4 rounded flex items-center justify-center border transition-colors ${selected.size === institutions.length && institutions.length > 0 ? (isDark ? "bg-white border-white" : "bg-zinc-900 border-zinc-900") : (isDark ? "border-zinc-600" : "border-zinc-300")}`}>
+                {selected.size === institutions.length && institutions.length > 0 && <Check className="h-2.5 w-2.5 text-black" />}
+              </div>
+            </button>
+            <span className={`text-[10px] font-medium uppercase tracking-wider w-8 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>#</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider flex-1 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider w-32 hidden sm:block ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{isBn ? 'ঠিকানা' : 'Address'}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider w-28 hidden md:block ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{isBn ? 'যোগাযোগ' : 'Contact'}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider w-24 hidden lg:block ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{isBn ? 'ফোন' : 'Phone'}</span>
+          </div>
+
+          {/* Rows */}
           <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
-            {institutions.slice(0, 8).map((inst) => (
-              <div key={inst.id} className={`flex items-center justify-between p-4 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+            {institutions.slice(0, 10).map((inst, i) => (
+              <div key={inst.id} className={`flex items-center gap-4 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+                <button onClick={() => toggleSelect(inst.id)} className="shrink-0">
+                  <div className={`h-4 w-4 rounded flex items-center justify-center border transition-colors ${selected.has(inst.id) ? (isDark ? "bg-white border-white" : "bg-zinc-900 border-zinc-900") : (isDark ? "border-zinc-600" : "border-zinc-300")}`}>
+                    {selected.has(inst.id) && <Check className="h-2.5 w-2.5 text-black" />}
+                  </div>
+                </button>
+                <span className={`text-[11px] w-8 shrink-0 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2">
                     <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{inst.name}</p>
                     <Badge status={inst.status} />
                   </div>
-                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.address}</p>
+                  <p className={`text-[11px] sm:hidden ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.address}</p>
                 </div>
-                <div className="text-right shrink-0 ml-4">
-                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.contactPerson}</p>
-                  <p className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{inst.phone}</p>
-                </div>
+                <span className={`text-[11px] w-32 truncate hidden sm:block ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.address}</span>
+                <span className={`text-[11px] w-28 truncate hidden md:block ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.contactPerson}</span>
+                <span className={`text-[11px] w-24 truncate hidden lg:block ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.phone}</span>
               </div>
             ))}
           </div>
