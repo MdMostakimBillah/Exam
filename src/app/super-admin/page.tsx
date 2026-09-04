@@ -84,12 +84,12 @@ export default function SuperAdminDashboard() {
                   <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
                     <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
                   </div>
-                  <div>
-                    <p className={`text-2xl font-bold tracking-tight leading-none ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                    <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-                  </div>
+                  <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
                 </div>
                 <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
+              </div>
+              <div className="px-5 pb-5 pt-0">
+                <p className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </Link>
           ))}
@@ -103,13 +103,15 @@ export default function SuperAdminDashboard() {
             { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length },
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
-            <div key={s.label} className={`${card} p-5 flex items-center gap-3`}>
-              <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
-                <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
+            <div key={s.label} className={`${card} overflow-hidden`}>
+              <div className="p-5 flex items-center gap-3">
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+                  <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
+                </div>
+                <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
               </div>
-              <div>
-                <p className={`text-2xl font-bold tracking-tight leading-none ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              <div className="px-5 pb-5 pt-0">
+                <p className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </div>
           ))}
