@@ -172,14 +172,36 @@ export default function HomePage() {
           opacity: 1;
           transform: scale(1);
         }
-        .stagger-1 { transition-delay: 0.05s; }
-        .stagger-2 { transition-delay: 0.1s; }
-        .stagger-3 { transition-delay: 0.15s; }
-        .stagger-4 { transition-delay: 0.2s; }
-        .stagger-5 { transition-delay: 0.25s; }
-        .stagger-6 { transition-delay: 0.3s; }
-        .stagger-7 { transition-delay: 0.35s; }
-        .stagger-8 { transition-delay: 0.4s; }
+        .scroll-reveal.is-visible > * {
+          opacity: 0;
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .scroll-reveal.is-visible > *:nth-child(1) { animation-delay: 0.05s; }
+        .scroll-reveal.is-visible > *:nth-child(2) { animation-delay: 0.1s; }
+        .scroll-reveal.is-visible > *:nth-child(3) { animation-delay: 0.15s; }
+        .scroll-reveal.is-visible > *:nth-child(4) { animation-delay: 0.2s; }
+        .scroll-reveal.is-visible > *:nth-child(5) { animation-delay: 0.25s; }
+        .scroll-reveal.is-visible > *:nth-child(6) { animation-delay: 0.3s; }
+        .scroll-reveal.is-visible > *:nth-child(7) { animation-delay: 0.35s; }
+        .scroll-reveal.is-visible > *:nth-child(8) { animation-delay: 0.4s; }
+        .scroll-reveal-left.is-visible > * {
+          opacity: 0;
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .scroll-reveal-left.is-visible > *:nth-child(1) { animation-delay: 0.05s; }
+        .scroll-reveal-left.is-visible > *:nth-child(2) { animation-delay: 0.1s; }
+        .scroll-reveal-left.is-visible > *:nth-child(3) { animation-delay: 0.15s; }
+        .scroll-reveal-left.is-visible > *:nth-child(4) { animation-delay: 0.2s; }
+        .scroll-reveal-left.is-visible > *:nth-child(5) { animation-delay: 0.25s; }
+        .scroll-reveal-left.is-visible > *:nth-child(6) { animation-delay: 0.3s; }
+        .scroll-reveal-left.is-visible > *:nth-child(7) { animation-delay: 0.35s; }
+        .scroll-reveal-left.is-visible > *:nth-child(8) { animation-delay: 0.4s; }
+        .scroll-reveal-right.is-visible > * {
+          opacity: 1;
+        }
+        .scroll-reveal-scale.is-visible > * {
+          opacity: 1;
+        }
       `}</style>
 
       {/* Header */}
@@ -278,10 +300,10 @@ export default function HomePage() {
 
       {/* Stats */}
       <section className={`py-20 ${isDark ? "bg-white/5 border-y border-white/[0.06]" : "bg-white border-y border-zinc-200"}`}>
-        <div className="max-w-7xl mx-auto px-6" ref={statsReveal.ref}>
-          <div className={`grid grid-cols-2 md:grid-cols-4 gap-8 ${statsReveal.className}`}>
+        <div className={`max-w-7xl mx-auto px-6 ${statsReveal.className}`} ref={statsReveal.ref}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, i) => (
-              <div key={stat.label} className={`text-center scroll-reveal-scale stagger-${i + 1}`}>
+              <div key={stat.label} className="text-center">
                 <stat.icon className={`h-6 w-6 mx-auto mb-3 ${textSec}`} />
                 <p className={`text-3xl sm:text-4xl font-bold ${text}`}>{stat.value}</p>
                 <p className={`text-sm ${textSec}`}>{stat.label}</p>
@@ -293,8 +315,8 @@ export default function HomePage() {
 
       {/* Features */}
       <section id="features" className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto" ref={featuresReveal.ref}>
-          <div className={`text-center mb-16 scroll-reveal ${featuresReveal.className.replace("scroll-reveal", "")}`}>
+        <div className={`max-w-7xl mx-auto ${featuresReveal.className}`} ref={featuresReveal.ref}>
+          <div className="text-center mb-16">
             <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${isDark ? "bg-white/5 border border-white/10 text-zinc-400" : "bg-zinc-100 border border-zinc-200 text-zinc-500"}`}>
               Features
             </span>
@@ -303,10 +325,10 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {features.map((f, i) => (
+            {features.map((f) => (
               <div
                 key={f.title}
-                className={`group rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard} scroll-reveal stagger-${i + 1}`}
+                className={`group rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard}`}
               >
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 ${isDark ? "bg-white/10" : "bg-zinc-100 border border-zinc-200"}`}>
                   <f.icon className={`h-5 w-5 ${textSec}`} />
@@ -323,7 +345,7 @@ export default function HomePage() {
       <section id="platform" className="py-24 sm:py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div ref={platformTextReveal.ref} className={`scroll-reveal-left ${platformTextReveal.className.replace("scroll-reveal", "")}`}>
+            <div ref={platformTextReveal.ref} className={platformTextReveal.className}>
               <span className={`inline-block text-xs font-medium uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full ${isDark ? "bg-white/5 border border-white/10 text-zinc-400" : "bg-zinc-100 border border-zinc-200 text-zinc-500"}`}>
                 Platform
               </span>
@@ -339,8 +361,8 @@ export default function HomePage() {
                   "Real-time exam scheduling and updates",
                   "Secure certificate generation and verification",
                   "Comprehensive analytics and reporting"
-                ].map((item, i) => (
-                  <div key={item} className={`flex items-center gap-3 scroll-reveal stagger-${i + 1}`}>
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3">
                     <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${isDark ? "bg-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}>
                       <Check className={`h-3.5 w-3.5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
                     </div>
@@ -350,7 +372,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div ref={platformCardReveal.ref} className={`scroll-reveal-right ${platformCardReveal.className.replace("scroll-reveal", "")}`}>
+            <div ref={platformCardReveal.ref} className={platformCardReveal.className}>
               <div className={`rounded-2xl overflow-hidden ${glassCard}`}>
                 <div className={`h-12 flex items-center gap-2 px-5 ${isDark ? "bg-white/5" : "bg-zinc-100"}`}>
                   <div className="h-3 w-3 rounded-full bg-red-500/80" />
@@ -391,8 +413,8 @@ export default function HomePage() {
 
       {/* Workflow */}
       <section id="workflow" className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto" ref={workflowReveal.ref}>
-          <div className={`text-center mb-16 scroll-reveal ${workflowReveal.className.replace("scroll-reveal", "")}`}>
+        <div className={`max-w-7xl mx-auto ${workflowReveal.className}`} ref={workflowReveal.ref}>
+          <div className="text-center mb-16">
             <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 ${text}`}>{t("workflow.title")}</h2>
             <p className={`text-base max-w-xl mx-auto ${textSec}`}>Simple six-step process to get your institution up and running</p>
           </div>
@@ -401,7 +423,7 @@ export default function HomePage() {
             <div className={`absolute top-8 left-0 right-0 h-px ${isDark ? "bg-white/10" : "bg-zinc-300"} hidden lg:block`} />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
               {steps.map((step, i) => (
-                <div key={step} className={`relative text-center scroll-reveal stagger-${i + 1}`}>
+                <div key={step} className="relative text-center">
                   <div className={`relative w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center backdrop-blur-xl ${glassCard} hover:scale-110 transition-transform`}>
                     <span className={`text-lg font-semibold ${text}`}>{i + 1}</span>
                   </div>
@@ -415,15 +437,15 @@ export default function HomePage() {
 
       {/* Testimonials */}
       <section className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto" ref={testimonialsReveal.ref}>
-          <div className={`text-center mb-16 scroll-reveal ${testimonialsReveal.className.replace("scroll-reveal", "")}`}>
+        <div className={`max-w-7xl mx-auto ${testimonialsReveal.className}`} ref={testimonialsReveal.ref}>
+          <div className="text-center mb-16">
             <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 ${text}`}>Loved by administrators</h2>
             <p className={`text-base max-w-xl mx-auto ${textSec}`}>See what institutions are saying about ScholarX</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, i) => (
-              <div key={testimonial.name} className={`rounded-2xl p-6 ${glassCard} scroll-reveal stagger-${i + 1}`}>
+            {testimonials.map((testimonial) => (
+              <div key={testimonial.name} className={`rounded-2xl p-6 ${glassCard}`}>
                 <div className="flex items-center gap-1 mb-4">
                   {[1,2,3,4,5].map((star) => (
                     <Star key={star} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -447,8 +469,8 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="py-24 sm:py-32 px-6">
-        <div className="max-w-7xl mx-auto" ref={ctaReveal.ref}>
-          <div className={`rounded-3xl p-12 sm:p-16 text-center ${glassCard} relative overflow-hidden scroll-reveal-scale ${ctaReveal.className.replace("scroll-reveal", "")}`}>
+        <div className={`max-w-7xl mx-auto ${ctaReveal.className}`} ref={ctaReveal.ref}>
+          <div className={`rounded-3xl p-12 sm:p-16 text-center ${glassCard} relative overflow-hidden`}>
             <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] ${isDark ? "bg-blue-500/10" : "bg-blue-500/5"}`} />
             <div className={`absolute bottom-0 right-0 w-[200px] h-[200px] rounded-full blur-[80px] ${isDark ? "bg-purple-500/10" : "bg-purple-500/5"}`} />
             <div className="relative z-10">
