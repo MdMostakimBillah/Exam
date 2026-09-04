@@ -220,14 +220,6 @@ export default function InstitutionsPage() {
                                   <Check className="h-3.5 w-3.5" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
                                 </button>
                               )}
-                              <div className={`border-t my-0.5 ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`} />
-                              <Link
-                                href={`/super-admin/institutions/${inst.id}`}
-                                onClick={() => setOpenDropdown(null)}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-400 hover:bg-white/[0.04]' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                              >
-                                <ArrowRight className="h-3.5 w-3.5" /> {isBn ? 'দেখুন' : 'View Details'}
-                              </Link>
                             </div>
                           )}
                         </div>
