@@ -13,10 +13,11 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals"),
   {
     ignores: [".next/**", "node_modules/**"],
+  },
+  {
     rules: {
       "react/no-unescaped-entities": "off",
       "@next/next/no-img-element": "warn",
-      "@next/next/no-assign-module-variable": "off",
     },
   },
 ];
