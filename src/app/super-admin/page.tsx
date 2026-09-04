@@ -115,6 +115,77 @@ export default function SuperAdminDashboard() {
           ))}
         </div>
 
+        {/* Recent Institutions + Graph */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Recent Institutions */}
+          <div className="col-span-12 lg:col-span-7">
+            <div className={`${card}`}>
+              <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <div className="flex items-center justify-between">
+                  <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                    {isBn ? 'সাম্প্রতিক প্রতিষ্ঠান' : 'Recently Added'}
+                  </h3>
+                  <Link href="/super-admin/institutions" className={`text-xs font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                    {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline ml-0.5" />
+                  </Link>
+                </div>
+              </div>
+              <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
+                {institutions.slice(0, 5).map((inst) => (
+                  <div key={inst.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                      {inst.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{inst.name}</p>
+                      <p className={`text-[11px] truncate ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{inst.address}</p>
+                    </div>
+                    <Badge status={inst.status} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Institution Graph */}
+          <div className="col-span-12 lg:col-span-5">
+            <div className={`${card} h-full`}>
+              <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  {isBn ? 'প্রতিষ্ঠান যোগ' : 'Institutions Added'}
+                </h3>
+              </div>
+              <div className="p-5">
+                <div className="flex items-end gap-2 h-32">
+                  {[3, 5, 2, 7, 4, 6, 8, 5, 3, 6, 4, institutions.length].map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className={`w-full rounded-t-md transition-all ${isDark ? "bg-white/[0.12]" : "bg-zinc-200"}`}
+                        style={{ height: `${(h / 10) * 100}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  {['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map((m) => (
+                    <span key={m} className={`flex-1 text-center text-[9px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{m}</span>
+                  ))}
+                </div>
+                <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}`}>
+                  <div>
+                    <p className={`text-2xl font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{institutions.length}</p>
+                    <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>+{institutions.filter(i => i.status === 'PENDING').length}</p>
+                    <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'বাকি অনুমোদন' : 'Pending'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
