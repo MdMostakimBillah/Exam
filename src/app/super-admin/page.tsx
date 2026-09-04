@@ -63,7 +63,7 @@ export default function SuperAdminDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-            {isBn ? 'ড্যাশবোর্ড' : 'Dashboard'}
+            {isBn ? 'সুপার এডমিনে স্বাগতম' : 'Welcome to Superadmin'}
           </h1>
           <p className={`text-sm mt-1.5 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
             {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন পরিচালনা করুন' : 'Manage Bangladesh Education Society operations'}
