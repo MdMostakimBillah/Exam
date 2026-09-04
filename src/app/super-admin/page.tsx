@@ -79,17 +79,17 @@ export default function SuperAdminDashboard() {
             { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: results.length, sub: `${verifiedRegs} ${isBn ? 'যাচাইকৃত' : 'verified'}`, href: '/super-admin/results' },
           ].map((s) => (
             <Link key={s.label} href={s.href} className="block">
-              <div className={`${card} ${cardHover} p-5`}>
-                <div className="flex items-center justify-between">
+              <div className={`${card} ${cardHover} p-5 flex items-center justify-between`}>
+                <div className="flex items-center gap-3">
                   <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
                     <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
                   </div>
-                  <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
+                  <div>
+                    <p className={`text-2xl font-bold tracking-tight leading-none ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                    <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 mt-4">
-                  <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                  <p className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-                </div>
+                <ArrowRight className={`h-4 w-4 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
               </div>
             </Link>
           ))}
@@ -103,13 +103,13 @@ export default function SuperAdminDashboard() {
             { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length },
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
-            <div key={s.label} className={`${card} p-5`}>
+            <div key={s.label} className={`${card} p-5 flex items-center gap-3`}>
               <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${iconBg}`}>
                 <s.icon className={`h-4.5 w-4.5 ${iconColor}`} />
               </div>
-              <div className="flex items-center gap-3 mt-4">
-                <p className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              <div>
+                <p className={`text-2xl font-bold tracking-tight leading-none ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </div>
           ))}
