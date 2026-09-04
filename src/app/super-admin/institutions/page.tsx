@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInstitutions } from "@/lib/storage/institutions";
-import { Building2, Search, Plus, MapPin, Users, Mail, Phone, ArrowRight } from "lucide-react";
+import { getInstitutions, updateInstitution } from "@/lib/storage/institutions";
+import { Institution } from "@/lib/types";
+import { Building2, Search, Plus, MapPin, Users, Mail, Phone, ArrowRight, Check, X, Ban, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
@@ -18,6 +19,7 @@ export default function InstitutionsPage() {
   const { lang: language, t } = useLang();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -55,6 +57,11 @@ export default function InstitutionsPage() {
     { label: isBn ? 'বিচারাধীন' : 'Pending', value: statusCounts.PENDING, icon: Building2 },
     { label: isBn ? 'স্থগিত' : 'Suspended', value: statusCounts.SUSPENDED, icon: Building2 },
   ];
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    updateInstitution(id, { status: newStatus as Institution['status'] });
+    setRefreshKey(k => k + 1);
+  };
 
   return (
     <div className={`min-h-screen ${bg}`}>
@@ -160,9 +167,43 @@ export default function InstitutionsPage() {
                       </TableCell>
                       <TableCell><Badge status={inst.status} /></TableCell>
                       <TableCell>
-                        <Link href={`/super-admin/institutions/${inst.id}`} className={`text-xs ${textSec} ${isDark ? 'hover:text-white' : 'hover:text-zinc-900'} transition-colors flex items-center gap-1`}>
-                          {isBn ? 'দেখুন' : 'View'} <ArrowRight className="h-3 w-3" />
-                        </Link>
+                        <div className="flex items-center gap-1">
+                          {inst.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => handleStatusChange(inst.id, 'ACTIVE')}
+                                className={`h-7 px-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                              >
+                                <Check className="h-3 w-3" /> {isBn ? 'অনুমোদন' : 'Approve'}
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(inst.id, 'SUSPENDED')}
+                                className={`h-7 px-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+                              >
+                                <X className="h-3 w-3" /> {isBn ? 'বাতিল' : 'Reject'}
+                              </button>
+                            </>
+                          )}
+                          {inst.status === 'ACTIVE' && (
+                            <button
+                              onClick={() => handleStatusChange(inst.id, 'SUSPENDED')}
+                              className={`h-7 px-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${isDark ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                            >
+                              <Ban className="h-3 w-3" /> {isBn ? 'স্থগিত' : 'Suspend'}
+                            </button>
+                          )}
+                          {inst.status === 'SUSPENDED' && (
+                            <button
+                              onClick={() => handleStatusChange(inst.id, 'ACTIVE')}
+                              className={`h-7 px-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                            >
+                              <Check className="h-3 w-3" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
+                            </button>
+                          )}
+                          <Link href={`/super-admin/institutions/${inst.id}`} className={`h-7 px-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${isDark ? 'bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]' : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200'}`}>
+                            {isBn ? 'দেখুন' : 'View'}
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
