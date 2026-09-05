@@ -42,27 +42,34 @@ const superAdminNav: NavItem[] = [
   { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: '/super-admin/settings' },
 ];
 
-const institutionNav: NavItem[] = [
-  { label: 'Dashboard', labelBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, href: '/i' },
-  { label: 'Students', labelBn: 'শিক্ষার্থী', icon: Users, href: '/i/students' },
-  { label: 'Exams', labelBn: 'পরীক্ষা', icon: FileText, href: '/i/exams' },
-  { label: 'Registrations', labelBn: 'নিবন্ধন', icon: ClipboardList, href: '/i/registrations' },
-  { label: 'Results', labelBn: 'ফলাফল', icon: Award, href: '/i/results' },
-  { label: 'Certificates', labelBn: 'সার্টিফিকেট', icon: GraduationCap, href: '/i/certificates' },
-  { label: 'Payments', labelBn: 'পেমেন্ট', icon: CreditCard, href: '/i/payments' },
-  { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: '/i/settings' },
-];
-
 function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = getCurrentUser();
-  const navItems = user?.role === 'SUPER_ADMIN' ? superAdminNav : institutionNav;
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';
+
+  const slug = React.useMemo(() => {
+    const match = pathname.match(/^\/i\/([^/]+)/);
+    return match ? match[1] : '';
+  }, [pathname]);
+
+  const institutionNav: NavItem[] = React.useMemo(() => [
+    { label: 'Dashboard', labelBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, href: `/i/${slug}` },
+    { label: 'Students', labelBn: 'শিক্ষার্থী', icon: Users, href: `/i/${slug}/students` },
+    { label: 'Exams', labelBn: 'পরীক্ষা', icon: FileText, href: `/i/${slug}/exams` },
+    { label: 'Registrations', labelBn: 'নিবন্ধন', icon: ClipboardList, href: `/i/${slug}/registrations` },
+    { label: 'Results', labelBn: 'ফলাফল', icon: Award, href: `/i/${slug}/results` },
+    { label: 'Certificates', labelBn: 'সার্টিফিকেট', icon: GraduationCap, href: `/i/${slug}/certificates` },
+    { label: 'Payments', labelBn: 'পেমেন্ট', icon: CreditCard, href: `/i/${slug}/payments` },
+    { label: 'Reports', labelBn: 'রিপোর্ট', icon: BarChart3, href: `/i/${slug}/reports` },
+    { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: `/i/${slug}/settings` },
+  ], [slug]);
+
+  const navItems = user?.role === 'SUPER_ADMIN' ? superAdminNav : institutionNav;
 
   const handleLogout = () => {
     logout();

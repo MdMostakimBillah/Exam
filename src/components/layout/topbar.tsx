@@ -5,7 +5,7 @@ import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut 
 import { Avatar } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuCheckboxItem } from "../ui/dropdown-menu";
 import { getCurrentUser, logout } from "@/lib/auth/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -15,12 +15,18 @@ interface TopbarProps {
 
 function Topbar({ sidebarCollapsed }: TopbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const user = getCurrentUser();
   const { theme, toggleTheme } = useTheme();
   const { lang: language, setLang } = useLang();
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';
+
+  const slug = React.useMemo(() => {
+    const match = pathname.match(/^\/i\/([^/]+)/);
+    return match ? match[1] : '';
+  }, [pathname]);
 
   const handleLogout = () => {
     logout();
@@ -144,7 +150,7 @@ function Topbar({ sidebarCollapsed }: TopbarProps) {
             <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
             
             <DropdownMenuItem 
-              onClick={() => router.push(user.role === 'SUPER_ADMIN' ? '/super-admin/settings' : '/i/settings')}
+              onClick={() => router.push(user.role === 'SUPER_ADMIN' ? '/super-admin/settings' : `/i/${slug}/settings`)}
               className={isDark ? 'text-zinc-300' : 'text-gray-700'}
             >
               <Settings className="h-4 w-4 mr-2" /> {isBn ? 'সেটিংস' : 'Settings'}
