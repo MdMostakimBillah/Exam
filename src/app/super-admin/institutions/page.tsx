@@ -1,14 +1,12 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getInstitutions, updateInstitution, deleteInstitution } from "@/lib/storage/institutions";
 import { Institution } from "@/lib/types";
-import { Building2, Search, Plus, MapPin, Users, Mail, Phone, ArrowRight, Check, X, Ban, Clock, MoreVertical, Trash2, Eye } from "lucide-react";
+import { Building2, Search, Users, Mail, Phone, MoreVertical, Trash2, Eye, Check, X, Ban } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
@@ -17,6 +15,8 @@ export default function InstitutionsPage() {
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
+  const isDark = theme === "dark";
+  const isBn = language === "bn";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -35,9 +35,6 @@ export default function InstitutionsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const isDark = theme === "dark";
-  const isBn = language === "bn";
-
   if (!mounted) return <InstitutionsSkeleton isDark={isDark} />;
 
   const institutions = getInstitutions();
@@ -54,22 +51,6 @@ export default function InstitutionsPage() {
     SUSPENDED: institutions.filter(i => i.status === 'SUSPENDED').length,
   };
 
-  const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
-  const text = isDark ? "text-zinc-100" : "text-zinc-900";
-  const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
-  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
-  const glassCard = isDark 
-    ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
-    : "bg-white/70 backdrop-blur-xl border border-white/80";
-  const inputBg = isDark ? "bg-white/[0.05]" : "bg-white";
-
-  const stats = [
-    { label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total', value: statusCounts.all, icon: Building2 },
-    { label: isBn ? 'সক্রিয়' : 'Active', value: statusCounts.ACTIVE, icon: Building2 },
-    { label: isBn ? 'বিচারাধীন' : 'Pending', value: statusCounts.PENDING, icon: Building2 },
-    { label: isBn ? 'স্থগিত' : 'Suspended', value: statusCounts.SUSPENDED, icon: Building2 },
-  ];
-
   const handleStatusChange = (id: string, newStatus: string) => {
     updateInstitution(id, { status: newStatus as Institution['status'] });
     setRefreshKey(k => k + 1);
@@ -82,195 +63,206 @@ export default function InstitutionsPage() {
     }
   };
 
-  return (
-    <div className={`min-h-screen ${bg}`}>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px]" />
-      </div>
+  const card = isDark
+    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
+    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
+  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
-      <div className="p-6 lg:p-8 relative z-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label} className={`${glassCard}`}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${isDark ? 'bg-white/10' : 'bg-zinc-100'}`}>
-                    <stat.icon className={`h-5 w-5 ${textSec}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xl font-semibold ${text}`}>{stat.value}</p>
-                    <p className={`text-xs ${textSec} truncate`}>{stat.label}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+  return (
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="p-6 lg:p-8">
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total', value: statusCounts.all },
+            { label: isBn ? 'সক্রিয়' : 'Active', value: statusCounts.ACTIVE },
+            { label: isBn ? 'বিচারাধীন' : 'Pending', value: statusCounts.PENDING },
+            { label: isBn ? 'স্থগিত' : 'Suspended', value: statusCounts.SUSPENDED },
+          ].map((s) => (
+            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <Building2 className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              </div>
+            </div>
           ))}
         </div>
 
-        <Card className={glassCard}>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${textSec}`} />
-                <Input
-                  placeholder={isBn ? "নাম বা কোড দিয়ে অনুসন্ধান করুন..." : "Search by name or code..."}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className={`pl-10 ${inputBg}`}
-                />
-              </div>
-              <Select
-                options={[
-                  { label: isBn ? 'সব অবস্থা' : 'All Status', value: '' },
-                  { label: 'Active', value: 'ACTIVE' },
-                  { label: 'Pending', value: 'PENDING' },
-                  { label: 'Suspended', value: 'SUSPENDED' },
-                ]}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className={`w-full sm:w-40 ${inputBg}`}
+        {/* Filters */}
+        <div className={`${card} p-4 mb-6`}>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              <Input
+                placeholder={isBn ? "নাম বা কোড দিয়ে অনুসন্ধান..." : "Search by name or code..."}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`pl-10 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
               />
-              <Button>
-                Add Institution
-              </Button>
             </div>
+            <Select
+              options={[
+                { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
+                { label: isBn ? 'সক্রিয়' : 'Active', value: 'ACTIVE' },
+                { label: isBn ? 'বিচারাধীন' : 'Pending', value: 'PENDING' },
+                { label: isBn ? 'স্থগিত' : 'Suspended', value: 'SUSPENDED' },
+              ]}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={`w-full sm:w-40 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
+            />
+          </div>
+        </div>
 
+        {/* Table */}
+        <div className={`${card}`}>
+          <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+            <div className="flex items-center gap-2">
+              <Building2 className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+              <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                {isBn ? 'প্রতিষ্ঠান তালিকা' : 'Institutions'}
+              </h3>
+              <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({filtered.length})</span>
+            </div>
+          </div>
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+                <Building2 className={`h-7 w-7 ${iconColor}`} />
+              </div>
+              <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো প্রতিষ্ঠান পাওয়া যায়নি' : 'No institutions found'}</p>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
-                <TableRow className={border}>
-                  <TableHead className={textSec}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
-                  <TableHead className={textSec}>{isBn ? 'কোড' : 'Code'}</TableHead>
-                  <TableHead className={textSec}>{isBn ? 'যোগাযোগ' : 'Contact'}</TableHead>
-                  <TableHead className={textSec}>{isBn ? 'শিক্ষার্থী' : 'Students'}</TableHead>
-                  <TableHead className={textSec}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
-                  <TableHead className={textSec}></TableHead>
+                <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'যোগাযোগ' : 'Contact'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Students'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className={`text-center py-12 ${textSec}`}>
-                      {isBn ? 'কোনো প্রতিষ্ঠান পাওয়া যায়নি' : 'No institutions found'}
+                {filtered.map((inst) => (
+                  <TableRow key={inst.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                          {inst.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{inst.name}</p>
+                          <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{inst.city}, {inst.district}</p>
+                        </div>
+                      </div>
                     </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((inst) => (
-                    <TableRow key={inst.id} className={`${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-zinc-50'}`}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-xs font-bold ${isDark ? 'bg-white/10 text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                            {inst.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className={`text-sm font-medium ${text}`}>{inst.name}</p>
-                            <p className={`text-xs ${textSec}`}>{inst.city}, {inst.district}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className={`text-sm font-mono ${textSec}`}>{inst.code}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className={`text-xs ${textSec} flex items-center gap-1.5`}>
-                            <Mail className="h-3 w-3" /> {inst.email}
-                          </p>
-                          <p className={`text-xs ${textSec} flex items-center gap-1.5`}>
-                            <Phone className="h-3 w-3" /> {inst.phone}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className={`text-sm ${textSec}`}>
-                        <span className="flex items-center gap-1.5">
-                          <Users className="h-3.5 w-3.5" /> {inst.totalStudents}
-                        </span>
-                      </TableCell>
-                      <TableCell><Badge status={inst.status} /></TableCell>
-                      <TableCell>
-                        <div className="relative" ref={openDropdown === inst.id ? dropdownRef : undefined}>
-                          <button
-                            onClick={() => setOpenDropdown(openDropdown === inst.id ? null : inst.id)}
-                            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          {openDropdown === inst.id && (
-                            <div className={`absolute right-0 top-8 z-50 w-36 rounded-xl border shadow-xl py-1 ${isDark ? 'bg-[#1a1a1c] border-white/[0.08]' : 'bg-white border-zinc-200'}`}>
-                              {inst.status === 'PENDING' && (
-                                <>
-                                  <button
-                                    onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-emerald-400 hover:bg-white/[0.04]' : 'text-emerald-600 hover:bg-emerald-50'}`}
-                                  >
-                                    <Check className="h-3.5 w-3.5" /> {isBn ? 'অনুমোদন' : 'Approve'}
-                                  </button>
-                                  <button
-                                    onClick={() => { handleStatusChange(inst.id, 'REJECTED'); setOpenDropdown(null); }}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
-                                  >
-                                    <X className="h-3.5 w-3.5" /> {isBn ? 'বাতিল' : 'Reject'}
-                                  </button>
-                                </>
-                              )}
-                              {inst.status === 'ACTIVE' && (
-                                <button
-                                  onClick={() => { handleStatusChange(inst.id, 'SUSPENDED'); setOpenDropdown(null); }}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-amber-400 hover:bg-white/[0.04]' : 'text-amber-600 hover:bg-amber-50'}`}
-                                >
-                                  <Ban className="h-3.5 w-3.5" /> {isBn ? 'স্থগিত' : 'Suspend'}
-                                </button>
-                              )}
-                              {inst.status === 'SUSPENDED' && (
+                    <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{inst.code}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="space-y-1">
+                        <p className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'} flex items-center gap-1.5`}>
+                          <Mail className="h-3 w-3" /> {inst.email}
+                        </p>
+                        <p className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'} flex items-center gap-1.5`}>
+                          <Phone className="h-3 w-3" /> {inst.phone}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" /> {inst.totalStudents}
+                      </span>
+                    </TableCell>
+                    <TableCell><Badge status={inst.status} /></TableCell>
+                    <TableCell>
+                      <div className="relative" ref={openDropdown === inst.id ? dropdownRef : undefined}>
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === inst.id ? null : inst.id)}
+                          className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                        {openDropdown === inst.id && (
+                          <div className={`absolute right-0 top-8 z-50 w-36 rounded-xl border shadow-xl py-1 ${isDark ? 'bg-[#1a1a1c] border-white/[0.08]' : 'bg-white border-zinc-200'}`}>
+                            {inst.status === 'PENDING' && (
+                              <>
                                 <button
                                   onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }}
                                   className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-emerald-400 hover:bg-white/[0.04]' : 'text-emerald-600 hover:bg-emerald-50'}`}
                                 >
-                                  <Check className="h-3.5 w-3.5" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
+                                  <Check className="h-3.5 w-3.5" /> {isBn ? 'অনুমোদন' : 'Approve'}
                                 </button>
-                              )}
-                              <div className={`border-t my-0.5 ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`} />
-                              <Link
-                                href={`/super-admin/institutions/${inst.id}`}
-                                onClick={() => setOpenDropdown(null)}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-400 hover:bg-white/[0.04]' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                              >
-                                <Eye className="h-3.5 w-3.5" /> {isBn ? 'দেখুন' : 'View'}
-                              </Link>
+                                <button
+                                  onClick={() => { handleStatusChange(inst.id, 'REJECTED'); setOpenDropdown(null); }}
+                                  className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
+                                >
+                                  <X className="h-3.5 w-3.5" /> {isBn ? 'বাতিল' : 'Reject'}
+                                </button>
+                              </>
+                            )}
+                            {inst.status === 'ACTIVE' && (
                               <button
-                                onClick={() => { handleDelete(inst.id); setOpenDropdown(null); }}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
+                                onClick={() => { handleStatusChange(inst.id, 'SUSPENDED'); setOpenDropdown(null); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-amber-400 hover:bg-white/[0.04]' : 'text-amber-600 hover:bg-amber-50'}`}
                               >
-                                <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                                <Ban className="h-3.5 w-3.5" /> {isBn ? 'স্থগিত' : 'Suspend'}
                               </button>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                            )}
+                            {inst.status === 'SUSPENDED' && (
+                              <button
+                                onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-emerald-400 hover:bg-white/[0.04]' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                              >
+                                <Check className="h-3.5 w-3.5" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
+                              </button>
+                            )}
+                            <div className={`border-t my-0.5 ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`} />
+                            <Link
+                              href={`/super-admin/institutions/${inst.id}`}
+                              onClick={() => setOpenDropdown(null)}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-400 hover:bg-white/[0.04]' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                            >
+                              <Eye className="h-3.5 w-3.5" /> {isBn ? 'দেখুন' : 'View'}
+                            </Link>
+                            <button
+                              onClick={() => { handleDelete(inst.id); setOpenDropdown(null); }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function InstitutionsSkeleton({ isDark }: { isDark: boolean }) {
-  const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
-  const cardBg = isDark ? "bg-white/[0.03]" : "bg-white";
-  
+  const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
+
   return (
-    <div className={`min-h-screen ${bg}`}>
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="p-6 lg:p-8">
-        <div className={`h-8 w-48 rounded mb-8 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`h-20 rounded-lg ${cardBg}`} />
+            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
           ))}
         </div>
-        <div className={`h-96 rounded-lg ${cardBg}`} />
+        <div className={`${card} rounded-2xl h-12 mb-6`} />
+        <div className={`${card} rounded-2xl h-64`} />
       </div>
     </div>
   );
