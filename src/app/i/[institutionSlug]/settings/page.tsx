@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
+import { getInstitutionBySlug, updateInstitution } from "@/lib/storage/institutions";
 import { Settings, Building2, Bell, Save } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -37,6 +37,16 @@ export default function InstitutionSettingsPage() {
   }, [slug]);
 
   const handleSave = () => {
+    const inst = getInstitutionBySlug(slug);
+    if (inst) {
+      updateInstitution(inst.id, {
+        name: instName,
+        email,
+        phone,
+        address,
+        contactPerson,
+      });
+    }
     toast("success", isBn ? "সেটিংস সফলভাবে সংরক্ষিত হয়েছে!" : "Settings saved successfully!");
   };
 
