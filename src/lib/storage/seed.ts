@@ -33,7 +33,6 @@ export function initializeDemoData(): void {
   const users: User[] = [
     { id: 'u1', email: 'admin@scholarx.local', name: 'Super Admin', role: 'SUPER_ADMIN', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
     { id: 'u2', email: 'institution@scholarx.local', name: 'Rahim Ahmed', role: 'INSTITUTION_ADMIN', institutionId: 'i1', createdAt: '2025-01-15T00:00:00Z', updatedAt: '2025-01-15T00:00:00Z' },
-    { id: 'u3', email: 'student@scholarx.local', name: 'Fatima Khan', role: 'STUDENT', institutionId: 'i1', createdAt: '2025-02-01T00:00:00Z', updatedAt: '2025-02-01T00:00:00Z' },
     { id: 'u4', email: 'admin@dhaka-academy.bd', name: 'Nusrat Jahan', role: 'INSTITUTION_ADMIN', institutionId: 'i2', createdAt: '2025-01-20T00:00:00Z', updatedAt: '2025-01-20T00:00:00Z' },
     { id: 'u5', email: 'admin@barisal-school.bd', name: 'Kamal Hossain', role: 'INSTITUTION_ADMIN', institutionId: 'i3', createdAt: '2025-02-01T00:00:00Z', updatedAt: '2025-02-01T00:00:00Z' },
   ];

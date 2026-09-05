@@ -29,12 +29,6 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'settings.read',
     'admin.read',
   ],
-  STUDENT: [
-    'result.read',
-    'certificate.download',
-    'payment.read',
-    'notification.read',
-  ],
 };
 
 export function hasPermission(role: UserRole, permission: Permission): boolean {

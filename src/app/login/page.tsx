@@ -28,7 +28,6 @@ export default function LoginPage() {
       const user = login(email);
       if (user) {
         if (user.role === 'SUPER_ADMIN') router.push('/super-admin');
-        else if (user.role === 'INSTITUTION_ADMIN') router.push('/i');
         else router.push('/i');
       } else {
         setError("Invalid email address");
@@ -95,7 +94,6 @@ export default function LoginPage() {
               {[
                 { label: t("login.superAdmin"), email: 'admin@scholarx.local' },
                 { label: t("login.instAdmin"), email: 'institution@scholarx.local' },
-                { label: t("login.student"), email: 'student@scholarx.local' },
               ].map(acc => (
                 <button
                   key={acc.email}

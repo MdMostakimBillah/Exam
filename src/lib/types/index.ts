@@ -1,4 +1,4 @@
-export type UserRole = 'SUPER_ADMIN' | 'INSTITUTION_ADMIN' | 'STUDENT';
+export type UserRole = 'SUPER_ADMIN' | 'INSTITUTION_ADMIN';
 export type InstitutionStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
 export type ExamStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'EXAM_COMPLETED' | 'RESULT_PROCESSING' | 'PUBLISHED' | 'ARCHIVED';
 export type RegistrationStatus = 'PENDING' | 'VERIFIED' | 'PAYMENT_PENDING' | 'APPROVED' | 'REJECTED';

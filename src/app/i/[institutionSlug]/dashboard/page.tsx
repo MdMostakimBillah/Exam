@@ -1,9 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getStudentsByInstitution } from "@/lib/storage/students";
@@ -11,7 +9,7 @@ import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { getExams } from "@/lib/storage/exams";
 import { getResultsByInstitution } from "@/lib/storage/results";
 import { getPaymentsByInstitution } from "@/lib/storage/payments";
-import { Users, FileText, ClipboardList, ArrowRight, Clock, CheckCircle, XCircle, DollarSign, Wallet, Activity, Inbox } from "lucide-react";
+import { Users, FileText, ClipboardList, Clock, CheckCircle, XCircle, DollarSign, Wallet, Activity, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -22,7 +20,7 @@ export default function InstitutionDashboardPage() {
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
-  
+
   useEffect(() => { setMounted(true); }, []);
 
   const isDark = theme === "dark";
@@ -45,184 +43,209 @@ export default function InstitutionDashboardPage() {
   const approvedStudents = registrations.filter(r => r.status === 'APPROVED' || r.status === 'VERIFIED').length;
   const rejectedStudents = registrations.filter(r => r.status === 'REJECTED').length;
   const activeExams = exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length;
-  const inactiveExams = exams.filter(e => e.status === 'DRAFT' || e.status === 'CLOSED').length;
 
-  const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
-  const text = isDark ? "text-zinc-100" : "text-zinc-900";
-  const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
-  const border = isDark ? "border-white/[0.06]" : "border-zinc-200/50";
-  const glassCard = isDark 
-    ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
-    : "bg-white/60 backdrop-blur-xl border border-white/80";
-
-  const stats = [
-    { label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length, icon: Users },
-    { label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active', value: activeExams, icon: Activity },
-    { label: isBn ? 'নিষ্ক্রিয়' : 'Inactive', value: inactiveExams, icon: Inbox },
-    { label: isBn ? 'আবেদন প্রতীক্ষা' : 'Pending', value: pendingStudents, icon: Clock },
-    { label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents, icon: CheckCircle },
-    { label: isBn ? 'সংগ্রহিত' : 'Paid', value: '৳' + totalCollected.toLocaleString(), icon: DollarSign },
-    { label: isBn ? 'বকেয়া' : 'Due', value: '৳' + totalDue.toLocaleString(), icon: Wallet },
-  ];
+  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-2xl" : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
+  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
   return (
-    <div className={`min-h-screen ${bg}`}>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px]" />
-      </div>
-
-      <div className="p-6 lg:p-8 relative z-10">
-        <div className="flex items-center justify-between mb-8">
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
+        {/* Page Header */}
+        <div className="mb-8">
           <div className="flex items-center gap-3">
-            <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${text}`}>{t("brand")}</h1>
+            <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+              {isBn ? 'প্রতিষ্ঠান ড্যাশবোর্ড' : 'Institution Dashboard'}
+            </h1>
             <Badge status={inst.status} />
           </div>
-          <Link href={`/i/${slug}/registrations`}>
-            <Button size="sm" className="gap-2">
-              {isBn ? 'শিক্ষার্থী নিবন্ধন' : 'Register Students'} <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+          <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+            {isBn ? 'আপনার প্রতিষ্ঠানের পরিসংখ্যান এবং পরিচালনা' : 'Overview and management of your institution'}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label} className={`${glassCard} hover:-translate-y-0.5 transition-all duration-200`}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${isDark ? 'bg-white/10' : 'bg-zinc-100'}`}>
-                    <stat.icon className={`h-5 w-5 ${textSec}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xl font-semibold ${text}`}>{stat.value}</p>
-                    <p className={`text-xs ${textSec} truncate`}>{stat.label}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[
+            { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length },
+            { icon: Activity, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams },
+            { icon: Clock, label: isBn ? 'আবেদন প্রতীক্ষা' : 'Pending Applications', value: pendingStudents },
+            { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
+          ].map((s) => (
+            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <s.icon className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              </div>
+            </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-12 gap-6 mb-6">
+        {/* Revenue Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {[
+            { icon: DollarSign, label: isBn ? 'সংগ্রহিত' : 'Total Collected', value: `৳${totalCollected.toLocaleString()}` },
+            { icon: Wallet, label: isBn ? 'বকেয়া' : 'Total Due', value: `৳${totalDue.toLocaleString()}` },
+            { icon: XCircle, label: isBn ? 'প্রত্যাখ্যান' : 'Rejected', value: rejectedStudents },
+          ].map((s) => (
+            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <s.icon className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Available Exams */}
           <div className="col-span-12 lg:col-span-8">
-            <Card className={`${glassCard}`}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className={`text-sm font-semibold ${text}`}>
-                    {isBn ? 'উপলব্ধ পরীক্ষা' : 'Available Exams'}
-                  </h3>
-                  <Link href={`/i/${slug}/exams`} className={`text-xs ${isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'} transition-colors`}>
-                    {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline" />
+            <div className={`${card}`}>
+              <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+                    <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                      {isBn ? 'উপলব্ধ পরীক্ষা' : 'Available Exams'}
+                    </h3>
+                  </div>
+                  <Link href={`/i/${slug}/exams`} className={`text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                    {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline ml-0.5" />
                   </Link>
                 </div>
-                {exams.length === 0 ? (
-                  <div className={`flex items-center justify-center py-10 ${textSec}`}>
-                    <div className="text-center">
-                      <FileText className={`h-10 w-10 mx-auto mb-3 ${isDark ? 'text-zinc-700' : 'text-gray-300'}`} />
-                      <p className="text-sm">{isBn ? 'কোনো সক্রিয় পরীক্ষা নেই' : 'No active exams available'}</p>
-                    </div>
+              </div>
+              {exams.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+                    <FileText className={`h-7 w-7 ${iconColor}`} />
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {exams.slice(0, 3).map(exam => (
-                      <div key={exam.id} className={`flex items-center justify-between p-3 rounded-lg ${isDark ? 'bg-white/[0.02]' : 'bg-zinc-50'}`}>
-                        <div>
-                          <p className={`text-sm font-medium ${text}`}>{exam.name}</p>
-                          <p className={`text-xs mt-0.5 ${textSec}`}>{exam.code} · {exam.academicYear}</p>
+                  <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো পরীক্ষা নেই' : 'No exams available'}</p>
+                </div>
+              ) : (
+                <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
+                  {exams.slice(0, 5).map(exam => (
+                    <div key={exam.id} className={`flex items-center justify-between px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                          {exam.name.charAt(0)}
                         </div>
-                        <Badge status={exam.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'} />
+                        <div>
+                          <p className={`text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{exam.name}</p>
+                          <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{exam.code} · {exam.academicYear}</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      <Badge status={exam.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Registration Stats */}
           <div className="col-span-12 lg:col-span-4">
-            <Card className={`${glassCard}`}>
-              <CardContent className="p-6">
-                <h3 className={`text-sm font-semibold mb-4 ${text}`}>
+            <div className={`${card} h-full`}>
+              <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                   {isBn ? 'নিবন্ধন পরিসংখ্যান' : 'Registration Stats'}
                 </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+              </div>
+              <div className="p-5 space-y-4">
+                {[
+                  { label: isBn ? 'বিচারাধীন' : 'Pending', value: pendingStudents, icon: Clock },
+                  { label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents, icon: CheckCircle },
+                  { label: isBn ? 'প্রত্যাখ্যান' : 'Rejected', value: rejectedStudents, icon: XCircle },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Clock className={`h-4 w-4 ${textSec}`} />
-                      <span className={`text-sm ${textSec}`}>{isBn ? 'বিচারাধীন' : 'Pending'}</span>
+                      <item.icon className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                      <span className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{item.label}</span>
                     </div>
-                    <span className={`text-sm font-medium ${text}`}>{pendingStudents}</span>
+                    <span className={`text-sm font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{item.value}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className={`h-4 w-4 ${textSec}`} />
-                      <span className={`text-sm ${textSec}`}>{isBn ? 'অনুমোদিত' : 'Approved'}</span>
-                    </div>
-                    <span className={`text-sm font-medium ${text}`}>{approvedStudents}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <XCircle className={`h-4 w-4 ${textSec}`} />
-                      <span className={`text-sm ${textSec}`}>{isBn ? 'প্রত্যাখ্যান' : 'Rejected'}</span>
-                    </div>
-                    <span className={`text-sm font-medium ${text}`}>{rejectedStudents}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        <Card className={`${glassCard}`}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={`text-sm font-semibold ${text}`}>
-                {isBn ? 'সাম্প্রতিক শিক্ষার্থী' : 'Recent Students'}
-              </h3>
-              <Link href={`/i/${slug}/students`} className={`text-xs ${isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'} transition-colors`}>
-                {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline" />
+        {/* Recent Students */}
+        <div className={`${card} mt-6`}>
+          <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  {isBn ? 'সাম্প্রতিক শিক্ষার্থী' : 'Recent Students'}
+                </h3>
+              </div>
+              <Link href={`/i/${slug}/students`} className={`text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline ml-0.5" />
               </Link>
             </div>
+          </div>
+          {students.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+                <Users className={`h-7 w-7 ${iconColor}`} />
+              </div>
+              <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো শিক্ষার্থী নেই' : 'No students yet'}</p>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
-                <TableRow className={border}>
-                  <TableHead className={textSec}>{isBn ? 'নাম' : 'Name'}</TableHead>
-                  <TableHead className={textSec}>Student ID</TableHead>
-                  <TableHead className={textSec}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
-                  <TableHead className={textSec}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
+                <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'আইডি' : 'Student ID'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {students.slice(0, 5).map(s => (
-                  <TableRow key={s.id} className={`${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-zinc-50'}`}>
-                    <TableCell className={`text-sm font-medium ${text}`}>{s.firstName} {s.lastName}</TableCell>
-                    <TableCell className={`text-sm font-mono ${textSec}`}>{s.studentId}</TableCell>
-                    <TableCell className={`text-sm ${textSec}`}>{s.class}</TableCell>
+                  <TableRow key={s.id} className={isDark ? 'border-white/[0.04]' : 'border-zinc-100'}>
+                    <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{s.firstName} {s.lastName}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{s.studentId}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{s.class}</TableCell>
                     <TableCell><Badge status={s.status} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function DashboardSkeleton({ isDark }: { isDark: boolean }) {
-  const bg = isDark ? "bg-[#0a0a0b]" : "bg-zinc-50";
-  const cardBg = isDark ? "bg-white/[0.03]" : "bg-white";
-  
+  const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
   return (
-    <div className={`min-h-screen ${bg}`}>
-      <div className="p-6 lg:p-8">
-        <div className={`h-8 w-48 rounded mb-8 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[...Array(7)].map((_, i) => (
-            <div key={i} className={`h-20 rounded-lg ${cardBg}`} />
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
+        <div className="mb-8">
+          <div className={`h-8 w-48 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
+          <div className={`h-4 w-64 rounded mt-2 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-200/60'}`} />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
           ))}
         </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+          ))}
+        </div>
+        <div className={`${card} rounded-2xl h-64`} />
       </div>
     </div>
   );
