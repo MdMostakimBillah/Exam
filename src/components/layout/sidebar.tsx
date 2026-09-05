@@ -122,9 +122,10 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         isDark ? 'bg-[#0D0D0D]' : 'bg-white'
       )}>
         {navItems.map((item) => {
-          const isActive = item.href === '/super-admin' || item.href === '/i'
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
+          const isDashboard = item.href === '/super-admin' || /^\/i\/[^/]+$/.test(item.href);
+          const isActive = isDashboard
+            ? pathname === item.href || pathname === item.href + '/dashboard'
+            : pathname.startsWith(item.href + '/');
           return (
             <button
               key={item.href}
