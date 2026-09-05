@@ -192,11 +192,11 @@ export default function ExamsPage() {
         <div className={`${card}`}>
           <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
             <div className="flex items-center gap-2">
-              <FileText className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              <FileText className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                 {isBn ? 'পরীক্ষার তালিকা' : 'Exams'}
               </h3>
-              <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({filtered.length})</span>
+              <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({filtered.length})</span>
             </div>
           </div>
           {filtered.length === 0 ? (
@@ -210,14 +210,14 @@ export default function ExamsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'নিবন্ধন' : 'Registrations'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'ফি' : 'Fee'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শ্রেণী' : 'Classes'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন' : 'Registrations'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ফি' : 'Fee'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Classes'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -228,29 +228,29 @@ export default function ExamsPage() {
                     <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                       <TableCell>
                         <div className="flex items-center gap-2.5">
-                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                             {exam.name.charAt(0)}
                           </div>
                           <div>
-                            <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{exam.name}</p>
-                            <p className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{exam.academicYear}</p>
+                            <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{exam.name}</p>
+                            <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{exam.academicYear}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{exam.code}</TableCell>
-                      <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{exam.code}</TableCell>
+                      <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {formatDate(exam.examDate).split(',')[0]}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <Users className="h-3 w-3" />
                           {examRegs.length}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <CreditCard className="h-3 w-3" />
                           ৳{exam.registrationFee}
@@ -259,12 +259,12 @@ export default function ExamsPage() {
                       <TableCell>
                         <div className="flex items-center gap-1 flex-wrap">
                           {examClasses.slice(0, 2).map(cls => (
-                            <span key={cls.id} className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.04] text-zinc-500" : "bg-zinc-100 text-zinc-600"}`}>
+                            <span key={cls.id} className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-700"}`}>
                               {cls.name}
                             </span>
                           ))}
                           {examClasses.length > 2 && (
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.04] text-zinc-500" : "bg-zinc-100 text-zinc-600"}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-700"}`}>
                               +{examClasses.length - 2}
                             </span>
                           )}
@@ -275,7 +275,7 @@ export default function ExamsPage() {
                         <div className="relative">
                           <button
                             onClick={() => setMenuOpenId(menuOpenId === exam.id ? null : exam.id)}
-                            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}
+                            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
                           >
                             <MoreVertical className="h-3.5 w-3.5" />
                           </button>

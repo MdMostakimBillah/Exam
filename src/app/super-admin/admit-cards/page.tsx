@@ -39,7 +39,7 @@ export default function AdmitCardsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{s.label}</p>
               </div>
             </div>
           ))}
@@ -49,24 +49,24 @@ export default function AdmitCardsPage() {
         <div className={`${card}`}>
           <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
             <div className="flex items-center gap-2">
-              <FileCheck className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              <FileCheck className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                 {isBn ? 'প্রবেশপত্র তালিকা' : 'Admit Cards'}
               </h3>
-              <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({cards.length})</span>
+              <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({cards.length})</span>
             </div>
           </div>
           <Table>
             <TableHeader>
               <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'রেজি নং' : 'Reg No'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কেন্দ্র' : 'Center'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজি নং' : 'Reg No'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কেন্দ্র' : 'Center'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -74,26 +74,26 @@ export default function AdmitCardsPage() {
                 <TableRow key={card.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                         {card.studentName.charAt(0)}
                       </div>
                       <div>
-                        <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{card.studentName}</p>
-                        <p className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{card.institutionName}</p>
+                        <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{card.studentName}</p>
+                        <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-600'}`}>{card.institutionName}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{card.registrationNumber}</TableCell>
-                  <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{card.examName}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{card.className}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{card.roll}</TableCell>
-                  <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{card.examCenter}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{new Date(card.examDate).toLocaleDateString()}</TableCell>
+                  <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{card.registrationNumber}</TableCell>
+                  <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{card.examName}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{card.className}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{card.roll}</TableCell>
+                  <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{card.examCenter}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{new Date(card.examDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}><Eye className="h-3.5 w-3.5" /></button>
-                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}><Download className="h-3.5 w-3.5" /></button>
-                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}><Printer className="h-3.5 w-3.5" /></button>
+                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Eye className="h-3.5 w-3.5" /></button>
+                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Download className="h-3.5 w-3.5" /></button>
+                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Printer className="h-3.5 w-3.5" /></button>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -124,11 +124,11 @@ export default function ClassesPage() {
         <div className={`${card}`}>
           <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
             <div className="flex items-center gap-2">
-              <BookMarked className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              <BookMarked className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                 {isBn ? 'শ্রেণী তালিকা' : 'Classes'}
               </h3>
-              <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({filtered.length})</span>
+              <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({filtered.length})</span>
             </div>
           </div>
           {filtered.length === 0 ? (
@@ -142,11 +142,11 @@ export default function ClassesPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'বিবরণ' : 'Description'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'বিবরণ' : 'Description'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -154,16 +154,16 @@ export default function ClassesPage() {
                   <TableRow key={cls.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                           {cls.name.charAt(0)}
                         </div>
-                        <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{cls.name}</p>
+                        <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{cls.name}</p>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{cls.code}</TableCell>
-                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{cls.description}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{cls.code}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{cls.description}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${cls.isActive ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-zinc-500' : 'text-zinc-400')}`}>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${cls.isActive ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-zinc-400' : 'text-zinc-500')}`}>
                         {cls.isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         {cls.isActive ? (isBn ? 'সক্রিয়' : 'Active') : (isBn ? 'নিষ্ক্রিয়' : 'Inactive')}
                       </span>
@@ -172,7 +172,7 @@ export default function ClassesPage() {
                       <div className="relative">
                         <button
                           onClick={() => setMenuOpenId(menuOpenId === cls.id ? null : cls.id)}
-                          className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}
+                          className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
                         >
                           <MoreVertical className="h-3.5 w-3.5" />
                         </button>

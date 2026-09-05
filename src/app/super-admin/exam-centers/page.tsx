@@ -58,7 +58,7 @@ export default function ExamCentersPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{s.label}</p>
               </div>
             </div>
           ))}
@@ -78,45 +78,45 @@ export default function ExamCentersPage() {
         <div className={`${card}`}>
           <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
             <div className="flex items-center gap-2">
-              <School className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              <School className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
               <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                 {isBn ? 'পরীক্ষা কেন্দ্র' : 'Exam Centers'}
               </h3>
-              <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({centers.length})</span>
+              <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({centers.length})</span>
             </div>
           </div>
           <Table>
             <TableHeader>
               <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কেন্দ্রের নাম' : 'Center Name'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'ঠিকানা' : 'Address'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'ধারণক্ষমতা' : 'Capacity'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'বরাদ্দ' : 'Allocated'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'অবশিষ্ট' : 'Available'}</TableHead>
-                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'ব্যবহার' : 'Occupancy'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কেন্দ্রের নাম' : 'Center Name'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ঠিকানা' : 'Address'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ধারণক্ষমতা' : 'Capacity'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'বরাদ্দ' : 'Allocated'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'অবশিষ্ট' : 'Available'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ব্যবহার' : 'Occupancy'}</TableHead>
                 <TableHead className={`w-[40px]`} />
               </TableRow>
             </TableHeader>
             <TableBody>
               {centers.map(c => (
                 <TableRow key={c.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
-                  <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{c.name}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{c.address}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{c.capacity}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{c.allocated}</TableCell>
-                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{c.capacity - c.allocated}</TableCell>
+                  <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{c.name}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{c.address}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.capacity}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.allocated}</TableCell>
+                  <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.capacity - c.allocated}</TableCell>
                   <TableCell>
                     <div className="w-20">
                       <div className={`h-1.5 rounded-full ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'} overflow-hidden`}>
                         <div className={`h-full rounded-full ${isDark ? 'bg-white/30' : 'bg-zinc-600'}`} style={{ width: `${(c.allocated / c.capacity) * 100}%` }} />
                       </div>
-                      <span className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{Math.round((c.allocated / c.capacity) * 100)}%</span>
+                      <span className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-600'}`}>{Math.round((c.allocated / c.capacity) * 100)}%</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <button
                       onClick={() => { setEditId(c.id); setForm({ name: c.name, address: c.address, capacity: String(c.capacity) }); setModalOpen(true); }}
-                      className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.06] text-zinc-500' : 'hover:bg-zinc-100 text-zinc-400'}`}
+                      className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -135,7 +135,7 @@ export default function ExamCentersPage() {
             <div><label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ধারণক্ষমতা' : 'Capacity'}</label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} placeholder={isBn ? 'সর্বোচ্চ আসন' : 'Maximum seats'} /></div>
           </div>
           <ModalFooter>
-            <button onClick={() => setModalOpen(false)} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.06] text-zinc-400 hover:text-white' : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
+            <button onClick={() => setModalOpen(false)} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
             <button onClick={handleSave} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{editId ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি' : 'Create')}</button>
           </ModalFooter>
         </Modal>

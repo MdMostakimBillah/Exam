@@ -71,7 +71,7 @@ export default function MarksPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{s.label}</p>
               </div>
             </div>
           ))}
@@ -81,14 +81,14 @@ export default function MarksPage() {
         <div className={`${card} p-4 mb-6`}>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
+              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
               <Select value={selectedExam} onChange={(e) => { setSelectedExam(e.target.value); setSelectedSubject(""); setMarksData({}); }}
                 options={exams.map(e => ({ label: e.name, value: e.id }))} placeholder={isBn ? 'পরীক্ষা নির্বাচন করুন' : 'Select exam'}
                 className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
             </div>
             {selectedExamData && (
               <div className="flex-1">
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'বিষয়' : 'Subject'}</label>
+                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'বিষয়' : 'Subject'}</label>
                 <Select value={selectedSubject} onChange={(e) => { setSelectedSubject(e.target.value); setMarksData({}); }}
                   options={selectedExamData.subjects.map(s => ({ label: `${s.name} (${s.fullMarks})`, value: s.id }))} placeholder={isBn ? 'বিষয় নির্বাচন করুন' : 'Select subject'}
                   className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
@@ -110,21 +110,21 @@ export default function MarksPage() {
           <div className={`${card}`}>
             <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
               <div className="flex items-center gap-2">
-                <BookOpen className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                <BookOpen className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                   {isBn ? 'নম্বর প্রবেশ' : 'Marks Entry'}
                 </h3>
-                <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({approvedRegs.length})</span>
+                <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({approvedRegs.length})</span>
               </div>
             </div>
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'আবেদন আইডি' : 'Reg No'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'নম্বর' : 'Marks'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'আবেদন আইডি' : 'Reg No'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নম্বর' : 'Marks'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -135,9 +135,9 @@ export default function MarksPage() {
                   const fullMarks = selectedExamData?.subjects.find(s => s.id === selectedSubject)?.fullMarks || 100;
                   return (
                     <TableRow key={reg.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
-                      <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{reg.id.slice(-3)}</TableCell>
-                      <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{reg.studentName}</TableCell>
-                      <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{reg.applicationId}</TableCell>
+                      <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{reg.id.slice(-3)}</TableCell>
+                      <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{reg.studentName}</TableCell>
+                      <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{reg.applicationId}</TableCell>
                       <TableCell>
                         <Input type="number" min={0} max={fullMarks} value={currentMarks || ''}
                           onChange={(e) => handleMarkChange(reg.id, e.target.value)}
@@ -147,7 +147,7 @@ export default function MarksPage() {
                         {currentMarks !== undefined ? (
                           <span className={`text-[10px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{isBn ? 'প্রবেশ' : 'Entered'}</span>
                         ) : (
-                          <span className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{isBn ? 'অপেক্ষমান' : 'Pending'}</span>
+                          <span className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-600'}`}>{isBn ? 'অপেক্ষমান' : 'Pending'}</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -161,7 +161,7 @@ export default function MarksPage() {
         {/* Empty State */}
         {(!selectedExam || !selectedSubject) && (
           <div className={`${card} flex flex-col items-center justify-center py-16`}>
-            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
+            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
               <BookOpen className={`h-7 w-7 ${iconColor}`} />
             </div>
             <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'পরীক্ষা ও বিষয় নির্বাচন করুন' : 'Select exam and subject to enter marks'}</p>

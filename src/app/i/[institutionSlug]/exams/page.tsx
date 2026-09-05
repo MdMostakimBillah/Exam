@@ -62,7 +62,7 @@ export default function InstitutionExamsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{s.label}</p>
               </div>
             </div>
           ))}
@@ -72,7 +72,7 @@ export default function InstitutionExamsPage() {
         <div className={`${card} p-4 mb-6`}>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</label>
+              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</label>
               <Select
                 options={[
                   { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
@@ -91,7 +91,7 @@ export default function InstitutionExamsPage() {
         {/* Table */}
         {filtered.length === 0 ? (
           <div className={`${card} flex flex-col items-center justify-center py-16`}>
-            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
+            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
               <FileText className={`h-7 w-7 ${iconColor}`} />
             </div>
             <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো পরীক্ষা পাওয়া যায়নি' : 'No exams available'}</p>
@@ -100,23 +100,23 @@ export default function InstitutionExamsPage() {
           <div className={`${card}`}>
             <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
               <div className="flex items-center gap-2">
-                <FileText className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                <FileText className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                   {isBn ? 'পরীক্ষার তালিকা' : 'Examinations'}
                 </h3>
-                <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({filtered.length})</span>
+                <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({filtered.length})</span>
               </div>
             </div>
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'নিবন্ধন' : 'Registrations'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'ফি' : 'Fee'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শ্রেণী' : 'Classes'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন' : 'Registrations'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ফি' : 'Fee'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Classes'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -127,28 +127,28 @@ export default function InstitutionExamsPage() {
                     <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                       <TableCell>
                         <div className="flex items-center gap-2.5">
-                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                             {exam.name.charAt(0)}
                           </div>
                           <div>
-                            <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{exam.name}</p>
-                            <p className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{exam.academicYear}</p>
+                            <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{exam.name}</p>
+                            <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-600'}`}>{exam.academicYear}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {formatDate(exam.examDate).split(',')[0]}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <Users className="h-3 w-3" />
                           {examRegs.length}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <CreditCard className="h-3 w-3" />
                           ৳{exam.registrationFee}
@@ -157,12 +157,12 @@ export default function InstitutionExamsPage() {
                       <TableCell>
                         <div className="flex items-center gap-1 flex-wrap">
                           {examClasses.slice(0, 2).map(cls => (
-                            <span key={cls.id} className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.04] text-zinc-500" : "bg-zinc-100 text-zinc-600"}`}>
+                            <span key={cls.id} className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-700"}`}>
                               {cls.name}
                             </span>
                           ))}
                           {examClasses.length > 2 && (
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.04] text-zinc-500" : "bg-zinc-100 text-zinc-600"}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-700"}`}>
                               +{examClasses.length - 2}
                             </span>
                           )}
