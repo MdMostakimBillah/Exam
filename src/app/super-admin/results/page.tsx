@@ -37,7 +37,16 @@ export default function ResultsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <div className="p-6 lg:p-8">
+      <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+            {isBn ? 'ফলাফল' : 'Results'}
+          </h1>
+          <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+            {isBn ? 'পরীক্ষার ফলাফল দেখুন' : 'View examination results'}
+          </p>
+        </div>
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
@@ -146,7 +155,7 @@ function ResultsSkeleton({ isDark }: { isDark: boolean }) {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <div className="p-6 lg:p-8">
+      <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className={`${card} rounded-2xl h-[52px]`} />

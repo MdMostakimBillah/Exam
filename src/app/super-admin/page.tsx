@@ -61,7 +61,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <div className="p-6 lg:p-8">
+      <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
