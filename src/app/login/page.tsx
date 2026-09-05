@@ -15,6 +15,7 @@ export default function LoginPage() {
   const { t } = useLang();
   const isDark = theme === "dark";
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,12 +26,12 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     setTimeout(() => {
-      const user = login(email);
+      const user = login(email, password);
       if (user) {
         if (user.role === 'SUPER_ADMIN') router.push('/super-admin');
         else router.push('/i');
       } else {
-        setError("Invalid email address");
+        setError("Invalid email or password");
       }
       setLoading(false);
     }, 500);
@@ -38,6 +39,7 @@ export default function LoginPage() {
 
   const quickLogin = (email: string) => {
     setEmail(email);
+    setPassword('admin123');
   };
 
   const bg = isDark ? "bg-[#080808]" : "bg-gray-50";
@@ -78,8 +80,10 @@ export default function LoginPage() {
               <label className="block text-xs text-zinc-500 mb-2 font-medium">Password</label>
               <Input
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                defaultValue="demo123"
+                required
               />
             </div>
             {error && <p className="text-xs text-red-400 animate-fadeIn">{error}</p>}

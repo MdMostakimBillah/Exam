@@ -17,10 +17,10 @@ export function setCurrentUser(user: User | null): void {
   }
 }
 
-export function login(email: string): User | null {
+export function login(email: string, password: string): User | null {
   const { getUserByEmail } = require('@/lib/storage/users') as typeof import('@/lib/storage/users');
   const user = getUserByEmail(email);
-  if (user) {
+  if (user && user.password === password) {
     setCurrentUser(user);
     return user;
   }
