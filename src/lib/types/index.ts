@@ -6,6 +6,16 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED';
 export type ResultStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PUBLISHED';
 export type CertificateStatus = 'DRAFT' | 'GENERATED' | 'VERIFIED';
 
+export interface Class {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: string;
   email: string;

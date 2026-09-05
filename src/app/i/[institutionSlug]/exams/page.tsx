@@ -1,36 +1,37 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { PageHeader } from "@/components/layout/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getExams } from "@/lib/storage/exams";
+import { getClasses } from "@/lib/storage/classes";
 import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { FileText, Calendar, Users, CreditCard, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
+import { useLang } from "@/contexts/language-context";
 
 export default function InstitutionExamsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
   const { theme } = useTheme();
+  const { lang: language, t } = useLang();
   const isDark = theme === "dark";
+  const isBn = language === "bn";
   const [mounted, setMounted] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted) return <ExamsSkeleton />;
+  if (!mounted) return <ExamsSkeleton isDark={isDark} />;
 
   const inst = getInstitutionBySlug(slug);
   if (!inst) return null;
 
   const exams = getExams();
+  const classes = getClasses();
   const registrations = getRegistrationsByInstitution(inst.id);
 
   const filtered = exams.filter(e => {
@@ -38,124 +39,168 @@ export default function InstitutionExamsPage() {
     return true;
   });
 
+  const card = isDark
+    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
+    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
+  const iconColor = isDark ? "text-white" : "text-zinc-900";
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Examinations" description="View available scholarship exams for registration." />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Available Exams</p>
-            <p className={`text-3xl font-bold mt-2 ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{exams.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Open</p>
-            <p className={`text-3xl font-bold mt-2 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{exams.filter(e => e.status === 'OPEN').length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Published</p>
-            <p className={`text-3xl font-bold mt-2 ${isDark ? "text-blue-400" : "text-blue-600"}`}>{exams.filter(e => e.status === 'PUBLISHED').length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">My Registrations</p>
-            <p className={`text-3xl font-bold mt-2 ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{registrations.length}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Select
-          options={[
-            { label: 'All Status', value: '' },
-            { label: 'Open', value: 'OPEN' },
-            { label: 'Published', value: 'PUBLISHED' },
-            { label: 'Closed', value: 'CLOSED' },
-          ]}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full sm:w-40"
-        />
-      </div>
-
-      {/* Exams Grid */}
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<FileText className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />}
-          title="No exams available"
-          description="Check back later for new scholarship examinations."
-        />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filtered.map((exam) => {
-            const examRegs = registrations.filter(r => r.examId === exam.id);
-            return (
-              <Card key={exam.id} className={`group ${isDark ? "hover:border-white/[0.08]" : "hover:border-zinc-300"} transition-all duration-300`}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center border border-blue-500/20">
-                        <FileText className={`h-5 w-5 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
-                      </div>
-                      <div>
-                        <h3 className={`text-sm font-medium ${isDark ? "text-zinc-100 group-hover:text-white" : "text-zinc-900 group-hover:text-zinc-900"} transition-colors`}>{exam.name}</h3>
-                        <p className={`text-xs font-mono ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{exam.code}</p>
-                      </div>
-                    </div>
-                    <Badge status={exam.status} />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className={`rounded-lg ${isDark ? "bg-white/[0.02]" : "bg-zinc-50"} p-3 text-center`}>
-                      <Calendar className={`h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"} mx-auto mb-1`} />
-                      <p className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{formatDate(exam.examDate).split(',')[0]}</p>
-                    </div>
-                    <div className={`rounded-lg ${isDark ? "bg-white/[0.02]" : "bg-zinc-50"} p-3 text-center`}>
-                      <Users className={`h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"} mx-auto mb-1`} />
-                      <p className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{examRegs.length} regs</p>
-                    </div>
-                    <div className={`rounded-lg ${isDark ? "bg-white/[0.02]" : "bg-zinc-50"} p-3 text-center`}>
-                      <CreditCard className={`h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"} mx-auto mb-1`} />
-                      <p className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>৳{exam.registrationFee}</p>
-                    </div>
-                  </div>
-
-                  <Link href={`/i/${slug}/registrations`}>
-                    <Button variant="outline" size="sm" className="w-full gap-2">
-                      Register Students <ArrowRight className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="p-6 lg:p-8">
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: isBn ? 'উপলব্ধ পরীক্ষা' : 'Available Exams', value: exams.length },
+            { label: isBn ? 'ওপেন' : 'Open', value: exams.filter(e => e.status === 'OPEN').length },
+            { label: isBn ? 'প্রকাশিত' : 'Published', value: exams.filter(e => e.status === 'PUBLISHED').length },
+            { label: isBn ? 'আমার নিবন্ধন' : 'My Registrations', value: registrations.length },
+          ].map((s) => (
+            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <FileText className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+
+        {/* Filters */}
+        <div className={`${card} p-4 mb-6`}>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</label>
+              <Select
+                options={[
+                  { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
+                  { label: isBn ? 'ওপেন' : 'Open', value: 'OPEN' },
+                  { label: isBn ? 'প্রকাশিত' : 'Published', value: 'PUBLISHED' },
+                  { label: isBn ? 'বন্ধ' : 'Closed', value: 'CLOSED' },
+                ]}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        {filtered.length === 0 ? (
+          <div className={`${card} flex flex-col items-center justify-center py-16`}>
+            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
+              <FileText className={`h-7 w-7 ${iconColor}`} />
+            </div>
+            <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো পরীক্ষা পাওয়া যায়নি' : 'No exams available'}</p>
+          </div>
+        ) : (
+          <div className={`${card}`}>
+            <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+              <div className="flex items-center gap-2">
+                <FileText className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  {isBn ? 'পরীক্ষার তালিকা' : 'Examinations'}
+                </h3>
+                <span className={`text-[11px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>({filtered.length})</span>
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'নিবন্ধন' : 'Registrations'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'ফি' : 'Fee'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শ্রেণী' : 'Classes'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(exam => {
+                  const examRegs = registrations.filter(r => r.examId === exam.id);
+                  const examClasses = classes.filter(c => exam.classes.includes(c.id));
+                  return (
+                    <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                            {exam.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-medium ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>{exam.name}</p>
+                            <p className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{exam.academicYear}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(exam.examDate).split(',')[0]}
+                        </div>
+                      </TableCell>
+                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {examRegs.length}
+                        </div>
+                      </TableCell>
+                      <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        <div className="flex items-center gap-1">
+                          <CreditCard className="h-3 w-3" />
+                          ৳{exam.registrationFee}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {examClasses.slice(0, 2).map(cls => (
+                            <span key={cls.id} className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.04] text-zinc-500" : "bg-zinc-100 text-zinc-600"}`}>
+                              {cls.name}
+                            </span>
+                          ))}
+                          {examClasses.length > 2 && (
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] ${isDark ? "bg-white/[0.04] text-zinc-500" : "bg-zinc-100 text-zinc-600"}`}>
+                              +{examClasses.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell><Badge status={exam.status} /></TableCell>
+                      <TableCell>
+                        <Link href={`/i/${slug}/registrations`}>
+                          <button className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
+                            {isBn ? 'নিবন্ধন' : 'Register'} <ArrowRight className="h-3 w-3" />
+                          </button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function ExamsSkeleton() {
+function ExamsSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
+
   return (
-    <div className="space-y-6">
-      <div className="h-8 w-48 skeleton rounded" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 skeleton rounded-2xl" />
-        ))}
-      </div>
-      <div className="h-10 w-full skeleton rounded-xl" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-48 skeleton rounded-2xl" />
-        ))}
+    <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <div className="p-6 lg:p-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+          ))}
+        </div>
+        <div className={`${card} rounded-2xl h-12 mb-6`} />
+        <div className={`${card} rounded-2xl h-64`} />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { User, Institution, Student, Exam, Registration, Result, Certificate, Payment, Notification, AuditLog, ExamCenter, AdmitCard, Mark } from '../types';
+import { User, Institution, Student, Exam, Registration, Result, Certificate, Payment, Notification, AuditLog, ExamCenter, AdmitCard, Mark, Class } from '../types';
 import { setStore } from './storage';
 
 const USER_KEY = 'users';
@@ -14,6 +14,7 @@ const AUDIT_KEY = 'audit_logs';
 const CENTER_KEY = 'exam_centers';
 const ADMIT_KEY = 'admit_cards';
 const MARK_KEY = 'marks';
+const CLASS_KEY = 'classes';
 const INIT_KEY = 'initialized';
 
 export function isInitialized(): boolean {
@@ -105,6 +106,18 @@ export function initializeDemoData(): void {
     updatedAt: `2025-03-${String(i + 1).padStart(2, '0')}T00:00:00Z`,
   }));
 
+  // Classes
+  const classesData: Class[] = [
+    { id: 'cls1', name: 'Class 3', code: 'CLS-03', description: 'Primary Education Class 3', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls2', name: 'Class 4', code: 'CLS-04', description: 'Primary Education Class 4', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls3', name: 'Class 5', code: 'CLS-05', description: 'Primary Education Class 5', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls4', name: 'Class 6', code: 'CLS-06', description: 'Secondary Education Class 6', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls5', name: 'Class 7', code: 'CLS-07', description: 'Secondary Education Class 7', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls6', name: 'Class 8', code: 'CLS-08', description: 'Secondary Education Class 8', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls7', name: 'Class 9', code: 'CLS-09', description: 'Secondary Education Class 9', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+    { id: 'cls8', name: 'Class 10', code: 'CLS-10', description: 'Secondary Education Class 10', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+  ];
+
   // Exams
   const exams: Exam[] = [
     {
@@ -112,7 +125,7 @@ export function initializeDemoData(): void {
       academicYear: '2026', description: 'National level scholarship examination for talented students across Bangladesh.',
       registrationStartDate: '2025-10-01T00:00:00Z', registrationEndDate: '2025-12-15T00:00:00Z',
       examDate: '2026-01-20T00:00:00Z', registrationFee: 150, lateFee: 50,
-      classes: ['Class 3', 'Class 4', 'Class 5', 'Class 6'],
+      classes: ['cls1', 'cls2', 'cls3', 'cls4'],
       subjects: [
         { id: 'sub1', name: 'Mathematics', fullMarks: 100, passMarks: 33, duration: 90, negativeMarks: 0.25 },
         { id: 'sub2', name: 'Bangla', fullMarks: 100, passMarks: 33, duration: 90, negativeMarks: 0.25 },
@@ -126,7 +139,7 @@ export function initializeDemoData(): void {
       academicYear: '2026', description: 'District level merit-based scholarship examination.',
       registrationStartDate: '2025-11-01T00:00:00Z', registrationEndDate: '2026-01-15T00:00:00Z',
       examDate: '2026-02-15T00:00:00Z', registrationFee: 100, lateFee: 30,
-      classes: ['Class 5', 'Class 6', 'Class 7'],
+      classes: ['cls3', 'cls4', 'cls5'],
       subjects: [
         { id: 'sub5', name: 'Mathematics', fullMarks: 100, passMarks: 33, duration: 90, negativeMarks: 0.25 },
         { id: 'sub6', name: 'Bangla', fullMarks: 100, passMarks: 33, duration: 90, negativeMarks: 0.25 },
@@ -139,7 +152,7 @@ export function initializeDemoData(): void {
       academicYear: '2026', description: 'Scholarship examination for primary education students.',
       registrationStartDate: '2025-12-01T00:00:00Z', registrationEndDate: '2026-02-28T00:00:00Z',
       examDate: '2026-03-15T00:00:00Z', registrationFee: 75, lateFee: 25,
-      classes: ['Class 3', 'Class 4', 'Class 5'],
+      classes: ['cls1', 'cls2', 'cls3'],
       subjects: [
         { id: 'sub8', name: 'Mathematics', fullMarks: 50, passMarks: 17, duration: 60, negativeMarks: 0 },
         { id: 'sub9', name: 'Bangla', fullMarks: 50, passMarks: 17, duration: 60, negativeMarks: 0 },
@@ -343,6 +356,7 @@ export function initializeDemoData(): void {
   setStore(USER_KEY, users);
   setStore(INST_KEY, institutions);
   setStore(STUD_KEY, students);
+  setStore(CLASS_KEY, classesData);
   setStore(EXAM_KEY, exams);
   setStore(REG_KEY, registrations);
   setStore(MARK_KEY, marks);
