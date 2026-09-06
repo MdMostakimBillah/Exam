@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInstitutions, updateInstitution, deleteInstitution } from "@/lib/storage/institutions";
+import { getInstitutions, createInstitution, updateInstitution, deleteInstitution } from "@/lib/storage/institutions";
 import { Institution } from "@/lib/types";
-import { Building2, Search, Users, Mail, Phone, MoreVertical, Trash2, Eye, Check, X, Ban } from "lucide-react";
+import { Building2, Search, Users, Mail, Phone, MoreVertical, Trash2, Eye, Check, X, Ban, Plus } from "lucide-react";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
@@ -21,6 +22,10 @@ export default function InstitutionsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [form, setForm] = useState({
+    name: "", code: "", slug: "", email: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING" as Institution["status"],
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
@@ -63,6 +68,22 @@ export default function InstitutionsPage() {
     }
   };
 
+  const resetForm = () => setForm({
+    name: "", code: "", slug: "", email: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING",
+  });
+
+  const handleCreate = () => {
+    if (!form.name || !form.code) return;
+    createInstitution({
+      name: form.name, code: form.code, slug: form.slug, email: form.email, phone: form.phone,
+      address: form.address, city: form.city, district: form.district, contactPerson: form.contactPerson,
+      contactPersonPhone: form.contactPersonPhone, status: form.status, totalStudents: 0, totalApplications: 0,
+    });
+    resetForm();
+    setShowCreateModal(false);
+    setRefreshKey(k => k + 1);
+  };
+
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
     : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
@@ -73,13 +94,21 @@ export default function InstitutionsPage() {
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-            {isBn ? 'প্রতিষ্ঠান' : 'Institutions'}
-          </h1>
-          <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {isBn ? 'নিবন্ধিত প্রতিষ্ঠান পরিচালনা করুন' : 'Manage registered institutions'}
-          </p>
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+              {isBn ? 'প্রতিষ্ঠান' : 'Institutions'}
+            </h1>
+            <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+              {isBn ? 'নিবন্ধিত প্রতিষ্ঠান পরিচালনা করুন' : 'Manage registered institutions'}
+            </p>
+          </div>
+          <button
+            onClick={() => { resetForm(); setShowCreateModal(true); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors shrink-0 ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+          >
+            <Plus className="h-3.5 w-3.5" /> {isBn ? 'প্রতিষ্ঠান যোগ করুন' : 'Add Institution'}
+          </button>
         </div>
 
         {/* Metric Cards */}
@@ -255,6 +284,68 @@ export default function InstitutionsPage() {
             </Table>
           )}
         </div>
+
+        {/* Create Modal */}
+        <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title={isBn ? 'নতুন প্রতিষ্ঠান যোগ করুন' : 'Add New Institution'} maxWidth="max-w-xl">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠানের নাম' : 'Institution Name'} *</label>
+              <Input value={form.name} onChange={(e) => {
+                const name = e.target.value;
+                const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                setForm({ ...form, name, slug });
+              }} placeholder={isBn ? 'নাম লিখুন' : 'Enter name'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'} *</label>
+              <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder={isBn ? 'কোড লিখুন' : 'Enter code'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'স্লাগ' : 'Slug'}</label>
+              <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder={isBn ? 'স্লাগ' : 'auto-generated'} className="opacity-70" />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</label>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Institution["status"] })} className={`w-full h-9 rounded-xl border px-3 text-[11px] transition-colors ${isDark ? "bg-white/[0.04] border-white/[0.06] text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-700"}`}>
+                <option value="PENDING">{isBn ? 'বিচারাধীন' : 'Pending'}</option>
+                <option value="ACTIVE">{isBn ? 'সক্রিয়' : 'Active'}</option>
+                <option value="SUSPENDED">{isBn ? 'স্থগিত' : 'Suspended'}</option>
+              </select>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ইমেইল' : 'Email'}</label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={isBn ? 'ইমেইল' : 'email@example.com'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ফোন' : 'Phone'}</label>
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={isBn ? 'ফোন নম্বর' : 'Phone number'} />
+            </div>
+            <div className="col-span-2">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ঠিকানা' : 'Address'}</label>
+              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder={isBn ? 'ঠিকানা' : 'Address'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'শহর' : 'City'}</label>
+              <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder={isBn ? 'শহর' : 'City'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'জেলা' : 'District'}</label>
+              <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder={isBn ? 'জেলা' : 'District'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'যোগাযোগ ব্যক্তি' : 'Contact Person'}</label>
+              <Input value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} placeholder={isBn ? 'ব্যক্তির নাম' : 'Person name'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'যোগাযোগ ফোন' : 'Contact Phone'}</label>
+              <Input value={form.contactPersonPhone} onChange={(e) => setForm({ ...form, contactPersonPhone: e.target.value })} placeholder={isBn ? 'ব্যক্তির ফোন' : 'Person phone'} />
+            </div>
+          </div>
+          <ModalFooter>
+            <button onClick={() => setShowCreateModal(false)} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
+            <button onClick={handleCreate} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
+          </ModalFooter>
+        </Modal>
       </div>
     </div>
   );

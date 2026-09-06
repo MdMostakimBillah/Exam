@@ -26,3 +26,12 @@ export function createCertificate(data: Omit<Certificate, 'id' | 'createdAt' | '
   setStore(KEY, items);
   return item;
 }
+
+export function updateCertificate(id: string, data: Partial<Certificate>): Certificate | undefined {
+  const items = getCertificates();
+  const idx = items.findIndex(c => c.id === id);
+  if (idx === -1) return undefined;
+  items[idx] = { ...items[idx], ...data, updatedAt: new Date().toISOString() };
+  setStore(KEY, items);
+  return items[idx];
+}

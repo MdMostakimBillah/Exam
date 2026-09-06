@@ -2,7 +2,7 @@ export type UserRole = 'SUPER_ADMIN' | 'INSTITUTION_ADMIN';
 export type InstitutionStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
 export type ExamStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'EXAM_COMPLETED' | 'RESULT_PROCESSING' | 'PUBLISHED' | 'ARCHIVED';
 export type RegistrationStatus = 'PENDING' | 'VERIFIED' | 'PAYMENT_PENDING' | 'APPROVED' | 'REJECTED';
-export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED';
+export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'PAID' | 'FAILED' | 'REFUNDED';
 export type ResultStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PUBLISHED';
 export type CertificateStatus = 'DRAFT' | 'GENERATED' | 'VERIFIED';
 
@@ -195,6 +195,7 @@ export interface Certificate {
   totalMarks: number;
   examYear: string;
   issueDate: string;
+  resultId?: string;
   qrCode: string;
   status: CertificateStatus;
   createdAt: string;
@@ -213,6 +214,12 @@ export interface Payment {
   paymentMethod: string;
   status: PaymentStatus;
   date: string;
+  registrationId?: string;
+  studentId?: string;
+  studentName?: string;
+  reference?: string;
+  paymentDate?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }

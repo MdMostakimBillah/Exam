@@ -22,3 +22,12 @@ export function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'updatedA
   setStore(KEY, items);
   return item;
 }
+
+export function updatePayment(id: string, data: Partial<Payment>): Payment | undefined {
+  const items = getPayments();
+  const idx = items.findIndex(p => p.id === id);
+  if (idx === -1) return undefined;
+  items[idx] = { ...items[idx], ...data, updatedAt: new Date().toISOString() };
+  setStore(KEY, items);
+  return items[idx];
+}

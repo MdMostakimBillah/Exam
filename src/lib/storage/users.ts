@@ -36,3 +36,11 @@ export function updateUser(id: string, data: Partial<User>): User | undefined {
   setStore(KEY, users);
   return users[idx];
 }
+
+export function deleteUser(id: string): boolean {
+  const users = getUsers();
+  const filtered = users.filter(u => u.id !== id);
+  if (filtered.length === users.length) return false;
+  setStore(KEY, filtered);
+  return true;
+}

@@ -23,12 +23,14 @@ export default function ReportsPage() {
   const exams = getExams();
   const students = getStudents();
   const institutions = getInstitutions();
-  const results = getResults();
+  const allResults = getResults();
+
+  const filteredResults = examFilter ? allResults.filter(r => r.examId === examFilter) : allResults;
 
   const totalStudents = students.length;
   const totalInstitutions = institutions.length;
   const totalExams = exams.length;
-  const totalResults = results.length;
+  const totalResults = filteredResults.length;
 
   const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-2xl" : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
@@ -145,8 +147,8 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {[
                 { label: isBn ? 'মোট ফলাফল' : 'Total Results', value: totalResults },
-                { label: isBn ? 'প্রকাশিত' : 'Published', value: results.filter(r => r.status === 'PUBLISHED').length },
-                { label: isBn ? 'অনুমোদিত' : 'Approved', value: results.filter(r => r.status === 'APPROVED').length },
+                { label: isBn ? 'প্রকাশিত' : 'Published', value: filteredResults.filter(r => r.status === 'PUBLISHED').length },
+                { label: isBn ? 'অনুমোদিত' : 'Approved', value: filteredResults.filter(r => r.status === 'APPROVED').length },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{item.label}</span>

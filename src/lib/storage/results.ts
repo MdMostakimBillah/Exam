@@ -35,3 +35,11 @@ export function updateResult(id: string, data: Partial<Result>): Result | undefi
   setStore(KEY, items);
   return items[idx];
 }
+
+export function deleteResult(id: string): boolean {
+  const items = getResults();
+  const filtered = items.filter(r => r.id !== id);
+  if (filtered.length === items.length) return false;
+  setStore(KEY, filtered);
+  return true;
+}

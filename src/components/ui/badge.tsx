@@ -9,7 +9,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 function Badge({ className, status, variant = 'default', children, ...props }: BadgeProps) {
   const getStatusClasses = (status: string) => {
     const s = status.toUpperCase();
-    if (s === 'ACTIVE' || s === 'APPROVED' || s === 'PAID' || s === 'PUBLISHED' || s === 'VERIFIED' || s === 'GENERATED' || s === 'ELIGIBLE') {
+    if (s === 'ACTIVE' || s === 'APPROVED' || s === 'PAID' || s === 'CONFIRMED' || s === 'PUBLISHED' || s === 'VERIFIED' || s === 'GENERATED' || s === 'ELIGIBLE') {
       return 'bg-green-500/10 text-green-500 border-green-500/20';
     }
     if (s === 'PENDING' || s === 'PAYMENT_PENDING' || s === 'DRAFT' || s === 'REVIEW') {
@@ -18,7 +18,10 @@ function Badge({ className, status, variant = 'default', children, ...props }: B
     if (s === 'REJECTED' || s === 'SUSPENDED' || s === 'FAILED' || s === 'NOT_ELIGIBLE' || s === 'ERROR') {
       return 'bg-red-500/10 text-red-500 border-red-500/20';
     }
-    if (s === 'CLOSED' || s === 'ARCHIVED' || s === 'INACTIVE' || s === 'REFUNDED') {
+    if (s === 'REFUNDED') {
+      return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+    }
+    if (s === 'CLOSED' || s === 'ARCHIVED' || s === 'INACTIVE') {
       return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
     }
     return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
