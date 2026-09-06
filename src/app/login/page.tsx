@@ -56,14 +56,6 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-sm relative z-10 animate-fadeInUp">
-        <div className="text-center mb-10">
-          <Link href="/" className="inline-flex items-center gap-3 mb-8 group">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-lg transition-transform duration-300 group-hover:scale-105 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
-          </Link>
-          <h1 className={`text-2xl font-semibold ${text}`}>{t("login.welcomeBack")}</h1>
-          <p className={`text-sm mt-2 ${textSec}`}>{t("login.signInDesc")}</p>
-        </div>
-
         <div className={`rounded-2xl border p-6 ${card} shadow-xl shadow-black/20`}>
           <form onSubmit={handleLogin} className="space-y-5">
             <div>

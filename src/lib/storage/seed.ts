@@ -27,7 +27,14 @@ export function markInitialized(): void {
 }
 
 export function initializeDemoData(): void {
-  if (isInitialized()) return;
+  if (isInitialized()) {
+    // Check if existing users have passwords (migration for old seed data)
+    try {
+      const users = JSON.parse(localStorage.getItem('scholarx_users') || '[]');
+      if (users.length > 0 && users[0].password) return; // Already has passwords
+    } catch { /* ignore */ }
+    localStorage.removeItem('scholarx_initialized');
+  }
 
   // Users
   const users: User[] = [
