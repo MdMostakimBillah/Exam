@@ -112,6 +112,10 @@ export default function LoginPage() {
           </div>
 
           <div className="animate-fadeInUp">
+            <h2 className={`text-2xl font-bold tracking-tight mb-8 ${isDark ? "text-white" : "text-zinc-900"}`}>
+              {isBn ? 'সাইন ইন' : 'Sign in'}
+            </h2>
+
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className={`block text-[13px] mb-2 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
