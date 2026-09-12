@@ -125,7 +125,7 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           const isDashboard = item.href === '/super-admin' || /^\/i\/[^/]+$/.test(item.href);
           const isActive = isDashboard
             ? pathname === item.href || pathname === item.href + '/dashboard'
-            : pathname.startsWith(item.href + '/');
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <button
               key={item.href}
