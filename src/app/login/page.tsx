@@ -7,7 +7,7 @@ import { login } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ArrowRight, GraduationCap, Shield, Building2, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -96,25 +96,6 @@ export default function LoginPage() {
             <p className="text-lg text-zinc-400 mb-12 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
               {isBn ? 'স্কলারশিপ পরীক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম' : 'Scholarship Examination Management Platform'}
             </p>
-
-            {/* Feature cards */}
-            <div className="space-y-3 animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
-              {[
-                { icon: GraduationCap, label: isBn ? 'পরীক্ষা ব্যবস্থাপনা' : 'Exam Management', desc: isBn ? 'সম্পূর্ণ পরীক্ষা প্রক্রিয়া পরিচালনা' : 'Complete exam lifecycle' },
-                { icon: Shield, label: isBn ? 'নিরাপদ ফলাফল' : 'Secure Results', desc: isBn ? 'ক্রিপ্টোগ্রাফিক সার্টিফিকেট' : 'Cryptographic certificates' },
-                { icon: Building2, label: isBn ? 'মাল্টি-টেন্যান্ট' : 'Multi-Tenant', desc: isBn ? 'একাধিক প্রতিষ্ঠান পরিচালনা' : 'Manage multiple institutions' },
-              ].map((f, i) => (
-                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm hover:bg-white/[0.05] transition-all duration-300 group">
-                  <div className="h-11 w-11 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                    <f.icon className="h-5 w-5 text-zinc-300" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-zinc-200">{f.label}</p>
-                    <p className="text-xs text-zinc-500">{f.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -131,13 +112,6 @@ export default function LoginPage() {
           </div>
 
           <div className="animate-fadeInUp">
-            <h2 className={`text-2xl font-bold tracking-tight mb-2 ${isDark ? "text-white" : "text-zinc-900"}`}>
-              {isBn ? 'সাইন ইন' : 'Sign in'}
-            </h2>
-            <p className={`text-sm mb-8 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-              {isBn ? 'আপনার অ্যাকাউন্টে প্রবেশ করুন' : 'Enter your credentials to access your account'}
-            </p>
-
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className={`block text-[13px] mb-2 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
