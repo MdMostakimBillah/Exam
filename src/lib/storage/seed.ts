@@ -43,16 +43,7 @@ export function initializeDemoData(): void {
 
   const students: Student[] = [];
 
-  const classesData: Class[] = [
-    { id: 'cls1', name: 'Class 3', code: 'CLS-03', description: 'Primary Education Class 3', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls2', name: 'Class 4', code: 'CLS-04', description: 'Primary Education Class 4', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls3', name: 'Class 5', code: 'CLS-05', description: 'Primary Education Class 5', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls4', name: 'Class 6', code: 'CLS-06', description: 'Secondary Education Class 6', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls5', name: 'Class 7', code: 'CLS-07', description: 'Secondary Education Class 7', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls6', name: 'Class 8', code: 'CLS-08', description: 'Secondary Education Class 8', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls7', name: 'Class 9', code: 'CLS-09', description: 'Secondary Education Class 9', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'cls8', name: 'Class 10', code: 'CLS-10', description: 'Secondary Education Class 10', isActive: true, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-  ];
+  const classesData: Class[] = [];
 
   const exams: Exam[] = [
     {
