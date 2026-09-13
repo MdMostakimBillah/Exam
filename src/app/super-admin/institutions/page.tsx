@@ -75,8 +75,8 @@ export default function InstitutionsPage() {
   };
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
@@ -95,7 +95,7 @@ export default function InstitutionsPage() {
           </div>
           <button
             onClick={() => { resetForm(); setShowCreateModal(true); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors shrink-0 ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors shrink-0 ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
           >
             <Plus className="h-3.5 w-3.5" /> {isBn ? 'প্রতিষ্ঠান যোগ করুন' : 'Add Institution'}
           </button>
@@ -110,7 +110,7 @@ export default function InstitutionsPage() {
             { label: isBn ? 'স্থগিত' : 'Suspended', value: statusCounts.SUSPENDED },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <Building2 className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -160,7 +160,7 @@ export default function InstitutionsPage() {
           </div>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
                 <Building2 className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো প্রতিষ্ঠান পাওয়া যায়নি' : 'No institutions found'}</p>
@@ -182,7 +182,7 @@ export default function InstitutionsPage() {
                   <TableRow key={inst.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                        <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                           {inst.name.charAt(0)}
                         </div>
                         <div>
@@ -269,7 +269,7 @@ export default function InstitutionsPage() {
             </div>
             <div className="col-span-2 sm:col-span-1">
               <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</label>
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Institution["status"] })} className={`w-full h-9 rounded-xl border px-3 text-[11px] transition-colors ${isDark ? "bg-white/[0.04] border-white/[0.06] text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-700"}`}>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Institution["status"] })} className={`w-full h-9 rounded-md border px-3 text-[11px] transition-colors ${isDark ? "bg-white/[0.04] border-white/[0.06] text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-700"}`}>
                 <option value="PENDING">{isBn ? 'বিচারাধীন' : 'Pending'}</option>
                 <option value="ACTIVE">{isBn ? 'সক্রিয়' : 'Active'}</option>
                 <option value="SUSPENDED">{isBn ? 'স্থগিত' : 'Suspended'}</option>
@@ -305,8 +305,8 @@ export default function InstitutionsPage() {
             </div>
           </div>
           <ModalFooter>
-            <button onClick={() => setShowCreateModal(false)} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-            <button onClick={handleCreate} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
+            <button onClick={() => setShowCreateModal(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
+            <button onClick={handleCreate} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
           </ModalFooter>
         </Modal>
       </div>
@@ -322,11 +322,11 @@ function InstitutionsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-12 mb-6`} />
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-12 mb-6`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

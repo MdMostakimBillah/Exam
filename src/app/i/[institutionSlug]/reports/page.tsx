@@ -54,8 +54,8 @@ export default function InstitutionReportsPage() {
   }, {});
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
@@ -149,7 +149,7 @@ export default function InstitutionReportsPage() {
           {reports.map((report) => (
             <div key={report.id} className={`${card} p-6`}>
               <div className="flex items-start gap-4">
-                <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${report.iconBg}`}>
+                <div className={`h-12 w-12 rounded-md flex items-center justify-center shrink-0 ${report.iconBg}`}>
                   <report.icon className={`h-6 w-6 ${report.iconColor}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -170,7 +170,7 @@ export default function InstitutionReportsPage() {
                 <button
                   onClick={() => handleGenerate(report.id)}
                   disabled={generating === report.id}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                     generating === report.id
                       ? isDark ? "bg-white/[0.04] text-zinc-600 cursor-wait" : "bg-zinc-50 text-zinc-400 cursor-wait"
                       : isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
@@ -198,12 +198,12 @@ function ReportsSkeleton({ isDark }: { isDark: boolean }) {
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
-          <div className={`h-8 w-48 rounded-lg ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
+          <div className={`h-8 w-48 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
           <div className={`h-4 w-64 rounded mt-2 ${isDark ? "bg-white/[0.04]" : "bg-zinc-200/60"}`} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className={`${card} rounded-2xl h-48`} />
+            <div key={i} className={`${card} rounded-md h-48`} />
           ))}
         </div>
       </div>

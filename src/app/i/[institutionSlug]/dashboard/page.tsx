@@ -44,7 +44,7 @@ export default function InstitutionDashboardPage() {
   const rejectedStudents = registrations.filter(r => r.status === 'REJECTED').length;
   const activeExams = exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length;
 
-  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-2xl" : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
@@ -73,7 +73,7 @@ export default function InstitutionDashboardPage() {
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -92,7 +92,7 @@ export default function InstitutionDashboardPage() {
             { icon: XCircle, label: isBn ? 'প্রত্যাখ্যান' : 'Rejected', value: rejectedStudents },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -123,7 +123,7 @@ export default function InstitutionDashboardPage() {
               </div>
               {exams.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+                  <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
                     <FileText className={`h-7 w-7 ${iconColor}`} />
                   </div>
                   <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো পরীক্ষা নেই' : 'No exams available'}</p>
@@ -133,7 +133,7 @@ export default function InstitutionDashboardPage() {
                   {exams.slice(0, 5).map(exam => (
                     <div key={exam.id} className={`flex items-center justify-between px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                        <div className={`h-9 w-9 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                           {exam.name.charAt(0)}
                         </div>
                         <div>
@@ -193,7 +193,7 @@ export default function InstitutionDashboardPage() {
           </div>
           {students.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
                 <Users className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো শিক্ষার্থী নেই' : 'No students yet'}</p>
@@ -232,20 +232,20 @@ function DashboardSkeleton({ isDark }: { isDark: boolean }) {
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
-          <div className={`h-8 w-48 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
+          <div className={`h-8 w-48 rounded-md ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
           <div className={`h-4 w-64 rounded mt-2 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-200/60'}`} />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {[1, 2, 3].map((i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

@@ -30,8 +30,8 @@ export default function ResultsPage() {
   const avgScore = filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0;
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
   const iconColor = isDark ? "text-white" : "text-zinc-900";
 
@@ -56,7 +56,7 @@ export default function ResultsPage() {
             { label: isBn ? 'গড় স্কোর' : 'Avg Score', value: `${avgScore}%` },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <Award className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -80,7 +80,7 @@ export default function ResultsPage() {
               />
             </div>
             <div className="flex items-end">
-              <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
+              <button className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
                 <Download className="h-3.5 w-3.5" /> {isBn ? 'ফলাফল এক্সপোর্ট' : 'Export Results'}
               </button>
             </div>
@@ -90,7 +90,7 @@ export default function ResultsPage() {
         {/* Table */}
         {filtered.length === 0 ? (
           <div className={`${card} flex flex-col items-center justify-center py-16`}>
-            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+            <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
               <Award className={`h-7 w-7 ${iconColor}`} />
             </div>
             <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No results found'}</p>
@@ -158,11 +158,11 @@ function ResultsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-12 mb-6`} />
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-12 mb-6`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

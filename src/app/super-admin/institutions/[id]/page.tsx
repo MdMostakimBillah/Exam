@@ -39,8 +39,8 @@ export default function InstitutionDetailPage() {
   const totalDue = payments.reduce((s, p) => s + (p.status === 'PENDING' ? p.amount : 0), 0);
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
@@ -58,7 +58,7 @@ export default function InstitutionDetailPage() {
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => router.back()}
-            className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
+            className={`h-8 w-8 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -75,7 +75,7 @@ export default function InstitutionDetailPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {stats.map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -283,16 +283,16 @@ function InstitutionSkeleton({ isDark }: { isDark: boolean }) {
       <div className="p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-8">
-            <div className={`${card} rounded-2xl h-64`} />
+            <div className={`${card} rounded-md h-64`} />
           </div>
           <div className="col-span-4 space-y-6">
-            <div className={`${card} rounded-2xl h-48`} />
-            <div className={`${card} rounded-2xl h-48`} />
+            <div className={`${card} rounded-md h-48`} />
+            <div className={`${card} rounded-md h-48`} />
           </div>
         </div>
       </div>

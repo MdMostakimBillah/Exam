@@ -8,7 +8,7 @@ export default function AboutPage() {
       <header className="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#080808]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-bold text-sm">S</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-black font-bold text-sm">S</div>
             <span className="text-sm font-semibold text-zinc-100">ScholarX</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -38,7 +38,7 @@ export default function AboutPage() {
               { icon: Shield, title: 'Secure & Reliable', desc: 'Enterprise-grade security with certificate verification and audit logging.' },
               { icon: Award, title: 'Official Certificates', desc: 'Generate verifiable, official scholarship certificates with QR codes.' },
             ].map(item => (
-              <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#111111] p-6">
+              <div key={item.title} className="rounded-md border border-white/[0.06] bg-[#111111] p-6">
                 <item.icon className="h-6 w-6 text-zinc-400 mb-3" />
                 <h3 className="text-sm font-semibold text-zinc-100 mb-2">{item.title}</h3>
                 <p className="text-xs text-zinc-500 leading-relaxed">{item.desc}</p>
@@ -62,7 +62,7 @@ export default function AboutPage() {
       <footer className="border-t border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-black font-bold text-xs">S</div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-black font-bold text-xs">S</div>
             <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
           </div>
           <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>

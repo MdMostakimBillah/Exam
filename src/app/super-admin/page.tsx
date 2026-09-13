@@ -46,8 +46,8 @@ export default function SuperAdminDashboard() {
   const approvedStudents = registrations.filter(r => r.status === 'APPROVED').length;
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const cardHover = isDark
     ? "hover:border-white/[0.1] transition-colors"
     : "hover:border-zinc-300 transition-colors";
@@ -89,7 +89,7 @@ export default function SuperAdminDashboard() {
           ].map((s) => (
             <Link key={s.label} href={s.href} className="block">
               <div className={`${card} ${cardHover} px-4 py-3 flex items-center gap-3`}>
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                   <s.icon className={`h-5 w-5 ${iconColor}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -111,7 +111,7 @@ export default function SuperAdminDashboard() {
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -140,7 +140,7 @@ export default function SuperAdminDashboard() {
               <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
                 {[...institutions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((inst) => (
                   <div key={inst.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
+                    <div className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                       {inst.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -205,18 +205,18 @@ function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="p-6 lg:p-8">
-        <div className={`h-8 w-48 rounded-lg mb-8 ${shimmer}`} />
+        <div className={`h-8 w-48 rounded-md mb-8 ${shimmer}`} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

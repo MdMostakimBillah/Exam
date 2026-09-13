@@ -53,7 +53,7 @@ export default function NotificationsPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-2xl" : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
             { label: isBn ? "পঠিত" : "Read", value: readCount },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <Bell className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -151,7 +151,7 @@ export default function NotificationsPage() {
                 placeholder={isBn ? "শিরোনাম বা বার্তায় অনুসন্ধান..." : "Search by title or message..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 rounded-xl text-sm transition-colors ${
+                className={`w-full pl-10 pr-4 py-2 rounded-md text-sm transition-colors ${
                   isDark
                     ? "bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-500 focus:border-white/[0.12]"
                     : "bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300"
@@ -161,7 +161,7 @@ export default function NotificationsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilterRead("all")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                   filterRead === "all"
                     ? isDark ? "bg-white/[0.1] text-white" : "bg-zinc-200 text-zinc-900"
                     : isDark ? "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08]" : "bg-zinc-50 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
@@ -171,7 +171,7 @@ export default function NotificationsPage() {
               </button>
               <button
                 onClick={() => setFilterRead("unread")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                   filterRead === "unread"
                     ? isDark ? "bg-white/[0.1] text-white" : "bg-zinc-200 text-zinc-900"
                     : isDark ? "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08]" : "bg-zinc-50 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
@@ -181,7 +181,7 @@ export default function NotificationsPage() {
               </button>
               <button
                 onClick={() => setFilterRead("read")}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                   filterRead === "read"
                     ? isDark ? "bg-white/[0.1] text-white" : "bg-zinc-200 text-zinc-900"
                     : isDark ? "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08]" : "bg-zinc-50 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
@@ -198,7 +198,7 @@ export default function NotificationsPage() {
             <div className="flex gap-2">
               <button
                 onClick={handleMarkAllAsRead}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                   isDark
                     ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]"
                     : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
@@ -208,7 +208,7 @@ export default function NotificationsPage() {
               </button>
               <button
                 onClick={() => setShowModal(true)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                   isDark
                     ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
                     : "bg-blue-50 text-blue-600 hover:bg-blue-100"
@@ -235,7 +235,7 @@ export default function NotificationsPage() {
           </div>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
+              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
                 <Bell className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -261,7 +261,7 @@ export default function NotificationsPage() {
                 {filtered.map((n) => (
                   <TableRow key={n.id} className={!n.read ? (isDark ? "bg-white/[0.02]" : "bg-blue-50/30") : ""}>
                     <TableCell>
-                      <div className={`inline-flex items-center justify-center h-8 w-8 rounded-lg ${getTypeIcon(n.type)}`}>
+                      <div className={`inline-flex items-center justify-center h-8 w-8 rounded-md ${getTypeIcon(n.type)}`}>
                         <Bell className="h-4 w-4" />
                       </div>
                     </TableCell>
@@ -294,7 +294,7 @@ export default function NotificationsPage() {
                       {!n.read && (
                         <button
                           onClick={() => handleMarkAsRead(n.id)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                             isDark
                               ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]"
                               : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
@@ -316,7 +316,7 @@ export default function NotificationsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className={`relative w-full max-w-lg mx-4 rounded-2xl shadow-2xl ${
+          <div className={`relative w-full max-w-lg mx-4 rounded-md shadow-2xl ${
             isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200"
           }`}>
             <div className={`px-6 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
@@ -326,7 +326,7 @@ export default function NotificationsPage() {
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className={`p-1.5 rounded-lg transition-colors ${
+                  className={`p-1.5 rounded-md transition-colors ${
                     isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.06]" : "text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100"
                   }`}
                 >
@@ -346,7 +346,7 @@ export default function NotificationsPage() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder={isBn ? "বিজ্ঞপ্তির শিরোনাম" : "Notification title"}
-                  className={`w-full px-3 py-2 rounded-xl text-sm transition-colors ${
+                  className={`w-full px-3 py-2 rounded-md text-sm transition-colors ${
                     isDark
                       ? "bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-500 focus:border-white/[0.12]"
                       : "bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300"
@@ -362,7 +362,7 @@ export default function NotificationsPage() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder={isBn ? "বিজ্ঞপ্তির বার্তা" : "Notification message"}
                   rows={3}
-                  className={`w-full px-3 py-2 rounded-xl text-sm transition-colors resize-none ${
+                  className={`w-full px-3 py-2 rounded-md text-sm transition-colors resize-none ${
                     isDark
                       ? "bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-500 focus:border-white/[0.12]"
                       : "bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300"
@@ -378,7 +378,7 @@ export default function NotificationsPage() {
                     <button
                       key={t}
                       onClick={() => setNewType(t)}
-                      className={`flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-colors border ${
+                      className={`flex-1 px-3 py-2 rounded-md text-xs font-medium transition-colors border ${
                         newType === t
                           ? getTypeColor(t) + " border-current"
                           : isDark
@@ -395,7 +395,7 @@ export default function NotificationsPage() {
             <div className={`px-6 py-4 border-t flex justify-end gap-2 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
               <button
                 onClick={() => setShowModal(false)}
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors ${
+                className={`px-4 py-2 rounded-md text-xs font-medium transition-colors ${
                   isDark
                     ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]"
                     : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"
@@ -405,7 +405,7 @@ export default function NotificationsPage() {
               </button>
               <button
                 onClick={handleCreateNotification}
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-md text-xs font-medium transition-colors flex items-center gap-2 ${
                   isDark
                     ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
                     : "bg-blue-50 text-blue-600 hover:bg-blue-100"
@@ -428,11 +428,11 @@ function NotificationsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-12 mb-6`} />
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-12 mb-6`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

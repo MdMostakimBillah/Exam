@@ -36,8 +36,8 @@ export default function ExamCentersPage() {
   };
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
   const iconColor = isDark ? "text-white" : "text-zinc-900";
 
@@ -63,7 +63,7 @@ export default function ExamCentersPage() {
             { label: isBn ? 'অবশিষ্ট' : 'Available', value: totalCapacity - totalAllocated },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <School className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -78,7 +78,7 @@ export default function ExamCentersPage() {
         <div className="flex justify-end mb-6">
           <button
             onClick={() => { setForm({ name: '', address: '', capacity: '' }); setEditId(null); setModalOpen(true); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
           >
             <Plus className="h-3.5 w-3.5" /> {isBn ? 'কেন্দ্র যোগ করুন' : 'Add Center'}
           </button>
@@ -126,7 +126,7 @@ export default function ExamCentersPage() {
                   <TableCell>
                     <button
                       onClick={() => { setEditId(c.id); setForm({ name: c.name, address: c.address, capacity: String(c.capacity) }); setModalOpen(true); }}
-                      className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
+                      className={`h-7 w-7 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -145,8 +145,8 @@ export default function ExamCentersPage() {
             <div><label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ধারণক্ষমতা' : 'Capacity'}</label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} placeholder={isBn ? 'সর্বোচ্চ আসন' : 'Maximum seats'} /></div>
           </div>
           <ModalFooter>
-            <button onClick={() => setModalOpen(false)} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-            <button onClick={handleSave} className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{editId ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি' : 'Create')}</button>
+            <button onClick={() => setModalOpen(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
+            <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{editId ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি' : 'Create')}</button>
           </ModalFooter>
         </Modal>
       </div>
@@ -162,10 +162,10 @@ function ExamCentersSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

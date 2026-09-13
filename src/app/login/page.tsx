@@ -108,7 +108,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[400px] relative z-10">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-white text-black font-bold text-xl mb-4">B</div>
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-md bg-white text-black font-bold text-xl mb-4">B</div>
           </div>
 
           <div className="animate-fadeInUp">
@@ -128,7 +128,7 @@ export default function LoginPage() {
                   placeholder={isBn ? 'আপনার ইমেইল লিখুন' : 'you@example.com'}
                   required
                   className={cn(
-                    "w-full h-11 px-4 rounded-xl text-sm transition-all duration-200 outline-none",
+                    "w-full h-11 px-4 rounded-md text-sm transition-all duration-200 outline-none",
                     isDark
                       ? "bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-white/20 focus:ring-2 focus:ring-white/5"
                       : "bg-white border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-100"
@@ -148,7 +148,7 @@ export default function LoginPage() {
                     placeholder={isBn ? 'আপনার পাসওয়ার্ড লিখুন' : 'Enter your password'}
                     required
                     className={cn(
-                      "w-full h-11 px-4 pr-11 rounded-xl text-sm transition-all duration-200 outline-none",
+                      "w-full h-11 px-4 pr-11 rounded-md text-sm transition-all duration-200 outline-none",
                       isDark
                         ? "bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-white/20 focus:ring-2 focus:ring-white/5"
                         : "bg-white border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-100"
@@ -158,7 +158,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className={cn(
-                      "absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors",
+                      "absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors",
                       isDark ? "text-zinc-600 hover:text-zinc-300" : "text-zinc-400 hover:text-zinc-600"
                     )}
                   >
@@ -168,7 +168,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 animate-fadeIn">
+                <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 animate-fadeIn">
                   <div className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
                   <p className="text-xs text-red-400">{error}</p>
                 </div>
@@ -178,7 +178,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 className={cn(
-                  "w-full h-11 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2",
+                  "w-full h-11 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2",
                   isDark
                     ? "bg-white text-black hover:bg-white/90 active:scale-[0.98]"
                     : "bg-zinc-900 text-white hover:bg-zinc-800 active:scale-[0.98]",
@@ -213,14 +213,14 @@ export default function LoginPage() {
                 <button
                   onClick={() => quickLogin('admin@scholarx.local')}
                   className={cn(
-                    "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200 group",
+                    "w-full flex items-center justify-between px-4 py-3 rounded-md border transition-all duration-200 group",
                     isDark
                       ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]"
                       : "border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn("h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/5 flex items-center justify-center")}>
+                    <div className={cn("h-8 w-8 rounded-md bg-gradient-to-br from-blue-500/10 to-blue-600/5 flex items-center justify-center")}>
                       <span className="text-xs font-bold">S</span>
                     </div>
                     <span className={cn("text-sm font-medium", isDark ? "text-zinc-300 group-hover:text-white" : "text-zinc-700 group-hover:text-zinc-900")}>

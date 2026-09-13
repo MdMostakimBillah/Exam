@@ -18,8 +18,8 @@ export default function AdmitCardsPage() {
   const cards = getAdmitCards();
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
   const iconColor = isDark ? "text-white" : "text-zinc-900";
 
@@ -44,7 +44,7 @@ export default function AdmitCardsPage() {
             { label: isBn ? 'ডাউনলোড' : 'Downloaded', value: 0 },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <FileCheck className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -84,7 +84,7 @@ export default function AdmitCardsPage() {
                 <TableRow key={card.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                      <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                         {card.studentName.charAt(0)}
                       </div>
                       <div>
@@ -101,9 +101,9 @@ export default function AdmitCardsPage() {
                   <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{new Date(card.examDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Eye className="h-3.5 w-3.5" /></button>
-                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Download className="h-3.5 w-3.5" /></button>
-                      <button className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Printer className="h-3.5 w-3.5" /></button>
+                      <button className={`h-7 w-7 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Eye className="h-3.5 w-3.5" /></button>
+                      <button className={`h-7 w-7 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Download className="h-3.5 w-3.5" /></button>
+                      <button className={`h-7 w-7 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}><Printer className="h-3.5 w-3.5" /></button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -124,10 +124,10 @@ function AdmitCardsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

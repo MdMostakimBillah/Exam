@@ -40,16 +40,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           const Icon = icons[t.type];
           return (
             <div key={t.id} className={cn(
-              'flex items-center gap-3 rounded-lg px-5 py-4 shadow-2xl animate-slideInRight backdrop-blur-xl min-w-[300px]',
+              'flex items-center gap-3 rounded-md px-5 py-4 shadow-2xl animate-slideInRight backdrop-blur-xl min-w-[300px]',
               isDark
                 ? 'border border-white/[0.06] bg-[#0D0D0D] shadow-black/40'
                 : 'border border-zinc-200 bg-white shadow-zinc-200/50'
             )}>
-              <div className={cn('rounded-lg p-1.5', bgColors[t.type])}>
+              <div className={cn('rounded-md p-1.5', bgColors[t.type])}>
                 <Icon className={cn('h-4 w-4 shrink-0', colors[t.type])} />
               </div>
               <span className={`text-sm flex-1 ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{t.message}</span>
-              <button onClick={() => dismiss(t.id)} className={`ml-2 rounded-lg p-1 transition-all ${isDark ? "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
+              <button onClick={() => dismiss(t.id)} className={`ml-2 rounded-md p-1 transition-all ${isDark ? "text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>

@@ -36,7 +36,7 @@ export default function VerifyCertificatePage() {
       <header className={`border-b backdrop-blur-xl ${isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"}`}>
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
             <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
           </Link>
           <div className="flex items-center gap-4">
@@ -83,7 +83,7 @@ export default function VerifyCertificatePage() {
         {certificate && (
           <Card className="mt-6 border-emerald-500/20">
             <CardContent className="p-6">
-              <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 mb-6">
+              <div className="flex items-center gap-3 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-4 mb-6">
                 <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-emerald-300">Certificate Verified</p>

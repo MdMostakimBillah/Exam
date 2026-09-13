@@ -33,7 +33,7 @@ function StatCard({ title, value, change, icon: Icon, description, className }: 
             )}
             {description && <p className={`text-xs ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{description}</p>}
           </div>
-          <div className={`rounded-lg p-3 transition-all duration-300 group-hover:scale-110 ${isDark ? "bg-zinc-800/80 group-hover:bg-zinc-700/80" : "bg-zinc-100 group-hover:bg-zinc-200"}`}>
+          <div className={`rounded-md p-3 transition-all duration-300 group-hover:scale-110 ${isDark ? "bg-zinc-800/80 group-hover:bg-zinc-700/80" : "bg-zinc-100 group-hover:bg-zinc-200"}`}>
             <Icon className={`h-5 w-5 transition-colors ${isDark ? "text-zinc-400 group-hover:text-zinc-300" : "text-zinc-500 group-hover:text-zinc-700"}`} />
           </div>
         </div>

@@ -47,7 +47,7 @@ export default function ResultPage() {
       <header className={`border-b backdrop-blur-xl ${isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"}`}>
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-sm ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
             <span className={`text-sm font-semibold ${isDark ? "text-zinc-100" : "text-gray-900"}`}>{t("brand")}</span>
           </Link>
           <div className="flex items-center gap-4">
@@ -152,26 +152,26 @@ export default function ResultPage() {
               </div>
 
               <div className="border-t border-white/[0.06] pt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="text-center p-3 rounded-lg bg-white/[0.02]">
+                <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Total</span>
                   <p className="text-lg font-bold text-zinc-100">{result.totalMarks}/{result.totalFullMarks}</p>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-white/[0.02]">
+                <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Percentage</span>
                   <p className="text-lg font-bold text-zinc-100">{result.percentage.toFixed(1)}%</p>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-white/[0.02]">
+                <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Grade</span>
                   <p className="text-lg font-bold text-zinc-100">{result.grade}</p>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-white/[0.02]">
+                <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Position</span>
                   <p className="text-lg font-bold text-zinc-100">#{result.position}</p>
                 </div>
               </div>
 
               {result.scholarshipStatus === 'ELIGIBLE' && (
-                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+                <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3">
                   <CheckCircle className="h-4 w-4 text-emerald-400" />
                   <span className="text-sm text-emerald-300">Congratulations! You are eligible for the scholarship.</span>
                 </div>

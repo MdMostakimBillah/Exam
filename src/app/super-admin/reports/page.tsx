@@ -32,7 +32,7 @@ export default function ReportsPage() {
   const totalExams = exams.length;
   const totalResults = filteredResults.length;
 
-  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-2xl" : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
@@ -57,7 +57,7 @@ export default function ReportsPage() {
             { label: isBn ? 'মোট ফলাফল' : 'Total Results', value: totalResults },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <BarChart3 className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -170,13 +170,13 @@ function ReportsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-12 mb-6`} />
+        <div className={`${card} rounded-md h-12 mb-6`} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`${card} rounded-2xl h-48`} />
+            <div key={i} className={`${card} rounded-md h-48`} />
           ))}
         </div>
       </div>

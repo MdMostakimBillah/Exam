@@ -93,7 +93,7 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         )}>
           <div className="flex items-center gap-3">
             <div className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-xl font-bold text-[10px] transition-transform duration-300',
+              'flex h-9 w-9 items-center justify-center rounded-md font-bold text-[10px] transition-transform duration-300',
               isDark ? 'bg-white text-black' : 'bg-black text-white'
             )}>
               BMES
@@ -131,7 +131,7 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               key={item.href}
               onClick={() => router.push(item.href)}
               className={cn(
-                'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200',
+                'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200',
                 isActive
                   ? isDark
                     ? 'bg-white text-black font-medium'
@@ -163,7 +163,7 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           isDark ? 'bg-[#0D0D0D] border-white/[0.04]' : 'bg-white border-gray-200/50'
         )}>
           <div className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl',
+            'flex items-center gap-3 px-3 py-2.5 rounded-md',
             isDark ? 'bg-white/[0.04]' : 'bg-gray-50'
           )}>
             <div className={cn(
@@ -186,7 +186,7 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           <button
             onClick={handleLogout}
             className={cn(
-              'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 mt-1 text-sm transition-all duration-200',
+              'flex w-full items-center gap-3 rounded-md px-3 py-2.5 mt-1 text-sm transition-all duration-200',
               isDark
                 ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'

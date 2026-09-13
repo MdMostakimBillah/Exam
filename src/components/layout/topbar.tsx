@@ -45,7 +45,7 @@ function Topbar({ sidebarCollapsed }: TopbarProps) {
       {/* Search */}
       <div className="flex items-center gap-4">
         <button className={cn(
-          'flex items-center gap-3 rounded-xl border px-4 py-2 text-sm transition-all duration-200',
+          'flex items-center gap-3 rounded-md border px-4 py-2 text-sm transition-all duration-200',
           isDark 
             ? 'border-white/[0.06] bg-white/[0.02] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.1]' 
             : 'border-gray-200/50 bg-gray-50/80 text-gray-500 hover:text-gray-900 hover:bg-gray-100 hover:border-gray-300'
@@ -64,7 +64,7 @@ function Topbar({ sidebarCollapsed }: TopbarProps) {
       {/* Right side */}
       <div className="flex items-center gap-2">
         <button className={cn(
-          'rounded-xl p-2.5 transition-all duration-200 relative',
+          'rounded-md p-2.5 transition-all duration-200 relative',
           isDark 
             ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]' 
             : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
@@ -78,7 +78,7 @@ function Topbar({ sidebarCollapsed }: TopbarProps) {
             align="right"
             trigger={
               <button className={cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200',
+                'flex items-center gap-3 rounded-md px-3 py-2 transition-all duration-200',
                 isDark 
                   ? 'hover:bg-white/[0.05]' 
                   : 'hover:bg-gray-100'

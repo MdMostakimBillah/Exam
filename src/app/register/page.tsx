@@ -207,7 +207,7 @@ export default function RegisterPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]" />
         </div>
         <div className="text-center max-w-md relative z-10 px-4">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 rounded-md bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
             {mounted && <CheckCircle className="h-10 w-10 text-emerald-400" />}
           </div>
           <h1 className={`text-2xl font-bold mb-3 ${text}`}>
@@ -264,7 +264,7 @@ export default function RegisterPage() {
                       <div className="relative">
                         {logoPreview ? (
                           <div
-                            className={`h-16 w-16 rounded-xl overflow-hidden ${isDark ? "border-2 border-white/10" : "border-2 border-zinc-200"}`}
+                            className={`h-16 w-16 rounded-md overflow-hidden ${isDark ? "border-2 border-white/10" : "border-2 border-zinc-200"}`}
                           >
                             <img
                               src={logoPreview}
@@ -274,7 +274,7 @@ export default function RegisterPage() {
                           </div>
                         ) : (
                           <div
-                            className={`h-16 w-16 rounded-xl flex items-center justify-center ${isDark ? "bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.06]" : "bg-zinc-100 border border-zinc-200"}`}
+                            className={`h-16 w-16 rounded-md flex items-center justify-center ${isDark ? "bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.06]" : "bg-zinc-100 border border-zinc-200"}`}
                           >
                             {mounted && (
                               <Building2
@@ -502,7 +502,7 @@ export default function RegisterPage() {
                 <div className="max-w-sm mx-auto py-4">
                   <div className="text-center mb-6">
                     <div
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3 ${isDark ? "bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20" : "bg-blue-50 border border-blue-200"}`}
+                      className={`w-14 h-14 rounded-md flex items-center justify-center mx-auto mb-3 ${isDark ? "bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20" : "bg-blue-50 border border-blue-200"}`}
                     >
                       {mounted && (
                         <Mail
@@ -526,7 +526,7 @@ export default function RegisterPage() {
 
                   <div className="space-y-4">
                     {emailError && (
-                      <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                      <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20">
                         <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
                         <p className="text-xs text-red-400">{emailError}</p>
                       </div>

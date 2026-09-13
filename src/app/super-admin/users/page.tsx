@@ -150,8 +150,8 @@ export default function UsersPage() {
   };
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200";
@@ -172,7 +172,7 @@ export default function UsersPage() {
           </div>
           <button
             onClick={handleAdd}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
               isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
             }`}
           >
@@ -188,7 +188,7 @@ export default function UsersPage() {
             { icon: Building2, label: isBn ? "প্রতিষ্ঠান অ্যাডমিন" : "Institution Admins", value: instAdminCount },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -237,7 +237,7 @@ export default function UsersPage() {
           </div>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
+              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
                 <Users className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -274,9 +274,9 @@ export default function UsersPage() {
                   <TableRow key={user.id} className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"}`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-600"}`}>
+                        <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-600"}`}>
                           {user.avatar ? (
-                            <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-lg object-cover" />
+                            <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-md object-cover" />
                           ) : (
                             user.name.charAt(0).toUpperCase()
                           )}
@@ -407,7 +407,7 @@ export default function UsersPage() {
         <ModalFooter>
           <button
             onClick={() => setShowAddModal(false)}
-            className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
               isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"
             }`}
           >
@@ -415,7 +415,7 @@ export default function UsersPage() {
           </button>
           <button
             onClick={handleSaveAdd}
-            className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
               isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
             }`}
           >
@@ -481,7 +481,7 @@ export default function UsersPage() {
         <ModalFooter>
           <button
             onClick={() => { setShowEditModal(false); setEditingUser(null); }}
-            className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
               isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"
             }`}
           >
@@ -489,7 +489,7 @@ export default function UsersPage() {
           </button>
           <button
             onClick={handleSaveEdit}
-            className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
               isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
             }`}
           >
@@ -506,7 +506,7 @@ export default function UsersPage() {
         description={isBn ? "এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না" : "This action cannot be undone"}
       >
         <div className="flex flex-col items-center text-center py-2">
-          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? "bg-red-500/10" : "bg-red-50"}`}>
+          <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? "bg-red-500/10" : "bg-red-50"}`}>
             <Trash2 className={`h-7 w-7 ${isDark ? "text-red-400" : "text-red-500"}`} />
           </div>
           <p className={`text-sm ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
@@ -518,7 +518,7 @@ export default function UsersPage() {
         <ModalFooter>
           <button
             onClick={() => { setShowDeleteModal(false); setDeletingUser(null); }}
-            className={`px-4 py-2 rounded-xl text-[11px] font-medium transition-colors ${
+            className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
               isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"
             }`}
           >
@@ -526,7 +526,7 @@ export default function UsersPage() {
           </button>
           <button
             onClick={handleConfirmDelete}
-            className="px-4 py-2 rounded-xl text-[11px] font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+            className="px-4 py-2 rounded-md text-[11px] font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
           >
             {isBn ? "মুছুন" : "Delete"}
           </button>
@@ -544,11 +544,11 @@ function UsersSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className={`${card} rounded-2xl h-[52px]`} />
+            <div key={i} className={`${card} rounded-md h-[52px]`} />
           ))}
         </div>
-        <div className={`${card} rounded-2xl h-12 mb-6`} />
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-12 mb-6`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

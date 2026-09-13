@@ -102,8 +102,8 @@ export default function InstitutionStudentsPage() {
   };
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
@@ -122,7 +122,7 @@ export default function InstitutionStudentsPage() {
               {isBn ? 'সমস্ত নিবন্ধিত শিক্ষার্থী পরিচালনা করুন' : 'Manage all registered students'}
             </p>
           </div>
-          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
+          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
             <Plus className="h-4 w-4" /> {isBn ? 'শিক্ষার্থী যোগ করুন' : 'Add Student'}
           </button>
         </div>
@@ -135,7 +135,7 @@ export default function InstitutionStudentsPage() {
             { icon: Users, label: isBn ? 'শ্রেণী' : 'Classes', value: classNames.length },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ export default function InstitutionStudentsPage() {
           </div>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
                 <Users className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found'}</p>
@@ -192,7 +192,7 @@ export default function InstitutionStudentsPage() {
                   <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                        <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                           {student.firstName.charAt(0)}
                         </div>
                         <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{student.firstName} {student.lastName}</span>
@@ -256,8 +256,8 @@ export default function InstitutionStudentsPage() {
           ))}
         </div>
         <ModalFooter>
-          <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleSave} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+          <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
+          <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
             {editingStudent ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create')}
           </button>
         </ModalFooter>
@@ -269,8 +269,8 @@ export default function InstitutionStudentsPage() {
           {isBn ? `"${showDeleteConfirm?.firstName} ${showDeleteConfirm?.lastName}" মুছে ফেলা হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `"${showDeleteConfirm?.firstName} ${showDeleteConfirm?.lastName}" will be permanently deleted. This action cannot be undone.`}
         </p>
         <ModalFooter>
-          <button onClick={() => setShowDeleteConfirm(null)} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="px-4 py-2 rounded-xl text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">{isBn ? 'মুছুন' : 'Delete'}</button>
+          <button onClick={() => setShowDeleteConfirm(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
+          <button onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">{isBn ? 'মুছুন' : 'Delete'}</button>
         </ModalFooter>
       </Modal>
     </div>
@@ -283,13 +283,13 @@ function StudentsSkeleton({ isDark }: { isDark: boolean }) {
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
-          <div className={`h-8 w-48 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
+          <div className={`h-8 w-48 rounded-md ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
           <div className={`h-4 w-64 rounded mt-2 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-200/60'}`} />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {[1, 2, 3].map((i) => (<div key={i} className={`${card} rounded-2xl h-[52px]`} />))}
+          {[1, 2, 3].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
         </div>
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );

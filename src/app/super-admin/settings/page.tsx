@@ -166,8 +166,8 @@ export default function SuperAdminSettingsPage() {
   if (!mounted) return <SettingsSkeleton isDark={isDark} />;
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
 
   const tabs: { id: Tab; label: string; labelBn: string; icon: React.ReactNode }[] = [
     { id: "profile", label: "Profile", labelBn: "প্রোফাইল", icon: <Building2 className="h-4 w-4" /> },
@@ -205,7 +205,7 @@ export default function SuperAdminSettingsPage() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
+                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm transition-all duration-200",
                     activeTab === tab.id
                       ? isDark
                         ? "bg-white text-black font-medium"
@@ -293,7 +293,7 @@ export default function SuperAdminSettingsPage() {
                     onClick={handleSaveProfile}
                     disabled={saving}
                     className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       isDark
                         ? "bg-white text-black hover:bg-white/90"
                         : "bg-zinc-900 text-white hover:bg-zinc-800",
@@ -354,7 +354,7 @@ export default function SuperAdminSettingsPage() {
                     onClick={handleSaveAccount}
                     disabled={saving}
                     className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       isDark
                         ? "bg-white text-black hover:bg-white/90"
                         : "bg-zinc-900 text-white hover:bg-zinc-800",
@@ -473,7 +473,7 @@ export default function SuperAdminSettingsPage() {
                     onClick={handleChangePassword}
                     disabled={saving || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
                     className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       isDark
                         ? "bg-white text-black hover:bg-white/90"
                         : "bg-zinc-900 text-white hover:bg-zinc-800",
@@ -512,7 +512,7 @@ export default function SuperAdminSettingsPage() {
                   ].map((item, i) => (
                     <div
                       key={i}
-                      className={`flex items-center justify-between py-4 px-4 rounded-xl transition-colors ${
+                      className={`flex items-center justify-between py-4 px-4 rounded-md transition-colors ${
                         i === 0 ? "" : `border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}`
                       }`}
                     >
@@ -551,7 +551,7 @@ export default function SuperAdminSettingsPage() {
                     onClick={handleSaveNotifications}
                     disabled={saving}
                     className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       isDark
                         ? "bg-white text-black hover:bg-white/90"
                         : "bg-zinc-900 text-white hover:bg-zinc-800",
@@ -582,12 +582,12 @@ function SettingsSkeleton({ isDark }: { isDark: boolean }) {
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
-          <div className={`h-8 w-48 rounded-lg ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
+          <div className={`h-8 w-48 rounded-md ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
           <div className={`h-4 w-64 rounded mt-2 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-200/60'}`} />
         </div>
         <div className="flex gap-6">
-          <div className={`${card} w-56 h-48 rounded-2xl`} />
-          <div className={`flex-1 ${card} rounded-2xl h-96`} />
+          <div className={`${card} w-56 h-48 rounded-md`} />
+          <div className={`flex-1 ${card} rounded-md h-96`} />
         </div>
       </div>
     </div>

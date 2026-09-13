@@ -38,7 +38,7 @@ export default function PricingPage() {
       <header className="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#080808]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-bold text-sm">S</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-black font-bold text-sm">S</div>
             <span className="text-sm font-semibold text-zinc-100">ScholarX</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -63,7 +63,7 @@ export default function PricingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map(plan => (
-              <div key={plan.name} className={`rounded-xl border p-6 ${plan.popular ? 'border-white/20 bg-[#151515]' : 'border-white/[0.06] bg-[#111111]'}`}>
+              <div key={plan.name} className={`rounded-md border p-6 ${plan.popular ? 'border-white/20 bg-[#151515]' : 'border-white/[0.06] bg-[#111111]'}`}>
                 {plan.popular && <span className="text-[10px] uppercase tracking-wider text-zinc-400 bg-white/10 px-2 py-0.5 rounded-full">Most Popular</span>}
                 <h3 className="text-lg font-semibold text-zinc-100 mt-2">{plan.name}</h3>
                 <p className="text-xs text-zinc-500 mb-4">{plan.desc}</p>
@@ -92,7 +92,7 @@ export default function PricingPage() {
       <footer className="border-t border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-black font-bold text-xs">S</div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-black font-bold text-xs">S</div>
             <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
           </div>
           <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>

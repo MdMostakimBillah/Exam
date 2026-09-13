@@ -17,7 +17,7 @@ export default function ContactPage() {
       <header className="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#080808]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-bold text-sm">S</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-black font-bold text-sm">S</div>
             <span className="text-sm font-semibold text-zinc-100">ScholarX</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -48,7 +48,7 @@ export default function ContactPage() {
                 { icon: MapPin, label: 'Address', value: 'Dhaka, Bangladesh' },
               ].map(item => (
                 <div key={item.label} className="flex items-start gap-3">
-                  <div className="rounded-lg bg-zinc-800/50 p-2"><item.icon className="h-4 w-4 text-zinc-400" /></div>
+                  <div className="rounded-md bg-zinc-800/50 p-2"><item.icon className="h-4 w-4 text-zinc-400" /></div>
                   <div>
                     <p className="text-xs text-zinc-600 mb-0.5">{item.label}</p>
                     <p className="text-sm text-zinc-300">{item.value}</p>
@@ -59,7 +59,7 @@ export default function ContactPage() {
 
             <div className="md:col-span-2">
               {submitted ? (
-                <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 text-center">
+                <div className="rounded-md border border-white/[0.06] bg-[#111111] p-8 text-center">
                   <div className="rounded-full bg-emerald-500/10 p-3 w-fit mx-auto mb-4">
                     <Send className="h-6 w-6 text-emerald-400" />
                   </div>
@@ -67,7 +67,7 @@ export default function ContactPage() {
                   <p className="text-sm text-zinc-500">Thank you for reaching out. We&apos;ll get back to you within 24 hours.</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="rounded-xl border border-white/[0.06] bg-[#111111] p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="rounded-md border border-white/[0.06] bg-[#111111] p-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-zinc-500 mb-1">Name</label>
@@ -99,7 +99,7 @@ export default function ContactPage() {
       <footer className="border-t border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-black font-bold text-xs">S</div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-black font-bold text-xs">S</div>
             <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
           </div>
           <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>

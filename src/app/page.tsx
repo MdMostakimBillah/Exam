@@ -208,7 +208,7 @@ export default function HomePage() {
       <header className={`fixed top-0 left-0 right-0 z-50 ${glassBg}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
+            <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
             <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -219,14 +219,14 @@ export default function HomePage() {
             <Link href="/verify-certificate" className={`text-sm transition-colors ${textNav}`}>{t("nav.verify")}</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <button onClick={() => setLang(lang === "en" ? "bn" : "en")} className={`p-2.5 rounded-xl transition-all ${iconBtn}`}>
+            <button onClick={() => setLang(lang === "en" ? "bn" : "en")} className={`p-2.5 rounded-md transition-all ${iconBtn}`}>
               <Globe className="w-4 h-4" />
             </button>
-            <button onClick={toggleTheme} className={`p-2.5 rounded-xl transition-all ${iconBtn}`}>
+            <button onClick={toggleTheme} className={`p-2.5 rounded-md transition-all ${iconBtn}`}>
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <Link href="/login" className={`text-sm px-4 py-2 rounded-xl transition-all ${textNav}`}>{t("nav.signIn")}</Link>
-            <Link href="/register" className={`text-sm px-5 py-2.5 rounded-xl font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
+            <Link href="/login" className={`text-sm px-4 py-2 rounded-md transition-all ${textNav}`}>{t("nav.signIn")}</Link>
+            <Link href="/register" className={`text-sm px-5 py-2.5 rounded-md font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
           </div>
         </div>
       </header>
@@ -256,10 +256,10 @@ export default function HomePage() {
               <p className={`text-base sm:text-lg max-w-lg leading-relaxed ${textSec}`}>{t("hero.subtitle")}</p>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <Link href="/register" className={`inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-all hover:scale-105 ${btnPrimary}`}>
+                <Link href="/register" className={`inline-flex items-center gap-2 px-8 py-4 rounded-md text-sm font-medium transition-all hover:scale-105 ${btnPrimary}`}>
                   {t("hero.ctaRegister")} <ArrowRight className="h-4 w-4" />
                 </Link>
-                <a href="#platform" className={`inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-all hover:scale-105 ${btnSecondary}`}>
+                <a href="#platform" className={`inline-flex items-center gap-2 px-8 py-4 rounded-md text-sm font-medium transition-all hover:scale-105 ${btnSecondary}`}>
                   {t("hero.ctaExplore")}
                 </a>
               </div>
@@ -328,9 +328,9 @@ export default function HomePage() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className={`group rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard}`}
+                className={`group rounded-md p-6 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${glassCard}`}
               >
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 ${isDark ? "bg-white/10" : "bg-zinc-100 border border-zinc-200"}`}>
+                <div className={`w-11 h-11 rounded-md flex items-center justify-center mb-5 transition-transform group-hover:scale-110 ${isDark ? "bg-white/10" : "bg-zinc-100 border border-zinc-200"}`}>
                   <f.icon className={`h-5 w-5 ${textSec}`} />
                 </div>
                 <h3 className={`text-sm font-semibold mb-2 ${text}`}>{f.title}</h3>
@@ -373,7 +373,7 @@ export default function HomePage() {
             </div>
 
             <div ref={platformCardReveal.ref} className={platformCardReveal.className}>
-              <div className={`rounded-2xl overflow-hidden ${glassCard}`}>
+              <div className={`rounded-md overflow-hidden ${glassCard}`}>
                 <div className={`h-12 flex items-center gap-2 px-5 ${isDark ? "bg-white/5" : "bg-zinc-100"}`}>
                   <div className="h-3 w-3 rounded-full bg-red-500/80" />
                   <div className="h-3 w-3 rounded-full bg-amber-500/80" />
@@ -386,13 +386,13 @@ export default function HomePage() {
                       { label: "Students", value: "2,240" },
                       { label: "Exams", value: "3" },
                     ].map((item) => (
-                      <div key={item.label} className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                      <div key={item.label} className={`rounded-md p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
                         <p className={`text-xs ${textSec} mb-1`}>{item.label}</p>
                         <p className={`text-xl font-semibold ${text}`}>{item.value}</p>
                       </div>
                     ))}
                   </div>
-                  <div className={`rounded-xl p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                  <div className={`rounded-md p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
                     <p className={`text-xs ${textSec} mb-3`}>Registration Trends</p>
                     <div className="flex items-end gap-2 h-16">
                       {[40, 55, 70, 85, 60, 75, 90, 65, 80, 95, 70, 88].map((h, i) => (
@@ -424,7 +424,7 @@ export default function HomePage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
               {steps.map((step, i) => (
                 <div key={step} className="relative text-center">
-                  <div className={`relative w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center backdrop-blur-xl ${glassCard} hover:scale-110 transition-transform`}>
+                  <div className={`relative w-14 h-14 rounded-md mx-auto mb-4 flex items-center justify-center backdrop-blur-xl ${glassCard} hover:scale-110 transition-transform`}>
                     <span className={`text-lg font-semibold ${text}`}>{i + 1}</span>
                   </div>
                   <p className={`text-sm leading-snug ${textSec}`}>{step}</p>
@@ -445,7 +445,7 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {testimonials.map((testimonial) => (
-              <div key={testimonial.name} className={`rounded-2xl p-6 ${glassCard}`}>
+              <div key={testimonial.name} className={`rounded-md p-6 ${glassCard}`}>
                 <div className="flex items-center gap-1 mb-4">
                   {[1,2,3,4,5].map((star) => (
                     <Star key={star} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -453,7 +453,7 @@ export default function HomePage() {
                 </div>
                 <p className={`text-sm leading-relaxed mb-6 ${text}`}>「{testimonial.text}」</p>
                 <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm font-semibold ${isDark ? "bg-white/10 text-zinc-300" : "bg-zinc-900 text-white"}`}>
+                  <div className={`h-10 w-10 rounded-md flex items-center justify-center text-sm font-semibold ${isDark ? "bg-white/10 text-zinc-300" : "bg-zinc-900 text-white"}`}>
                     {testimonial.avatar}
                   </div>
                   <div>
@@ -476,7 +476,7 @@ export default function HomePage() {
             <div className="relative z-10">
               <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6 ${text}`}>{t("cta.title")}</h2>
               <p className={`text-base mb-10 max-w-md mx-auto ${textSec}`}>{t("cta.subtitle")}</p>
-              <Link href="/register" className={`inline-flex items-center gap-2 px-10 py-4 rounded-2xl text-sm font-medium transition-all hover:scale-105 ${btnPrimary}`}>
+              <Link href="/register" className={`inline-flex items-center gap-2 px-10 py-4 rounded-md text-sm font-medium transition-all hover:scale-105 ${btnPrimary}`}>
                 {t("cta.button")} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -490,7 +490,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-5">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
+                <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
                 <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
               </div>
               <p className={`text-xs leading-relaxed ${textSec}`}>{t("footer.tagline")}</p>

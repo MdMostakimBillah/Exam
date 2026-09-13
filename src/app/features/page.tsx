@@ -8,7 +8,7 @@ export default function FeaturesPage() {
       <header className="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#080808]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-bold text-sm">S</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-black font-bold text-sm">S</div>
             <span className="text-sm font-semibold text-zinc-100">ScholarX</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -48,8 +48,8 @@ export default function FeaturesPage() {
               { icon: Bell, title: 'Notifications', desc: 'Global notification center with real-time alerts for important events.' },
               { icon: Search, title: 'Certificate Verification', desc: 'Public certificate verification portal with QR code scanning support.' },
             ].map(f => (
-              <div key={f.title} className="rounded-xl border border-white/[0.06] bg-[#111111] p-5 hover:border-white/[0.1] transition-colors">
-                <div className="rounded-lg bg-zinc-800/50 p-2 w-fit mb-3">
+              <div key={f.title} className="rounded-md border border-white/[0.06] bg-[#111111] p-5 hover:border-white/[0.1] transition-colors">
+                <div className="rounded-md bg-zinc-800/50 p-2 w-fit mb-3">
                   <f.icon className="h-5 w-5 text-zinc-400" />
                 </div>
                 <h3 className="text-sm font-semibold text-zinc-100 mb-1">{f.title}</h3>
@@ -63,7 +63,7 @@ export default function FeaturesPage() {
       <footer className="border-t border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-black font-bold text-xs">S</div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-black font-bold text-xs">S</div>
             <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
           </div>
           <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>

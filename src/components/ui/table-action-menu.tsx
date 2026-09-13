@@ -49,7 +49,7 @@ export function TableActionMenu({ id, openId, onToggle, isDark, children }: Tabl
           <div className="fixed inset-0 z-40" onClick={() => onToggle(null)} />
           <div
             className={cn(
-              "fixed z-50 w-40 rounded-lg border py-1 shadow-lg",
+              "fixed z-50 w-40 rounded-md border py-1 shadow-lg",
               isDark ? "bg-[#1a1a1c] border-white/[0.08]" : "bg-white border-zinc-200"
             )}
             style={{ top: pos.top, right: pos.right }}

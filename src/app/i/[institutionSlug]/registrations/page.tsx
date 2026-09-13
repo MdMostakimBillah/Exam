@@ -126,8 +126,8 @@ export default function InstitutionRegistrationsPage() {
   };
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-2xl"
-    : "bg-white border border-zinc-200 rounded-2xl shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
@@ -145,7 +145,7 @@ export default function InstitutionRegistrationsPage() {
               {isBn ? "বৃত্তি পরীক্ষার জন্য শিক্ষার্থী নিবন্ধন পরিচালনা করুন" : "Manage student registrations for scholarship exams"}
             </p>
           </div>
-          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
+          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
             <Plus className="h-4 w-4" /> {isBn ? "নতুন নিবন্ধন" : "New Registration"}
           </button>
         </div>
@@ -158,7 +158,7 @@ export default function InstitutionRegistrationsPage() {
             { icon: ClipboardList, label: isBn ? "প্রত্যাখ্যাত" : "Rejected", value: statusCounts.REJECTED },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -200,7 +200,7 @@ export default function InstitutionRegistrationsPage() {
           </div>
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
+              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
                 <ClipboardList className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? "কোনো নিবন্ধন পাওয়া যায়নি" : "No registrations found"}</p>
@@ -282,7 +282,7 @@ export default function InstitutionRegistrationsPage() {
             />
           </div>
           {selectedExam && (
-            <div className={`${isDark ? "bg-white/[0.04]" : "bg-zinc-50"} rounded-xl p-3 border ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+            <div className={`${isDark ? "bg-white/[0.04]" : "bg-zinc-50"} rounded-md p-3 border ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
               <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "নিবন্ধন ফি" : "Registration Fee"}</p>
               <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>&#2547;{selectedExam.registrationFee.toLocaleString()}</p>
             </div>
@@ -293,8 +293,8 @@ export default function InstitutionRegistrationsPage() {
           </div>
         </div>
         <ModalFooter>
-          <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বাতিল" : "Cancel"}</button>
-          <button onClick={handleSave} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+          <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বাতিল" : "Cancel"}</button>
+          <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
             {isBn ? "তৈরি করুন" : "Create"}
           </button>
         </ModalFooter>
@@ -322,7 +322,7 @@ export default function InstitutionRegistrationsPage() {
           </div>
         )}
         <ModalFooter>
-          <button onClick={() => setViewingReg(null)} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বন্ধ" : "Close"}</button>
+          <button onClick={() => setViewingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বন্ধ" : "Close"}</button>
         </ModalFooter>
       </Modal>
 
@@ -334,10 +334,10 @@ export default function InstitutionRegistrationsPage() {
             : (isBn ? `"${confirmAction?.reg.applicationId}" প্রত্যাখ্যাত হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `"${confirmAction?.reg.applicationId}" will be rejected. This action cannot be undone.`)}
         </p>
         <ModalFooter>
-          <button onClick={() => setConfirmAction(null)} className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বাতিল" : "Cancel"}</button>
+          <button onClick={() => setConfirmAction(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বাতিল" : "Cancel"}</button>
           <button
             onClick={() => confirmAction && (confirmAction.type === "approve" ? handleApprove(confirmAction.reg) : handleReject(confirmAction.reg))}
-            className={cn("px-4 py-2 rounded-xl text-[13px] font-medium transition-all", confirmAction?.type === "approve" ? "bg-green-600 text-white hover:bg-green-700" : "bg-red-600 text-white hover:bg-red-700")}
+            className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", confirmAction?.type === "approve" ? "bg-green-600 text-white hover:bg-green-700" : "bg-red-600 text-white hover:bg-red-700")}
           >
             {confirmAction?.type === "approve" ? (isBn ? "অনুমোদন" : "Approve") : (isBn ? "প্রত্যাখ্যান" : "Reject")}
           </button>
@@ -354,16 +354,16 @@ function RegistrationsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <div className={`h-8 w-48 rounded-lg ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
+            <div className={`h-8 w-48 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
             <div className={`h-4 w-64 rounded mt-2 ${isDark ? "bg-white/[0.04]" : "bg-zinc-200/60"}`} />
           </div>
-          <div className={`h-10 w-36 rounded-xl ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
+          <div className={`h-10 w-36 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (<div key={i} className={`${card} rounded-2xl h-[52px]`} />))}
+          {[1, 2, 3, 4].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
         </div>
-        <div className={`${card} rounded-2xl h-12 mb-8`} />
-        <div className={`${card} rounded-2xl h-64`} />
+        <div className={`${card} rounded-md h-12 mb-8`} />
+        <div className={`${card} rounded-md h-64`} />
       </div>
     </div>
   );
