@@ -68,6 +68,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     initializeDemoData();
+    emailjs.init(EMAILJS_CONFIG.publicKey);
     setMounted(true);
   }, []);
 
@@ -119,9 +120,11 @@ export default function RegisterPage() {
       );
       setStoredCode(code);
       setCountdown(60);
-    } catch {
+    } catch (err: unknown) {
+      console.error("EmailJS error:", err);
+      const msg = err instanceof Error ? err.message : String(err);
       setEmailError(
-        "Failed to send verification email. Please check your EmailJS configuration."
+        `Failed to send email: ${msg}`
       );
     } finally {
       setSending(false);
