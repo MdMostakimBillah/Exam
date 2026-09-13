@@ -31,6 +31,13 @@ export default function SuperAdminDashboard() {
   const results = getResults();
   const payments = getPayments();
 
+  const monthlyInstitutions = Array.from({ length: 12 }, (_, i) =>
+    institutions.filter(inst => {
+      const d = new Date(inst.createdAt);
+      return d.getFullYear() === new Date().getFullYear() && d.getMonth() === i;
+    }).length
+  );
+  const maxMonthly = Math.max(...monthlyInstitutions, 1);
   const totalRevenue = payments.reduce((sum, p) => sum + (p.status === 'PAID' ? p.amount : 0), 0);
   const totalDue = payments.reduce((sum, p) => sum + (p.status === 'PENDING' ? p.amount : 0), 0);
   const activeExams = exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length;
@@ -157,11 +164,11 @@ export default function SuperAdminDashboard() {
               </div>
               <div className="p-5">
                 <div className="flex items-end gap-2 h-32">
-                  {[3, 5, 2, 7, 4, 6, 8, 5, 3, 6, 4, institutions.length].map((h, i) => (
+                  {monthlyInstitutions.map((h, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <div
                         className={`w-full rounded-t-md transition-all ${isDark ? "bg-white/[0.12]" : "bg-zinc-200"}`}
-                        style={{ height: `${(h / 10) * 100}%` }}
+                        style={{ height: `${(h / maxMonthly) * 100}%` }}
                       />
                     </div>
                   ))}
