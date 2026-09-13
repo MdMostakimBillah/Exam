@@ -174,7 +174,7 @@ export default function InstitutionsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'যোগাযোগ' : 'Contact'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Students'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}></TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্যকলাপ' : 'Action'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -187,7 +187,7 @@ export default function InstitutionsPage() {
                         </div>
                         <div>
                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{inst.name}</p>
-                          <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{inst.city}, {inst.district}</p>
+                          <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{inst.address}</p>
                         </div>
                       </div>
                     </TableCell>
