@@ -1,5 +1,6 @@
 import { User, UserRole } from '../types';
 import { getStoreItem, setStoreItem } from '../storage/storage';
+import { getUserByEmail } from '../storage/users';
 
 const AUTH_KEY = 'auth_user';
 
@@ -18,7 +19,6 @@ export function setCurrentUser(user: User | null): void {
 }
 
 export function login(email: string, password: string): User | null {
-  const { getUserByEmail } = require('@/lib/storage/users') as typeof import('@/lib/storage/users');
   const user = getUserByEmail(email);
   if (user && user.password === password) {
     setCurrentUser(user);
