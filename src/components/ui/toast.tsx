@@ -40,7 +40,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           const Icon = icons[t.type];
           return (
             <div key={t.id} className={cn(
-              'flex items-center gap-3 rounded-xl px-5 py-4 shadow-2xl animate-slideInRight backdrop-blur-xl min-w-[300px]',
+              'flex items-center gap-3 rounded-lg px-5 py-4 shadow-2xl animate-slideInRight backdrop-blur-xl min-w-[300px]',
               isDark
                 ? 'border border-white/[0.06] bg-[#0D0D0D] shadow-black/40'
                 : 'border border-zinc-200 bg-white shadow-zinc-200/50'

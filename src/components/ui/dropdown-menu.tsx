@@ -29,7 +29,7 @@ function DropdownMenu({ trigger, children, align = 'right' }: DropdownMenuProps)
       {open && (
         <div
           className={cn(
-            'absolute z-50 mt-2 min-w-[200px] rounded-xl border p-1.5 shadow-2xl animate-scaleIn backdrop-blur-xl',
+            'absolute z-50 mt-2 min-w-[200px] rounded-md border p-1.5 shadow-2xl animate-scaleIn backdrop-blur-xl',
             isDark
               ? 'border-white/[0.06] bg-[#0D0D0D]'
               : 'border-zinc-200 bg-white',
@@ -72,7 +72,7 @@ function DropdownMenuItem({ children, onClick, className, destructive }: {
     <button
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 cursor-pointer',
+        'flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-sm transition-all duration-200 cursor-pointer',
         isDark ? 'hover:bg-white/[0.05] text-zinc-300' : 'hover:bg-zinc-100 text-zinc-700',
         destructive ? 'text-red-500 hover:text-red-600' : '',
         className
@@ -98,7 +98,7 @@ function DropdownMenuCheckboxItem({ children, checked, onCheckedChange, classNam
         onCheckedChange?.(!checked);
       }}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 cursor-pointer',
+        'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all duration-200 cursor-pointer',
         isDark ? 'hover:bg-white/[0.05] text-zinc-300' : 'hover:bg-zinc-100 text-zinc-700',
         className
       )}

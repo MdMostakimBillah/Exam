@@ -32,7 +32,7 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className={cn(
-        'relative z-50 w-full rounded-2xl p-6 shadow-2xl animate-scaleIn backdrop-blur-xl',
+        'relative z-50 w-full rounded-xl p-6 shadow-2xl animate-scaleIn backdrop-blur-xl',
         isDark
           ? 'border border-white/[0.06] bg-[#0D0D0D] shadow-black/50'
           : 'border border-zinc-200 bg-white shadow-zinc-200/50',
@@ -43,7 +43,7 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
             {title && <h2 className={`text-lg font-semibold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{title}</h2>}
             {description && <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>{description}</p>}
           </div>
-          <button onClick={onClose} className={`rounded-lg p-1.5 transition-all ${isDark ? "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
+          <button onClick={onClose} className={`rounded-md p-1.5 transition-all ${isDark ? "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
             <X className="h-4 w-4" />
           </button>
         </div>

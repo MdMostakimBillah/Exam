@@ -38,7 +38,7 @@ export function TableActionMenu({ id, openId, onToggle, isDark, children }: Tabl
         ref={btnRef}
         onClick={() => onToggle(isOpen ? null : id)}
         className={cn(
-          "h-7 w-7 rounded-lg flex items-center justify-center transition-colors",
+          "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
           isDark ? "hover:bg-white/[0.08] text-zinc-400" : "hover:bg-zinc-100 text-zinc-500"
         )}
       >
@@ -49,7 +49,7 @@ export function TableActionMenu({ id, openId, onToggle, isDark, children }: Tabl
           <div className="fixed inset-0 z-40" onClick={() => onToggle(null)} />
           <div
             className={cn(
-              "fixed z-50 w-40 rounded-xl border py-1 shadow-lg",
+              "fixed z-50 w-40 rounded-lg border py-1 shadow-lg",
               isDark ? "bg-[#1a1a1c] border-white/[0.08]" : "bg-white border-zinc-200"
             )}
             style={{ top: pos.top, right: pos.right }}
