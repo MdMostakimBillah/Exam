@@ -12,13 +12,13 @@
  *      {{from_name}}          - Sender name
  *      {{subject}}            - Email subject line
  * 4. Copy your Public Key from Account > API Keys
- * 5. Fill in the values below in .env.local
+ * 5. Update the values below
  */
 
 export const EMAILJS_CONFIG = {
-  serviceId: process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID",
-  templateId: process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID",
-  publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "YOUR_PUBLIC_KEY",
+  serviceId: "service_no0fi4g",
+  templateId: "template_d2292ef",
+  publicKey: "NIHNikz-ok3G96jvm",
 };
 
 export const EMAIL_TEMPLATE_PARAMS = {
