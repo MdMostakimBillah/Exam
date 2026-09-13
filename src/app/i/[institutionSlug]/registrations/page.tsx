@@ -16,7 +16,8 @@ import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ClipboardList, Search, Plus, MoreVertical, Eye, CheckCircle, XCircle, Banknote } from "lucide-react";
+import { ClipboardList, Search, Plus, Eye, CheckCircle, XCircle, Banknote } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 
 export default function InstitutionRegistrationsPage() {
   const params = useParams();
@@ -230,33 +231,26 @@ export default function InstitutionRegistrationsPage() {
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>&#2547;{reg.paymentAmount.toLocaleString()}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{formatDate(reg.createdAt)}</TableCell>
                     <TableCell>
-                      <div className="relative">
-                        <button onClick={() => setMenuOpenId(menuOpenId === reg.id ? null : reg.id)} className={`p-1.5 rounded-lg transition-all ${isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
-                          <MoreVertical className="h-3.5 w-3.5" />
-                        </button>
-                        {menuOpenId === reg.id && (
-                          <div className={`absolute right-0 top-full mt-1 w-44 rounded-xl border z-50 py-1 shadow-xl ${isDark ? "border-white/[0.06] bg-[#141416]" : "border-zinc-200 bg-white shadow-zinc-200/50"}`}>
-                            <button onClick={() => { setViewingReg(reg); setMenuOpenId(null); }} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${isDark ? "text-zinc-400 hover:text-white hover:bg-white/[0.05]" : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"}`}>
-                              <Eye className="h-3.5 w-3.5" /> {isBn ? "বিস্তারিত" : "View Details"}
-                            </button>
-                            {reg.status === "PENDING" && (
-                              <>
-                                <button onClick={() => { setConfirmAction({ type: "approve", reg }); setMenuOpenId(null); }} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${isDark ? "text-green-400 hover:bg-green-500/10" : "text-green-600 hover:bg-green-50"}`}>
-                                  <CheckCircle className="h-3.5 w-3.5" /> {isBn ? "অনুমোদন" : "Approve"}
-                                </button>
-                                <button onClick={() => { setConfirmAction({ type: "reject", reg }); setMenuOpenId(null); }} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors text-red-400 hover:bg-red-500/10`}>
-                                  <XCircle className="h-3.5 w-3.5" /> {isBn ? "প্রত্যাখ্যান" : "Reject"}
-                                </button>
-                              </>
-                            )}
-                            {reg.paymentStatus !== "PAID" && (
-                              <button onClick={() => handleMarkPaid(reg)} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${isDark ? "text-blue-400 hover:bg-blue-500/10" : "text-blue-600 hover:bg-blue-50"}`}>
-                                <Banknote className="h-3.5 w-3.5" /> {isBn ? "পেমেন্ট চিহ্নিত করুন" : "Mark Paid"}
-                              </button>
-                            )}
-                          </div>
+                      <TableActionMenu id={reg.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                        <TableActionItem onClick={() => { setViewingReg(reg); setMenuOpenId(null); }} isDark={isDark}>
+                          <Eye className="h-3.5 w-3.5" /> {isBn ? "বিস্তারিত" : "View Details"}
+                        </TableActionItem>
+                        {reg.status === "PENDING" && (
+                          <>
+                            <TableActionItem onClick={() => { setConfirmAction({ type: "approve", reg }); setMenuOpenId(null); }} isDark={isDark} variant="success">
+                              <CheckCircle className="h-3.5 w-3.5" /> {isBn ? "অনুমোদন" : "Approve"}
+                            </TableActionItem>
+                            <TableActionItem onClick={() => { setConfirmAction({ type: "reject", reg }); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                              <XCircle className="h-3.5 w-3.5" /> {isBn ? "প্রত্যাখ্যান" : "Reject"}
+                            </TableActionItem>
+                          </>
                         )}
-                      </div>
+                        {reg.paymentStatus !== "PAID" && (
+                          <TableActionItem onClick={() => handleMarkPaid(reg)} isDark={isDark}>
+                            <Banknote className="h-3.5 w-3.5" /> {isBn ? "পেমেন্ট চিহ্নিত করুন" : "Mark Paid"}
+                          </TableActionItem>
+                        )}
+                      </TableActionMenu>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -14,7 +14,8 @@ import { getExams, getExamById } from "@/lib/storage/exams";
 import { getStudentsByInstitution } from "@/lib/storage/students";
 import { Result, Registration, Exam, ExamSubject } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
-import { Award, Trophy, Plus, Edit, Trash2, MoreVertical, CheckCircle2, XCircle, BarChart3, TrendingUp } from "lucide-react";
+import { Award, Trophy, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -322,25 +323,18 @@ export default function InstitutionResultsPage() {
                       <Badge status={result.status === "PUBLISHED" ? "APPROVED" : "PENDING"} />
                     </TableCell>
                     <TableCell>
-                      <div className="relative">
-                        <button onClick={() => setMenuOpenId(menuOpenId === result.id ? null : result.id)} className={`p-1.5 rounded-lg transition-all ${isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
-                          <MoreVertical className="h-3.5 w-3.5" />
-                        </button>
-                        {menuOpenId === result.id && (
-                          <div className={`absolute right-0 top-full mt-1 w-36 rounded-xl border z-50 py-1 shadow-xl ${isDark ? "border-white/[0.06] bg-[#141416]" : "border-zinc-200 bg-white shadow-zinc-200/50"}`}>
-                            <button onClick={() => handleEdit(result)} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${isDark ? "text-zinc-400 hover:text-white hover:bg-white/[0.05]" : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"}`}>
-                              <Edit className="h-3.5 w-3.5" /> {isBn ? "সম্পাদনা" : "Edit"}
-                            </button>
-                            <button onClick={() => { handleTogglePublish(result); setMenuOpenId(null); }} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${isDark ? "text-zinc-400 hover:text-white hover:bg-white/[0.05]" : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"}`}>
-                              {result.status === "PUBLISHED" ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                              {result.status === "PUBLISHED" ? (isBn ? "খসড়ায়" : "Unpublish") : (isBn ? "প্রকাশ করুন" : "Publish")}
-                            </button>
-                            <button onClick={() => { setShowDeleteConfirm(result); setMenuOpenId(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors text-red-400 hover:bg-red-500/10">
-                              <Trash2 className="h-3.5 w-3.5" /> {isBn ? "মুছুন" : "Delete"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <TableActionMenu id={result.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                        <TableActionItem onClick={() => handleEdit(result)} isDark={isDark}>
+                          <Edit className="h-3.5 w-3.5" /> {isBn ? "সম্পাদনা" : "Edit"}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => { handleTogglePublish(result); setMenuOpenId(null); }} isDark={isDark}>
+                          {result.status === "PUBLISHED" ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {result.status === "PUBLISHED" ? (isBn ? "খসড়ায়" : "Unpublish") : (isBn ? "প্রকাশ করুন" : "Publish")}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => { setShowDeleteConfirm(result); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? "মুছুন" : "Delete"}
+                        </TableActionItem>
+                      </TableActionMenu>
                     </TableCell>
                   </TableRow>
                 ))}

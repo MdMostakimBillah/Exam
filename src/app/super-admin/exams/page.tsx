@@ -10,7 +10,8 @@ import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exam
 import { getClasses, getActiveClasses } from "@/lib/storage/classes";
 import { getRegistrations } from "@/lib/storage/registrations";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, MoreVertical, Edit, Trash2, Calendar, Users, CreditCard } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -282,27 +283,14 @@ export default function ExamsPage() {
                       </TableCell>
                       <TableCell><Badge status={exam.status} /></TableCell>
                       <TableCell>
-                        <div className="relative">
-                          <button
-                            onClick={() => setMenuOpenId(menuOpenId === exam.id ? null : exam.id)}
-                            className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
-                          >
-                            <MoreVertical className="h-3.5 w-3.5" />
-                          </button>
-                          {menuOpenId === exam.id && (
-                            <>
-                              <div className="fixed inset-0 z-40" onClick={() => setMenuOpenId(null)} />
-                              <div className={`absolute right-0 top-8 z-50 w-40 rounded-xl border py-1 shadow-lg ${isDark ? 'bg-[#1a1a1c] border-white/[0.08]' : 'bg-white border-zinc-200'}`}>
-                                <button onClick={() => handleEdit(exam)} className={`flex items-center gap-2 w-full px-3 py-2 text-[11px] ${isDark ? 'text-zinc-400 hover:bg-white/[0.05] hover:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'}`}>
-                                  <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
-                                </button>
-                                <button onClick={() => handleDelete(exam)} className={`flex items-center gap-2 w-full px-3 py-2 text-[11px] ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'}`}>
-                                  <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        <TableActionMenu id={exam.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                          <TableActionItem onClick={() => handleEdit(exam)} isDark={isDark}>
+                            <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                          </TableActionItem>
+                          <TableActionItem onClick={() => handleDelete(exam)} isDark={isDark} variant="danger">
+                            <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                          </TableActionItem>
+                        </TableActionMenu>
                       </TableCell>
                     </TableRow>
                   );

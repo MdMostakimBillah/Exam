@@ -1,12 +1,13 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getInstitutions, createInstitution, updateInstitution, deleteInstitution } from "@/lib/storage/institutions";
 import { Institution } from "@/lib/types";
-import { Building2, Search, Users, Mail, Phone, MoreVertical, Trash2, Eye, Check, X, Ban, Plus } from "lucide-react";
+import { Building2, Search, Users, Mail, Phone, Trash2, Eye, Check, X, Ban, Plus } from "lucide-react";
+import { TableActionMenu, TableActionItem, TableActionDivider } from "@/components/ui/table-action-menu";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -26,19 +27,8 @@ export default function InstitutionsPage() {
   const [form, setForm] = useState({
     name: "", code: "", slug: "", email: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING" as Institution["status"],
   });
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   if (!mounted) return <InstitutionsSkeleton isDark={isDark} />;
 
@@ -219,64 +209,37 @@ export default function InstitutionsPage() {
                     </TableCell>
                     <TableCell><Badge status={inst.status} /></TableCell>
                     <TableCell>
-                      <div className="relative" ref={openDropdown === inst.id ? dropdownRef : undefined}>
-                        <button
-                          onClick={() => setOpenDropdown(openDropdown === inst.id ? null : inst.id)}
-                          className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                        {openDropdown === inst.id && (
-                          <div className={`absolute right-0 top-8 z-50 w-36 rounded-xl border shadow-xl py-1 ${isDark ? 'bg-[#1a1a1c] border-white/[0.08]' : 'bg-white border-zinc-200'}`}>
-                            {inst.status === 'PENDING' && (
-                              <>
-                                <button
-                                  onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-emerald-400 hover:bg-white/[0.04]' : 'text-emerald-600 hover:bg-emerald-50'}`}
-                                >
-                                  <Check className="h-3.5 w-3.5" /> {isBn ? 'অনুমোদন' : 'Approve'}
-                                </button>
-                                <button
-                                  onClick={() => { handleStatusChange(inst.id, 'REJECTED'); setOpenDropdown(null); }}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
-                                >
-                                  <X className="h-3.5 w-3.5" /> {isBn ? 'বাতিল' : 'Reject'}
-                                </button>
-                              </>
-                            )}
-                            {inst.status === 'ACTIVE' && (
-                              <button
-                                onClick={() => { handleStatusChange(inst.id, 'SUSPENDED'); setOpenDropdown(null); }}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-amber-400 hover:bg-white/[0.04]' : 'text-amber-600 hover:bg-amber-50'}`}
-                              >
-                                <Ban className="h-3.5 w-3.5" /> {isBn ? 'স্থগিত' : 'Suspend'}
-                              </button>
-                            )}
-                            {inst.status === 'SUSPENDED' && (
-                              <button
-                                onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-emerald-400 hover:bg-white/[0.04]' : 'text-emerald-600 hover:bg-emerald-50'}`}
-                              >
-                                <Check className="h-3.5 w-3.5" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
-                              </button>
-                            )}
-                            <div className={`border-t my-0.5 ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`} />
-                            <Link
-                              href={`/super-admin/institutions/${inst.id}`}
-                              onClick={() => setOpenDropdown(null)}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-400 hover:bg-white/[0.04]' : 'text-zinc-600 hover:bg-zinc-50'}`}
-                            >
-                              <Eye className="h-3.5 w-3.5" /> {isBn ? 'দেখুন' : 'View'}
-                            </Link>
-                            <button
-                              onClick={() => { handleDelete(inst.id); setOpenDropdown(null); }}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium transition-colors ${isDark ? 'text-rose-400 hover:bg-white/[0.04]' : 'text-rose-600 hover:bg-rose-50'}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
-                            </button>
-                          </div>
+                      <TableActionMenu id={inst.id} openId={openDropdown} onToggle={setOpenDropdown} isDark={isDark}>
+                        {inst.status === 'PENDING' && (
+                          <>
+                            <TableActionItem onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }} isDark={isDark} variant="success">
+                              <Check className="h-3.5 w-3.5" /> {isBn ? 'অনুমোদন' : 'Approve'}
+                            </TableActionItem>
+                            <TableActionItem onClick={() => { handleStatusChange(inst.id, 'REJECTED'); setOpenDropdown(null); }} isDark={isDark} variant="danger">
+                              <X className="h-3.5 w-3.5" /> {isBn ? 'বাতিল' : 'Reject'}
+                            </TableActionItem>
+                          </>
                         )}
-                      </div>
+                        {inst.status === 'ACTIVE' && (
+                          <TableActionItem onClick={() => { handleStatusChange(inst.id, 'SUSPENDED'); setOpenDropdown(null); }} isDark={isDark} variant="warning">
+                            <Ban className="h-3.5 w-3.5" /> {isBn ? 'স্থগিত' : 'Suspend'}
+                          </TableActionItem>
+                        )}
+                        {inst.status === 'SUSPENDED' && (
+                          <TableActionItem onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }} isDark={isDark} variant="success">
+                            <Check className="h-3.5 w-3.5" /> {isBn ? 'পুনরুদ্ধার' : 'Reactivate'}
+                          </TableActionItem>
+                        )}
+                        <TableActionDivider isDark={isDark} />
+                        <Link href={`/super-admin/institutions/${inst.id}`} onClick={() => setOpenDropdown(null)}>
+                          <TableActionItem onClick={() => {}} isDark={isDark}>
+                            <Eye className="h-3.5 w-3.5" /> {isBn ? 'দেখুন' : 'View'}
+                          </TableActionItem>
+                        </Link>
+                        <TableActionItem onClick={() => { handleDelete(inst.id); setOpenDropdown(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                        </TableActionItem>
+                      </TableActionMenu>
                     </TableCell>
                   </TableRow>
                 ))}

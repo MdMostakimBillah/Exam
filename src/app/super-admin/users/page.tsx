@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,8 @@ import { User } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { MoreVertical, Edit, Trash2, Search, Plus, Users, Shield, Building2 } from "lucide-react";
+import { Edit, Trash2, Search, Plus, Users, Shield, Building2 } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 
 export default function UsersPage() {
   const { theme } = useTheme();
@@ -26,7 +27,6 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -49,16 +49,6 @@ export default function UsersPage() {
   });
 
   useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setMenuOpenId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   if (!mounted) return <UsersSkeleton isDark={isDark} />;
 
@@ -333,43 +323,14 @@ export default function UsersPage() {
                       <Badge status="ACTIVE" />
                     </TableCell>
                     <TableCell>
-                      <div className="relative" ref={menuOpenId === user.id ? dropdownRef : undefined}>
-                        <button
-                          onClick={() => setMenuOpenId(menuOpenId === user.id ? null : user.id)}
-                          className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${
-                            isDark ? "hover:bg-white/[0.08] text-zinc-400" : "hover:bg-zinc-100 text-zinc-500"
-                          }`}
-                        >
-                          <MoreVertical className="h-3.5 w-3.5" />
-                        </button>
-                        {menuOpenId === user.id && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setMenuOpenId(null)} />
-                            <div
-                              className={`absolute right-0 top-8 z-50 w-40 rounded-xl border py-1 shadow-lg ${
-                                isDark ? "bg-[#1a1a1c] border-white/[0.08]" : "bg-white border-zinc-200"
-                              }`}
-                            >
-                              <button
-                                onClick={() => handleEdit(user)}
-                                className={`flex items-center gap-2 w-full px-3 py-2 text-[11px] ${
-                                  isDark ? "text-zinc-400 hover:bg-white/[0.05] hover:text-white" : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                                }`}
-                              >
-                                <Edit className="h-3.5 w-3.5" /> {isBn ? "সম্পাদনা" : "Edit"}
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(user)}
-                                className={`flex items-center gap-2 w-full px-3 py-2 text-[11px] ${
-                                  isDark ? "text-red-400 hover:bg-red-500/10" : "text-red-600 hover:bg-red-50"
-                                }`}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> {isBn ? "মুছুন" : "Delete"}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      <TableActionMenu id={user.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                        <TableActionItem onClick={() => handleEdit(user)} isDark={isDark}>
+                          <Edit className="h-3.5 w-3.5" /> {isBn ? "সম্পাদনা" : "Edit"}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => handleDeleteClick(user)} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? "মুছুন" : "Delete"}
+                        </TableActionItem>
+                      </TableActionMenu>
                     </TableCell>
                   </TableRow>
                 ))}

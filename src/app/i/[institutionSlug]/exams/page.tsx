@@ -11,7 +11,8 @@ import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exams";
 import { getClasses } from "@/lib/storage/classes";
 import { Exam, ExamStatus } from "@/lib/types";
-import { FileText, Search, Calendar, Users, CreditCard, Plus, MoreVertical, Edit, Trash2, X } from "lucide-react";
+import { FileText, Search, Calendar, Users, CreditCard, Plus, Edit, Trash2, X } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -313,17 +314,14 @@ export default function InstitutionExamsPage() {
                     </TableCell>
                     <TableCell><Badge status={exam.status} /></TableCell>
                     <TableCell>
-                      <div className="relative">
-                        <button onClick={() => setMenuOpenId(menuOpenId === exam.id ? null : exam.id)} className={`p-1.5 rounded-lg transition-all ${isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
-                          <MoreVertical className="h-3.5 w-3.5" />
-                        </button>
-                        {menuOpenId === exam.id && (
-                          <div className={`absolute right-0 top-full mt-1 w-36 rounded-xl border z-50 py-1 shadow-xl ${isDark ? "border-white/[0.06] bg-[#141416]" : "border-zinc-200 bg-white shadow-zinc-200/50"}`}>
-                            <button onClick={() => handleEdit(exam)} className={`flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors ${isDark ? "text-zinc-400 hover:text-white hover:bg-white/[0.05]" : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"}`}><Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}</button>
-                            <button onClick={() => { setShowDeleteConfirm(exam); setMenuOpenId(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors text-red-400 hover:bg-red-500/10"><Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}</button>
-                          </div>
-                        )}
-                      </div>
+                      <TableActionMenu id={exam.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                        <TableActionItem onClick={() => handleEdit(exam)} isDark={isDark}>
+                          <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => { setShowDeleteConfirm(exam); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                        </TableActionItem>
+                      </TableActionMenu>
                     </TableCell>
                   </TableRow>
                 ))}
