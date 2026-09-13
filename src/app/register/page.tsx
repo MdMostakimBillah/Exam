@@ -107,25 +107,25 @@ export default function RegisterPage() {
     const instName = form.nameEnglish || form.nameBangla || "Your Institution";
 
     try {
-      await emailjs.send(
+      const result = await emailjs.send(
         EMAILJS_CONFIG.serviceId,
         EMAILJS_CONFIG.templateId,
         {
-          ...EMAIL_TEMPLATE_PARAMS,
           to_email: email,
           verification_code: code,
           institution_name: instName,
         },
         { publicKey: EMAILJS_CONFIG.publicKey }
       );
+      console.log("EmailJS success:", result);
       setStoredCode(code);
       setCountdown(60);
     } catch (err: unknown) {
       console.error("EmailJS error:", err);
-      const msg = err instanceof Error ? err.message : String(err);
-      setEmailError(
-        `Failed to send email: ${msg}`
-      );
+      const detail = typeof err === 'object' && err !== null && 'text' in err
+        ? String((err as { text: string }).text)
+        : err instanceof Error ? err.message : String(err);
+      setEmailError(`Failed: ${detail}`);
     } finally {
       setSending(false);
     }
