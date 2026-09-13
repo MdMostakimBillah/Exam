@@ -210,31 +210,25 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-4 space-y-2">
-                {[
-                  { label: isBn ? 'সুপার অ্যাডমিন' : 'Super Admin', email: 'admin@scholarx.local', color: 'from-blue-500/10 to-blue-600/5' },
-                  { label: isBn ? 'প্রতিষ্ঠান অ্যাডমিন' : 'Institution Admin', email: 'institution@scholarx.local', color: 'from-purple-500/10 to-purple-600/5' },
-                ].map((acc) => (
-                  <button
-                    key={acc.email}
-                    onClick={() => quickLogin(acc.email)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200 group",
-                      isDark
-                        ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]"
-                        : "border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center", acc.color)}>
-                        <span className="text-xs font-bold">{acc.label.charAt(0)}</span>
-                      </div>
-                      <span className={cn("text-sm font-medium", isDark ? "text-zinc-300 group-hover:text-white" : "text-zinc-700 group-hover:text-zinc-900")}>
-                        {acc.label}
-                      </span>
+                <button
+                  onClick={() => quickLogin('admin@scholarx.local')}
+                  className={cn(
+                    "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200 group",
+                    isDark
+                      ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn("h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/5 flex items-center justify-center")}>
+                      <span className="text-xs font-bold">S</span>
                     </div>
-                    <ArrowRight className={cn("h-3.5 w-3.5 transition-all duration-200 group-hover:translate-x-0.5", isDark ? "text-zinc-600 group-hover:text-zinc-400" : "text-zinc-400 group-hover:text-zinc-600")} />
-                  </button>
-                ))}
+                    <span className={cn("text-sm font-medium", isDark ? "text-zinc-300 group-hover:text-white" : "text-zinc-700 group-hover:text-zinc-900")}>
+                      {isBn ? 'সুপার অ্যাডমিন' : 'Super Admin'}
+                    </span>
+                  </div>
+                  <ArrowRight className={cn("h-3.5 w-3.5 transition-all duration-200 group-hover:translate-x-0.5", isDark ? "text-zinc-600 group-hover:text-zinc-400" : "text-zinc-400 group-hover:text-zinc-600")} />
+                </button>
               </div>
             </div>
 
