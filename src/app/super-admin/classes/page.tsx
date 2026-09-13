@@ -154,10 +154,9 @@ export default function ClassesPage() {
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'বিবরণ' : 'Description'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-right ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -171,27 +170,28 @@ export default function ClassesPage() {
                         <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{cls.name}</p>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{cls.code}</TableCell>
-                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{cls.description}</TableCell>
-                    <TableCell>
+                    <TableCell className={`text-[11px] font-mono text-center ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{cls.code}</TableCell>
+                    <TableCell className="text-center">
                       <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${cls.isActive ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-zinc-400' : 'text-zinc-500')}`}>
                         {cls.isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                         {cls.isActive ? (isBn ? 'সক্রিয়' : 'Active') : (isBn ? 'নিষ্ক্রিয়' : 'Inactive')}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <TableActionMenu id={cls.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
-                        <TableActionItem onClick={() => handleEdit(cls)} isDark={isDark}>
-                          <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
-                        </TableActionItem>
-                        <TableActionItem onClick={() => handleToggleActive(cls)} isDark={isDark}>
-                          {cls.isActive ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                          {cls.isActive ? (isBn ? 'নিষ্ক্রিয়' : 'Deactivate') : (isBn ? 'সক্রিয়' : 'Activate')}
-                        </TableActionItem>
-                        <TableActionItem onClick={() => handleDelete(cls)} isDark={isDark} variant="danger">
-                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
-                        </TableActionItem>
-                      </TableActionMenu>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        <TableActionMenu id={cls.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                          <TableActionItem onClick={() => handleEdit(cls)} isDark={isDark}>
+                            <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                          </TableActionItem>
+                          <TableActionItem onClick={() => handleToggleActive(cls)} isDark={isDark}>
+                            {cls.isActive ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                            {cls.isActive ? (isBn ? 'নিষ্ক্রিয়' : 'Deactivate') : (isBn ? 'সক্রিয়' : 'Activate')}
+                          </TableActionItem>
+                          <TableActionItem onClick={() => handleDelete(cls)} isDark={isDark} variant="danger">
+                            <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                          </TableActionItem>
+                        </TableActionMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
