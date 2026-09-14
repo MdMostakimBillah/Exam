@@ -127,6 +127,17 @@ body.lang-bn button {
   }
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes scaleIn {
   from {
     opacity: 0;
@@ -176,6 +187,10 @@ body.lang-bn button {
 
 .animate-slideInRight {
   animation: slideInRight 0.5s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out forwards;
 }
 
 .animate-scaleIn {

@@ -3,7 +3,6 @@ import { useState, useCallback, useMemo } from "react";
 import { X, FileDown, Eye, LayoutTemplate, RotateCcw, Check } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { generatePdf } from "@/lib/utils/generate-pdf";
 
 export interface PdfColumn {
   header: string;
@@ -63,8 +62,9 @@ export function PdfExportModal({
     [allColumns, selectedKeys]
   );
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (activeColumns.length === 0) return;
+    const { generatePdf } = await import("@/lib/utils/generate-pdf");
     generatePdf({
       title,
       columns: activeColumns.map((c) => ({ header: c.header, key: c.key })),
