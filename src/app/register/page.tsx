@@ -248,7 +248,7 @@ export default function RegisterPage() {
               Institution Registration
             </h1>
             <p className={`text-sm ${textSec}`}>
-              Register your institution to join BMES platform
+              Register your institution to join BMA platform
             </p>
           </div>
 

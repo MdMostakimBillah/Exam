@@ -96,18 +96,18 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               'flex h-9 w-9 items-center justify-center rounded-md font-bold text-[10px] transition-transform duration-300',
               isDark ? 'bg-white text-black' : 'bg-black text-white'
             )}>
-              BMES
+              BMA
             </div>
             {!collapsed && (
               <div>
                 <span className={cn(
                   'text-sm font-semibold tracking-tight',
                   isDark ? 'text-white' : 'text-gray-900'
-                )}>BMES</span>
+                )}>BMA</span>
                 <p className={cn(
                   'text-[10px]',
                   isDark ? 'text-zinc-500' : 'text-gray-500'
-                )}>Management</p>
+                )}>Association</p>
               </div>
             )}
           </div>

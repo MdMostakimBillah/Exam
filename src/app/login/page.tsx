@@ -91,7 +91,7 @@ export default function LoginPage() {
             </div>
 
             <h1 className="text-4xl font-bold text-white mb-4 tracking-tight animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
-              {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন' : 'Bangladesh Education Society'}
+              {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন' : 'Bangladesh Madrasah Association'}
             </h1>
             <p className="text-lg text-zinc-400 mb-12 animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
               {isBn ? 'স্কলারশিপ পরীক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম' : 'Scholarship Examination Management Platform'}

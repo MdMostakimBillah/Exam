@@ -6,7 +6,7 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Bangladesh Education Socity — Scholarship Examination Management Platform",
+  title: "Bangladesh Madrasah Association — Scholarship Examination Management Platform",
   description: "A complete platform for institutions to manage scholarship examinations, student registrations, results, and certificates.",
 };
 

@@ -75,7 +75,7 @@ export default function SuperAdminDashboard() {
             {isBn ? 'সুপার এডমিনে স্বাগতম' : 'Welcome to Superadmin'}
           </h1>
           <p className={`text-sm mt-1.5 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন পরিচালনা করুন' : 'Manage Bangladesh Education Society operations'}
+            {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন পরিচালনা করুন' : 'Manage Bangladesh Madrasah Association operations'}
           </p>
         </div>
 

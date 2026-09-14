@@ -24,7 +24,7 @@ interface PlatformSettings {
 }
 
 const DEFAULT_SETTINGS: PlatformSettings = {
-  platformName: "Bangladesh Education Society",
+  platformName: "Bangladesh Madrasah Association",
   contactEmail: "support@scholarx.local",
   supportPhone: "+880-2-XXXXXXXX",
   address: "",
