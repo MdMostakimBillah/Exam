@@ -1,6 +1,3 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-
 interface PdfColumn {
   header: string;
   key: string;
@@ -16,7 +13,10 @@ interface GeneratePdfOptions {
   companySubtitle?: string;
 }
 
-export function generatePdf(options: GeneratePdfOptions) {
+export async function generatePdf(options: GeneratePdfOptions) {
+  const { default: jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
+
   const {
     title,
     subtitle,
