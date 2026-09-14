@@ -13,6 +13,31 @@ interface GeneratePdfOptions {
   companySubtitle?: string;
 }
 
+let fontLoaded = false;
+
+async function loadBengaliFont(doc: any) {
+  if (fontLoaded) return;
+
+  const fontUrl = "/fonts/NotoSansBengali-Regular.ttf";
+  const response = await fetch(fontUrl);
+  const buffer = await response.arrayBuffer();
+
+  const fontBytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < fontBytes.length; i++) {
+    binary += String.fromCharCode(fontBytes[i]);
+  }
+  const base64 = btoa(binary);
+
+  doc.addFileToVFS("NotoSansBengali-Regular.ttf", base64);
+  doc.addFont("NotoSansBengali-Regular.ttf", "NotoSansBengali", "normal");
+  fontLoaded = true;
+}
+
+function hasBengali(text: string): boolean {
+  return /[\u0980-\u09FF]/.test(text);
+}
+
 export async function generatePdf(options: GeneratePdfOptions) {
   const { default: jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
@@ -31,11 +56,22 @@ export async function generatePdf(options: GeneratePdfOptions) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
+  // Load Bengali font
+  await loadBengaliFont(doc);
+
+  const BENGALI = "NotoSansBengali";
+  const HELVETICA = "helvetica";
+
   // Colors
   const primary: [number, number, number] = [147, 51, 234]; // purple-600
   const primaryLight: [number, number, number] = [243, 232, 255]; // purple-100
   const textDark: [number, number, number] = [30, 30, 30];
   const textMuted: [number, number, number] = [120, 120, 120];
+
+  function pickFont(text: string, bold = false): string {
+    if (hasBengali(text)) return BENGALI;
+    return HELVETICA;
+  }
 
   // Header bar
   doc.setFillColor(...primary);
@@ -43,17 +79,18 @@ export async function generatePdf(options: GeneratePdfOptions) {
 
   // Company name on header
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pickFont(companyName), "bold");
   doc.setFontSize(14);
   doc.text(companyName, 14, 10);
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(pickFont(companySubtitle), "normal");
   doc.text(companySubtitle, 14, 15);
 
   // Right side info
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   doc.setFontSize(8);
+  doc.setFont(HELVETICA, "normal");
   doc.text(`Printed: ${dateStr}`, pageWidth - 14, 8, { align: "right" });
   doc.text(`Total: ${data.length} records`, pageWidth - 14, 12, { align: "right" });
   doc.text(`A4 · ${orientation}`, pageWidth - 14, 16, { align: "right" });
@@ -61,7 +98,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
   // Title
   let yPos = 28;
   doc.setTextColor(...textDark);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pickFont(title), "bold");
   doc.setFontSize(14);
   const titleLines = doc.splitTextToSize(title.toUpperCase(), pageWidth - 28);
   doc.text(titleLines, pageWidth / 2, yPos, { align: "center" });
@@ -69,7 +106,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
 
   if (subtitle) {
     doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(pickFont(subtitle), "normal");
     doc.setTextColor(...textMuted);
     doc.text(subtitle, pageWidth / 2, yPos + 2, { align: "center" });
     yPos += 8;
@@ -96,6 +133,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
     body: tableData,
     theme: "grid",
     styles: {
+      font: HELVETICA,
       fontSize: 8,
       cellPadding: 3,
       textColor: textDark,
@@ -117,6 +155,12 @@ export async function generatePdf(options: GeneratePdfOptions) {
       0: { halign: "center", cellWidth: 10 },
     },
     margin: { left: 14, right: 14 },
+    didParseCell: (hookData) => {
+      const cellText = String(hookData.cell.raw ?? "");
+      if (hasBengali(cellText) || hasBengali(String(columns[hookData.column.index - 1]?.header ?? ""))) {
+        hookData.cell.styles.font = BENGALI;
+      }
+    },
     didDrawPage: (data) => {
       // Footer on every page
       const footerY = pageHeight - 10;
@@ -126,7 +170,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
 
       doc.setFontSize(7);
       doc.setTextColor(...textMuted);
-      doc.setFont("helvetica", "normal");
+      doc.setFont(HELVETICA, "normal");
       doc.text("Powered by ScholarX", 14, footerY);
       doc.text(`Page ${data.pageNumber}`, pageWidth / 2, footerY, { align: "center" });
 
