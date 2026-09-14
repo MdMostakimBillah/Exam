@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 import { cn, getInitials } from "@/lib/utils/helpers";
 
 interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -21,7 +22,7 @@ function Avatar({ className, name, src, size = 'md', ...props }: AvatarProps) {
       {...props}
     >
       {src ? (
-        <img src={src} alt={name} className="aspect-square h-full w-full object-cover" />
+        <Image src={src} alt={name} fill unoptimized className="object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center font-semibold text-gray-600 dark:text-zinc-300 bg-transparent">
           {getInitials(name)}

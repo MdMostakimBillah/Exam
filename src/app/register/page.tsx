@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import emailjs from "@emailjs/browser";
 import { initializeDemoData } from "@/lib/storage/seed";
 import { createInstitution, updateInstitution } from "@/lib/storage/institutions";
@@ -266,9 +267,12 @@ export default function RegisterPage() {
                           <div
                             className={`h-16 w-16 rounded-md overflow-hidden ${isDark ? "border-2 border-white/10" : "border-2 border-zinc-200"}`}
                           >
-                            <img
+                            <Image
                               src={logoPreview}
                               alt="Logo"
+                              width={64}
+                              height={64}
+                              unoptimized
                               className="h-full w-full object-cover"
                             />
                           </div>

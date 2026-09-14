@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -304,7 +305,7 @@ export default function UsersPage() {
                       <div className="flex items-center gap-2.5">
                         <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-600"}`}>
                           {user.avatar ? (
-                            <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-md object-cover" />
+                            <Image src={user.avatar} alt={user.name} width={32} height={32} unoptimized className="rounded-md object-cover" />
                           ) : (
                             user.name.charAt(0).toUpperCase()
                           )}
