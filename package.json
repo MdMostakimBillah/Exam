@@ -12,6 +12,8 @@
     "@emailjs/browser": "^4.4.1",
     "@hixbe/purno-bcc": "^5.2.5",
     "clsx": "^2.1.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.34.0",
     "next": "^15.3.3",
     "react": "19.2.8",

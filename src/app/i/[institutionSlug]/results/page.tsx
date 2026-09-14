@@ -14,8 +14,11 @@ import { getExams, getExamById } from "@/lib/storage/exams";
 import { getStudentsByInstitution } from "@/lib/storage/students";
 import { Result, Registration, Exam, ExamSubject } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
-import { Award, Trophy, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp } from "lucide-react";
+import { Award, Trophy, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -49,17 +52,15 @@ export default function InstitutionResultsPage() {
   const [selectedRegistration, setSelectedRegistration] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
   const [marksInput, setMarksInput] = useState<Record<string, string>>({});
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <ResultsSkeleton isDark={isDark} />;
 
   const inst = getInstitutionBySlug(slug);
-  if (!inst) return null;
-
-  const results = getResultsByInstitution(inst.id);
+  const results = inst ? getResultsByInstitution(inst.id) : [];
   const exams = getExams();
-  const registrations = getRegistrationsByInstitution(inst.id);
-  const students = getStudentsByInstitution(inst.id);
+  const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
+  const students = inst ? getStudentsByInstitution(inst.id) : [];
 
   const approvedRegistrations = registrations.filter(r => r.status === "APPROVED");
   const existingRegNumbers = new Set(results.map(r => r.registrationNumber));
@@ -67,10 +68,35 @@ export default function InstitutionResultsPage() {
 
   const filtered = examFilter ? results.filter(r => r.examId === examFilter) : results;
 
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? "শিক্ষার্থী" : "Student", key: 'studentName' },
+    { header: isBn ? "পরীক্ষা" : "Exam", key: 'examName' },
+    { header: isBn ? "মোট" : "Total", key: 'total' },
+    { header: isBn ? "শতাংশ" : "%", key: 'percentage' },
+    { header: isBn ? "গ্রেড" : "Grade", key: 'grade' },
+    { header: isBn ? "অবস্থান" : "Position", key: 'position' },
+    { header: isBn ? "প্রকাশিত" : "Published", key: 'published' },
+  ];
+
+  const pdfData = filtered.map(r => ({
+    studentName: r.studentName,
+    examName: r.examName,
+    total: `${r.totalMarks}/${r.totalFullMarks}`,
+    percentage: `${r.percentage.toFixed(1)}%`,
+    grade: r.grade,
+    position: `#${r.position}`,
+    published: r.status === "PUBLISHED" ? (isBn ? "হ্যাঁ" : "Yes") : (isBn ? "না" : "No"),
+  }));
+
   const totalResults = filtered.length;
   const publishedCount = filtered.filter(r => r.status === "PUBLISHED").length;
   const avgGrade = totalResults > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / totalResults) : 0;
   const passRate = totalResults > 0 ? Math.round((filtered.filter(r => r.pass).length / totalResults) * 100) : 0;
+
+  if (!mounted) return <ResultsSkeleton isDark={isDark} />;
+  if (!inst) return null;
 
   const handleCreate = () => {
     setEditingResult(null);
@@ -282,6 +308,9 @@ export default function InstitutionResultsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? "border-white/[0.04] hover:bg-transparent" : "border-zinc-100 hover:bg-transparent"}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "শিক্ষার্থী" : "Student"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "পরীক্ষা" : "Exam"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "মোট" : "Total"}</TableHead>
@@ -294,7 +323,10 @@ export default function InstitutionResultsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(result => (
-                  <TableRow key={result.id} className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"}`}>
+                  <TableRow key={result.id} className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"} ${selection.isSelected(result.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(result.id)} onChange={() => selection.toggle(result.id)} />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-600"}`}>
@@ -405,6 +437,25 @@ export default function InstitutionResultsPage() {
           <button onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">{isBn ? "মুছুন" : "Delete"}</button>
         </ModalFooter>
       </Modal>
+
+      {/* Floating PDF Download Button */}
+      {filtered.length > 0 && (
+        <button
+          onClick={() => setShowPdfModal(true)}
+          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all ${isDark ? "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/20" : "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/30"}`}
+        >
+          <FileDown className="h-4 w-4" />
+          <span className="text-[13px] font-medium">{isBn ? 'পিডিএফ ডাউনলোড' : 'Download PDF'}</span>
+        </button>
+      )}
+
+      <PdfExportModal
+        open={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={isBn ? 'ফলাফল তালিকা' : 'Result List'}
+        columns={pdfColumns}
+        data={pdfData}
+      />
     </div>
   );
 }

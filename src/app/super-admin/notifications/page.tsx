@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { getNotifications, markAsRead, markAllAsRead, createNotification } from "@/lib/storage/notifications";
@@ -9,7 +12,7 @@ import { Notification } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { Bell, Check, CheckCheck, Send, Search, Filter } from "lucide-react";
+import { Bell, Check, CheckCheck, Send, Search, Filter, FileDown } from "lucide-react";
 
 export default function NotificationsPage() {
   const { theme } = useTheme();
@@ -23,22 +26,10 @@ export default function NotificationsPage() {
   const [filterRead, setFilterRead] = useState<"all" | "read" | "unread">("all");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<Notification["type"]>("info");
-
-  useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    if (mounted) {
-      const user = getCurrentUser();
-      if (user) {
-        setNotifications(getNotifications().filter(n => n.userId === user.id));
-      }
-    }
-  }, [mounted, refreshKey]);
-
-  if (!mounted) return <NotificationsSkeleton isDark={isDark} />;
 
   const user = getCurrentUser();
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -52,6 +43,37 @@ export default function NotificationsPage() {
       (filterRead === "unread" && !n.read);
     return matchesSearch && matchesFilter;
   });
+
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? 'ধরন' : 'Type', key: "type" },
+    { header: isBn ? 'শিরোনাম' : 'Title', key: "title" },
+    { header: isBn ? 'বার্তা' : 'Message', key: "message" },
+    { header: isBn ? 'তারিখ' : 'Date', key: "date" },
+    { header: isBn ? 'অবস্থা' : 'Status', key: "status" },
+  ];
+
+  const pdfData = filtered.map(n => ({
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    date: formatDate(n.createdAt),
+    status: n.read ? (isBn ? 'পঠিত' : 'Read') : (isBn ? 'অপঠিত' : 'Unread'),
+  }));
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      const user = getCurrentUser();
+      if (user) {
+        setNotifications(getNotifications().filter(n => n.userId === user.id));
+      }
+    }
+  }, [mounted, refreshKey]);
+
+  if (!mounted) return <NotificationsSkeleton isDark={isDark} />;
 
   const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
@@ -249,6 +271,9 @@ export default function NotificationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead>{isBn ? "ধরন" : "Type"}</TableHead>
                   <TableHead>{isBn ? "শিরোনাম" : "Title"}</TableHead>
                   <TableHead>{isBn ? "বার্তা" : "Message"}</TableHead>
@@ -259,7 +284,10 @@ export default function NotificationsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((n) => (
-                  <TableRow key={n.id} className={!n.read ? (isDark ? "bg-white/[0.02]" : "bg-blue-50/30") : ""}>
+                  <TableRow key={n.id} className={`${!n.read ? (isDark ? "bg-white/[0.02]" : "bg-blue-50/30") : ""} ${selection.isSelected(n.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(n.id)} onChange={() => selection.toggle(n.id)} />
+                    </TableCell>
                     <TableCell>
                       <div className={`inline-flex items-center justify-center h-8 w-8 rounded-md ${getTypeIcon(n.type)}`}>
                         <Bell className="h-4 w-4" />
@@ -311,6 +339,21 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+
+      {selection.selectedCount > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slideUp">
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-md shadow-2xl ${isDark ? 'bg-[#1a1a1c] border border-white/[0.1]' : 'bg-white border border-zinc-200'}`}>
+            <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
+            </span>
+            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors">
+              <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <PdfExportModal open={showPdfModal} onClose={() => setShowPdfModal(false)} title={isBn ? 'বিজ্ঞপ্তি তালিকা' : 'Notifications List'} columns={pdfColumns} data={pdfData} />
 
       {/* Create Notification Modal */}
       {showModal && (

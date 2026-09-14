@@ -4,9 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { getStudents } from "@/lib/storage/students";
 import { getInstitutions } from "@/lib/storage/institutions";
-import { Users, Search, Download, GraduationCap, Building2, UserCheck } from "lucide-react";
+import { Users, Search, Download, GraduationCap, Building2, UserCheck, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -19,14 +22,14 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [institutionFilter, setInstitutionFilter] = useState("");
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted) return <StudentsSkeleton isDark={isDark} />;
 
   const students = getStudents();
   const institutions = getInstitutions();
   const classes = [...new Set(students.map(s => s.class))];
+  const getInstitutionName = (id: string) => institutions.find(i => i.id === id)?.name || 'Unknown';
 
   const filtered = students.filter(s => {
     const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) || s.studentId.toLowerCase().includes(search.toLowerCase());
@@ -35,7 +38,30 @@ export default function StudentsPage() {
     return matchesSearch && matchesClass && matchesInst;
   });
 
-  const getInstitutionName = (id: string) => institutions.find(i => i.id === id)?.name || 'Unknown';
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'name' },
+    { header: 'ID', key: 'studentId' },
+    { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: 'institution' },
+    { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
+    { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
+    { header: isBn ? 'স্থিতি' : 'Status', key: 'status' },
+  ];
+
+  const pdfData = filtered
+    .filter((s) => selection.isSelected(s.id))
+    .map((s) => ({
+      name: `${s.firstName} ${s.lastName}`,
+      studentId: s.studentId,
+      institution: getInstitutionName(s.institutionId),
+      class: s.class,
+      roll: s.roll,
+      status: s.status,
+    }));
+
+  if (!mounted) return <StudentsSkeleton isDark={isDark} />;
+
   const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
 
   const card = isDark
@@ -130,6 +156,9 @@ export default function StudentsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>ID</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
@@ -140,7 +169,10 @@ export default function StudentsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.slice(0, 20).map(student => (
-                  <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                  <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(student.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(student.id)} onChange={() => selection.toggle(student.id)} />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
@@ -162,6 +194,32 @@ export default function StudentsPage() {
             </Table>
           )}
         </div>
+
+        {/* Floating PDF Button */}
+        {selection.selectedCount > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slideUp">
+            <div className={`flex items-center gap-3 px-5 py-3 rounded-md shadow-2xl ${isDark ? 'bg-[#1a1a1c] border border-white/[0.1]' : 'bg-white border border-zinc-200'}`}>
+              <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
+              </span>
+              <button
+                onClick={() => setShowPdfModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors"
+              >
+                <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Export Modal */}
+        <PdfExportModal
+          open={showPdfModal}
+          onClose={() => setShowPdfModal(false)}
+          title={isBn ? 'শিক্ষার্থী তালিকা' : 'Student List'}
+          columns={pdfColumns}
+          data={pdfData}
+        />
       </div>
     </div>
   );

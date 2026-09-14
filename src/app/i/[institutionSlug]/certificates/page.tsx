@@ -12,7 +12,10 @@ import { getResultsByInstitution } from "@/lib/storage/results";
 import { getExams } from "@/lib/storage/exams";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { Certificate, Result } from "@/lib/types";
-import { Award, Search, Plus, Eye, XCircle, FileText, Layers } from "lucide-react";
+import { Award, Search, Plus, Eye, XCircle, FileText, Layers, FileDown } from "lucide-react";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -47,15 +50,13 @@ export default function InstitutionCertificatesPage() {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState("");
   const [showDetailModal, setShowDetailModal] = useState<Certificate | null>(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <CertificatesSkeleton isDark={isDark} />;
 
   const inst = getInstitutionBySlug(slug);
-  if (!inst) return null;
-
-  const certificates = getCertificatesByInstitution(inst.id);
-  const results = getResultsByInstitution(inst.id);
+  const certificates = inst ? getCertificatesByInstitution(inst.id) : [];
+  const results = inst ? getResultsByInstitution(inst.id) : [];
   const allExams = getExams();
   const exams = allExams.filter(e => results.some(r => r.examId === e.id));
   const publishedResults = results.filter(r => r.status === 'PUBLISHED');
@@ -68,11 +69,34 @@ export default function InstitutionCertificatesPage() {
     return matchesSearch && matchesYear;
   });
 
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? 'সার্টিফিকেট নম্বর' : 'Cert #', key: 'certificateNumber' },
+    { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'studentName' },
+    { header: isBn ? 'পরীক্ষা' : 'Exam', key: 'examName' },
+    { header: isBn ? 'পজিশন' : 'Position', key: 'position' },
+    { header: isBn ? 'প্রদানের তারিখ' : 'Issue Date', key: 'issueDate' },
+    { header: isBn ? 'স্থিতি' : 'Status', key: 'status' },
+  ];
+
+  const pdfData = filtered.map(c => ({
+    certificateNumber: c.certificateNumber,
+    studentName: c.studentName,
+    examName: c.examName,
+    position: `#${c.position}`,
+    issueDate: formatDate(c.issueDate),
+    status: c.status,
+  }));
+
   const validCerts = certificates.filter(c => c.status === 'VERIFIED').length;
   const currentYear = String(new Date().getFullYear());
   const thisYearCerts = certificates.filter(c => c.examYear === currentYear).length;
 
   const availableResults = publishedResults.filter(r => !certificates.some(c => c.resultId === r.id));
+
+  if (!mounted) return <CertificatesSkeleton isDark={isDark} />;
+  if (!inst) return null;
 
   const handleGenerate = () => {
     if (!selectedResult) {
@@ -241,6 +265,9 @@ export default function InstitutionCertificatesPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'সার্টিফিকেট নম্বর' : 'Cert #'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
@@ -252,7 +279,10 @@ export default function InstitutionCertificatesPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(cert => (
-                  <TableRow key={cert.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                  <TableRow key={cert.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(cert.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(cert.id)} onChange={() => selection.toggle(cert.id)} />
+                    </TableCell>
                     <TableCell>
                       <span className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{cert.certificateNumber}</span>
                     </TableCell>
@@ -380,6 +410,25 @@ export default function InstitutionCertificatesPage() {
           <button onClick={() => setShowDetailModal(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বন্ধ' : 'Close'}</button>
         </ModalFooter>
       </Modal>
+
+      {/* Floating PDF Download Button */}
+      {filtered.length > 0 && (
+        <button
+          onClick={() => setShowPdfModal(true)}
+          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all ${isDark ? "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/20" : "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/30"}`}
+        >
+          <FileDown className="h-4 w-4" />
+          <span className="text-[13px] font-medium">{isBn ? 'পিডিএফ ডাউনলোড' : 'Download PDF'}</span>
+        </button>
+      )}
+
+      <PdfExportModal
+        open={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={isBn ? 'সার্টিফিকেট তালিকা' : 'Certificate List'}
+        columns={pdfColumns}
+        data={pdfData}
+      />
     </div>
   );
 }

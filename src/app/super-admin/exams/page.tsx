@@ -10,11 +10,14 @@ import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exam
 import { getClasses, getActiveClasses } from "@/lib/storage/classes";
 import { getRegistrations } from "@/lib/storage/registrations";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 
 export default function ExamsPage() {
   const { theme } = useTheme();
@@ -29,6 +32,7 @@ export default function ExamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "", code: "", academicYear: "", description: "",
     registrationStartDate: "", registrationEndDate: "", examDate: "",
@@ -37,7 +41,6 @@ export default function ExamsPage() {
   });
 
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <ExamsSkeleton isDark={isDark} />;
 
   const exams = getExams();
   const registrations = getRegistrations();
@@ -47,6 +50,28 @@ export default function ExamsPage() {
     const matchesStatus = !statusFilter || e.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { key: "name", header: isBn ? "নাম" : "Name" },
+    { key: "code", header: isBn ? "কোড" : "Code" },
+    { key: "academicYear", header: isBn ? "শিক্ষাবর্ষ" : "Academic Year" },
+    { key: "examDate", header: isBn ? "পরীক্ষার তারিখ" : "Exam Date" },
+    { key: "registrationFee", header: isBn ? "নিবন্ধন ফি" : "Fee" },
+    { key: "status", header: isBn ? "স্ট্যাটাস" : "Status" },
+  ];
+
+  const pdfData = filtered.map((exam) => ({
+    name: exam.name,
+    code: exam.code,
+    academicYear: exam.academicYear,
+    examDate: formatDate(exam.examDate).split(",")[0],
+    registrationFee: `৳${exam.registrationFee}`,
+    status: exam.status,
+  }));
+
+  if (!mounted) return <ExamsSkeleton isDark={isDark} />;
 
   const statusCounts = {
     all: exams.length,
@@ -221,6 +246,9 @@ export default function ExamsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
@@ -236,7 +264,10 @@ export default function ExamsPage() {
                   const examRegs = registrations.filter(r => r.examId === exam.id);
                   const examClasses = allClasses.filter(c => exam.classes.includes(c.id));
                   return (
-                    <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                    <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(exam.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                      <TableCell className="w-10">
+                        <TableCheckbox checked={selection.isSelected(exam.id)} onChange={() => selection.toggle(exam.id)} />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
@@ -423,6 +454,25 @@ export default function ExamsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Floating PDF Download Button */}
+      <button
+        onClick={() => setShowPdfModal(true)}
+        className={`fixed bottom-6 right-6 h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+          isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
+        }`}
+      >
+        <FileDown className="h-5 w-5" />
+      </button>
+
+      {/* PDF Export Modal */}
+      <PdfExportModal
+        open={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={isBn ? "পরীক্ষা রপ্তানি" : "Export Exams"}
+        columns={pdfColumns}
+        data={pdfData}
+      />
     </div>
   );
 }

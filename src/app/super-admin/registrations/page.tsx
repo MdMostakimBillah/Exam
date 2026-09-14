@@ -4,8 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { getRegistrations } from "@/lib/storage/registrations";
-import { ClipboardList, Search, Download } from "lucide-react";
+import { ClipboardList, Search, Download, FileDown } from "lucide-react";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -18,10 +21,9 @@ export default function RegistrationsPage() {
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
 
   const registrations = getRegistrations();
   const filtered = registrations.filter(r => {
@@ -29,6 +31,30 @@ export default function RegistrationsPage() {
     const matchesStatus = !statusFilter || r.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? "আবেদন আইডি" : "Application ID", key: "applicationId" },
+    { header: isBn ? "শিক্ষার্থী" : "Student", key: "studentName" },
+    { header: isBn ? "প্রতিষ্ঠান" : "Institution", key: "institutionName" },
+    { header: isBn ? "পরীক্ষা" : "Exam", key: "examName" },
+    { header: isBn ? "তারিখ" : "Date", key: "date" },
+    { header: isBn ? "পেমেন্ট স্ট্যাটাস" : "Payment Status", key: "paymentStatus" },
+    { header: isBn ? "স্ট্যাটাস" : "Status", key: "status" },
+  ];
+
+  const pdfData = filtered.map(r => ({
+    applicationId: r.applicationId,
+    studentName: r.studentName,
+    institutionName: r.institutionName,
+    examName: r.examName,
+    date: formatDate(r.createdAt),
+    paymentStatus: r.paymentStatus,
+    status: r.status,
+  }));
+
+  if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
 
   const statusCounts = {
     all: registrations.length,
@@ -130,6 +156,13 @@ export default function RegistrationsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox
+                      checked={selection.allSelected}
+                      indeterminate={selection.someSelected}
+                      onChange={selection.toggleAll}
+                    />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'আবেদন আইডি' : 'Application ID'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
@@ -142,6 +175,12 @@ export default function RegistrationsPage() {
               <TableBody>
                 {filtered.slice(0, 20).map(reg => (
                   <TableRow key={reg.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                    <TableCell>
+                      <TableCheckbox
+                        checked={selection.isSelected(reg.id)}
+                        onChange={() => selection.toggle(reg.id)}
+                      />
+                    </TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.applicationId}</TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.institutionName}</TableCell>
@@ -156,6 +195,31 @@ export default function RegistrationsPage() {
           )}
         </div>
       </div>
+
+      {/* Floating PDF Download Button */}
+      {selection.selectedCount > 0 && (
+        <button
+          onClick={() => setShowPdfModal(true)}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3 rounded-md text-[11px] font-medium bg-[#9333ea] text-white shadow-lg shadow-[#9333ea]/30 hover:bg-[#7e22ce] transition-colors"
+        >
+          <FileDown className="h-4 w-4" />
+          {isBn ? `পিডিএফ ডাউনলোড (${selection.selectedCount})` : `Download PDF (${selection.selectedCount})`}
+        </button>
+      )}
+
+      {/* PDF Export Modal */}
+      <PdfExportModal
+        open={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={isBn ? "নিবন্ধন তালিকা" : "Registrations List"}
+        columns={pdfColumns}
+        data={selection.selectedCount > 0
+          ? pdfData.filter((_, i) => selection.isSelected(filtered[i].id))
+          : pdfData
+        }
+        companyName="Bangladesh Madrasah Association"
+        companySubtitle="বাংলাদেশ মাদ্রাসা এসোসিয়েশন"
+      />
     </div>
   );
 }

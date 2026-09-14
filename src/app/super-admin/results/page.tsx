@@ -1,11 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { getResults } from "@/lib/storage/results";
 import { getExams } from "@/lib/storage/exams";
-import { Award, Download } from "lucide-react";
+import { Award, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -16,9 +19,7 @@ export default function ResultsPage() {
   const isBn = language === "bn";
   const [mounted, setMounted] = useState(false);
   const [examFilter, setExamFilter] = useState("");
-
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <ResultsSkeleton isDark={isDark} />;
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   const results = getResults();
   const exams = getExams();
@@ -28,6 +29,34 @@ export default function ResultsPage() {
   const passed = filtered.filter(r => r.pass).length;
   const scholarshipWinners = filtered.filter(r => r.scholarshipStatus === 'ELIGIBLE').length;
   const avgScore = filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0;
+
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? 'অবস্থান' : 'Position', key: "position" },
+    { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
+    { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: "institutionName" },
+    { header: isBn ? 'শ্রেণী' : 'Class', key: "className" },
+    { header: isBn ? 'মোট নম্বর' : 'Total', key: "total" },
+    { header: isBn ? 'শতাংশ' : '%', key: "percentage" },
+    { header: isBn ? 'গ্রেড' : 'Grade', key: "grade" },
+    { header: isBn ? 'বৃত্তি' : 'Scholarship', key: "scholarshipStatus" },
+  ];
+
+  const pdfData = filtered.map(r => ({
+    position: `#${r.position}`,
+    studentName: r.studentName,
+    institutionName: r.institutionName,
+    className: r.className,
+    total: `${r.totalMarks}/${r.totalFullMarks}`,
+    percentage: `${r.percentage.toFixed(1)}%`,
+    grade: r.grade,
+    scholarshipStatus: r.scholarshipStatus,
+  }));
+
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) return <ResultsSkeleton isDark={isDark} />;
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
@@ -110,6 +139,9 @@ export default function ResultsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'অবস্থান' : 'Position'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
@@ -122,7 +154,10 @@ export default function ResultsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.slice(0, 20).map(result => (
-                  <TableRow key={result.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                  <TableRow key={result.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(result.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(result.id)} onChange={() => selection.toggle(result.id)} />
+                    </TableCell>
                     <TableCell>
                       <span className={`text-sm font-bold ${result.position <= 3 ? (isDark ? "text-amber-400" : "text-amber-600") : (isDark ? "text-zinc-300" : "text-zinc-600")}`}>
                         #{result.position}
@@ -146,6 +181,21 @@ export default function ResultsPage() {
           </div>
         )}
       </div>
+
+      {selection.selectedCount > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slideUp">
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-md shadow-2xl ${isDark ? 'bg-[#1a1a1c] border border-white/[0.1]' : 'bg-white border border-zinc-200'}`}>
+            <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
+            </span>
+            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors">
+              <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <PdfExportModal open={showPdfModal} onClose={() => setShowPdfModal(false)} title={isBn ? 'ফলাফল তালিকা' : 'Results List'} columns={pdfColumns} data={pdfData} />
     </div>
   );
 }

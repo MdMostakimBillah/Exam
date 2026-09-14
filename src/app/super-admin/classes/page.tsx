@@ -1,12 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { getClasses, createClass, updateClass, deleteClass } from "@/lib/storage/classes";
 import { Class } from "@/lib/types";
-import { BookMarked, Plus, Search, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { BookMarked, Plus, Search, Edit, Trash2, CheckCircle, XCircle, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -20,18 +23,36 @@ export default function ClassesPage() {
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [formData, setFormData] = useState({ name: "", code: "", description: "" });
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <ClassesSkeleton isDark={isDark} />;
 
-  const classes = getClasses();
-  const filtered = classes.filter(c =>
+  const allClasses = getClasses();
+  const filtered = allClasses.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.code.toLowerCase().includes(search.toLowerCase())
   );
+
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? 'নাম' : 'Name', key: 'name' },
+    { header: isBn ? 'কোড' : 'Code', key: 'code' },
+    { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
+  ];
+
+  const pdfData = filtered
+    .filter((cls) => selection.isSelected(cls.id))
+    .map((cls) => ({
+      name: cls.name,
+      code: cls.code,
+      status: cls.isActive ? (isBn ? 'সক্রিয়' : 'Active') : (isBn ? 'নিষ্ক্রিয়' : 'Inactive'),
+    }));
+
+  if (!mounted) return <ClassesSkeleton isDark={isDark} />;
 
   const handleCreate = () => {
     setEditingClass(null);
@@ -97,9 +118,9 @@ export default function ClassesPage() {
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[
-            { label: isBn ? 'মোট শ্রেণী' : 'Total Classes', value: classes.length },
-            { label: isBn ? 'সক্রিয়' : 'Active', value: classes.filter(c => c.isActive).length },
-            { label: isBn ? 'নিষ্ক্রিয়' : 'Inactive', value: classes.filter(c => !c.isActive).length },
+            { label: isBn ? 'মোট শ্রেণী' : 'Total Classes', value: allClasses.length },
+            { label: isBn ? 'সক্রিয়' : 'Active', value: allClasses.filter(c => c.isActive).length },
+            { label: isBn ? 'নিষ্ক্রিয়' : 'Inactive', value: allClasses.filter(c => !c.isActive).length },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -153,6 +174,9 @@ export default function ClassesPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
@@ -161,7 +185,10 @@ export default function ClassesPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(cls => (
-                  <TableRow key={cls.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                  <TableRow key={cls.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(cls.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(cls.id)} onChange={() => selection.toggle(cls.id)} />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
@@ -199,6 +226,32 @@ export default function ClassesPage() {
             </Table>
           )}
         </div>
+
+        {/* Floating PDF Button */}
+        {selection.selectedCount > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slideUp">
+            <div className={`flex items-center gap-3 px-5 py-3 rounded-md shadow-2xl ${isDark ? 'bg-[#1a1a1c] border border-white/[0.1]' : 'bg-white border border-zinc-200'}`}>
+              <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
+              </span>
+              <button
+                onClick={() => setShowPdfModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors"
+              >
+                <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Export Modal */}
+        <PdfExportModal
+          open={showPdfModal}
+          onClose={() => setShowPdfModal(false)}
+          title={isBn ? 'শ্রেণী তালিকা' : 'Class List'}
+          columns={pdfColumns}
+          data={pdfData}
+        />
       </div>
 
       {/* Modal */}

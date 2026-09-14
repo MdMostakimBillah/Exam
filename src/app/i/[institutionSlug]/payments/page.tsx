@@ -12,7 +12,10 @@ import { getPaymentsByInstitution, createPayment, updatePayment } from "@/lib/st
 import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { Payment } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
-import { CreditCard, Search, Plus, Eye, CheckCircle, XCircle, Wallet } from "lucide-react";
+import { CreditCard, Search, Plus, Eye, CheckCircle, XCircle, Wallet, FileDown } from "lucide-react";
+import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { useTableSelection } from "@/hooks/use-table-selection";
+import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -41,15 +44,13 @@ export default function InstitutionPaymentsPage() {
   const [showDetailModal, setShowDetailModal] = useState<Payment | null>(null);
   const [formData, setFormData] = useState(emptyForm);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <PaymentsSkeleton isDark={isDark} />;
 
   const inst = getInstitutionBySlug(slug);
-  if (!inst) return null;
-
-  const payments = getPaymentsByInstitution(inst.id);
-  const registrations = getRegistrationsByInstitution(inst.id);
+  const payments = inst ? getPaymentsByInstitution(inst.id) : [];
+  const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
 
   const filtered = payments.filter(p => {
     const matchesSearch = !search ||
@@ -60,10 +61,35 @@ export default function InstitutionPaymentsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const selection = useTableSelection(filtered);
+
+  const pdfColumns: PdfColumn[] = [
+    { header: isBn ? 'রেফারেন্স' : 'Reference', key: 'reference' },
+    { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'studentName' },
+    { header: isBn ? 'পরীক্ষা' : 'Exam', key: 'examName' },
+    { header: isBn ? 'পরিমাণ' : 'Amount', key: 'amount' },
+    { header: isBn ? 'পদ্ধতি' : 'Method', key: 'paymentMethod' },
+    { header: isBn ? 'তারিখ' : 'Date', key: 'paymentDate' },
+    { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
+  ];
+
+  const pdfData = filtered.map(p => ({
+    reference: p.reference || p.transactionId,
+    studentName: p.studentName || '-',
+    examName: p.examName,
+    amount: formatCurrency(p.amount),
+    paymentMethod: p.paymentMethod,
+    paymentDate: formatDate(p.paymentDate || p.date),
+    status: p.status,
+  }));
+
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
   const confirmedAmount = payments.filter(p => p.status === 'CONFIRMED' || p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0);
   const pendingAmount = payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0);
   const failedAmount = payments.filter(p => p.status === 'FAILED').reduce((sum, p) => sum + p.amount, 0);
+
+  if (!mounted) return <PaymentsSkeleton isDark={isDark} />;
+  if (!inst) return null;
 
   const handleCreate = () => {
     setFormData(emptyForm);
@@ -204,6 +230,9 @@ export default function InstitutionPaymentsPage() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
+                  <TableHead className="w-10">
+                    <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
+                  </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেফারেন্স' : 'Reference'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
@@ -216,7 +245,10 @@ export default function InstitutionPaymentsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(payment => (
-                  <TableRow key={payment.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}`}>
+                  <TableRow key={payment.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(payment.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableCell className="w-10">
+                      <TableCheckbox checked={selection.isSelected(payment.id)} onChange={() => selection.toggle(payment.id)} />
+                    </TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{payment.reference || payment.transactionId}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
@@ -331,6 +363,25 @@ export default function InstitutionPaymentsPage() {
           <button onClick={() => setShowDetailModal(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বন্ধ' : 'Close'}</button>
         </ModalFooter>
       </Modal>
+
+      {/* Floating PDF Download Button */}
+      {filtered.length > 0 && (
+        <button
+          onClick={() => setShowPdfModal(true)}
+          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all ${isDark ? "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/20" : "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/30"}`}
+        >
+          <FileDown className="h-4 w-4" />
+          <span className="text-[13px] font-medium">{isBn ? 'পিডিএফ ডাউনলোড' : 'Download PDF'}</span>
+        </button>
+      )}
+
+      <PdfExportModal
+        open={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={isBn ? 'পেমেন্ট তালিকা' : 'Payment List'}
+        columns={pdfColumns}
+        data={pdfData}
+      />
     </div>
   );
 }
