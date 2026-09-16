@@ -17,14 +17,41 @@ export async function login(email: string, password: string): Promise<User | nul
     email,
     password,
   });
-  
-  if (error) return null;
-  
-  if (data.user) {
-    const user = await getUserByEmail(email);
-    return user;
+
+  if (error) {
+    console.error('Login error:', error.message);
+    return null;
   }
-  
+
+  if (data.user) {
+    // Query by ID (matches RLS policy: id = auth.uid())
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Profile fetch error:', profileError.message);
+      return null;
+    }
+
+    // Normalize role: DB stores lowercase, app expects UPPERCASE
+    const normalizedRole = profile.role.toUpperCase().replace('SUPER_ADMIN', 'SUPER_ADMIN').replace('INSTITUTION_ADMIN', 'INSTITUTION_ADMIN') as UserRole;
+
+    return {
+      id: profile.id,
+      email: profile.email,
+      name: profile.name,
+      password: '',
+      role: normalizedRole,
+      institutionId: profile.institution_id,
+      avatar: profile.avatar,
+      createdAt: profile.created_at,
+      updatedAt: profile.updated_at,
+    };
+  }
+
   return null;
 }
 
