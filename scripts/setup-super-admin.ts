@@ -53,9 +53,9 @@ async function setupSuperAdmin() {
     return;
   }
 
-  const username = generateSecureUsername();
-  const email = `superadmin_${crypto.randomBytes(4).toString('hex')}@scholarx.local`;
-  const password = generateSecurePassword(32);
+  const username = 'super_admin';
+  const email = 'superadmin@scholarx.local';
+  const password = 'qvML&v@FgrRZ$qXkUL1qr@*^0J9068ay';
 
   console.log('Creating super admin with:');
   console.log(`  Email: ${email}`);
@@ -94,10 +94,13 @@ async function setupSuperAdmin() {
     });
 
   if (profileError) {
-    console.error('Error creating profile:', profileError);
-    // Clean up auth user
-    await supabase.auth.admin.deleteUser(authData.user.id);
-    process.exit(1);
+    if (profileError.code === '23505') {
+      console.log('Profile already exists (created by trigger). Skipping.');
+    } else {
+      console.error('Error creating profile:', profileError);
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      process.exit(1);
+    }
   }
 
   console.log('Profile created successfully');
