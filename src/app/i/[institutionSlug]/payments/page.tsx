@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getPaymentsByInstitution, createPayment, updatePayment } from "@/lib/storage/payments";
 import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { Payment } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
 import { CreditCard, Search, Plus, Eye, CheckCircle, XCircle, Wallet, FileDown } from "lucide-react";
@@ -49,6 +50,7 @@ export default function InstitutionPaymentsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const inst = getInstitutionBySlug(slug);
+  const currentSession = getCurrentSession();
   const payments = inst ? getPaymentsByInstitution(inst.id) : [];
   const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
 
@@ -107,6 +109,7 @@ export default function InstitutionPaymentsPage() {
       return;
     }
     createPayment({
+      sessionId: currentSession?.id || '',
       transactionId: `TXN-${Date.now()}`,
       institutionId: inst.id,
       institutionName: inst.name,

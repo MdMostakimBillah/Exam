@@ -55,8 +55,16 @@ export default function UsersPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const users = useMemo(() => getUsers(), []);
+  const [users, setUsers] = useState<User[]>([]);
   const institutions = useMemo(() => getInstitutions(), []);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      const data = await getUsers();
+      setUsers(data);
+    };
+    loadUsers();
+  }, [refreshKey]);
 
   const filtered = useMemo(() => users.filter((u) => {
     const matchesSearch =

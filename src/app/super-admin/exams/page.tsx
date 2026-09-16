@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exams";
 import { getClasses, getActiveClasses } from "@/lib/storage/classes";
 import { getRegistrations } from "@/lib/storage/registrations";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
 import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -42,6 +43,7 @@ export default function ExamsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  const currentSession = getCurrentSession();
   const exams = useMemo(() => getExams(), []);
   const registrations = useMemo(() => getRegistrations(), []);
   const allClasses = useMemo(() => getClasses(), []);
@@ -129,7 +131,7 @@ export default function ExamsPage() {
       updateExam(editingExam.id, formData);
       toast('success', isBn ? 'পরীক্ষা আপডেট হয়েছে' : 'Exam updated');
     } else {
-      createExam({ ...formData, status: 'DRAFT' });
+      createExam({ ...formData, sessionId: currentSession?.id || '', status: 'DRAFT' });
       toast('success', isBn ? 'পরীক্ষা তৈরি হয়েছে' : 'Exam created');
     }
     setShowModal(false);

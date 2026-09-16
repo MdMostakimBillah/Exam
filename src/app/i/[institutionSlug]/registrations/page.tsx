@@ -13,6 +13,7 @@ import { getRegistrationsByInstitution, createRegistration, updateRegistration }
 import { getExams } from "@/lib/storage/exams";
 import { getStudentsByInstitution, createStudent } from "@/lib/storage/students";
 import { getClasses } from "@/lib/storage/classes";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -77,6 +78,7 @@ export default function InstitutionRegistrationsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const inst = getInstitutionBySlug(slug);
+  const currentSession = getCurrentSession();
   const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
   const exams = getExams();
   const students = inst ? getStudentsByInstitution(inst.id) : [];
@@ -179,7 +181,7 @@ export default function InstitutionRegistrationsPage() {
 
   const handleBack = () => setStep(s => (s - 1) as Step);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSubmitStep3) {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
@@ -187,7 +189,8 @@ export default function InstitutionRegistrationsPage() {
     const exam = exams.find(e => e.id === selectedExamId);
     if (!exam) return;
 
-    const newStudent = createStudent({
+    const newStudent = await createStudent({
+      sessionId: currentSession?.id || '',
       institutionId: inst.id,
       firstName: studentForm.firstName.trim(),
       lastName: studentForm.lastName.trim(),
@@ -205,7 +208,8 @@ export default function InstitutionRegistrationsPage() {
       status: "ACTIVE",
     });
 
-    createRegistration({
+    await createRegistration({
+      sessionId: currentSession?.id || '',
       applicationId: generateAppId(),
       studentId: newStudent.id,
       studentName: `${newStudent.firstName} ${newStudent.lastName}`,

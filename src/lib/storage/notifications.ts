@@ -1,38 +1,70 @@
 import { Notification } from '../types';
-import { getStore, setStore } from './storage';
+import { createClient } from '@/lib/supabase/client';
 
-const KEY = 'notifications';
+const TABLE = 'notifications';
 
-export function getNotifications(): Notification[] {
-  return getStore<Notification>(KEY);
+function mapNotification(data: any): Notification {
+  return {
+    id: data.id,
+    userId: data.user_id,
+    title: data.title,
+    message: data.message,
+    type: data.type,
+    read: data.read,
+    createdAt: data.created_at,
+  };
 }
 
-export function getNotificationsByUser(userId: string): Notification[] {
-  return getNotifications().filter(n => n.userId === userId);
+export async function getNotifications(userId: string): Promise<Notification[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return (data || []).map(mapNotification);
 }
 
-export function getUnreadCount(userId: string): number {
-  return getNotifications().filter(n => n.userId === userId && !n.read).length;
+export async function createNotification(data: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification> {
+  const supabase = createClient();
+  const { data: result, error } = await supabase
+    .from(TABLE)
+    .insert({
+      user_id: data.userId,
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      read: data.read,
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return mapNotification(result);
 }
 
-export function createNotification(data: Omit<Notification, 'id' | 'createdAt'>): Notification {
-  const items = getNotifications();
-  const item: Notification = { ...data, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
-  items.push(item);
-  setStore(KEY, items);
-  return item;
+export async function markNotificationRead(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from(TABLE)
+    .update({ read: true })
+    .eq('id', id);
+  
+  return !error;
 }
 
-export function markAsRead(id: string): void {
-  const items = getNotifications();
-  const idx = items.findIndex(n => n.id === id);
-  if (idx !== -1) {
-    items[idx].read = true;
-    setStore(KEY, items);
-  }
+export async function markAsRead(id: string): Promise<boolean> {
+  return markNotificationRead(id);
 }
 
-export function markAllAsRead(userId: string): void {
-  const items = getNotifications().map(n => n.userId === userId ? { ...n, read: true } : n);
-  setStore(KEY, items);
+export async function markAllAsRead(userId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from(TABLE)
+    .update({ read: true })
+    .eq('user_id', userId);
+  
+  return !error;
 }

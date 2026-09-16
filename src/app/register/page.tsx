@@ -142,7 +142,7 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const slug =
       form.nameEnglish
         .toLowerCase()
@@ -150,7 +150,7 @@ export default function RegisterPage() {
         .replace(/^-|-$/g, "") ||
       form.nameBangla.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-    const institution = createInstitution({
+    const institution = await createInstitution({
       name: form.nameBangla || form.nameEnglish,
       code: `INST-${Date.now().toString(36).toUpperCase().slice(-6)}`,
       slug,
@@ -167,7 +167,7 @@ export default function RegisterPage() {
     });
 
     const adminName = form.nameEnglish || form.nameBangla;
-    const user = createUser({
+    const user = await createUser({
       email,
       name: adminName,
       password,
@@ -175,7 +175,7 @@ export default function RegisterPage() {
       institutionId: institution.id,
     });
 
-    updateInstitution(institution.id, { adminUserId: user.id });
+    await updateInstitution(institution.id, { adminUserId: user.id });
     setSubmitted(true);
   };
 

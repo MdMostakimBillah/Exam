@@ -6,6 +6,18 @@ export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'PAID' | 'FAILED' | 'REFUN
 export type ResultStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'PUBLISHED';
 export type CertificateStatus = 'DRAFT' | 'GENERATED' | 'VERIFIED';
 
+export interface AcademicSession {
+  id: string;
+  name: string;
+  code: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  isCurrent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Class {
   id: string;
   name: string;
@@ -52,6 +64,7 @@ export interface Institution {
 export interface Student {
   id: string;
   institutionId: string;
+  sessionId: string;
   firstName: string;
   lastName: string;
   studentId: string;
@@ -72,6 +85,7 @@ export interface Student {
 
 export interface Exam {
   id: string;
+  sessionId: string;
   name: string;
   code: string;
   academicYear: string;
@@ -99,6 +113,7 @@ export interface ExamSubject {
 
 export interface Registration {
   id: string;
+  sessionId: string;
   applicationId: string;
   studentId: string;
   studentName: string;
@@ -117,6 +132,7 @@ export interface Registration {
 
 export interface ExamCenter {
   id: string;
+  sessionId: string;
   name: string;
   address: string;
   capacity: number;
@@ -128,6 +144,7 @@ export interface ExamCenter {
 
 export interface AdmitCard {
   id: string;
+  sessionId: string;
   registrationId: string;
   studentId: string;
   studentName: string;
@@ -146,6 +163,7 @@ export interface AdmitCard {
 
 export interface Mark {
   id: string;
+  sessionId: string;
   studentId: string;
   registrationId: string;
   examId: string;
@@ -159,6 +177,7 @@ export interface Mark {
 
 export interface Result {
   id: string;
+  sessionId: string;
   studentId: string;
   studentName: string;
   institutionId: string;
@@ -183,6 +202,7 @@ export interface Result {
 
 export interface Certificate {
   id: string;
+  sessionId: string;
   certificateNumber: string;
   studentId: string;
   studentName: string;
@@ -204,6 +224,7 @@ export interface Certificate {
 
 export interface Payment {
   id: string;
+  sessionId: string;
   transactionId: string;
   institutionId: string;
   institutionName: string;

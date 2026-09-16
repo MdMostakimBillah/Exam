@@ -12,6 +12,7 @@ import { getResultsByInstitution, createResult, updateResult, deleteResult } fro
 import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { getExams, getExamById } from "@/lib/storage/exams";
 import { getStudentsByInstitution } from "@/lib/storage/students";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { Result, Registration, Exam, ExamSubject } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { Award, Trophy, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown } from "lucide-react";
@@ -57,6 +58,7 @@ export default function InstitutionResultsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const inst = getInstitutionBySlug(slug);
+  const currentSession = getCurrentSession();
   const results = inst ? getResultsByInstitution(inst.id) : [];
   const exams = getExams();
   const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
@@ -193,6 +195,7 @@ export default function InstitutionResultsPage() {
       const pct = totalFull > 0 ? Math.round((totalM / totalFull) * 1000) / 10 : 0;
       const student = students.find(s => s.id === reg.studentId);
       createResult({
+        sessionId: currentSession?.id || '',
         studentId: reg.studentId,
         studentName: reg.studentName,
         institutionId: inst.id,

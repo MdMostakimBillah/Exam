@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exams";
 import { getClasses } from "@/lib/storage/classes";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { Exam, ExamStatus } from "@/lib/types";
 import { FileText, Search, Calendar, Users, CreditCard, Plus, Edit, Trash2, X, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -67,6 +68,7 @@ export default function InstitutionExamsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const inst = getInstitutionBySlug(slug);
+  const currentSession = getCurrentSession();
   const exams = getExams();
   const allClasses = getClasses();
 
@@ -154,6 +156,7 @@ export default function InstitutionExamsPage() {
       toast("success", isBn ? "পরীক্ষা আপডেট হয়েছে" : "Exam updated");
     } else {
       createExam({
+        sessionId: currentSession?.id || '',
         name: formData.name,
         code: formData.code,
         academicYear: formData.academicYear,

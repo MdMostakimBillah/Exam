@@ -65,12 +65,16 @@ export default function NotificationsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    if (mounted) {
-      const user = getCurrentUser();
-      if (user) {
-        setNotifications(getNotifications().filter(n => n.userId === user.id));
+    const loadNotifications = async () => {
+      if (mounted) {
+        const user = getCurrentUser();
+        if (user) {
+          const notifications = await getNotifications(user.id);
+          setNotifications(notifications);
+        }
       }
-    }
+    };
+    loadNotifications();
   }, [mounted, refreshKey]);
 
   if (!mounted) return <NotificationsSkeleton isDark={isDark} />;

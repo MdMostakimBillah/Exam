@@ -59,6 +59,7 @@ export function initializeDemoData(): void {
         { id: 'sub4', name: 'Science', fullMarks: 100, passMarks: 33, duration: 60, negativeMarks: 0.25 },
       ],
       status: 'PUBLISHED', createdAt: '2025-09-15T00:00:00Z', updatedAt: '2025-09-15T00:00:00Z',
+      sessionId: 'demo-session',
     },
     {
       id: 'e2', name: 'District Merit Scholarship 2026', code: 'DMS-2026',
@@ -72,6 +73,7 @@ export function initializeDemoData(): void {
         { id: 'sub7', name: 'Science', fullMarks: 100, passMarks: 33, duration: 60, negativeMarks: 0.25 },
       ],
       status: 'OPEN', createdAt: '2025-10-20T00:00:00Z', updatedAt: '2025-10-20T00:00:00Z',
+      sessionId: 'demo-session',
     },
     {
       id: 'e3', name: 'Primary Education Scholarship Test 2026', code: 'PEST-2026',
@@ -84,6 +86,7 @@ export function initializeDemoData(): void {
         { id: 'sub9', name: 'Bangla', fullMarks: 50, passMarks: 17, duration: 60, negativeMarks: 0 },
       ],
       status: 'OPEN', createdAt: '2025-11-25T00:00:00Z', updatedAt: '2025-11-25T00:00:00Z',
+      sessionId: 'demo-session',
     },
   ];
 

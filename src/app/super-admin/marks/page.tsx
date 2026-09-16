@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { getExams } from "@/lib/storage/exams";
 import { getRegistrations } from "@/lib/storage/registrations";
 import { getMarks, createMark, updateMark } from "@/lib/storage/marks";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { BookOpen, Save, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -62,6 +63,8 @@ export default function MarksPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  const currentSession = getCurrentSession();
+
   if (!mounted) return <MarksSkeleton isDark={isDark} />;
 
   const handleMarkChange = (regId: string, value: string) => {
@@ -75,6 +78,7 @@ export default function MarksPage() {
         const existing = existingMarks.find(m => m.registrationId === reg.id);
         if (existing) updateMark(existing.id, { marks });
         else createMark({
+          sessionId: currentSession?.id || '',
           studentId: reg.studentId, registrationId: reg.id, examId: selectedExam,
           subjectId: selectedSubject, subjectName: selectedExamData?.subjects.find(s => s.id === selectedSubject)?.name || '',
           marks, enteredBy: 'u1',

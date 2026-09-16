@@ -11,6 +11,7 @@ import { getCertificatesByInstitution, createCertificate, updateCertificate } fr
 import { getResultsByInstitution } from "@/lib/storage/results";
 import { getExams } from "@/lib/storage/exams";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { Certificate, Result } from "@/lib/types";
 import { Award, Search, Plus, Eye, XCircle, FileText, Layers, FileDown } from "lucide-react";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -55,6 +56,7 @@ export default function InstitutionCertificatesPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const inst = getInstitutionBySlug(slug);
+  const currentSession = getCurrentSession();
   const certificates = inst ? getCertificatesByInstitution(inst.id) : [];
   const results = inst ? getResultsByInstitution(inst.id) : [];
   const allExams = getExams();
@@ -111,6 +113,7 @@ export default function InstitutionCertificatesPage() {
     const today = new Date().toISOString().split('T')[0];
 
     createCertificate({
+      sessionId: currentSession?.id || '',
       certificateNumber: certNumber,
       studentId: result.studentId,
       studentName: result.studentName,
@@ -134,7 +137,7 @@ export default function InstitutionCertificatesPage() {
     setRefreshKey(k => k + 1);
   };
 
-  const handleBatchGenerate = () => {
+  const handleBatchGenerate = async () => {
     if (!selectedExam) {
       toast("error", isBn ? "একটি পরীক্ষা নির্বাচন করুন" : "Please select an exam");
       return;
@@ -149,9 +152,10 @@ export default function InstitutionCertificatesPage() {
     const today = new Date().toISOString().split('T')[0];
     let currentCerts = [...certificates];
 
-    examResults.forEach(result => {
+    for (const result of examResults) {
       const certNumber = generateCertNumber(currentCerts);
-      const cert = createCertificate({
+      const cert = await createCertificate({
+        sessionId: currentSession?.id || '',
         certificateNumber: certNumber,
         studentId: result.studentId,
         studentName: result.studentName,
@@ -169,7 +173,7 @@ export default function InstitutionCertificatesPage() {
         resultId: result.id,
       });
       currentCerts.push(cert);
-    });
+    }
 
     toast("success", isBn ? `${examResults.length}টি সার্টিফিকেট তৈরি হয়েছে` : `${examResults.length} certificates generated`);
     setShowBatchModal(false);

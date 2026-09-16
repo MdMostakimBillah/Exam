@@ -27,20 +27,18 @@ export default function LoginPage() {
     setMounted(true);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      const user = login(email, password);
-      if (user) {
-        if (user.role === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/i');
-      } else {
-        setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : "Invalid email or password");
-      }
-      setLoading(false);
-    }, 600);
+    const user = await login(email, password);
+    if (user) {
+      if (user.role === 'SUPER_ADMIN') router.push('/super-admin');
+      else router.push('/i');
+    } else {
+      setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : "Invalid email or password");
+    }
+    setLoading(false);
   };
 
   const quickLogin = (email: string) => {

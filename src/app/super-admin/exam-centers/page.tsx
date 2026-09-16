@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { getExamCenters, createExamCenter, updateExamCenter } from "@/lib/storage/exam-centers";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { School, Plus, Pencil, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -26,6 +27,7 @@ export default function ExamCentersPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  const currentSession = getCurrentSession();
   const centers = useMemo(() => getExamCenters(), []);
   const totalCapacity = useMemo(() => centers.reduce((s, c) => s + c.capacity, 0), [centers]);
   const totalAllocated = useMemo(() => centers.reduce((s, c) => s + c.allocated, 0), [centers]);
@@ -54,7 +56,13 @@ export default function ExamCentersPage() {
 
   const handleSave = () => {
     if (!form.name || !form.capacity) return;
-    const data = { name: form.name, address: form.address, capacity: parseInt(form.capacity), allocated: 0 };
+    const data = { 
+      sessionId: currentSession?.id || '',
+      name: form.name, 
+      address: form.address, 
+      capacity: parseInt(form.capacity), 
+      allocated: 0 
+    };
     if (editId) { updateExamCenter(editId, data); toast('success', isBn ? 'কেন্দ্র আপডেট হয়েছে' : 'Center updated'); }
     else { createExamCenter(data); toast('success', isBn ? 'কেন্দ্র তৈরি হয়েছে' : 'Center created'); }
     setModalOpen(false); setEditId(null); setForm({ name: '', address: '', capacity: '' });

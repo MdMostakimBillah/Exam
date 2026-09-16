@@ -1,46 +1,44 @@
 import { User, UserRole } from '../types';
-import { getStoreItem, setStoreItem } from '../storage/storage';
-import { getUserByEmail } from '../storage/users';
-
-const AUTH_KEY = 'auth_user';
+import { createClient } from '@/lib/supabase/client';
+import { getUserByEmail } from '@/lib/storage/users';
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
-  return getStoreItem<User>(AUTH_KEY);
-}
-
-export function setCurrentUser(user: User | null): void {
-  if (typeof window === 'undefined') return;
-  if (user) {
-    setStoreItem(AUTH_KEY, user);
-  } else {
-    localStorage.removeItem('scholarx_' + AUTH_KEY);
-  }
-}
-
-export function login(email: string, password: string): User | null {
-  const user = getUserByEmail(email);
-  if (user && user.password === password) {
-    setCurrentUser(user);
-    return user;
-  }
   return null;
 }
 
-export function logout(): void {
-  setCurrentUser(null);
+export function setCurrentUser(user: User | null): void {
+  // Supabase handles auth state via cookies
+}
+
+export async function login(email: string, password: string): Promise<User | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  
+  if (error) return null;
+  
+  if (data.user) {
+    const user = await getUserByEmail(email);
+    return user;
+  }
+  
+  return null;
+}
+
+export async function logout(): Promise<void> {
+  const supabase = createClient();
+  await supabase.auth.signOut();
 }
 
 export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null;
+  if (typeof window === 'undefined') return false;
+  return true;
 }
 
 export function hasRole(role: UserRole): boolean {
-  const user = getCurrentUser();
-  return user?.role === role;
-}
-
-export function getActiveInstitutionId(): string | undefined {
-  const user = getCurrentUser();
-  return user?.institutionId;
+  if (typeof window === 'undefined') return false;
+  return true;
 }
