@@ -1,10 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { initializeDemoData } from "@/lib/storage/seed";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { AppShell } from "@/components/layout/app-shell";
-import { ToastProvider } from "@/components/ui/toast";
 import { useTheme } from "@/contexts/theme-context";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +12,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initializeDemoData();
     const user = getCurrentUser();
     if (!user) { router.push('/login'); return; }
     if (user.role !== 'SUPER_ADMIN') { router.push('/login'); return; }
@@ -27,5 +24,5 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     </div>
   );
 
-  return <ToastProvider><AppShell>{children}</AppShell></ToastProvider>;
+  return <AppShell>{children}</AppShell>;
 }

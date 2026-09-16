@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import emailjs from "@emailjs/browser";
 import { initializeDemoData } from "@/lib/storage/seed";
 import { createInstitution, updateInstitution } from "@/lib/storage/institutions";
 import { createUser } from "@/lib/storage/users";
@@ -69,7 +68,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     initializeDemoData();
-    emailjs.init(EMAILJS_CONFIG.publicKey);
+    import("@emailjs/browser").then(({ default: emailjs }) => {
+      emailjs.init(EMAILJS_CONFIG.publicKey);
+    });
     setMounted(true);
   }, []);
 
@@ -108,6 +109,7 @@ export default function RegisterPage() {
     const instName = form.nameEnglish || form.nameBangla || "Your Institution";
 
     try {
+      const { default: emailjs } = await import("@emailjs/browser");
       const result = await emailjs.send(
         EMAILJS_CONFIG.serviceId,
         EMAILJS_CONFIG.templateId,

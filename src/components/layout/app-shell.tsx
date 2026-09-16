@@ -1,8 +1,21 @@
 "use client";
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils/helpers";
-import { Sidebar } from "./sidebar";
-import { Topbar } from "./topbar";
+
+const Sidebar = dynamic(() => import("./sidebar").then((m) => m.Sidebar), {
+  ssr: false,
+  loading: () => (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-[240px] bg-[#0D0D0D] animate-pulse" />
+  ),
+});
+
+const Topbar = dynamic(() => import("./topbar").then((m) => m.Topbar), {
+  ssr: false,
+  loading: () => (
+    <header className="fixed top-0 right-0 z-30 h-16 left-[240px] bg-white/5 animate-pulse" />
+  ),
+});
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = React.useState(false);

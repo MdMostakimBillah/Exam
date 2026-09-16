@@ -45,9 +45,9 @@ const superAdminNav: NavItem[] = [
 function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const user = getCurrentUser();
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
+  const user = React.useMemo(() => getCurrentUser(), []);
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';

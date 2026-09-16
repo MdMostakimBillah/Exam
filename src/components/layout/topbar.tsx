@@ -16,9 +16,9 @@ interface TopbarProps {
 function Topbar({ sidebarCollapsed }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const user = getCurrentUser();
   const { theme, toggleTheme } = useTheme();
   const { lang: language, setLang } = useLang();
+  const user = React.useMemo(() => getCurrentUser(), []);
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';

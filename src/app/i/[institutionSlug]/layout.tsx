@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { initializeDemoData } from "@/lib/storage/seed";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { AppShell } from "@/components/layout/app-shell";
@@ -13,7 +12,6 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    initializeDemoData();
     const user = getCurrentUser();
     if (!user) { router.push('/login'); return; }
     if (user.role === 'SUPER_ADMIN') { router.push('/super-admin'); return; }
