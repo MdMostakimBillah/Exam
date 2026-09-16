@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -10,17 +11,44 @@ import { useToast } from "@/components/ui/toast";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
 import { getRegistrationsByInstitution, createRegistration, updateRegistration } from "@/lib/storage/registrations";
 import { getExams } from "@/lib/storage/exams";
-import { getStudentsByInstitution } from "@/lib/storage/students";
+import { getStudentsByInstitution, createStudent } from "@/lib/storage/students";
+import { getClasses } from "@/lib/storage/classes";
 import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ClipboardList, Search, Plus, Eye, CheckCircle, XCircle, Banknote, FileDown } from "lucide-react";
+import { ClipboardList, Search, Plus, Eye, CheckCircle, XCircle, Banknote, FileDown, Upload, User, Users, Camera, AlertCircle } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
+
+const MIN_PHOTO_SIZE = 500 * 1024;
+
+type Step = 1 | 2 | 3;
+
+interface StudentForm {
+  firstName: string;
+  lastName: string;
+  studentId: string;
+  class: string;
+  section: string;
+  roll: string;
+  dateOfBirth: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  fatherName: string;
+  motherName: string;
+  phone: string;
+  address: string;
+  photo: string;
+}
+
+const emptyStudentForm: StudentForm = {
+  firstName: "", lastName: "", studentId: "", class: "", section: "", roll: "",
+  dateOfBirth: "", gender: "MALE",
+  fatherName: "", motherName: "", phone: "", address: "", photo: "",
+};
 
 export default function InstitutionRegistrationsPage() {
   const params = useParams();
@@ -40,7 +68,10 @@ export default function InstitutionRegistrationsPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: "approve" | "reject"; reg: Registration } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [formData, setFormData] = useState({ studentId: "", examId: "" });
+  const [step, setStep] = useState<Step>(1);
+  const [studentForm, setStudentForm] = useState<StudentForm>(emptyStudentForm);
+  const [selectedExamId, setSelectedExamId] = useState("");
+  const [photoError, setPhotoError] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -49,6 +80,8 @@ export default function InstitutionRegistrationsPage() {
   const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
   const exams = getExams();
   const students = inst ? getStudentsByInstitution(inst.id) : [];
+  const allClasses = getClasses();
+  const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
   const filtered = registrations.filter(r => {
     const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.applicationId.toLowerCase().includes(search.toLowerCase());
@@ -92,40 +125,101 @@ export default function InstitutionRegistrationsPage() {
     return `APP-${year}-${String(count).padStart(4, "0")}`;
   };
 
-  const selectedExam = exams.find(e => e.id === formData.examId);
+  const generateStudentId = () => {
+    const year = new Date().getFullYear();
+    const count = students.length + 1;
+    return `STU-${year}-${String(count).padStart(4, "0")}`;
+  };
+
+  const selectedExam = exams.find(e => e.id === selectedExamId);
 
   if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
   if (!inst) return null;
 
   const handleCreate = () => {
-    setFormData({ studentId: "", examId: "" });
+    setStep(1);
+    setStudentForm({ ...emptyStudentForm, studentId: generateStudentId() });
+    setSelectedExamId("");
+    setPhotoError("");
     setShowModal(true);
     setMenuOpenId(null);
   };
 
-  const handleSave = () => {
-    if (!formData.studentId || !formData.examId) {
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError("");
+    if (file.size < MIN_PHOTO_SIZE) {
+      const sizeKB = (file.size / 1024).toFixed(1);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। ন্যূনতম 500KB প্রয়োজন।` : `Photo is ${sizeKB}KB. Minimum 500KB required.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setStudentForm(prev => ({ ...prev, photo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const canProceedStep1 = studentForm.firstName.trim() !== "" && studentForm.lastName.trim() !== "" && studentForm.studentId.trim() !== "" && studentForm.class.trim() !== "";
+  const canProceedStep2 = studentForm.fatherName.trim() !== "" && studentForm.phone.trim() !== "" && studentForm.address.trim() !== "";
+  const canSubmitStep3 = selectedExamId !== "" && canProceedStep1 && canProceedStep2;
+
+  const handleNext = () => {
+    if (step === 1 && !canProceedStep1) {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
     }
-    const student = students.find(s => s.id === formData.studentId);
-    const exam = exams.find(e => e.id === formData.examId);
-    if (!student || !exam) return;
+    if (step === 2 && !canProceedStep2) {
+      toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
+      return;
+    }
+    setStep(s => (s + 1) as Step);
+  };
+
+  const handleBack = () => setStep(s => (s - 1) as Step);
+
+  const handleSave = () => {
+    if (!canSubmitStep3) {
+      toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
+      return;
+    }
+    const exam = exams.find(e => e.id === selectedExamId);
+    if (!exam) return;
+
+    const newStudent = createStudent({
+      institutionId: inst.id,
+      firstName: studentForm.firstName.trim(),
+      lastName: studentForm.lastName.trim(),
+      studentId: studentForm.studentId.trim(),
+      class: studentForm.class,
+      section: studentForm.section.trim(),
+      roll: studentForm.roll.trim(),
+      dateOfBirth: studentForm.dateOfBirth,
+      gender: studentForm.gender,
+      fatherName: studentForm.fatherName.trim(),
+      motherName: studentForm.motherName.trim(),
+      phone: studentForm.phone.trim(),
+      address: studentForm.address.trim(),
+      photo: studentForm.photo || undefined,
+      status: "ACTIVE",
+    });
 
     createRegistration({
       applicationId: generateAppId(),
-      studentId: student.id,
-      studentName: `${student.firstName} ${student.lastName}`,
+      studentId: newStudent.id,
+      studentName: `${newStudent.firstName} ${newStudent.lastName}`,
       institutionId: inst.id,
       institutionName: inst.name,
       examId: exam.id,
       examName: exam.name,
-      className: student.class,
+      className: newStudent.class,
       status: "PENDING",
       paymentStatus: "PENDING",
       paymentAmount: exam.registrationFee,
     });
-    toast("success", isBn ? "নিবন্ধন তৈরি হয়েছে" : "Registration created");
+
+    toast("success", isBn ? "শিক্ষার্থী ও নিবন্ধন তৈরি হয়েছে" : "Student and registration created");
     setShowModal(false);
     setRefreshKey(k => k + 1);
   };
@@ -158,6 +252,12 @@ export default function InstitutionRegistrationsPage() {
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
   const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
+
+  const stepLabels = [
+    isBn ? "শিক্ষার্থী তথ্য" : "Student Info",
+    isBn ? "অভিভাবক তথ্য" : "Guardian Info",
+    isBn ? "ছবি ও পরীক্ষা" : "Photo & Exam",
+  ];
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -292,43 +392,195 @@ export default function InstitutionRegistrationsPage() {
         </div>
       </div>
 
-      {/* Add Registration Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? "নতুন নিবন্ধন" : "New Registration"} maxWidth="max-w-lg">
-        <div className="space-y-4">
-          <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "শিক্ষার্থী *" : "Student *"}</label>
-            <Select
-              options={[{ label: isBn ? "শিক্ষার্থী নির্বাচন করুন" : "Select student", value: "" }, ...students.map(s => ({ label: `${s.firstName} ${s.lastName} (${s.studentId})`, value: s.id }))]}
-              value={formData.studentId}
-              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "পরীক্ষা *" : "Exam *"}</label>
-            <Select
-              options={[{ label: isBn ? "পরীক্ষা নির্বাচন করুন" : "Select exam", value: "" }, ...exams.map(e => ({ label: `${e.name} (${e.academicYear})`, value: e.id }))]}
-              value={formData.examId}
-              onChange={(e) => setFormData({ ...formData, examId: e.target.value })}
-              className={inputCls}
-            />
-          </div>
-          {selectedExam && (
-            <div className={`${isDark ? "bg-white/[0.04]" : "bg-zinc-50"} rounded-md p-3 border ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
-              <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "নিবন্ধন ফি" : "Registration Fee"}</p>
-              <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>&#2547;{selectedExam.registrationFee.toLocaleString()}</p>
-            </div>
-          )}
-          <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "আবেদন আইডি" : "Application ID"}</label>
-            <Input value={generateAppId()} disabled className={cn("opacity-60", inputCls)} />
-          </div>
+      {/* Multi-Step Registration Modal */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? "নতুন নিবন্ধন" : "New Registration"} maxWidth="max-w-xl">
+        {/* Step Indicator */}
+        <div className="flex items-center gap-2 mb-6">
+          {stepLabels.map((label, i) => {
+            const num = (i + 1) as Step;
+            const isActive = step === num;
+            const isDone = step > num;
+            return (
+              <div key={i} className="flex items-center gap-2 flex-1">
+                <div className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors",
+                  isDone ? "bg-green-500 text-white" : isActive ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white") : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
+                )}>
+                  {isDone ? "✓" : num}
+                </div>
+                <span className={cn("text-[11px] font-medium hidden sm:block", isActive ? (isDark ? "text-white" : "text-zinc-900") : (isDark ? "text-zinc-500" : "text-zinc-400"))}>
+                  {label}
+                </span>
+                {i < 2 && <div className={cn("flex-1 h-px mx-2", isDone ? "bg-green-500" : isDark ? "bg-white/[0.08]" : "bg-zinc-200")} />}
+              </div>
+            );
+          })}
         </div>
+
+        {/* Step 1: Student Basic Info */}
+        {step === 1 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রথম নাম *' : 'First Name *'}</label>
+                <Input placeholder={isBn ? 'প্রথম নাম' : 'First name'} value={studentForm.firstName} onChange={(e) => setStudentForm({ ...studentForm, firstName: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শেষ নাম *' : 'Last Name *'}</label>
+                <Input placeholder={isBn ? 'শেষ নাম' : 'Last name'} value={studentForm.lastName} onChange={(e) => setStudentForm({ ...studentForm, lastName: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী আইডি *' : 'Student ID *'}</label>
+                <Input placeholder={isBn ? 'আইডি' : 'Student ID'} value={studentForm.studentId} onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শ্রেণী *' : 'Class *'}</label>
+                <Select
+                  options={[{ label: isBn ? 'শ্রেণী নির্বাচন' : 'Select class', value: '' }, ...classNames.map(c => ({ label: c, value: c }))]}
+                  value={studentForm.class}
+                  onChange={(e) => setStudentForm({ ...studentForm, class: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শাখা' : 'Section'}</label>
+                <Input placeholder={isBn ? 'শাখা' : 'Section'} value={studentForm.section} onChange={(e) => setStudentForm({ ...studentForm, section: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
+                <Input placeholder={isBn ? 'রোল নম্বর' : 'Roll number'} value={studentForm.roll} onChange={(e) => setStudentForm({ ...studentForm, roll: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
+                <Input type="date" value={studentForm.dateOfBirth} onChange={(e) => setStudentForm({ ...studentForm, dateOfBirth: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'লিঙ্গ' : 'Gender'}</label>
+                <Select
+                  options={[
+                    { label: isBn ? 'পুরুষ' : 'Male', value: 'MALE' },
+                    { label: isBn ? 'মহিলা' : 'Female', value: 'FEMALE' },
+                    { label: isBn ? 'অন্যান্য' : 'Other', value: 'OTHER' },
+                  ]}
+                  value={studentForm.gender}
+                  onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value as "MALE" | "FEMALE" | "OTHER" })}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Guardian Info */}
+        {step === 2 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
+                <Input placeholder={isBn ? 'পিতার নাম' : "Father's name"} value={studentForm.fatherName} onChange={(e) => setStudentForm({ ...studentForm, fatherName: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'মাতার নাম' : "Mother's Name"}</label>
+                <Input placeholder={isBn ? 'মাতার নাম' : "Mother's name"} value={studentForm.motherName} onChange={(e) => setStudentForm({ ...studentForm, motherName: e.target.value })} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ফোন নম্বর *' : 'Phone Number *'}</label>
+              <Input placeholder={isBn ? 'ফোন নম্বর' : 'Phone number'} value={studentForm.phone} onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })} className={inputCls} />
+            </div>
+            <div>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা *' : 'Address *'}</label>
+              <Input placeholder={isBn ? 'পূর্ণ ঠিকানা' : 'Full address'} value={studentForm.address} onChange={(e) => setStudentForm({ ...studentForm, address: e.target.value })} className={inputCls} />
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Photo & Exam */}
+        {step === 3 && (
+          <div className="space-y-5">
+            {/* Profile Picture */}
+            <div>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(min 500KB)</span></label>
+              <div className="flex items-start gap-4">
+                <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", studentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
+                  {studentForm.photo ? (
+                    <Image src={studentForm.photo} alt="Preview" width={80} height={80} unoptimized className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera className={cn("h-6 w-6", isDark ? "text-zinc-600" : "text-zinc-400")} />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium cursor-pointer transition-colors", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
+                    <Upload className="h-3.5 w-3.5" />
+                    {isBn ? 'ছবি আপলোড করুন' : 'Upload Photo'}
+                    <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                  </label>
+                  {studentForm.photo && (
+                    <button onClick={() => setStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
+                      {isBn ? 'সরান' : 'Remove'}
+                    </button>
+                  )}
+                  {photoError && (
+                    <p className="text-[11px] text-red-400 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {photoError}
+                    </p>
+                  )}
+                  <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
+                    {isBn ? 'JPG, PNG। ন্যূনতম 500KB আকার প্রয়োজন।' : 'JPG, PNG. Minimum 500KB file size required.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Exam Selection */}
+            <div>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "পরীক্ষা *" : "Exam *"}</label>
+              <Select
+                options={[{ label: isBn ? "পরীক্ষা নির্বাচন করুন" : "Select exam", value: "" }, ...exams.map(e => ({ label: `${e.name} (${e.academicYear})`, value: e.id }))]}
+                value={selectedExamId}
+                onChange={(e) => setSelectedExamId(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+
+            {selectedExam && (
+              <div className={`${isDark ? "bg-white/[0.04]" : "bg-zinc-50"} rounded-md p-3 border ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "নিবন্ধন ফি" : "Registration Fee"}</p>
+                <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>&#2547;{selectedExam.registrationFee.toLocaleString()}</p>
+              </div>
+            )}
+
+            <div>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "আবেদন আইডি" : "Application ID"}</label>
+              <Input value={generateAppId()} disabled className={cn("opacity-60", inputCls)} />
+            </div>
+          </div>
+        )}
+
         <ModalFooter>
-          <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বাতিল" : "Cancel"}</button>
-          <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-            {isBn ? "তৈরি করুন" : "Create"}
-          </button>
+          <div className="flex items-center justify-between w-full">
+            <div>
+              {step > 1 && (
+                <button onClick={handleBack} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                  {isBn ? 'পূর্ববর্তী' : 'Back'}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              {step < 3 ? (
+                <button onClick={handleNext} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                  {isBn ? 'পরবর্তী' : 'Next'}
+                </button>
+              ) : (
+                <button onClick={handleSave} disabled={!canSubmitStep3} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", canSubmitStep3 ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+                  {isBn ? 'নিবন্ধন করুন' : 'Register'}
+                </button>
+              )}
+            </div>
+          </div>
         </ModalFooter>
       </Modal>
 

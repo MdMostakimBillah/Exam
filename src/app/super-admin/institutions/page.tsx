@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -34,25 +34,25 @@ export default function InstitutionsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const institutions = getInstitutions();
-  const filtered = institutions.filter(i => {
+  const institutions = useMemo(() => getInstitutions(), []);
+  const filtered = useMemo(() => institutions.filter(i => {
     const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || i.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }), [institutions, search, statusFilter]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: 'name' },
     { header: isBn ? 'কোড' : 'Code', key: 'code' },
     { header: isBn ? 'যোগাযোগ' : 'Email', key: 'email' },
     { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
     { header: isBn ? 'শিক্ষার্থী' : 'Students', key: 'totalStudents' },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered
+  const pdfData = useMemo(() => filtered
     .filter((i) => selection.isSelected(i.id))
     .map((i) => ({
       name: i.name,
@@ -61,15 +61,19 @@ export default function InstitutionsPage() {
       phone: i.phone,
       totalStudents: i.totalStudents,
       status: i.status,
-    }));
+    })), [filtered, selection]);
+
+  const activeCount = useMemo(() => institutions.filter(i => i.status === 'ACTIVE').length, [institutions]);
+  const pendingCount = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
+  const suspendedCount = useMemo(() => institutions.filter(i => i.status === 'SUSPENDED').length, [institutions]);
 
   if (!mounted) return <InstitutionsSkeleton isDark={isDark} />;
 
   const statusCounts = {
     all: institutions.length,
-    ACTIVE: institutions.filter(i => i.status === 'ACTIVE').length,
-    PENDING: institutions.filter(i => i.status === 'PENDING').length,
-    SUSPENDED: institutions.filter(i => i.status === 'SUSPENDED').length,
+    ACTIVE: activeCount,
+    PENDING: pendingCount,
+    SUSPENDED: suspendedCount,
   };
 
   const handleStatusChange = (id: string, newStatus: string) => {

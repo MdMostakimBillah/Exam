@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -23,17 +23,17 @@ export default function CertificatesPage() {
   const [yearFilter, setYearFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const certificates = getCertificates();
-  const years = [...new Set(certificates.map(c => c.examYear))];
-  const filtered = certificates.filter(c => {
+  const certificates = useMemo(() => getCertificates(), []);
+  const years = useMemo(() => [...new Set(certificates.map(c => c.examYear))], [certificates]);
+  const filtered = useMemo(() => certificates.filter(c => {
     const matchesSearch = c.studentName.toLowerCase().includes(search.toLowerCase()) || c.certificateNumber.toLowerCase().includes(search.toLowerCase());
     const matchesYear = !yearFilter || c.examYear === yearFilter;
     return matchesSearch && matchesYear;
-  });
+  }), [certificates, search, yearFilter]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'সার্টিফিকেট নং' : 'Certificate No', key: "certificateNumber" },
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: "institutionName" },
@@ -41,9 +41,9 @@ export default function CertificatesPage() {
     { header: isBn ? 'অবস্থান' : 'Position', key: "position" },
     { header: isBn ? 'তারিখ' : 'Issue Date', key: "issueDate" },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: "status" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(c => ({
+  const pdfData = useMemo(() => filtered.map(c => ({
     certificateNumber: c.certificateNumber,
     studentName: c.studentName,
     institutionName: c.institutionName,
@@ -51,7 +51,10 @@ export default function CertificatesPage() {
     position: `#${c.position}`,
     issueDate: formatDate(c.issueDate),
     status: c.status,
-  }));
+  })), [filtered]);
+
+  const verifiedCount = useMemo(() => certificates.filter(c => c.status === 'VERIFIED').length, [certificates]);
+  const year2026Count = useMemo(() => certificates.filter(c => c.examYear === '2026').length, [certificates]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -78,8 +81,8 @@ export default function CertificatesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[
             { label: isBn ? 'মোট সার্টিফিকেট' : 'Total Generated', value: certificates.length },
-            { label: isBn ? 'যাচাইকৃত' : 'Verified', value: certificates.filter(c => c.status === 'VERIFIED').length },
-            { label: isBn ? '২০২৬' : '2026', value: certificates.filter(c => c.examYear === '2026').length },
+            { label: isBn ? 'যাচাইকৃত' : 'Verified', value: verifiedCount },
+            { label: isBn ? '২০২৬' : '2026', value: year2026Count },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>

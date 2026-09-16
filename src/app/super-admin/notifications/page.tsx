@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -31,36 +31,36 @@ export default function NotificationsPage() {
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<Notification["type"]>("info");
 
-  const user = getCurrentUser();
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const readCount = notifications.length - unreadCount;
+  const user = useMemo(() => getCurrentUser(), []);
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+  const readCount = useMemo(() => notifications.length - unreadCount, [notifications.length, unreadCount]);
 
-  const filtered = notifications.filter(n => {
+  const filtered = useMemo(() => notifications.filter(n => {
     const matchesSearch = n.title.toLowerCase().includes(search.toLowerCase()) || n.message.toLowerCase().includes(search.toLowerCase());
     const matchesFilter =
       filterRead === "all" ||
       (filterRead === "read" && n.read) ||
       (filterRead === "unread" && !n.read);
     return matchesSearch && matchesFilter;
-  });
+  }), [notifications, search, filterRead]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'ধরন' : 'Type', key: "type" },
     { header: isBn ? 'শিরোনাম' : 'Title', key: "title" },
     { header: isBn ? 'বার্তা' : 'Message', key: "message" },
     { header: isBn ? 'তারিখ' : 'Date', key: "date" },
     { header: isBn ? 'অবস্থা' : 'Status', key: "status" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(n => ({
+  const pdfData = useMemo(() => filtered.map(n => ({
     type: n.type,
     title: n.title,
     message: n.message,
     date: formatDate(n.createdAt),
     status: n.read ? (isBn ? 'পঠিত' : 'Read') : (isBn ? 'অপঠিত' : 'Unread'),
-  }));
+  })), [filtered, isBn]);
 
   useEffect(() => { setMounted(true); }, []);
 

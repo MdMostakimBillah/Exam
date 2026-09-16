@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -26,21 +26,21 @@ export default function ExamCentersPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const centers = getExamCenters();
-  const totalCapacity = centers.reduce((s, c) => s + c.capacity, 0);
-  const totalAllocated = centers.reduce((s, c) => s + c.allocated, 0);
+  const centers = useMemo(() => getExamCenters(), []);
+  const totalCapacity = useMemo(() => centers.reduce((s, c) => s + c.capacity, 0), [centers]);
+  const totalAllocated = useMemo(() => centers.reduce((s, c) => s + c.allocated, 0), [centers]);
 
   const selection = useTableSelection(centers);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns = useMemo<PdfColumn[]>(() => [
     { header: isBn ? 'কেন্দ্রের নাম' : 'Center Name', key: 'name' },
     { header: isBn ? 'ঠিকানা' : 'Address', key: 'address' },
     { header: isBn ? 'ধারণক্ষমতা' : 'Capacity', key: 'capacity' },
     { header: isBn ? 'বরাদ্দ' : 'Allocated', key: 'allocated' },
     { header: isBn ? 'অবশিষ্ট' : 'Available', key: 'available' },
-  ];
+  ], [isBn]);
 
-  const pdfData = centers
+  const pdfData = useMemo(() => centers
     .filter((c) => selection.isSelected(c.id))
     .map((c) => ({
       name: c.name,
@@ -48,7 +48,7 @@ export default function ExamCentersPage() {
       capacity: c.capacity,
       allocated: c.allocated,
       available: c.capacity - c.allocated,
-    }));
+    })), [centers, selection]);
 
   if (!mounted) return <ExamCentersSkeleton isDark={isDark} />;
 

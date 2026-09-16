@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -26,33 +26,39 @@ export default function MarksPage() {
   const [mounted, setMounted] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const exams = getExams();
-  const selectedExamData = exams.find(e => e.id === selectedExam);
-  const approvedRegs = getRegistrations().filter(r => r.examId === selectedExam && r.status === 'APPROVED');
-  const existingMarks = getMarks().filter(m => m.examId === selectedExam && m.subjectId === selectedSubject);
+  const exams = useMemo(() => getExams(), []);
+  const selectedExamData = useMemo(() => exams.find(e => e.id === selectedExam), [exams, selectedExam]);
+  const approvedRegs = useMemo(() => getRegistrations().filter(r => r.examId === selectedExam && r.status === 'APPROVED'), [selectedExam]);
+  const existingMarks = useMemo(() => getMarks().filter(m => m.examId === selectedExam && m.subjectId === selectedSubject), [selectedExam, selectedSubject]);
 
-  const filtered = approvedRegs.map(reg => {
-    const existing = existingMarks.find(m => m.registrationId === reg.id);
-    const entered = marksData[reg.id];
-    const currentMarks = entered !== undefined ? entered : existing?.marks;
-    return { ...reg, currentMarks };
-  });
+  const filtered = useMemo(() => {
+    const existingMarkMap = new Map(existingMarks.map(m => [m.registrationId, m]));
+    return approvedRegs.map(reg => {
+      const existing = existingMarkMap.get(reg.id);
+      const entered = marksData[reg.id];
+      const currentMarks = entered !== undefined ? entered : existing?.marks;
+      return { ...reg, currentMarks };
+    });
+  }, [approvedRegs, existingMarks, marksData]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'রোল' : 'Roll', key: "roll" },
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
     { header: isBn ? 'আবেদন আইডি' : 'Reg No', key: "applicationId" },
     { header: isBn ? 'নম্বর' : 'Marks', key: "marks" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(reg => ({
+  const pdfData = useMemo(() => filtered.map(reg => ({
     roll: reg.id.slice(-3),
     studentName: reg.studentName,
     applicationId: reg.applicationId,
     marks: reg.currentMarks !== undefined ? String(reg.currentMarks) : '',
-  }));
+  })), [filtered]);
+
+  const examOptions = useMemo(() => exams.map(e => ({ label: e.name, value: e.id })), [exams]);
+  const subjectOptions = useMemo(() => selectedExamData?.subjects.map(s => ({ label: `${s.name} (${s.fullMarks})`, value: s.id })) ?? [], [selectedExamData]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -122,14 +128,14 @@ export default function MarksPage() {
             <div className="flex-1">
               <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
               <Select value={selectedExam} onChange={(e) => { setSelectedExam(e.target.value); setSelectedSubject(""); setMarksData({}); }}
-                options={exams.map(e => ({ label: e.name, value: e.id }))} placeholder={isBn ? 'পরীক্ষা নির্বাচন করুন' : 'Select exam'}
+                options={examOptions} placeholder={isBn ? 'পরীক্ষা নির্বাচন করুন' : 'Select exam'}
                 className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
             </div>
             {selectedExamData && (
               <div className="flex-1">
                 <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'বিষয়' : 'Subject'}</label>
                 <Select value={selectedSubject} onChange={(e) => { setSelectedSubject(e.target.value); setMarksData({}); }}
-                  options={selectedExamData.subjects.map(s => ({ label: `${s.name} (${s.fullMarks})`, value: s.id }))} placeholder={isBn ? 'বিষয় নির্বাচন করুন' : 'Select subject'}
+                  options={subjectOptions} placeholder={isBn ? 'বিষয় নির্বাচন করুন' : 'Select subject'}
                   className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
               </div>
             )}

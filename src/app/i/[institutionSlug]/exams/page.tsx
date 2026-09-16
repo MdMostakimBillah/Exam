@@ -362,7 +362,7 @@ export default function InstitutionExamsPage() {
       </div>
 
       {/* Add/Edit Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')} maxWidth="max-w-2xl">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')} maxWidth="max-w-4xl">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>

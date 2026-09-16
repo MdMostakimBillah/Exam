@@ -42,7 +42,7 @@ const superAdminNav: NavItem[] = [
   { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: '/super-admin/settings' },
 ];
 
-function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme } = useTheme();
@@ -199,6 +199,6 @@ function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       )}
     </aside>
   );
-}
+});
 
 export { Sidebar };

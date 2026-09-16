@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { getInstitutions } from "@/lib/storage/institutions";
 import { getStudents } from "@/lib/storage/students";
@@ -22,28 +22,28 @@ export default function SuperAdminDashboard() {
   const isDark = theme === "dark";
   const isBn = language === "bn";
 
-  if (!mounted) return <DashboardSkeleton isDark={isDark} />;
+  const institutions = useMemo(() => getInstitutions(), []);
+  const students = useMemo(() => getStudents(), []);
+  const exams = useMemo(() => getExams(), []);
+  const registrations = useMemo(() => getRegistrations(), []);
+  const results = useMemo(() => getResults(), []);
+  const payments = useMemo(() => getPayments(), []);
 
-  const institutions = getInstitutions();
-  const students = getStudents();
-  const exams = getExams();
-  const registrations = getRegistrations();
-  const results = getResults();
-  const payments = getPayments();
-
-  const monthlyInstitutions = Array.from({ length: 12 }, (_, i) =>
+  const monthlyInstitutions = useMemo(() => Array.from({ length: 12 }, (_, i) =>
     institutions.filter(inst => {
       const d = new Date(inst.createdAt);
       return d.getFullYear() === new Date().getFullYear() && d.getMonth() === i;
     }).length
-  );
-  const maxMonthly = Math.max(...monthlyInstitutions, 1);
-  const totalRevenue = payments.reduce((sum, p) => sum + (p.status === 'PAID' ? p.amount : 0), 0);
-  const totalDue = payments.reduce((sum, p) => sum + (p.status === 'PENDING' ? p.amount : 0), 0);
-  const activeExams = exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length;
-  const pendingInstitutions = institutions.filter(i => i.status === 'PENDING').length;
-  const verifiedRegs = registrations.filter(r => r.status === 'VERIFIED' || r.status === 'APPROVED').length;
-  const approvedStudents = registrations.filter(r => r.status === 'APPROVED').length;
+  ), [institutions]);
+  const maxMonthly = useMemo(() => Math.max(...monthlyInstitutions, 1), [monthlyInstitutions]);
+  const totalRevenue = useMemo(() => payments.reduce((sum, p) => sum + (p.status === 'PAID' ? p.amount : 0), 0), [payments]);
+  const totalDue = useMemo(() => payments.reduce((sum, p) => sum + (p.status === 'PENDING' ? p.amount : 0), 0), [payments]);
+  const activeExams = useMemo(() => exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length, [exams]);
+  const pendingInstitutions = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
+  const verifiedRegs = useMemo(() => registrations.filter(r => r.status === 'VERIFIED' || r.status === 'APPROVED').length, [registrations]);
+  const approvedStudents = useMemo(() => registrations.filter(r => r.status === 'APPROVED').length, [registrations]);
+
+  if (!mounted) return <DashboardSkeleton isDark={isDark} />;
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"

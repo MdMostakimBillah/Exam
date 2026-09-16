@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -25,16 +25,17 @@ export default function RegistrationsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const registrations = getRegistrations();
-  const filtered = registrations.filter(r => {
+  const registrations = useMemo(() => getRegistrations(), []);
+
+  const filtered = useMemo(() => registrations.filter(r => {
     const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.applicationId.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || r.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }), [registrations, search, statusFilter]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns = useMemo<PdfColumn[]>(() => [
     { header: isBn ? "আবেদন আইডি" : "Application ID", key: "applicationId" },
     { header: isBn ? "শিক্ষার্থী" : "Student", key: "studentName" },
     { header: isBn ? "প্রতিষ্ঠান" : "Institution", key: "institutionName" },
@@ -42,9 +43,9 @@ export default function RegistrationsPage() {
     { header: isBn ? "তারিখ" : "Date", key: "date" },
     { header: isBn ? "পেমেন্ট স্ট্যাটাস" : "Payment Status", key: "paymentStatus" },
     { header: isBn ? "স্ট্যাটাস" : "Status", key: "status" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(r => ({
+  const pdfData = useMemo(() => filtered.map(r => ({
     applicationId: r.applicationId,
     studentName: r.studentName,
     institutionName: r.institutionName,
@@ -52,16 +53,16 @@ export default function RegistrationsPage() {
     date: formatDate(r.createdAt),
     paymentStatus: r.paymentStatus,
     status: r.status,
-  }));
+  })), [filtered]);
 
-  if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
-
-  const statusCounts = {
+  const statusCounts = useMemo(() => ({
     all: registrations.length,
     APPROVED: registrations.filter(r => r.status === 'APPROVED').length,
     VERIFIED: registrations.filter(r => r.status === 'VERIFIED').length,
     PENDING: registrations.filter(r => r.status === 'PENDING').length,
-  };
+  }), [registrations]);
+
+  if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"

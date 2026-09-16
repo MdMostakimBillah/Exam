@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -30,27 +30,29 @@ export default function ClassesPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const allClasses = getClasses();
-  const filtered = allClasses.filter(c =>
+  const allClasses = useMemo(() => getClasses(), []);
+  const activeClasses = useMemo(() => allClasses.filter(c => c.isActive).length, [allClasses]);
+  const inactiveClasses = useMemo(() => allClasses.filter(c => !c.isActive).length, [allClasses]);
+  const filtered = useMemo(() => allClasses.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.code.toLowerCase().includes(search.toLowerCase())
-  );
+  ), [allClasses, search]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'নাম' : 'Name', key: 'name' },
     { header: isBn ? 'কোড' : 'Code', key: 'code' },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered
+  const pdfData = useMemo(() => filtered
     .filter((cls) => selection.isSelected(cls.id))
     .map((cls) => ({
       name: cls.name,
       code: cls.code,
       status: cls.isActive ? (isBn ? 'সক্রিয়' : 'Active') : (isBn ? 'নিষ্ক্রিয়' : 'Inactive'),
-    }));
+    })), [filtered, selection, isBn]);
 
   if (!mounted) return <ClassesSkeleton isDark={isDark} />;
 
@@ -119,8 +121,8 @@ export default function ClassesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[
             { label: isBn ? 'মোট শ্রেণী' : 'Total Classes', value: allClasses.length },
-            { label: isBn ? 'সক্রিয়' : 'Active', value: allClasses.filter(c => c.isActive).length },
-            { label: isBn ? 'নিষ্ক্রিয়' : 'Inactive', value: allClasses.filter(c => !c.isActive).length },
+            { label: isBn ? 'সক্রিয়' : 'Active', value: activeClasses },
+            { label: isBn ? 'নিষ্ক্রিয়' : 'Inactive', value: inactiveClasses },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>

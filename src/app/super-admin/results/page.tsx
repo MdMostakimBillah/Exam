@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -21,18 +21,18 @@ export default function ResultsPage() {
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const results = getResults();
-  const exams = getExams();
-  const filtered = examFilter ? results.filter(r => r.examId === examFilter) : results;
+  const results = useMemo(() => getResults(), []);
+  const exams = useMemo(() => getExams(), []);
+  const filtered = useMemo(() => examFilter ? results.filter(r => r.examId === examFilter) : results, [results, examFilter]);
 
   const totalCandidates = filtered.length;
-  const passed = filtered.filter(r => r.pass).length;
-  const scholarshipWinners = filtered.filter(r => r.scholarshipStatus === 'ELIGIBLE').length;
-  const avgScore = filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0;
+  const passed = useMemo(() => filtered.filter(r => r.pass).length, [filtered]);
+  const scholarshipWinners = useMemo(() => filtered.filter(r => r.scholarshipStatus === 'ELIGIBLE').length, [filtered]);
+  const avgScore = useMemo(() => filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0, [filtered]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'অবস্থান' : 'Position', key: "position" },
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: "institutionName" },
@@ -41,9 +41,9 @@ export default function ResultsPage() {
     { header: isBn ? 'শতাংশ' : '%', key: "percentage" },
     { header: isBn ? 'গ্রেড' : 'Grade', key: "grade" },
     { header: isBn ? 'বৃত্তি' : 'Scholarship', key: "scholarshipStatus" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(r => ({
+  const pdfData = useMemo(() => filtered.map(r => ({
     position: `#${r.position}`,
     studentName: r.studentName,
     institutionName: r.institutionName,
@@ -52,7 +52,9 @@ export default function ResultsPage() {
     percentage: `${r.percentage.toFixed(1)}%`,
     grade: r.grade,
     scholarshipStatus: r.scholarshipStatus,
-  }));
+  })), [filtered]);
+
+  const examOptions = useMemo(() => [{ label: isBn ? 'সব পরীক্ষা' : 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))], [exams, isBn]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -102,7 +104,7 @@ export default function ResultsPage() {
             <div className="flex-1">
               <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
               <Select
-                options={[{ label: isBn ? 'সব পরীক্ষা' : 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))]}
+                options={examOptions}
                 value={examFilter}
                 onChange={(e) => setExamFilter(e.target.value)}
                 className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}

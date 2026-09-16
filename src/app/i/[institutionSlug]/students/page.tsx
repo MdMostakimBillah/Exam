@@ -1,18 +1,17 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast";
 import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getStudentsByInstitution, createStudent, updateStudent, deleteStudent } from "@/lib/storage/students";
+import { getStudentsByInstitution } from "@/lib/storage/students";
+import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { getClasses } from "@/lib/storage/classes";
-import { Student } from "@/lib/types";
-import { Users, Search, GraduationCap, Plus, Edit, Trash2, Eye, EyeOff, FileDown } from "lucide-react";
-import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
+import { Student, Registration } from "@/lib/types";
+import { Users, Search, GraduationCap, FileDown, UserCheck, ClipboardList } from "lucide-react";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
@@ -20,11 +19,16 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 
-const emptyForm = {
-  firstName: "", lastName: "", studentId: "", class: "", section: "", roll: "",
-  dateOfBirth: "", gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
-  fatherName: "", motherName: "", phone: "", address: "", status: "ACTIVE" as "ACTIVE" | "INACTIVE",
-};
+function getRegistrationStatus(
+  studentId: string,
+  registrations: Registration[]
+): { label: string; status: "PENDING" | "APPROVED" | "REJECTED" | "NONE" } {
+  const regs = registrations.filter(r => r.studentId === studentId);
+  if (regs.length === 0) return { label: "No Registration", status: "NONE" };
+  if (regs.some(r => r.status === "APPROVED")) return { label: "Approved", status: "APPROVED" };
+  if (regs.some(r => r.status === "REJECTED")) return { label: "Rejected", status: "REJECTED" };
+  return { label: "Pending", status: "PENDING" };
+}
 
 export default function InstitutionStudentsPage() {
   const params = useParams();
@@ -33,29 +37,35 @@ export default function InstitutionStudentsPage() {
   const { lang: language, t } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
-  const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Student | null>(null);
-  const [formData, setFormData] = useState(emptyForm);
+  const [statusFilter, setStatusFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = getInstitutionBySlug(slug);
-  const students = inst ? getStudentsByInstitution(inst.id) : [];
-  const allClasses = getClasses();
-  const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [...new Set(students.map(s => s.class))];
+  const inst = useMemo(() => getInstitutionBySlug(slug), [slug]);
+  const students = useMemo(() => inst ? getStudentsByInstitution(inst.id) : [], [inst]);
+  const registrations = useMemo(() => inst ? getRegistrationsByInstitution(inst.id) : [], [inst]);
+  const allClasses = useMemo(() => getClasses(), []);
+  const classNames = useMemo(() => allClasses.length > 0 ? allClasses.map(c => c.name) : [...new Set(students.map(s => s.class))], [allClasses, students]);
+
+  const studentRegStatus = useMemo(() => {
+    const map: Record<string, { label: string; status: "PENDING" | "APPROVED" | "REJECTED" | "NONE" }> = {};
+    for (const s of students) {
+      map[s.id] = getRegistrationStatus(s.id, registrations);
+    }
+    return map;
+  }, [students, registrations]);
 
   const filtered = students.filter(s => {
     const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) || s.studentId.toLowerCase().includes(search.toLowerCase());
     const matchesClass = !classFilter || s.class === classFilter;
-    return matchesSearch && matchesClass;
+    const regStatus = studentRegStatus[s.id]?.status || "NONE";
+    const matchesStatus = !statusFilter || regStatus === statusFilter;
+    return matchesSearch && matchesClass && matchesStatus;
   });
 
   const selection = useTableSelection(filtered);
@@ -66,6 +76,7 @@ export default function InstitutionStudentsPage() {
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'শাখা' : 'Section', key: 'section' },
     { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
+    { header: isBn ? 'নিবন্ধন স্থিতি' : 'Registration Status', key: 'regStatus' },
     { header: isBn ? 'স্থিতি' : 'Status', key: 'status' },
   ];
 
@@ -75,55 +86,21 @@ export default function InstitutionStudentsPage() {
     class: s.class,
     section: s.section,
     roll: s.roll,
+    regStatus: studentRegStatus[s.id]?.label || "None",
     status: s.status,
   }));
 
   const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
+  const registeredCount = students.filter(s => {
+    const rs = studentRegStatus[s.id];
+    return rs && rs.status !== "NONE";
+  }).length;
+  const pendingCount = students.filter(s => studentRegStatus[s.id]?.status === "PENDING").length;
+  const approvedCount = students.filter(s => studentRegStatus[s.id]?.status === "APPROVED").length;
+  const rejectedCount = students.filter(s => studentRegStatus[s.id]?.status === "REJECTED").length;
 
   if (!mounted) return <StudentsSkeleton isDark={isDark} />;
   if (!inst) return null;
-
-  const handleCreate = () => {
-    setEditingStudent(null);
-    setFormData(emptyForm);
-    setShowModal(true);
-    setMenuOpenId(null);
-  };
-
-  const handleEdit = (s: Student) => {
-    setEditingStudent(s);
-    setFormData({
-      firstName: s.firstName, lastName: s.lastName, studentId: s.studentId, class: s.class,
-      section: s.section, roll: s.roll, dateOfBirth: s.dateOfBirth, gender: s.gender,
-      fatherName: s.fatherName, motherName: s.motherName, phone: s.phone, address: s.address,
-      status: s.status,
-    });
-    setShowModal(true);
-    setMenuOpenId(null);
-  };
-
-  const handleSave = () => {
-    if (!formData.firstName || !formData.lastName || !formData.studentId || !formData.class) {
-      toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
-      return;
-    }
-    if (editingStudent) {
-      updateStudent(editingStudent.id, { ...formData, updatedAt: new Date().toISOString() });
-      toast("success", isBn ? "শিক্ষার্থী আপডেট হয়েছে" : "Student updated");
-    } else {
-      createStudent({ ...formData, institutionId: inst.id });
-      toast("success", isBn ? "শিক্ষার্থী যোগ হয়েছে" : "Student created");
-    }
-    setShowModal(false);
-    setRefreshKey(k => k + 1);
-  };
-
-  const handleDelete = (s: Student) => {
-    deleteStudent(s.id);
-    toast("success", isBn ? "শিক্ষার্থী মুছে ফেলা হয়েছে" : "Student deleted");
-    setShowDeleteConfirm(null);
-    setRefreshKey(k => k + 1);
-  };
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
@@ -131,7 +108,16 @@ export default function InstitutionStudentsPage() {
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
-  const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
+
+  const regStatusBadge = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING: isDark ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-yellow-50 text-yellow-700 border-yellow-200",
+      APPROVED: isDark ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-green-50 text-green-700 border-green-200",
+      REJECTED: isDark ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-red-50 text-red-700 border-red-200",
+      NONE: isDark ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" : "bg-zinc-50 text-zinc-500 border-zinc-200",
+    };
+    return map[status] || map.NONE;
+  };
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -143,20 +129,19 @@ export default function InstitutionStudentsPage() {
               {isBn ? 'শিক্ষার্থী' : 'Students'}
             </h1>
             <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-              {isBn ? 'সমস্ত নিবন্ধিত শিক্ষার্থী পরিচালনা করুন' : 'Manage all registered students'}
+              {isBn ? 'সমস্ত নিবন্ধিত শিক্ষার্থী দেখুন' : 'View all registered students and their registration status'}
             </p>
           </div>
-          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
-            <Plus className="h-4 w-4" /> {isBn ? 'শিক্ষার্থী যোগ করুন' : 'Add Student'}
-          </button>
         </div>
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {[
             { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length },
             { icon: GraduationCap, label: isBn ? 'সক্রিয়' : 'Active', value: activeStudents },
-            { icon: Users, label: isBn ? 'শ্রেণী' : 'Classes', value: classNames.length },
+            { icon: ClipboardList, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registeredCount },
+            { icon: UserCheck, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedCount },
+            { icon: Users, label: isBn ? 'মুলতুবি' : 'Pending', value: pendingCount },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -178,6 +163,18 @@ export default function InstitutionStudentsPage() {
               <Input placeholder={isBn ? "নাম বা আইডি দিয়ে অনুসন্ধান..." : "Search by name or ID..."} value={search} onChange={(e) => setSearch(e.target.value)} className={cn("pl-10", inputCls)} />
             </div>
             <Select options={[{ label: isBn ? 'সব শ্রেণী' : 'All Classes', value: '' }, ...classNames.map(c => ({ label: c, value: c }))]} value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className={cn("w-full sm:w-36", inputCls)} />
+            <Select
+              options={[
+                { label: isBn ? 'সব নিবন্ধন' : 'All Registration', value: '' },
+                { label: isBn ? 'মুলতুবি' : 'Pending', value: 'PENDING' },
+                { label: isBn ? 'অনুমোদিত' : 'Approved', value: 'APPROVED' },
+                { label: isBn ? 'প্রত্যাখ্যাত' : 'Rejected', value: 'REJECTED' },
+                { label: isBn ? 'নিবন্ধন নেই' : 'No Registration', value: 'NONE' },
+              ]}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={cn("w-full sm:w-44", inputCls)}
+            />
           </div>
         </div>
 
@@ -196,7 +193,7 @@ export default function InstitutionStudentsPage() {
                 <Users className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found'}</p>
-              <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'নতুন শিক্ষার্থী যোগ করুন' : 'Add a new student to get started'}</p>
+              <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'ফিল্টার পরিবর্তন করে চেষ্টা করুন' : 'Try adjusting your filters'}</p>
             </div>
           ) : (
             <Table>
@@ -210,99 +207,48 @@ export default function InstitutionStudentsPage() {
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শাখা' : 'Section'}</TableHead>
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
+                    <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন স্থিতি' : 'Registration'}</TableHead>
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
-                    <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(student => (
-                  <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(student.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
-                    <TableCell className="w-10">
-                      <TableCheckbox checked={selection.isSelected(student.id)} onChange={() => selection.toggle(student.id)} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                          {student.firstName.charAt(0)}
+                {filtered.map(student => {
+                  const regInfo = studentRegStatus[student.id] || { label: "None", status: "NONE" as const };
+                  return (
+                    <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(student.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                      <TableCell className="w-10">
+                        <TableCheckbox checked={selection.isSelected(student.id)} onChange={() => selection.toggle(student.id)} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          {student.photo ? (
+                            <Image src={student.photo} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0" />
+                          ) : (
+                            <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                              {student.firstName.charAt(0)}
+                            </div>
+                          )}
+                          <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{student.firstName} {student.lastName}</span>
                         </div>
-                        <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{student.firstName} {student.lastName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.studentId}</TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.section}</TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll}</TableCell>
-                    <TableCell><Badge status={student.status} /></TableCell>
-                    <TableCell>
-                      <TableActionMenu id={student.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
-                        <TableActionItem onClick={() => handleEdit(student)} isDark={isDark}>
-                          <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
-                        </TableActionItem>
-                        <TableActionItem onClick={() => { setShowDeleteConfirm(student); setMenuOpenId(null); }} isDark={isDark} variant="danger">
-                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
-                        </TableActionItem>
-                      </TableActionMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.studentId}</TableCell>
+                      <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
+                      <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.section}</TableCell>
+                      <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${regStatusBadge(regInfo.status)}`}>
+                          {regInfo.label}
+                        </span>
+                      </TableCell>
+                      <TableCell><Badge status={student.status} /></TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
         </div>
       </div>
-
-      {/* Add/Edit Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editingStudent ? (isBn ? 'শিক্ষার্থী সম্পাদনা' : 'Edit Student') : (isBn ? 'নতুন শিক্ষার্থী' : 'New Student')} maxWidth="max-w-xl">
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: isBn ? 'প্রথম নাম *' : 'First Name *', key: 'firstName', placeholder: isBn ? 'প্রথম নাম' : 'First name' },
-            { label: isBn ? 'শেষ নাম *' : 'Last Name *', key: 'lastName', placeholder: isBn ? 'শেষ নাম' : 'Last name' },
-            { label: isBn ? 'শিক্ষার্থী আইডি *' : 'Student ID *', key: 'studentId', placeholder: isBn ? 'আইডি' : 'Student ID' },
-            { label: isBn ? 'শ্রেণী *' : 'Class *', key: 'class', type: 'select', options: classNames },
-            { label: isBn ? 'শাখা' : 'Section', key: 'section', placeholder: isBn ? 'শাখা' : 'Section' },
-            { label: isBn ? 'রোল' : 'Roll', key: 'roll', placeholder: isBn ? 'রোল নম্বর' : 'Roll number' },
-            { label: isBn ? 'জন্ম তারিখ' : 'Date of Birth', key: 'dateOfBirth', type: 'date' },
-            { label: isBn ? 'লিঙ্গ' : 'Gender', key: 'gender', type: 'select', options: ['MALE', 'FEMALE', 'OTHER'] },
-            { label: isBn ? 'পিতার নাম' : 'Father Name', key: 'fatherName', placeholder: isBn ? 'পিতার নাম' : 'Father name' },
-            { label: isBn ? 'মাতার নাম' : 'Mother Name', key: 'motherName', placeholder: isBn ? 'মাতার নাম' : 'Mother name' },
-            { label: isBn ? 'ফোন' : 'Phone', key: 'phone', placeholder: isBn ? 'ফোন নম্বর' : 'Phone number' },
-            { label: isBn ? 'ঠিকানা' : 'Address', key: 'address', placeholder: isBn ? 'পূর্ণ ঠিকানা' : 'Full address' },
-          ].map(field => (
-            <div key={field.key} className={field.key === 'address' ? 'col-span-2' : ''}>
-              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{field.label}</label>
-              {field.type === 'select' ? (
-                <Select
-                  options={(field.options || []).map(o => typeof o === 'string' ? { label: o, value: o } : o)}
-                  value={String((formData as any)[field.key])}
-                  onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                  className={inputCls}
-                />
-              ) : field.type === 'date' ? (
-                <Input type="date" value={String((formData as any)[field.key])} onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })} className={inputCls} />
-              ) : (
-                <Input placeholder={field.placeholder} value={String((formData as any)[field.key])} onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })} className={inputCls} />
-              )}
-            </div>
-          ))}
-        </div>
-        <ModalFooter>
-          <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-            {editingStudent ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create')}
-          </button>
-        </ModalFooter>
-      </Modal>
-
-      {/* Delete Confirmation */}
-      <Modal open={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title={isBn ? 'শিক্ষার্থী মুছুন?' : 'Delete Student?'}>
-        <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
-          {isBn ? `"${showDeleteConfirm?.firstName} ${showDeleteConfirm?.lastName}" মুছে ফেলা হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `"${showDeleteConfirm?.firstName} ${showDeleteConfirm?.lastName}" will be permanently deleted. This action cannot be undone.`}
-        </p>
-        <ModalFooter>
-          <button onClick={() => setShowDeleteConfirm(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">{isBn ? 'মুছুন' : 'Delete'}</button>
-        </ModalFooter>
-      </Modal>
 
       {/* Floating PDF Download Button */}
       {selection.selectedCount > 0 && (
@@ -332,8 +278,8 @@ function StudentsSkeleton({ isDark }: { isDark: boolean }) {
           <div className={`h-8 w-48 rounded-md ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
           <div className={`h-4 w-64 rounded mt-2 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-200/60'}`} />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {[1, 2, 3].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          {[1, 2, 3, 4, 5].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
         </div>
         <div className={`${card} rounded-md h-64`} />
       </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -26,30 +26,31 @@ export default function StudentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const students = getStudents();
-  const institutions = getInstitutions();
-  const classes = [...new Set(students.map(s => s.class))];
-  const getInstitutionName = (id: string) => institutions.find(i => i.id === id)?.name || 'Unknown';
+  const students = useMemo(() => getStudents(), []);
+  const institutions = useMemo(() => getInstitutions(), []);
+  const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
+  const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
+  const getInstitutionName = useCallback((id: string) => institutionMap.get(id) || 'Unknown', [institutionMap]);
 
-  const filtered = students.filter(s => {
+  const filtered = useMemo(() => students.filter(s => {
     const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) || s.studentId.toLowerCase().includes(search.toLowerCase());
     const matchesClass = !classFilter || s.class === classFilter;
     const matchesInst = !institutionFilter || s.institutionId === institutionFilter;
     return matchesSearch && matchesClass && matchesInst;
-  });
+  }), [students, search, classFilter, institutionFilter]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'name' },
     { header: 'ID', key: 'studentId' },
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: 'institution' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
     { header: isBn ? 'স্থিতি' : 'Status', key: 'status' },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered
+  const pdfData = useMemo(() => filtered
     .filter((s) => selection.isSelected(s.id))
     .map((s) => ({
       name: `${s.firstName} ${s.lastName}`,
@@ -58,11 +59,11 @@ export default function StudentsPage() {
       class: s.class,
       roll: s.roll,
       status: s.status,
-    }));
+    })), [filtered, selection, getInstitutionName]);
+
+  const activeStudents = useMemo(() => students.filter(s => s.status === 'ACTIVE').length, [students]);
 
   if (!mounted) return <StudentsSkeleton isDark={isDark} />;
-
-  const activeStudents = students.filter(s => s.status === 'ACTIVE').length;
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -24,36 +24,36 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const payments = getPayments();
-  const filtered = payments.filter(p => {
+  const payments = useMemo(() => getPayments(), []);
+  const filtered = useMemo(() => payments.filter(p => {
     const matchesSearch = p.institutionName.toLowerCase().includes(search.toLowerCase()) || p.transactionId.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || p.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }), [payments, search, statusFilter]);
 
-  const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-  const paidAmount = payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0);
-  const pendingAmount = payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0);
+  const totalAmount = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
+  const paidAmount = useMemo(() => payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0), [payments]);
+  const pendingAmount = useMemo(() => payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0), [payments]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: "institutionName" },
     { header: isBn ? 'পরিমাণ' : 'Amount', key: "amount" },
     { header: isBn ? 'পদ্ধতি' : 'Method', key: "paymentMethod" },
     { header: isBn ? 'ট্রানজেকশন আইডি' : 'Transaction ID', key: "transactionId" },
     { header: isBn ? 'তারিখ' : 'Date', key: "date" },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: "status" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(p => ({
+  const pdfData = useMemo(() => filtered.map(p => ({
     institutionName: p.institutionName,
     amount: formatCurrency(p.amount),
     paymentMethod: p.paymentMethod,
     transactionId: p.transactionId,
     date: p.date,
     status: p.status,
-  }));
+  })), [filtered]);
 
   useEffect(() => { setMounted(true); }, []);
 

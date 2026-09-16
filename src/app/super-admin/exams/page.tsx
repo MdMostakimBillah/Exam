@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -42,43 +42,60 @@ export default function ExamsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const exams = getExams();
-  const registrations = getRegistrations();
-  const allClasses = getClasses();
-  const filtered = exams.filter(e => {
+  const exams = useMemo(() => getExams(), []);
+  const registrations = useMemo(() => getRegistrations(), []);
+  const allClasses = useMemo(() => getClasses(), []);
+
+  const filtered = useMemo(() => exams.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || e.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }), [exams, search, statusFilter]);
+
+  const registrationCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    registrations.forEach(r => {
+      map.set(r.examId, (map.get(r.examId) || 0) + 1);
+    });
+    return map;
+  }, [registrations]);
+
+  const classMap = useMemo(() => {
+    const map = new Map<string, typeof allClasses[0]>();
+    allClasses.forEach(c => map.set(c.id, c));
+    return map;
+  }, [allClasses]);
+
+  const activeClasses = useMemo(() => getActiveClasses(), []);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns = useMemo<PdfColumn[]>(() => [
     { key: "name", header: isBn ? "নাম" : "Name" },
     { key: "code", header: isBn ? "কোড" : "Code" },
     { key: "academicYear", header: isBn ? "শিক্ষাবর্ষ" : "Academic Year" },
     { key: "examDate", header: isBn ? "পরীক্ষার তারিখ" : "Exam Date" },
     { key: "registrationFee", header: isBn ? "নিবন্ধন ফি" : "Fee" },
     { key: "status", header: isBn ? "স্ট্যাটাস" : "Status" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map((exam) => ({
+  const pdfData = useMemo(() => filtered.map((exam) => ({
     name: exam.name,
     code: exam.code,
     academicYear: exam.academicYear,
     examDate: formatDate(exam.examDate).split(",")[0],
     registrationFee: `৳${exam.registrationFee}`,
     status: exam.status,
-  }));
+  })), [filtered]);
 
-  if (!mounted) return <ExamsSkeleton isDark={isDark} />;
-
-  const statusCounts = {
+  const statusCounts = useMemo(() => ({
     all: exams.length,
     OPEN: exams.filter(e => e.status === 'OPEN').length,
     PUBLISHED: exams.filter(e => e.status === 'PUBLISHED').length,
     CLOSED: exams.filter(e => e.status === 'CLOSED').length,
-  };
+  }), [exams]);
+
+  if (!mounted) return <ExamsSkeleton isDark={isDark} />;
 
   const handleCreate = () => {
     setEditingExam(null);
@@ -261,8 +278,8 @@ export default function ExamsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(exam => {
-                  const examRegs = registrations.filter(r => r.examId === exam.id);
-                  const examClasses = allClasses.filter(c => exam.classes.includes(c.id));
+                  const examRegCount = registrationCountMap.get(exam.id) || 0;
+                  const examClasses = exam.classes.map(id => classMap.get(id)).filter(Boolean) as typeof allClasses;
                   return (
                     <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(exam.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
                       <TableCell className="w-10">
@@ -289,7 +306,7 @@ export default function ExamsPage() {
                       <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <Users className="h-3 w-3" />
-                          {examRegs.length}
+                          {examRegCount}
                         </div>
                       </TableCell>
                       <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
@@ -398,7 +415,7 @@ export default function ExamsPage() {
               <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী নির্বাচন করুন' : 'Select Classes'}</label>
               <div className={`p-3 rounded-md border ${isDark ? 'bg-white/[0.02] border-white/[0.06]' : 'bg-zinc-50 border-zinc-200'}`}>
                 <div className="flex flex-wrap gap-2">
-                  {getActiveClasses().map(cls => (
+                  {activeClasses.map(cls => (
                     <button
                       key={cls.id}
                       onClick={() => toggleClass(cls.id)}

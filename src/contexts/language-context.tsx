@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { createContext, useContext, useCallback, useEffect, useSyncExternalStore, ReactNode } from "react";
 import translations from "@/lib/i18n/translations.json";
 
@@ -69,8 +70,10 @@ export function LangProvider({ children }: { children: ReactNode }) {
     [lang]
   );
 
+  const value = React.useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+
   return (
-    <LangContext.Provider value={{ lang, setLang, t }}>
+    <LangContext.Provider value={value}>
       {children}
     </LangContext.Provider>
   );

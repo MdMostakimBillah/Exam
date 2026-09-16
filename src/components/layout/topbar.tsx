@@ -13,7 +13,7 @@ interface TopbarProps {
   sidebarCollapsed: boolean;
 }
 
-function Topbar({ sidebarCollapsed }: TopbarProps) {
+const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
@@ -163,6 +163,6 @@ function Topbar({ sidebarCollapsed }: TopbarProps) {
       </div>
     </header>
   );
-}
+});
 
 export { Topbar };

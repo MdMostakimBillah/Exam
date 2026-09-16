@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -17,11 +17,11 @@ export default function AdmitCardsPage() {
   const [mounted, setMounted] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const cards = getAdmitCards();
+  const cards = useMemo(() => getAdmitCards(), []);
 
   const selection = useTableSelection(cards);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns = useMemo<PdfColumn[]>(() => [
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: "institutionName" },
     { header: isBn ? 'রেজি নং' : 'Reg No', key: "registrationNumber" },
@@ -30,9 +30,9 @@ export default function AdmitCardsPage() {
     { header: isBn ? 'রোল' : 'Roll', key: "roll" },
     { header: isBn ? 'কেন্দ্র' : 'Center', key: "examCenter" },
     { header: isBn ? 'তারিখ' : 'Date', key: "examDate" },
-  ];
+  ], [isBn]);
 
-  const pdfData = cards.map(c => ({
+  const pdfData = useMemo(() => cards.map(c => ({
     studentName: c.studentName,
     institutionName: c.institutionName,
     registrationNumber: c.registrationNumber,
@@ -41,7 +41,7 @@ export default function AdmitCardsPage() {
     roll: c.roll,
     examCenter: c.examCenter,
     examDate: new Date(c.examDate).toLocaleDateString(),
-  }));
+  })), [cards]);
 
   useEffect(() => { setMounted(true); }, []);
 

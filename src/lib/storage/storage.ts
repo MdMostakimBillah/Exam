@@ -1,10 +1,24 @@
 const PREFIX = 'scholarx_';
 
+const cache = new Map<string, unknown>();
+
+function cacheKey(key: string): string {
+  return PREFIX + key;
+}
+
+function invalidate(key: string): void {
+  cache.delete(cacheKey(key));
+}
+
 export function getStore<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
+  const ck = cacheKey(key);
+  if (cache.has(ck)) return cache.get(ck) as T[];
   try {
-    const data = localStorage.getItem(PREFIX + key);
-    return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(ck);
+    const parsed: T[] = data ? JSON.parse(data) : [];
+    cache.set(ck, parsed);
+    return parsed;
   } catch {
     return [];
   }
@@ -12,14 +26,20 @@ export function getStore<T>(key: string): T[] {
 
 export function setStore<T>(key: string, data: T[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(PREFIX + key, JSON.stringify(data));
+  const ck = cacheKey(key);
+  cache.set(ck, data);
+  localStorage.setItem(ck, JSON.stringify(data));
 }
 
 export function getStoreItem<T>(key: string): T | null {
   if (typeof window === 'undefined') return null;
+  const ck = cacheKey(key);
+  if (cache.has(ck)) return cache.get(ck) as T;
   try {
-    const data = localStorage.getItem(PREFIX + key);
-    return data ? JSON.parse(data) : null;
+    const data = localStorage.getItem(ck);
+    const parsed: T | null = data ? JSON.parse(data) : null;
+    cache.set(ck, parsed);
+    return parsed;
   } catch {
     return null;
   }
@@ -27,7 +47,9 @@ export function getStoreItem<T>(key: string): T | null {
 
 export function setStoreItem<T>(key: string, data: T): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(PREFIX + key, JSON.stringify(data));
+  const ck = cacheKey(key);
+  cache.set(ck, data);
+  localStorage.setItem(ck, JSON.stringify(data));
 }
 
 export function generateId(): string {

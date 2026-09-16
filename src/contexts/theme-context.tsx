@@ -1,4 +1,5 @@
 "use client";
+import * as React from "react";
 import { createContext, useContext, useState, useCallback, useEffect, useSyncExternalStore, ReactNode } from "react";
 
 type Theme = "light" | "dark";
@@ -58,8 +59,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new Event("storage"));
   }, []);
 
+  const value = React.useMemo(() => ({ theme, toggleTheme, setTheme }), [theme, toggleTheme, setTheme]);
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

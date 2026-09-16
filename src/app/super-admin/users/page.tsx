@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -55,43 +55,45 @@ export default function UsersPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const users = getUsers();
-  const institutions = getInstitutions();
+  const users = useMemo(() => getUsers(), []);
+  const institutions = useMemo(() => getInstitutions(), []);
 
-  const filtered = users.filter((u) => {
+  const filtered = useMemo(() => users.filter((u) => {
     const matchesSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
     const matchesRole = !roleFilter || u.role === roleFilter;
     return matchesSearch && matchesRole;
-  });
+  }), [users, search, roleFilter]);
 
-  const totalCount = users.length;
-  const superAdminCount = users.filter((u) => u.role === "SUPER_ADMIN").length;
-  const instAdminCount = users.filter((u) => u.role === "INSTITUTION_ADMIN").length;
+  const totalCount = useMemo(() => users.length, [users]);
+  const superAdminCount = useMemo(() => users.filter((u) => u.role === "SUPER_ADMIN").length, [users]);
+  const instAdminCount = useMemo(() => users.filter((u) => u.role === "INSTITUTION_ADMIN").length, [users]);
 
-  const getInstitutionName = (id?: string) => {
+  const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
+
+  const getInstitutionName = useCallback((id?: string) => {
     if (!id) return "—";
-    return institutions.find((i) => i.id === id)?.name || "—";
-  };
+    return institutionMap.get(id) || "—";
+  }, [institutionMap]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? "ব্যবহারকারী" : "User", key: "name" },
     { header: isBn ? "ইমেইল" : "Email", key: "email" },
     { header: isBn ? "ভূমিকা" : "Role", key: "role" },
     { header: isBn ? "প্রতিষ্ঠান" : "Institution", key: "institution" },
     { header: isBn ? "তৈরি" : "Created", key: "createdAt" },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map((u) => ({
+  const pdfData = useMemo(() => filtered.map((u) => ({
     name: u.name,
     email: u.email,
     role: u.role === "SUPER_ADMIN" ? (isBn ? "সুপার অ্যাডমিন" : "Super Admin") : (isBn ? "প্রতিষ্ঠান অ্যাডমিন" : "Institution Admin"),
     institution: getInstitutionName(u.institutionId),
     createdAt: formatDate(u.createdAt),
-  }));
+  })), [filtered, isBn, getInstitutionName]);
 
   if (!mounted) return <UsersSkeleton isDark={isDark} />;
 

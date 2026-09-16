@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { getCurrentUser } from "@/lib/auth/auth";
@@ -90,6 +90,13 @@ export default function SuperAdminSettingsPage() {
     }
   }, []);
 
+  const tabs: { id: Tab; label: string; labelBn: string; icon: React.ReactNode }[] = useMemo(() => [
+    { id: "profile", label: "Profile", labelBn: "প্রোফাইল", icon: <Building2 className="h-4 w-4" /> },
+    { id: "account", label: "Account", labelBn: "অ্যাকাউন্ট", icon: <User className="h-4 w-4" /> },
+    { id: "password", label: "Password", labelBn: "পাসওয়ার্ড", icon: <Lock className="h-4 w-4" /> },
+    { id: "notifications", label: "Notifications", labelBn: "বিজ্ঞপ্তি", icon: <Bell className="h-4 w-4" /> },
+  ], []);
+
   const handleSaveProfile = async () => {
     setSaving(true);
     const stored = getStoreItem<PlatformSettings>(SETTINGS_KEY);
@@ -168,13 +175,6 @@ export default function SuperAdminSettingsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-
-  const tabs: { id: Tab; label: string; labelBn: string; icon: React.ReactNode }[] = [
-    { id: "profile", label: "Profile", labelBn: "প্রোফাইল", icon: <Building2 className="h-4 w-4" /> },
-    { id: "account", label: "Account", labelBn: "অ্যাকাউন্ট", icon: <User className="h-4 w-4" /> },
-    { id: "password", label: "Password", labelBn: "পাসওয়ার্ড", icon: <Lock className="h-4 w-4" /> },
-    { id: "notifications", label: "Notifications", labelBn: "বিজ্ঞপ্তি", icon: <Bell className="h-4 w-4" /> },
-  ];
 
   const inputCls = isDark
     ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-white/20 focus:ring-white/10"

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Select } from "@/components/ui/select";
 import { getExams } from "@/lib/storage/exams";
 import { getStudents } from "@/lib/storage/students";
@@ -18,19 +18,29 @@ export default function ReportsPage() {
   const [examFilter, setExamFilter] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
+
+  const exams = useMemo(() => getExams(), []);
+  const students = useMemo(() => getStudents(), []);
+  const institutions = useMemo(() => getInstitutions(), []);
+  const allResults = useMemo(() => getResults(), []);
+
+  const filteredResults = useMemo(() => examFilter ? allResults.filter(r => r.examId === examFilter) : allResults, [examFilter, allResults]);
+
+  const totalStudents = useMemo(() => students.length, [students]);
+  const totalInstitutions = useMemo(() => institutions.length, [institutions]);
+  const totalExams = useMemo(() => exams.length, [exams]);
+  const totalResults = useMemo(() => filteredResults.length, [filteredResults]);
+
+  const maleStudents = useMemo(() => students.filter(s => s.gender === 'MALE').length, [students]);
+  const femaleStudents = useMemo(() => students.filter(s => s.gender === 'FEMALE').length, [students]);
+  const activeInstitutions = useMemo(() => institutions.filter(i => i.status === 'ACTIVE').length, [institutions]);
+  const pendingInstitutions = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
+  const openExams = useMemo(() => exams.filter(e => e.status === 'OPEN').length, [exams]);
+  const completedExams = useMemo(() => exams.filter(e => e.status === 'EXAM_COMPLETED').length, [exams]);
+  const publishedResults = useMemo(() => filteredResults.filter(r => r.status === 'PUBLISHED').length, [filteredResults]);
+  const approvedResults = useMemo(() => filteredResults.filter(r => r.status === 'APPROVED').length, [filteredResults]);
+
   if (!mounted) return <ReportsSkeleton isDark={isDark} />;
-
-  const exams = getExams();
-  const students = getStudents();
-  const institutions = getInstitutions();
-  const allResults = getResults();
-
-  const filteredResults = examFilter ? allResults.filter(r => r.examId === examFilter) : allResults;
-
-  const totalStudents = students.length;
-  const totalInstitutions = institutions.length;
-  const totalExams = exams.length;
-  const totalResults = filteredResults.length;
 
   const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
@@ -87,8 +97,8 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {[
                 { label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: totalStudents },
-                { label: isBn ? 'পুরুষ' : 'Male', value: students.filter(s => s.gender === 'MALE').length },
-                { label: isBn ? 'মহিলা' : 'Female', value: students.filter(s => s.gender === 'FEMALE').length },
+                { label: isBn ? 'পুরুষ' : 'Male', value: maleStudents },
+                { label: isBn ? 'মহিলা' : 'Female', value: femaleStudents },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{item.label}</span>
@@ -107,8 +117,8 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {[
                 { label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', value: totalInstitutions },
-                { label: isBn ? 'সক্রিয়' : 'Active', value: institutions.filter(i => i.status === 'ACTIVE').length },
-                { label: isBn ? 'অপেক্ষমাণ' : 'Pending', value: institutions.filter(i => i.status === 'PENDING').length },
+                { label: isBn ? 'সক্রিয়' : 'Active', value: activeInstitutions },
+                { label: isBn ? 'অপেক্ষমাণ' : 'Pending', value: pendingInstitutions },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{item.label}</span>
@@ -127,8 +137,8 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {[
                 { label: isBn ? 'মোট পরীক্ষা' : 'Total Exams', value: totalExams },
-                { label: isBn ? 'খোলা' : 'Open', value: exams.filter(e => e.status === 'OPEN').length },
-                { label: isBn ? 'সম্পন্ন' : 'Completed', value: exams.filter(e => e.status === 'EXAM_COMPLETED').length },
+                { label: isBn ? 'খোলা' : 'Open', value: openExams },
+                { label: isBn ? 'সম্পন্ন' : 'Completed', value: completedExams },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{item.label}</span>
@@ -147,8 +157,8 @@ export default function ReportsPage() {
             <div className="space-y-3">
               {[
                 { label: isBn ? 'মোট ফলাফল' : 'Total Results', value: totalResults },
-                { label: isBn ? 'প্রকাশিত' : 'Published', value: filteredResults.filter(r => r.status === 'PUBLISHED').length },
-                { label: isBn ? 'অনুমোদিত' : 'Approved', value: filteredResults.filter(r => r.status === 'APPROVED').length },
+                { label: isBn ? 'প্রকাশিত' : 'Published', value: publishedResults },
+                { label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedResults },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <span className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{item.label}</span>
