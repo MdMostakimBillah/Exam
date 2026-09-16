@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { initializeDemoData } from "@/lib/storage/seed";
+// Removed localStorage seed initialization - now using Supabase
 import { login } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -23,7 +23,6 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    initializeDemoData();
     setMounted(true);
   }, []);
 
@@ -41,10 +40,7 @@ export default function LoginPage() {
     setLoading(false);
   };
 
-  const quickLogin = (email: string) => {
-    setEmail(email);
-    setPassword('admin123');
-  };
+  // Removed quickLogin - users must use their assigned credentials
 
   if (!mounted) return null;
 
@@ -194,40 +190,11 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Quick login */}
-            <div className="mt-8">
-              <div className="relative">
-                <div className={`absolute inset-0 flex items-center ${isDark ? "text-zinc-700" : "text-zinc-300"}`}>
-                  <div className="w-full border-t border-current" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className={`px-3 ${isDark ? "bg-[#0a0a0b] text-zinc-600" : "bg-zinc-50 text-zinc-400"}`}>
-                    {isBn ? 'অথবা দ্রুত প্রবেশ' : 'Quick access'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <button
-                  onClick={() => quickLogin('admin@scholarx.local')}
-                  className={cn(
-                    "w-full flex items-center justify-between px-4 py-3 rounded-md border transition-all duration-200 group",
-                    isDark
-                      ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]"
-                      : "border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn("h-8 w-8 rounded-md bg-gradient-to-br from-blue-500/10 to-blue-600/5 flex items-center justify-center")}>
-                      <span className="text-xs font-bold">S</span>
-                    </div>
-                    <span className={cn("text-sm font-medium", isDark ? "text-zinc-300 group-hover:text-white" : "text-zinc-700 group-hover:text-zinc-900")}>
-                      {isBn ? 'সুপার অ্যাডমিন' : 'Super Admin'}
-                    </span>
-                  </div>
-                  <ArrowRight className={cn("h-3.5 w-3.5 transition-all duration-200 group-hover:translate-x-0.5", isDark ? "text-zinc-600 group-hover:text-zinc-400" : "text-zinc-400 group-hover:text-zinc-600")} />
-                </button>
-              </div>
+            {/* Info message */}
+            <div className="mt-8 text-center">
+              <p className={`text-xs ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
+                {isBn ? 'প্রথমবার লগইন? আপনার প্রতিষ্ঠানের অ্যাডমিনের সাথে যোগাযোগ করুন' : 'First time login? Contact your institution admin'}
+              </p>
             </div>
 
             <p className={`text-center text-xs mt-8 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>

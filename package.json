@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "migrate:legacy": "tsx scripts/migrate-legacy-data.ts"
+    "migrate:legacy": "tsx scripts/migrate-legacy-data.ts",
+    "setup:super-admin": "tsx scripts/setup-super-admin.ts"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

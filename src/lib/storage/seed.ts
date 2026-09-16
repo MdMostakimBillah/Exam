@@ -1,7 +1,6 @@
-import { User, Institution, Student, Exam, Registration, Result, Certificate, Payment, Notification, AuditLog, ExamCenter, AdmitCard, Mark, Class } from '../types';
+import { Institution, Student, Exam, Registration, Result, Certificate, Payment, Notification, AuditLog, ExamCenter, AdmitCard, Mark, Class } from '../types';
 import { setStore } from './storage';
 
-const USER_KEY = 'users';
 const INST_KEY = 'institutions';
 const STUD_KEY = 'students';
 const EXAM_KEY = 'exams';
@@ -29,15 +28,11 @@ export function markInitialized(): void {
 export function initializeDemoData(): void {
   if (isInitialized()) {
     try {
-      const users = JSON.parse(localStorage.getItem('scholarx_users') || '[]');
-      if (users.length > 0 && users[0].password) return;
+      const exams = JSON.parse(localStorage.getItem('scholarx_exams') || '[]');
+      if (exams.length > 0) return;
     } catch { /* ignore */ }
     localStorage.removeItem('scholarx_initialized');
   }
-
-  const users: User[] = [
-    { id: 'u1', email: 'admin@scholarx.local', name: 'Super Admin', password: 'admin123', role: 'SUPER_ADMIN', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
-  ];
 
   const institutions: Institution[] = [];
 
@@ -100,7 +95,6 @@ export function initializeDemoData(): void {
   const notifications: Notification[] = [];
   const auditLogs: AuditLog[] = [];
 
-  setStore(USER_KEY, users);
   setStore(INST_KEY, institutions);
   setStore(STUD_KEY, students);
   setStore(CLASS_KEY, classesData);
