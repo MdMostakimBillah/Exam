@@ -336,6 +336,7 @@ CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time
 -- Enable RLS on login_attempts
 ALTER TABLE login_attempts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Super admin full access login_attempts" ON login_attempts;
 CREATE POLICY "Super admin full access login_attempts" ON login_attempts
   FOR ALL USING (is_super_admin());
 
@@ -437,9 +438,11 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Enable RLS on profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Super admin full access profiles" ON profiles;
 CREATE POLICY "Super admin full access profiles" ON profiles
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Users own profile" ON profiles;
 CREATE POLICY "Users own profile" ON profiles
   FOR SELECT USING (id = auth.uid());
 
@@ -521,48 +524,59 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 -- ACADEMIC SESSIONS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access sessions" ON academic_sessions;
 CREATE POLICY "Super admin full access sessions" ON academic_sessions
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin read sessions" ON academic_sessions;
 CREATE POLICY "Institution admin read sessions" ON academic_sessions
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- ============================================
 -- INSTITUTIONS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access institutions" ON institutions;
 CREATE POLICY "Super admin full access institutions" ON institutions
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own institution" ON institutions;
 CREATE POLICY "Institution admin own institution" ON institutions
   FOR SELECT USING (id = get_user_institution_id());
 
+DROP POLICY IF EXISTS "Institution admin update own" ON institutions;
 CREATE POLICY "Institution admin update own" ON institutions
   FOR UPDATE USING (id = get_user_institution_id());
 
 -- ============================================
 -- CLASSES POLICIES (Global read)
 -- ============================================
+DROP POLICY IF EXISTS "Anyone read classes" ON classes;
 CREATE POLICY "Anyone read classes" ON classes
   FOR SELECT USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Super admin manage classes" ON classes;
 CREATE POLICY "Super admin manage classes" ON classes
   FOR ALL USING (is_super_admin());
 
 -- ============================================
 -- STUDENTS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access students" ON students;
 CREATE POLICY "Super admin full access students" ON students
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own students" ON students;
 CREATE POLICY "Institution admin own students" ON students
   FOR ALL USING (institution_id = get_user_institution_id());
 
 -- ============================================
 -- EXAMS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access exams" ON exams;
 CREATE POLICY "Super admin full access exams" ON exams
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own exams" ON exams;
 CREATE POLICY "Institution admin own exams" ON exams
   FOR ALL USING (
     EXISTS (
@@ -575,27 +589,33 @@ CREATE POLICY "Institution admin own exams" ON exams
 -- ============================================
 -- REGISTRATIONS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access registrations" ON registrations;
 CREATE POLICY "Super admin full access registrations" ON registrations
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own registrations" ON registrations;
 CREATE POLICY "Institution admin own registrations" ON registrations
   FOR ALL USING (institution_id = get_user_institution_id());
 
 -- ============================================
 -- EXAM CENTERS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access exam_centers" ON exam_centers;
 CREATE POLICY "Super admin full access exam_centers" ON exam_centers
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own exam_centers" ON exam_centers;
 CREATE POLICY "Institution admin own exam_centers" ON exam_centers
   FOR ALL USING (institution_id = get_user_institution_id());
 
 -- ============================================
 -- ADMIT CARDS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access admit_cards" ON admit_cards;
 CREATE POLICY "Super admin full access admit_cards" ON admit_cards
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own admit_cards" ON admit_cards;
 CREATE POLICY "Institution admin own admit_cards" ON admit_cards
   FOR ALL USING (
     EXISTS (
@@ -608,9 +628,11 @@ CREATE POLICY "Institution admin own admit_cards" ON admit_cards
 -- ============================================
 -- MARKS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access marks" ON marks;
 CREATE POLICY "Super admin full access marks" ON marks
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own marks" ON marks;
 CREATE POLICY "Institution admin own marks" ON marks
   FOR ALL USING (
     EXISTS (
@@ -623,48 +645,58 @@ CREATE POLICY "Institution admin own marks" ON marks
 -- ============================================
 -- RESULTS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access results" ON results;
 CREATE POLICY "Super admin full access results" ON results
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own results" ON results;
 CREATE POLICY "Institution admin own results" ON results
   FOR ALL USING (institution_id = get_user_institution_id());
 
 -- ============================================
 -- CERTIFICATES POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access certificates" ON certificates;
 CREATE POLICY "Super admin full access certificates" ON certificates
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own certificates" ON certificates;
 CREATE POLICY "Institution admin own certificates" ON certificates
   FOR ALL USING (institution_id = get_user_institution_id());
 
 -- ============================================
 -- PAYMENTS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access payments" ON payments;
 CREATE POLICY "Super admin full access payments" ON payments
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Institution admin own payments" ON payments;
 CREATE POLICY "Institution admin own payments" ON payments
   FOR ALL USING (institution_id = get_user_institution_id());
 
 -- ============================================
 -- NOTIFICATIONS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Users own notifications" ON notifications;
 CREATE POLICY "Users own notifications" ON notifications
   FOR ALL USING (user_id = auth.uid());
 
 -- ============================================
 -- AUDIT LOGS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access audit_logs" ON audit_logs;
 CREATE POLICY "Super admin full access audit_logs" ON audit_logs
   FOR ALL USING (is_super_admin());
 
 -- ============================================
 -- SYSTEM SETTINGS POLICIES
 -- ============================================
+DROP POLICY IF EXISTS "Super admin full access system_settings" ON system_settings;
 CREATE POLICY "Super admin full access system_settings" ON system_settings
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Anyone read system_settings" ON system_settings;
 CREATE POLICY "Anyone read system_settings" ON system_settings
   FOR SELECT USING (auth.role() = 'authenticated');
 
