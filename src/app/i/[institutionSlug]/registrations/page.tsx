@@ -220,6 +220,7 @@ export default function InstitutionRegistrationsPage() {
       className: newStudent.class,
       status: "PENDING",
       paymentStatus: "PENDING",
+      studentPaymentStatus: "NOT_SUBMITTED",
       paymentAmount: exam.registrationFee,
     });
 

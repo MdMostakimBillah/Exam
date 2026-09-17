@@ -20,6 +20,7 @@ function mapRegistration(data: any): Registration {
     className: data.class_name,
     status: data.status,
     paymentStatus: data.payment_status,
+    studentPaymentStatus: data.student_payment_status || 'NOT_SUBMITTED',
     paymentAmount: data.payment_amount,
     transactionId: data.transaction_id,
     createdAt: data.created_at,

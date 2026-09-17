@@ -59,7 +59,8 @@ export default function InstitutionPaymentsPage() {
       (p.reference && p.reference.toLowerCase().includes(search.toLowerCase())) ||
       (p.studentName && p.studentName.toLowerCase().includes(search.toLowerCase())) ||
       (p.transactionId && p.transactionId.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = !statusFilter || p.status === statusFilter;
+    const matchesStatus = !statusFilter ||
+      (statusFilter === "STUDENT_SUBMITTED" ? p.submittedByStudent && p.status === "PENDING" : p.status === statusFilter);
     return matchesSearch && matchesStatus;
   });
 
@@ -200,6 +201,7 @@ export default function InstitutionPaymentsPage() {
             <Select
               options={[
                 { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
+                { label: isBn ? 'শিক্ষার্থী জমা (মুলতুবি)' : 'Student Submitted', value: 'STUDENT_SUBMITTED' },
                 { label: isBn ? 'পেন্ডিং' : 'Pending', value: 'PENDING' },
                 { label: isBn ? 'নিশ্চিত' : 'Confirmed', value: 'CONFIRMED' },
                 { label: isBn ? 'ব্যর্থ' : 'Failed', value: 'FAILED' },
@@ -255,6 +257,9 @@ export default function InstitutionPaymentsPage() {
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{payment.reference || payment.transactionId}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
+                        {payment.submittedByStudent && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" title="Student submitted" />
+                        )}
                         <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                           {payment.studentName ? payment.studentName.charAt(0) : '?'}
                         </div>

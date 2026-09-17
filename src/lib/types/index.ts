@@ -124,6 +124,7 @@ export interface Registration {
   className: string;
   status: RegistrationStatus;
   paymentStatus: PaymentStatus;
+  studentPaymentStatus: StudentPaymentStatus;
   paymentAmount: number;
   transactionId?: string;
   createdAt: string;
@@ -222,6 +223,9 @@ export interface Certificate {
   updatedAt: string;
 }
 
+export type StudentPaymentStatus = 'NOT_SUBMITTED' | 'SUBMITTED' | 'VERIFIED' | 'REJECTED';
+export type StudentPaymentMethod = 'BKASH' | 'ROCKET' | 'BANK_TRANSFER' | 'CASH';
+
 export interface Payment {
   id: string;
   sessionId: string;
@@ -241,6 +245,14 @@ export interface Payment {
   reference?: string;
   paymentDate?: string;
   notes?: string;
+  submittedByStudent?: boolean;
+  submittedAt?: string;
+  receiptNumber?: string;
+  accountNumber?: string;
+  proofImage?: string;
+  verifiedBySuperAdmin?: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
 }
