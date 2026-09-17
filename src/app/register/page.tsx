@@ -3,9 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { initializeDemoData } from "@/lib/storage/seed";
-import { createInstitution } from "@/lib/storage/institutions";
-import { signUp } from "@/lib/storage/users";
-import { createClient } from "@/lib/supabase/client";
+import { registerInstitution, uploadLogo } from "@/lib/auth/register-action";
 import { EMAILJS_CONFIG } from "@/lib/emailjs/config";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -170,46 +168,30 @@ export default function RegisterPage() {
       let logoUrl = "";
       if (logoFile) {
         try {
-          const supabase = createClient();
-          const ext = logoFile.name.split(".").pop();
-          const path = `institution-logos/${slug}-${Date.now()}.${ext}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from("public")
-            .upload(path, logoFile, { upsert: true });
-          if (!uploadError && uploadData) {
-            const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
-            logoUrl = urlData?.publicUrl || "";
-          }
+          const buffer = await logoFile.arrayBuffer();
+          const ext = logoFile.name.split(".").pop() || "png";
+          logoUrl = await uploadLogo(slug, buffer, ext);
         } catch {
           // Logo upload failed, continue without logo
         }
       }
 
-      const institution = await createInstitution({
+      const result = await registerInstitution({
         name: form.nameBangla || form.nameEnglish,
+        nameEnglish: form.nameEnglish,
         code: `INST-${Date.now().toString(36).toUpperCase().slice(-6)}`,
         slug,
         email,
         phone: form.phone,
+        whatsapp: form.whatsapp,
         address: form.address,
-        city: "",
-        district: "",
-        contactPerson: "",
-        contactPersonPhone: form.whatsapp,
-        status: "PENDING",
-        logo: logoUrl,
-        totalStudents: 0,
-        totalApplications: 0,
+        logoUrl,
+        password,
       });
 
-      const signUpResult = await signUp(email, password, form.nameEnglish || form.nameBangla, "INSTITUTION_ADMIN", institution.id);
-
-      if (signUpResult?.user) {
-        const supabase = createClient();
-        await supabase
-          .from("profiles")
-          .update({ institution_id: institution.id })
-          .eq("id", signUpResult.user.id);
+      if (!result.success) {
+        setEmailError(result.error || "Registration failed");
+        return;
       }
 
       setSubmitted(true);
