@@ -22,24 +22,33 @@ export interface LoginResult {
 
 export async function loginWithLockout(email: string, password: string): Promise<LoginResult> {
   const supabase = await createClient();
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
-  const userAgent = headersList.get("user-agent") || "unknown";
+  let ip = "unknown";
+  let userAgent = "unknown";
 
-  // 1. Check if account is locked
-  const { data: isLocked } = await supabase.rpc("is_account_locked", {
-    p_email: email.toLowerCase(),
-  });
+  try {
+    const headersList = await headers();
+    ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+    userAgent = headersList.get("user-agent") || "unknown";
+  } catch {}
+
+  // 1. Check if account is locked (graceful fallback if RPC fails)
+  let isLocked = false;
+  let lockoutSeconds = 300;
+  try {
+    const { data } = await supabase.rpc("is_account_locked", { p_email: email.toLowerCase() });
+    isLocked = !!data;
+    if (isLocked) {
+      const { data: seconds } = await supabase.rpc("get_lockout_seconds", { p_email: email.toLowerCase() });
+      lockoutSeconds = seconds || 300;
+    }
+  } catch {}
 
   if (isLocked) {
-    const { data: seconds } = await supabase.rpc("get_lockout_seconds", {
-      p_email: email.toLowerCase(),
-    });
     return {
       success: false,
       error: "Account temporarily locked. Try again in 5 minutes.",
       locked: true,
-      retryAfter: seconds || 300,
+      retryAfter: lockoutSeconds,
     };
   }
 
@@ -49,29 +58,33 @@ export async function loginWithLockout(email: string, password: string): Promise
     password,
   });
 
-  // 3. Record attempt
-  await supabase.rpc("record_login_attempt", {
-    p_email: email.toLowerCase(),
-    p_ip: ip,
-    p_user_agent: userAgent,
-    p_success: !error,
-    p_failure_reason: error?.message || null,
-  });
+  // 3. Record attempt (graceful failure)
+  try {
+    await supabase.rpc("record_login_attempt", {
+      p_email: email.toLowerCase(),
+      p_ip: ip,
+      p_user_agent: userAgent,
+      p_success: !error,
+      p_failure_reason: error?.message || null,
+    });
+  } catch {}
 
   if (error) {
-    // Check if this attempt caused lockout
-    const { data: nowLocked } = await supabase.rpc("is_account_locked", {
-      p_email: email.toLowerCase(),
-    });
-    const { data: seconds } = await supabase.rpc("get_lockout_seconds", {
-      p_email: email.toLowerCase(),
-    });
+    // Check lockout after failed attempt (graceful fallback)
+    let nowLocked = false;
+    let seconds = 300;
+    try {
+      const { data: locked } = await supabase.rpc("is_account_locked", { p_email: email.toLowerCase() });
+      nowLocked = !!locked;
+      const { data: s } = await supabase.rpc("get_lockout_seconds", { p_email: email.toLowerCase() });
+      seconds = s || 300;
+    } catch {}
 
     return {
       success: false,
       error: "Invalid email or password",
       locked: nowLocked,
-      retryAfter: nowLocked ? seconds || 300 : 0,
+      retryAfter: nowLocked ? seconds : 0,
     };
   }
 
@@ -84,7 +97,7 @@ export async function loginWithLockout(email: string, password: string): Promise
       .single();
 
     if (profile) {
-      const normalizedRole = profile.role.toUpperCase().replace("SUPER_ADMIN", "SUPER_ADMIN").replace("INSTITUTION_ADMIN", "INSTITUTION_ADMIN");
+      const normalizedRole = profile.role.toUpperCase();
 
       return {
         success: true,
