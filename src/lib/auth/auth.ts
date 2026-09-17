@@ -1,14 +1,26 @@
 import { User, UserRole } from '../types';
 import { createClient } from '@/lib/supabase/client';
-import { getUserByEmail } from '@/lib/storage/users';
+
+const USER_STORAGE_KEY = 'scholarx_current_user';
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
-  return null;
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
 }
 
 export function setCurrentUser(user: User | null): void {
-  // Supabase handles auth state via cookies
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(USER_STORAGE_KEY);
+  }
 }
 
 export async function login(email: string, password: string): Promise<User | null> {
@@ -24,7 +36,6 @@ export async function login(email: string, password: string): Promise<User | nul
   }
 
   if (data.user) {
-    // Query by ID (matches RLS policy: id = auth.uid())
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -36,10 +47,9 @@ export async function login(email: string, password: string): Promise<User | nul
       return null;
     }
 
-    // Normalize role: DB stores lowercase, app expects UPPERCASE
-    const normalizedRole = profile.role.toUpperCase().replace('SUPER_ADMIN', 'SUPER_ADMIN').replace('INSTITUTION_ADMIN', 'INSTITUTION_ADMIN') as UserRole;
+    const normalizedRole = profile.role.toUpperCase() as UserRole;
 
-    return {
+    const user: User = {
       id: profile.id,
       email: profile.email,
       name: profile.name,
@@ -50,6 +60,9 @@ export async function login(email: string, password: string): Promise<User | nul
       createdAt: profile.created_at,
       updatedAt: profile.updated_at,
     };
+
+    setCurrentUser(user);
+    return user;
   }
 
   return null;
@@ -58,14 +71,14 @@ export async function login(email: string, password: string): Promise<User | nul
 export async function logout(): Promise<void> {
   const supabase = createClient();
   await supabase.auth.signOut();
+  setCurrentUser(null);
 }
 
 export function isAuthenticated(): boolean {
-  if (typeof window === 'undefined') return false;
-  return true;
+  return getCurrentUser() !== null;
 }
 
 export function hasRole(role: UserRole): boolean {
-  if (typeof window === 'undefined') return false;
-  return true;
+  const user = getCurrentUser();
+  return user?.role === role;
 }

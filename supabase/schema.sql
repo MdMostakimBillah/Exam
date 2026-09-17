@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   class_name TEXT NOT NULL,
   status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'VERIFIED', 'PAYMENT_PENDING', 'APPROVED', 'REJECTED')),
   payment_status TEXT DEFAULT 'PENDING' CHECK (payment_status IN ('PENDING', 'CONFIRMED', 'PAID', 'FAILED', 'REFUNDED')),
+  student_payment_status TEXT DEFAULT 'NOT_SUBMITTED' CHECK (student_payment_status IN ('NOT_SUBMITTED', 'SUBMITTED', 'VERIFIED', 'REJECTED')),
   payment_amount NUMERIC DEFAULT 0,
   transaction_id TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -274,6 +275,14 @@ CREATE TABLE IF NOT EXISTS payments (
   reference TEXT,
   payment_date DATE,
   notes TEXT,
+  submitted_by_student BOOLEAN DEFAULT false,
+  submitted_at TIMESTAMPTZ,
+  receipt_number TEXT,
+  account_number TEXT,
+  proof_image TEXT,
+  verified_by_super_admin UUID,
+  verified_at TIMESTAMPTZ,
+  rejection_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -304,6 +313,102 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ============================================
+-- LOGIN ATTEMPTS (Brute-force protection)
+-- ============================================
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  success BOOLEAN DEFAULT false,
+  failure_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_email_time
+  ON login_attempts(email, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time
+  ON login_attempts(ip_address, created_at DESC);
+
+-- Enable RLS on login_attempts
+ALTER TABLE login_attempts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Super admin full access login_attempts" ON login_attempts
+  FOR ALL USING (is_super_admin());
+
+-- Helper function: check if account is locked (3 failures in 5 minutes)
+CREATE OR REPLACE FUNCTION is_account_locked(p_email TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_failed_count INT;
+BEGIN
+  SELECT COUNT(*)
+  INTO v_failed_count
+  FROM login_attempts
+  WHERE email = p_email
+    AND success = false
+    AND created_at > now() - INTERVAL '5 minutes';
+
+  IF v_failed_count >= 3 THEN
+    RETURN true;
+  END IF;
+  RETURN false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function: get remaining lockout seconds
+CREATE OR REPLACE FUNCTION get_lockout_seconds(p_email TEXT)
+RETURNS INT AS $$
+DECLARE
+  v_oldest_fail TIMESTAMPTZ;
+  v_remaining INT;
+BEGIN
+  SELECT MIN(created_at)
+  INTO v_oldest_fail
+  FROM login_attempts
+  WHERE email = p_email
+    AND success = false
+    AND created_at > now() - INTERVAL '5 minutes';
+
+  IF v_oldest_fail IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  v_remaining := EXTRACT(EPOCH FROM (v_oldest_fail + INTERVAL '5 minutes' - now()))::INT;
+  IF v_remaining < 0 THEN
+    RETURN 0;
+  END IF;
+  RETURN v_remaining;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function: record login attempt
+CREATE OR REPLACE FUNCTION record_login_attempt(
+  p_email TEXT,
+  p_ip TEXT,
+  p_user_agent TEXT,
+  p_success BOOLEAN,
+  p_failure_reason TEXT DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO login_attempts (email, ip_address, user_agent, success, failure_reason)
+  VALUES (p_email, p_ip, p_user_agent, p_success, p_failure_reason);
+
+  -- Auto-cleanup: keep only last 20 attempts per email
+  DELETE FROM login_attempts
+  WHERE email = p_email
+    AND id NOT IN (
+      SELECT id FROM login_attempts
+      WHERE email = p_email
+      ORDER BY created_at DESC
+      LIMIT 20
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
 -- SYSTEM SETTINGS (GLOBAL)
@@ -375,6 +480,8 @@ CREATE INDEX IF NOT EXISTS idx_results_session ON results(session_id);
 CREATE INDEX IF NOT EXISTS idx_certificates_session ON certificates(session_id);
 CREATE INDEX IF NOT EXISTS idx_payments_session ON payments(session_id);
 CREATE INDEX IF NOT EXISTS idx_payments_institution_session ON payments(institution_id, session_id);
+CREATE INDEX IF NOT EXISTS idx_payments_student_submitted ON payments(student_id, submitted_by_student, status);
+CREATE INDEX IF NOT EXISTS idx_registrations_student_payment ON registrations(student_id, student_payment_status);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
