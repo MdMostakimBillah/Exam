@@ -169,15 +169,19 @@ export default function RegisterPage() {
 
       let logoUrl = "";
       if (logoFile) {
-        const supabase = createClient();
-        const ext = logoFile.name.split(".").pop();
-        const path = `institution-logos/${slug}-${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("public")
-          .upload(path, logoFile, { upsert: true });
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
-          logoUrl = urlData?.publicUrl || "";
+        try {
+          const supabase = createClient();
+          const ext = logoFile.name.split(".").pop();
+          const path = `institution-logos/${slug}-${Date.now()}.${ext}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("public")
+            .upload(path, logoFile, { upsert: true });
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+            logoUrl = urlData?.publicUrl || "";
+          }
+        } catch {
+          // Logo upload failed, continue without logo
         }
       }
 
@@ -210,7 +214,14 @@ export default function RegisterPage() {
 
       setSubmitted(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      let msg = "Unknown error";
+      if (err instanceof Error) {
+        msg = err.message;
+      } else if (typeof err === "object" && err !== null) {
+        msg = JSON.stringify(err);
+      } else {
+        msg = String(err);
+      }
       setEmailError(`Registration failed: ${msg}`);
     } finally {
       setSubmitting(false);

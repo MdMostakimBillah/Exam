@@ -552,6 +552,10 @@ DROP POLICY IF EXISTS "Super admin full access institutions" ON institutions;
 CREATE POLICY "Super admin full access institutions" ON institutions
   FOR ALL USING (is_super_admin());
 
+DROP POLICY IF EXISTS "Public insert for registration" ON institutions;
+CREATE POLICY "Public insert for registration" ON institutions
+  FOR INSERT WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Institution admin own institution" ON institutions;
 CREATE POLICY "Institution admin own institution" ON institutions
   FOR SELECT USING (id = get_user_institution_id());
