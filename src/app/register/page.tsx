@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { initializeDemoData } from "@/lib/storage/seed";
-import { createInstitution, updateInstitution } from "@/lib/storage/institutions";
-import { createUser } from "@/lib/storage/users";
-import { EMAILJS_CONFIG, EMAIL_TEMPLATE_PARAMS } from "@/lib/emailjs/config";
+import { createInstitution } from "@/lib/storage/institutions";
+import { signUp } from "@/lib/storage/users";
+import { createClient } from "@/lib/supabase/client";
+import { EMAILJS_CONFIG } from "@/lib/emailjs/config";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,6 +42,8 @@ const PASSWORD_RULES: PasswordRule[] = [
   { label: "One special character (!@#$%^&*)", test: (p) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(p) },
 ];
 
+const MAX_LOGO_SIZE = 500 * 1024;
+
 export default function RegisterPage() {
   const { t } = useLang();
   const { theme } = useTheme();
@@ -49,6 +52,8 @@ export default function RegisterPage() {
   const [step, setStep] = useState<"form" | "verify">("form");
   const [submitted, setSubmitted] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoError, setLogoError] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -58,6 +63,7 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0);
   const [sending, setSending] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     nameBangla: "",
     nameEnglish: "",
@@ -86,10 +92,17 @@ export default function RegisterPage() {
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoPreview(reader.result as string);
+    if (!file) return;
+    setLogoError("");
+    if (file.size > MAX_LOGO_SIZE) {
+      setLogoError(`Logo must be under 500KB. Current: ${(file.size / 1024).toFixed(0)}KB`);
+      e.target.value = "";
+      return;
     }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const passwordValid = PASSWORD_RULES.every((r) => r.test(password));
@@ -99,18 +112,22 @@ export default function RegisterPage() {
     email.length > 0 &&
     passwordValid &&
     passwordsMatch &&
-    (form.nameBangla.length > 0 || form.nameEnglish.length > 0);
+    form.nameBangla.length > 0 &&
+    form.nameEnglish.length > 0 &&
+    form.address.length > 0 &&
+    form.phone.length > 0 &&
+    form.whatsapp.length > 0;
 
   const sendVerificationCode = useCallback(async () => {
     if (!email) return;
     setSending(true);
     setEmailError("");
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const instName = form.nameEnglish || form.nameBangla || "Your Institution";
+    const instName = form.nameEnglish || form.nameBangla;
 
     try {
       const { default: emailjs } = await import("@emailjs/browser");
-      const result = await emailjs.send(
+      await emailjs.send(
         EMAILJS_CONFIG.serviceId,
         EMAILJS_CONFIG.templateId,
         {
@@ -120,12 +137,10 @@ export default function RegisterPage() {
         },
         { publicKey: EMAILJS_CONFIG.publicKey }
       );
-      console.log("EmailJS success:", result);
       setStoredCode(code);
       setCountdown(60);
     } catch (err: unknown) {
-      console.error("EmailJS error:", err);
-      const detail = typeof err === 'object' && err !== null && 'text' in err
+      const detail = typeof err === "object" && err !== null && "text" in err
         ? String((err as { text: string }).text)
         : err instanceof Error ? err.message : String(err);
       setEmailError(`Failed: ${detail}`);
@@ -143,40 +158,63 @@ export default function RegisterPage() {
   };
 
   const handleSubmit = async () => {
-    const slug =
-      form.nameEnglish
+    setSubmitting(true);
+    setEmailError("");
+
+    try {
+      const slug = form.nameEnglish
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") ||
-      form.nameBangla.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        .replace(/^-|-$/g, "");
 
-    const institution = await createInstitution({
-      name: form.nameBangla || form.nameEnglish,
-      code: `INST-${Date.now().toString(36).toUpperCase().slice(-6)}`,
-      slug,
-      email,
-      phone: form.phone,
-      address: form.address,
-      city: "",
-      district: "",
-      contactPerson: "",
-      contactPersonPhone: "",
-      status: "PENDING",
-      totalStudents: 0,
-      totalApplications: 0,
-    });
+      let logoUrl = "";
+      if (logoFile) {
+        const supabase = createClient();
+        const ext = logoFile.name.split(".").pop();
+        const path = `institution-logos/${slug}-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("public")
+          .upload(path, logoFile, { upsert: true });
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+          logoUrl = urlData?.publicUrl || "";
+        }
+      }
 
-    const adminName = form.nameEnglish || form.nameBangla;
-    const user = await createUser({
-      email,
-      name: adminName,
-      password,
-      role: "INSTITUTION_ADMIN",
-      institutionId: institution.id,
-    });
+      const institution = await createInstitution({
+        name: form.nameBangla || form.nameEnglish,
+        code: `INST-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+        slug,
+        email,
+        phone: form.phone,
+        address: form.address,
+        city: "",
+        district: "",
+        contactPerson: "",
+        contactPersonPhone: form.whatsapp,
+        status: "PENDING",
+        logo: logoUrl,
+        totalStudents: 0,
+        totalApplications: 0,
+      });
 
-    await updateInstitution(institution.id, { adminUserId: user.id });
-    setSubmitted(true);
+      const signUpResult = await signUp(email, password, form.nameEnglish || form.nameBangla, "INSTITUTION_ADMIN", institution.id);
+
+      if (signUpResult?.user) {
+        const supabase = createClient();
+        await supabase
+          .from("profiles")
+          .update({ institution_id: institution.id })
+          .eq("id", signUpResult.user.id);
+      }
+
+      setSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setEmailError(`Registration failed: ${msg}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const proceedToVerify = async () => {
@@ -205,7 +243,7 @@ export default function RegisterPage() {
 
   if (submitted) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${bg}`}>
+      <div className={`h-dvh flex items-center justify-center ${bg}`}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px]" />
         </div>
@@ -238,15 +276,15 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className={`min-h-screen ${bg} relative overflow-hidden`}>
+    <div className={`h-dvh ${bg} relative overflow-hidden flex flex-col`}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 -left-32 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 -right-32 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <div className="p-6 lg:p-8 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 relative z-10 overflow-y-auto">
+        <div className="w-full max-w-5xl">
+          <div className="text-center mb-6">
             <h1 className={`text-2xl font-bold mb-2 ${text}`}>
               Institution Registration
             </h1>
@@ -295,7 +333,7 @@ export default function RegisterPage() {
                           Institution Logo
                         </p>
                         <p className={`text-xs ${textSec} mb-2`}>
-                          Upload your institution logo
+                          Upload your institution logo (max 500KB)
                         </p>
                         <label
                           className={`inline-flex items-center gap-2 text-sm cursor-pointer transition-colors ${linkBlue}`}
@@ -309,6 +347,12 @@ export default function RegisterPage() {
                             className="hidden"
                           />
                         </label>
+                        {logoError && (
+                          <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {logoError}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -321,20 +365,21 @@ export default function RegisterPage() {
                           <label
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
-                            <span>নাম (বাংলা)</span>
+                            <span>নাম (বাংলা) <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             value={form.nameBangla}
                             onChange={(e) => update("nameBangla", e.target.value)}
                             placeholder="মাদ্রাসার নাম"
                             className={inputBg}
+                            required
                           />
                         </div>
                         <div>
                           <label
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
-                            <span>Name (English)</span>
+                            <span>Name (English) <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             value={form.nameEnglish}
@@ -343,6 +388,7 @@ export default function RegisterPage() {
                             }
                             placeholder="Institution Name"
                             className={inputBg}
+                            required
                           />
                         </div>
                         <div>
@@ -350,13 +396,14 @@ export default function RegisterPage() {
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
                             {mounted && <MapPin className="h-3.5 w-3.5" />}
-                            <span>Address</span>
+                            <span>Address <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             value={form.address}
                             onChange={(e) => update("address", e.target.value)}
                             placeholder="Village, Area, District"
                             className={inputBg}
+                            required
                           />
                         </div>
                       </div>
@@ -375,7 +422,7 @@ export default function RegisterPage() {
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
                             {mounted && <Mail className="h-3.5 w-3.5" />}
-                            <span>Email Address</span>
+                            <span>Email Address <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             type="email"
@@ -383,6 +430,7 @@ export default function RegisterPage() {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="info@institution.edu"
                             className={inputBg}
+                            required
                           />
                         </div>
 
@@ -392,7 +440,7 @@ export default function RegisterPage() {
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
                             {mounted && <Lock className="h-3.5 w-3.5" />}
-                            <span>Password</span>
+                            <span>Password <span className="text-red-400">*</span></span>
                           </label>
                           <div className="relative">
                             <Input
@@ -401,6 +449,7 @@ export default function RegisterPage() {
                               onChange={(e) => setPassword(e.target.value)}
                               placeholder="Create a strong password"
                               className={`${inputBg} pr-10`}
+                              required
                             />
                             <button
                               type="button"
@@ -448,7 +497,7 @@ export default function RegisterPage() {
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
                             {mounted && <Lock className="h-3.5 w-3.5" />}
-                            <span>Confirm Password</span>
+                            <span>Confirm Password <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             type={showPassword ? "text" : "password"}
@@ -456,6 +505,7 @@ export default function RegisterPage() {
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="Re-enter password"
                             className={inputBg}
+                            required
                           />
                           {confirmPassword && !passwordsMatch && (
                             <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
@@ -476,13 +526,14 @@ export default function RegisterPage() {
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
                             {mounted && <Phone className="h-3.5 w-3.5" />}
-                            <span>Phone Number</span>
+                            <span>Phone Number <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             value={form.phone}
                             onChange={(e) => update("phone", e.target.value)}
                             placeholder="+880 1XXX XXXXXX"
                             className={inputBg}
+                            required
                           />
                         </div>
                         <div>
@@ -490,13 +541,14 @@ export default function RegisterPage() {
                             className={`flex items-center gap-2 text-xs mb-2 ${textSec}`}
                           >
                             {mounted && <Phone className="h-3.5 w-3.5" />}
-                            <span>WhatsApp Number</span>
+                            <span>WhatsApp Number <span className="text-red-400">*</span></span>
                           </label>
                           <Input
                             value={form.whatsapp}
                             onChange={(e) => update("whatsapp", e.target.value)}
                             placeholder="+880 1XXX XXXXXX"
                             className={inputBg}
+                            required
                           />
                         </div>
                       </div>
@@ -554,6 +606,7 @@ export default function RegisterPage() {
                         placeholder="000000"
                         className={`${inputBg} text-center text-lg tracking-[0.5em] font-mono h-12`}
                         maxLength={6}
+                        required
                       />
                     </div>
 
@@ -579,9 +632,13 @@ export default function RegisterPage() {
                       type="button"
                       className="w-full h-11"
                       onClick={verifyCode}
-                      disabled={verificationCode.length !== 6}
+                      disabled={verificationCode.length !== 6 || submitting}
                     >
-                      Verify & Register
+                      {submitting ? (
+                        <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        "Verify & Register"
+                      )}
                     </Button>
 
                     <button
@@ -625,7 +682,7 @@ export default function RegisterPage() {
             </CardContent>
           </Card>
 
-          <div className="text-center mt-6">
+          <div className="text-center mt-4 pb-4">
             <p className={`text-xs ${textSec}`}>
               By registering, you agree to our{" "}
               <a
