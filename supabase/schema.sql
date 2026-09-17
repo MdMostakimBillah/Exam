@@ -146,6 +146,9 @@ CREATE TABLE IF NOT EXISTS registrations (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Add new column to registrations table (safe to re-run)
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS student_payment_status TEXT DEFAULT 'NOT_SUBMITTED';
+
 -- ============================================
 -- EXAM CENTERS (SESSION-SCOPED)
 -- ============================================
@@ -286,6 +289,16 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Add new columns to payments table (safe to re-run)
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS submitted_by_student BOOLEAN DEFAULT false;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_number TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS account_number TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS proof_image TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS verified_by_super_admin UUID;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
 -- ============================================
 -- NOTIFICATIONS (GLOBAL - user-scoped)
