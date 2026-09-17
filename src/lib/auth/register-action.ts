@@ -68,16 +68,11 @@ export async function registerInstitution(data: {
       return { success: false, error: `Auth error: ${authError.message}` };
     }
 
-    // 3. Create profile with institution_id
+    // 3. Update profile with institution_id (trigger already created the profile)
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .insert({
-        id: authData.user.id,
-        email: data.email,
-        name: data.nameEnglish || data.name,
-        role: "INSTITUTION_ADMIN",
-        institution_id: institution.id,
-      });
+      .update({ institution_id: institution.id })
+      .eq("id", authData.user.id);
 
     if (profileError) {
       return { success: false, error: `Profile error: ${profileError.message}` };
