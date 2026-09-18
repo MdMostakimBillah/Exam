@@ -17,8 +17,8 @@
 
 export const EMAILJS_CONFIG = {
   serviceId: process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "service_no0fi4g",
-  templateId: process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "template_d2292ef",
-  publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "NIHNikz-ok3G96jvm",
+  templateId: process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "template_a6wsavg",
+  publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "NlHNikz-ok3G96jvm",
 };
 
 export const EMAIL_TEMPLATE_PARAMS = {
