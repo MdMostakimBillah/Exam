@@ -182,6 +182,12 @@ CREATE POLICY "Students read own data" ON students
   FOR SELECT USING (user_id = auth.uid());
 
 -- EXAMS
+DROP POLICY IF EXISTS "Super admin full access exams" ON exams;
+DROP POLICY IF EXISTS "Authenticated read exams" ON exams;
+DROP POLICY IF EXISTS "Institution admin manage own exams" ON exams;
+DROP POLICY IF EXISTS "Institution admin read own exams" ON exams;
+DROP POLICY IF EXISTS "Institution admin update own exams" ON exams;
+DROP POLICY IF EXISTS "Institution admin delete own exams" ON exams;
 CREATE POLICY "Super admin full access exams" ON exams
   FOR ALL USING (is_super_admin());
 CREATE POLICY "Authenticated read exams" ON exams
