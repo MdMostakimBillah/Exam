@@ -50,6 +50,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Protect student dashboard and payments routes
+  if ((pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/payments')) && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/student/login'
+    return NextResponse.redirect(url)
+  }
+
   // If logged in super_admin tries to access /i, redirect to /super-admin
   if (pathname.startsWith('/i') && user) {
     const { data: profile } = await supabase

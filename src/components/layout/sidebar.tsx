@@ -71,8 +71,8 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
 
   const navItems = user?.role === 'SUPER_ADMIN' ? superAdminNav : institutionNav;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 

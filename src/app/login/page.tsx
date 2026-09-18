@@ -1,9 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { loginWithLockout } from "@/lib/auth/server-auth";
-import { useAuth } from "@/lib/auth/auth";
+import { checkAccountLockout } from "@/lib/auth/server-auth";
+import { login } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -57,21 +57,26 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const result = await loginWithLockout(email, password);
+      const lockoutResult = await checkAccountLockout(email);
 
-      if (result.locked) {
+      if (lockoutResult.locked) {
         setLocked(true);
-        setRetryAfter(result.retryAfter || 300);
+        setRetryAfter(lockoutResult.retryAfter || 300);
         setError(isBn
-          ? `অ্যাকাউন্ট লক করা হয়েছে। ${formatTime(result.retryAfter || 300)} অপেক্ষা করুন।`
-          : `Account locked. Wait ${formatTime(result.retryAfter || 300)}.`
+          ? `অ্যাকাউন্ট লক করা হয়েছে। ${formatTime(lockoutResult.retryAfter || 300)} অপেক্ষা করুন।`
+          : `Account locked. Wait ${formatTime(lockoutResult.retryAfter || 300)}.`
         );
-      } else if (result.success && result.user) {
-        // Auth provider's onAuthStateChange will automatically pick up the session
-        if (result.user.role === "SUPER_ADMIN") router.push("/super-admin");
+        setLoading(false);
+        return;
+      }
+
+      const user = await login(email, password);
+
+      if (user) {
+        if (user.role === "SUPER_ADMIN") router.push("/super-admin");
         else router.push("/i");
       } else {
-        setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : result.error || "Invalid email or password");
+        setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : "Invalid email or password");
       }
     } catch {
       setError(isBn ? "সংযোগে সমস্যা" : "Connection error");
@@ -243,22 +248,16 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-8 text-center">
-              <p className={`text-xs ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                {isBn ? "প্রথমবার লগইন? আপনার প্রতিষ্ঠানের অ্যাডমিনের সাথে যোগাযোগ করুন" : "First time login? Contact your institution admin"}
-              </p>
-            </div>
-
-            <div className="mt-4 text-center">
-              <Link href="/student/login" className={cn("text-xs font-medium transition-colors", isDark ? "text-zinc-500 hover:text-zinc-300" : "text-zinc-400 hover:text-zinc-600")}>
-                {isBn ? "শিক্ষার্থী পোর্টাল" : "Student Portal"} &rarr;
-              </Link>
-            </div>
-
-            <p className={`text-center text-xs mt-8 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-              <Link href="/" className={cn("hover:underline transition-colors", isDark ? "hover:text-zinc-400" : "hover:text-zinc-600")}>
+              <Link
+                href="/"
+                className={cn(
+                  "inline-flex items-center gap-2 text-sm font-medium transition-colors",
+                  isDark ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-900"
+                )}
+              >
                 &larr; {isBn ? "হোমে ফিরুন" : "Back to home"}
               </Link>
-            </p>
+            </div>
           </div>
         </div>
       </div>

@@ -32,8 +32,8 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
     return match ? match[1] : '';
   }, [pathname]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 

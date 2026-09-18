@@ -118,6 +118,26 @@ export async function loginWithLockout(email: string, password: string): Promise
   return { success: false, error: "Authentication failed" };
 }
 
+export interface LockoutResult {
+  locked: boolean;
+  retryAfter: number;
+}
+
+export async function checkAccountLockout(email: string): Promise<LockoutResult> {
+  const supabase = await createClient();
+  let isLocked = false;
+  let lockoutSeconds = 300;
+  try {
+    const { data } = await supabase.rpc("is_account_locked", { p_email: email.toLowerCase() });
+    isLocked = !!data;
+    if (isLocked) {
+      const { data: seconds } = await supabase.rpc("get_lockout_seconds", { p_email: email.toLowerCase() });
+      lockoutSeconds = seconds || 300;
+    }
+  } catch {}
+  return { locked: isLocked, retryAfter: lockoutSeconds };
+}
+
 export async function logoutServer(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
