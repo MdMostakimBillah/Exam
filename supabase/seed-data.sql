@@ -31,7 +31,7 @@ BEGIN
   -- ============================================
   -- 1. ACADEMIC SESSION
   -- ============================================
-  SELECT id INTO v_session_id FROM academic_sessions WHERE is_current = true LIMIT 1;
+  SELECT id INTO v_session_id FROM academic_sessions WHERE code = '2024-25' LIMIT 1;
   IF v_session_id IS NULL THEN
     INSERT INTO academic_sessions (name, code, start_date, end_date, is_active, is_current)
     VALUES ('2024-2025', '2024-25', '2024-01-01', '2024-12-31', true, true)
