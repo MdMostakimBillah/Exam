@@ -1,7 +1,8 @@
 import { Result } from '../types';
 import { getStore, setStore } from './storage';
 import { createClient } from '@/lib/supabase/client';
-import { getCurrentSession } from './sessions';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchCurrentSession } from './sessions';
 
 const KEY = 'results';
 const SUPABASE_TABLE = 'results';
@@ -35,18 +36,15 @@ function mapResult(data: any): Result {
 
 async function syncFromSupabase(sessionId?: string): Promise<void> {
   if (typeof window === 'undefined') return;
-  
   try {
     const supabase = createClient();
-    const sid = sessionId || (await getCurrentSession())?.id;
+    const sid = sessionId || (await fetchCurrentSession())?.id;
     if (!sid) return;
-    
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
       .select('*')
       .eq('session_id', sid)
       .order('created_at', { ascending: false });
-    
     if (!error && data) {
       const results = data.map(mapResult);
       const existing = getStore<Result>(KEY);
@@ -62,6 +60,7 @@ if (typeof window !== 'undefined') {
   syncFromSupabase();
 }
 
+// Sync getters (localStorage)
 export function getResults(): Result[] {
   return getStore<Result>(KEY);
 }
@@ -70,14 +69,42 @@ export function getResultsByInstitution(institutionId: string): Result[] {
   return getResults().filter(r => r.institutionId === institutionId);
 }
 
-export function getResultsByExam(examId: string): Result[] {
-  return getResults().filter(r => r.examId === examId);
+// Async getters
+export async function fetchResults(sessionId?: string): Promise<Result[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('*')
+    .eq('session_id', sid)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data.map(mapResult);
 }
 
-export function getResultById(id: string): Result | undefined {
-  return getResults().find(r => r.id === id);
+export async function fetchResultsByInstitution(institutionId: string, sessionId?: string): Promise<Result[]> {
+  const results = await fetchResults(sessionId);
+  return results.filter(r => r.institutionId === institutionId);
 }
 
+export async function fetchResultsByExam(examId: string, sessionId?: string): Promise<Result[]> {
+  const results = await fetchResults(sessionId);
+  return results.filter(r => r.examId === examId);
+}
+
+export async function fetchResultById(id: string): Promise<Result | undefined> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error || !data) return undefined;
+  return mapResult(data);
+}
+
+// Async standalone CRUD
 export async function createResult(data: Omit<Result, 'id' | 'createdAt' | 'updatedAt'>): Promise<Result> {
   const supabase = createClient();
   const { data: result, error } = await supabase
@@ -105,15 +132,11 @@ export async function createResult(data: Omit<Result, 'id' | 'createdAt' | 'upda
     })
     .select()
     .single();
-  
   if (error) throw error;
-  
   const res = mapResult(result);
-  
   const items = getResults();
   items.unshift(res);
   setStore(KEY, items);
-  
   return res;
 }
 
@@ -139,40 +162,89 @@ export async function updateResult(id: string, data: Partial<Result>): Promise<R
   if (data.pass !== undefined) updateData.pass = data.pass;
   if (data.scholarshipStatus !== undefined) updateData.scholarship_status = data.scholarshipStatus;
   if (data.status !== undefined) updateData.status = data.status;
-  
+
   const { data: result, error } = await supabase
     .from(SUPABASE_TABLE)
     .update(updateData)
     .eq('id', id)
     .select()
     .single();
-  
   if (error) return undefined;
-  
   const res = mapResult(result);
-  
   const items = getResults();
   const idx = items.findIndex(r => r.id === id);
-  if (idx !== -1) {
-    items[idx] = res;
-    setStore(KEY, items);
-  }
-  
+  if (idx !== -1) items[idx] = res;
+  setStore(KEY, items);
   return res;
 }
 
 export async function deleteResult(id: string): Promise<boolean> {
   const supabase = createClient();
-  const { error } = await supabase
-    .from(SUPABASE_TABLE)
-    .delete()
-    .eq('id', id);
-  
+  const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
   if (error) return false;
-  
-  const items = getResults();
-  const filtered = items.filter(r => r.id !== id);
-  if (filtered.length === items.length) return false;
-  setStore(KEY, filtered);
+  const items = getResults().filter(r => r.id !== id);
+  setStore(KEY, items);
   return true;
+}
+
+// React Query hooks
+export function useResults(sessionId?: string) {
+  return useQuery({
+    queryKey: ['results', sessionId],
+    queryFn: () => fetchResults(sessionId),
+  });
+}
+
+export function useResultsByInstitution(institutionId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['results', 'institution', institutionId, sessionId],
+    queryFn: () => fetchResultsByInstitution(institutionId, sessionId),
+    enabled: !!institutionId,
+  });
+}
+
+export function useResultsByExam(examId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['results', 'exam', examId, sessionId],
+    queryFn: () => fetchResultsByExam(examId, sessionId),
+    enabled: !!examId,
+  });
+}
+
+export function useResultById(id: string) {
+  return useQuery({
+    queryKey: ['results', id],
+    queryFn: () => fetchResultById(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateResult() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Omit<Result, 'id' | 'createdAt' | 'updatedAt'>) => createResult(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+    },
+  });
+}
+
+export function useUpdateResult() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Result> }) => updateResult(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+    },
+  });
+}
+
+export function useDeleteResult() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteResult(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+    },
+  });
 }

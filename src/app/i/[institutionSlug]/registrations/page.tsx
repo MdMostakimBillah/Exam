@@ -8,12 +8,12 @@ import { Select } from "@/components/ui/select";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getRegistrationsByInstitution, createRegistration, updateRegistration } from "@/lib/storage/registrations";
-import { getExams } from "@/lib/storage/exams";
-import { getStudentsByInstitution, createStudent } from "@/lib/storage/students";
-import { getClasses } from "@/lib/storage/classes";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useRegistrationsByInstitution, useCreateRegistration, useUpdateRegistration } from "@/lib/storage/registrations";
+import { useExams } from "@/lib/storage/exams";
+import { useStudentsByInstitution, useCreateStudent } from "@/lib/storage/students";
+import { useClasses } from "@/lib/storage/classes";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -77,12 +77,15 @@ export default function InstitutionRegistrationsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = getInstitutionBySlug(slug);
-  const currentSession = getCurrentSession();
-  const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
-  const exams = getExams();
-  const students = inst ? getStudentsByInstitution(inst.id) : [];
-  const allClasses = getClasses();
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: currentSession } = useCurrentSession();
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: exams = [] } = useExams();
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: allClasses = [] } = useClasses();
+  const createRegistrationMutation = useCreateRegistration();
+  const updateRegistrationMutation = useUpdateRegistration();
+  const createStudentMutation = useCreateStudent();
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
   const filtered = registrations.filter(r => {
@@ -189,9 +192,9 @@ export default function InstitutionRegistrationsPage() {
     const exam = exams.find(e => e.id === selectedExamId);
     if (!exam) return;
 
-    const newStudent = await createStudent({
+    const newStudent = await createStudentMutation.mutateAsync({
       sessionId: currentSession?.id || '',
-      institutionId: inst.id,
+      institutionId: inst!.id,
       firstName: studentForm.firstName.trim(),
       lastName: studentForm.lastName.trim(),
       studentId: studentForm.studentId.trim(),
@@ -208,13 +211,13 @@ export default function InstitutionRegistrationsPage() {
       status: "ACTIVE",
     });
 
-    await createRegistration({
+    await createRegistrationMutation.mutateAsync({
       sessionId: currentSession?.id || '',
       applicationId: generateAppId(),
       studentId: newStudent.id,
       studentName: `${newStudent.firstName} ${newStudent.lastName}`,
-      institutionId: inst.id,
-      institutionName: inst.name,
+      institutionId: inst!.id,
+      institutionName: inst!.name,
       examId: exam.id,
       examName: exam.name,
       className: newStudent.class,
@@ -229,22 +232,22 @@ export default function InstitutionRegistrationsPage() {
     setRefreshKey(k => k + 1);
   };
 
-  const handleApprove = (reg: Registration) => {
-    updateRegistration(reg.id, { status: "APPROVED" });
+  const handleApprove = async (reg: Registration) => {
+    await updateRegistrationMutation.mutateAsync({ id: reg.id, data: { status: "APPROVED" } });
     toast("success", isBn ? "নিবন্ধন অনুমোদিত হয়েছে" : "Registration approved");
     setConfirmAction(null);
     setRefreshKey(k => k + 1);
   };
 
-  const handleReject = (reg: Registration) => {
-    updateRegistration(reg.id, { status: "REJECTED" });
+  const handleReject = async (reg: Registration) => {
+    await updateRegistrationMutation.mutateAsync({ id: reg.id, data: { status: "REJECTED" } });
     toast("success", isBn ? "নিবন্ধন প্রত্যাখ্যাত হয়েছে" : "Registration rejected");
     setConfirmAction(null);
     setRefreshKey(k => k + 1);
   };
 
-  const handleMarkPaid = (reg: Registration) => {
-    updateRegistration(reg.id, { paymentStatus: "PAID" });
+  const handleMarkPaid = async (reg: Registration) => {
+    await updateRegistrationMutation.mutateAsync({ id: reg.id, data: { paymentStatus: "PAID" } });
     toast("success", isBn ? "পেমেন্ট চিহ্নিত হয়েছে" : "Marked as paid");
     setMenuOpenId(null);
     setRefreshKey(k => k + 1);

@@ -1,25 +1,21 @@
-import { User, UserRole } from '../types';
-import { createClient } from '@/lib/supabase/client';
+import { User, UserRole } from "../types";
+import { createClient } from "@/lib/supabase/client";
 
-const USER_STORAGE_KEY = 'scholarx_current_user';
+// Re-export useAuth for convenience
+export { useAuth } from "./auth-provider";
 
+// Backward-compatible sync function - returns null on initial render
+// For new code, use useAuth() hook instead
 export function getCurrentUser(): User | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
+  // Try to read from auth cookies via Supabase
+  // This is a best-effort sync read for backward compatibility
   try {
-    const raw = localStorage.getItem(USER_STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as User;
+    const supabase = createClient();
+    // We can't do async here, so return null and let useAuth handle it
+    return null;
   } catch {
     return null;
-  }
-}
-
-export function setCurrentUser(user: User | null): void {
-  if (typeof window === 'undefined') return;
-  if (user) {
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(USER_STORAGE_KEY);
   }
 }
 
@@ -31,38 +27,33 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 
   if (error) {
-    console.error('Login error:', error.message);
+    console.error("Login error:", error.message);
     return null;
   }
 
   if (data.user) {
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
       .single();
 
     if (profileError) {
-      console.error('Profile fetch error:', profileError.message);
+      console.error("Profile fetch error:", profileError.message);
       return null;
     }
 
-    const normalizedRole = profile.role.toUpperCase() as UserRole;
-
-    const user: User = {
+    return {
       id: profile.id,
       email: profile.email,
       name: profile.name,
-      password: '',
-      role: normalizedRole,
+      password: "",
+      role: profile.role.toUpperCase() as UserRole,
       institutionId: profile.institution_id,
       avatar: profile.avatar,
       createdAt: profile.created_at,
       updatedAt: profile.updated_at,
     };
-
-    setCurrentUser(user);
-    return user;
   }
 
   return null;
@@ -71,14 +62,4 @@ export async function login(email: string, password: string): Promise<User | nul
 export async function logout(): Promise<void> {
   const supabase = createClient();
   await supabase.auth.signOut();
-  setCurrentUser(null);
-}
-
-export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null;
-}
-
-export function hasRole(role: UserRole): boolean {
-  const user = getCurrentUser();
-  return user?.role === role;
 }

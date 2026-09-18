@@ -2,14 +2,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { getCurrentUser } from "@/lib/auth/auth";
-import { updateUser } from "@/lib/storage/users";
-import { getSessions, createSession, setCurrentSession, updateSession, deleteSession } from "@/lib/storage/sessions";
+import { useAuth } from "@/lib/auth/auth";
 import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { getStoreItem, setStoreItem } from "@/lib/storage/storage";
+import { createClient } from "@/lib/supabase/client";
+import { useSessions, useCreateSession, useSetCurrentSession, useUpdateSession, useDeleteSession } from "@/lib/storage/sessions";
 
 type Tab = "profile" | "account" | "password" | "notifications" | "sessions";
 
@@ -47,6 +46,16 @@ export default function SuperAdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [saving, setSaving] = useState(false);
 
+  // Auth
+  const { user } = useAuth();
+
+  // Sessions
+  const { data: sessions = [] } = useSessions();
+  const createSession = useCreateSession();
+  const setCurrentSession = useSetCurrentSession();
+  const updateSession = useUpdateSession();
+  const deleteSession = useDeleteSession();
+
   // Profile fields
   const [platformName, setPlatformName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -71,34 +80,41 @@ export default function SuperAdminSettingsPage() {
   const [resultAlerts, setResultAlerts] = useState(true);
   const [paymentAlerts, setPaymentAlerts] = useState(true);
 
-  // Sessions state
-  const [sessions, setSessions] = useState<any[]>([]);
+  // Sessions form
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [newSession, setNewSession] = useState({ name: "", code: "", startDate: "", endDate: "" });
 
   useEffect(() => {
     setMounted(true);
-    const stored = getStoreItem<PlatformSettings>(SETTINGS_KEY);
-    const settings = stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
-    setPlatformName(settings.platformName);
-    setContactEmail(settings.contactEmail);
-    setSupportPhone(settings.supportPhone);
-    setAddress(settings.address);
-    setEmailNotifications(settings.emailNotifications);
-    setRegistrationAlerts(settings.registrationAlerts);
-    setResultAlerts(settings.resultAlerts);
-    setPaymentAlerts(settings.paymentAlerts);
-
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setAdminName(currentUser.name);
-      setAdminEmail(currentUser.email);
-    }
-
-    // Load sessions
-    const loadedSessions = getSessions();
-    setSessions(loadedSessions);
+    // Load settings from Supabase
+    const loadSettings = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['platformName', 'contactEmail', 'supportPhone', 'address', 'emailNotifications', 'registrationAlerts', 'resultAlerts', 'paymentAlerts']);
+      
+      if (data) {
+        const settingsMap = Object.fromEntries(data.map((s: any) => [s.key, s.value]));
+        if (settingsMap.platformName) setPlatformName(settingsMap.platformName);
+        if (settingsMap.contactEmail) setContactEmail(settingsMap.contactEmail);
+        if (settingsMap.supportPhone) setSupportPhone(settingsMap.supportPhone);
+        if (settingsMap.address) setAddress(settingsMap.address);
+        if (settingsMap.emailNotifications) setEmailNotifications(settingsMap.emailNotifications === 'true');
+        if (settingsMap.registrationAlerts) setRegistrationAlerts(settingsMap.registrationAlerts === 'true');
+        if (settingsMap.resultAlerts) setResultAlerts(settingsMap.resultAlerts === 'true');
+        if (settingsMap.paymentAlerts) setPaymentAlerts(settingsMap.paymentAlerts === 'true');
+      }
+    };
+    loadSettings();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setAdminName(user.name);
+      setAdminEmail(user.email);
+    }
+  }, [user]);
 
   const tabs: { id: Tab; label: string; labelBn: string; icon: React.ReactNode }[] = useMemo(() => [
     { id: "profile", label: "Profile", labelBn: "প্রোফাইল", icon: <Building2 className="h-4 w-4" /> },
@@ -110,26 +126,24 @@ export default function SuperAdminSettingsPage() {
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    const stored = getStoreItem<PlatformSettings>(SETTINGS_KEY);
-    const current = stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
-    setStoreItem<PlatformSettings>(SETTINGS_KEY, {
-      ...current,
-      platformName,
-      contactEmail,
-      supportPhone,
-      address,
-    });
-    await new Promise((r) => setTimeout(r, 600));
+    const supabase = createClient();
+    const settings = [
+      { key: 'platformName', value: platformName, category: 'platform' },
+      { key: 'contactEmail', value: contactEmail, category: 'platform' },
+      { key: 'supportPhone', value: supportPhone, category: 'platform' },
+      { key: 'address', value: address, category: 'platform' },
+    ];
+    for (const setting of settings) {
+      await supabase
+        .from('system_settings')
+        .upsert(setting, { onConflict: 'key' });
+    }
     setSaving(false);
     toast("success", isBn ? "প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!" : "Profile saved successfully!");
   };
 
   const handleSaveAccount = async () => {
     setSaving(true);
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      updateUser(currentUser.id, { name: adminName, email: adminEmail });
-    }
     await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
     toast("success", isBn ? "অ্যাকাউন্ট সফলভাবে সংরক্ষিত হয়েছে!" : "Account saved successfully!");
@@ -158,47 +172,42 @@ export default function SuperAdminSettingsPage() {
         setNewPassword("");
         setConfirmPassword("");
       } else {
-        toast("error", result.error || (isBn ? "পাসওয়ার্ড পরিবর্তন ব্যর্থ" : "Failed to change password"));
+        toast("error", result.error || "Failed to change password");
       }
     } catch {
-      toast("error", isBn ? "পাসওয়ার্ড পরিবর্তন ব্যর্থ" : "Failed to change password");
+      toast("error", "Failed to change password");
     }
     setSaving(false);
   };
 
   const handleSaveNotifications = async () => {
     setSaving(true);
-    const stored = getStoreItem<PlatformSettings>(SETTINGS_KEY);
-    const current = stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
-    setStoreItem<PlatformSettings>(SETTINGS_KEY, {
-      ...current,
-      emailNotifications,
-      registrationAlerts,
-      resultAlerts,
-      paymentAlerts,
-    });
-    await new Promise((r) => setTimeout(r, 600));
+    const supabase = createClient();
+    const settings = [
+      { key: 'emailNotifications', value: String(emailNotifications), category: 'notifications' },
+      { key: 'registrationAlerts', value: String(registrationAlerts), category: 'notifications' },
+      { key: 'resultAlerts', value: String(resultAlerts), category: 'notifications' },
+      { key: 'paymentAlerts', value: String(paymentAlerts), category: 'notifications' },
+    ];
+    for (const setting of settings) {
+      await supabase
+        .from('system_settings')
+        .upsert(setting, { onConflict: 'key' });
+    }
     setSaving(false);
     toast("success", isBn ? "বিজ্ঞপ্তি সেটিংস সংরক্ষিত হয়েছে!" : "Notification settings saved!");
   };
 
   if (!mounted) return <SettingsSkeleton isDark={isDark} />;
 
-  const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-md"
-    : "bg-white border border-zinc-200 rounded-md shadow-sm";
-
-  const inputCls = isDark
-    ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-white/20 focus:ring-white/10"
-    : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-zinc-200";
-
+  const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
+  const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-white/20 focus:ring-white/10" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-zinc-200";
   const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
   const subtextCls = isDark ? "text-zinc-500" : "text-zinc-500";
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
-        {/* Page Header */}
         <div className="mb-8">
           <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
             {isBn ? 'সেটিংস' : 'Settings'}
@@ -209,24 +218,14 @@ export default function SuperAdminSettingsPage() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar Tabs */}
           <div className="lg:w-56 shrink-0">
             <div className={`${card} p-2`}>
               {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm transition-all duration-200",
-                    activeTab === tab.id
-                      ? isDark
-                        ? "bg-white text-black font-medium"
-                        : "bg-zinc-900 text-white font-medium"
-                      : isDark
-                        ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]"
-                        : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                  )}
-                >
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={cn("flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm transition-all duration-200",
+                    activeTab === tab.id ? isDark ? "bg-white text-black font-medium" : "bg-zinc-900 text-white font-medium"
+                      : isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                  )}>
                   {tab.icon}
                   {isBn ? tab.labelBn : tab.label}
                 </button>
@@ -234,89 +233,40 @@ export default function SuperAdminSettingsPage() {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Profile Tab */}
             {activeTab === "profile" && (
               <div className={`${card} p-6`}>
                 <div className="mb-6">
-                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                    {isBn ? 'প্ল্যাটফর্ম পরিচয়' : 'Platform Information'}
-                  </h2>
-                  <p className={`text-sm mt-1 ${subtextCls}`}>
-                    {isBn ? 'প্ল্যাটফর্মের মৌলিক তথ্য আপডেট করুন' : 'Update platform details'}
-                  </p>
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'প্ল্যাটফর্ম পরিচয়' : 'Platform Information'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'প্ল্যাটফর্মের মৌলিক তথ্য আপডেট করুন' : 'Update platform details'}</p>
                 </div>
-
                 <div className="space-y-5">
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'প্ল্যাটফর্মের নাম' : 'Platform Name'}
-                    </label>
-                    <Input
-                      value={platformName}
-                      onChange={(e) => setPlatformName(e.target.value)}
-                      placeholder={isBn ? 'প্ল্যাটফর্মের নাম লিখুন' : 'Enter platform name'}
-                      className={cn(inputCls, "h-10")}
-                    />
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্ল্যাটফর্মের নাম' : 'Platform Name'}</label>
+                    <Input value={platformName} onChange={(e) => setPlatformName(e.target.value)} placeholder="Enter platform name" className={cn(inputCls, "h-10")} />
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                        {isBn ? 'যোগাযোগ ইমেইল' : 'Contact Email'}
-                      </label>
-                      <Input
-                        type="email"
-                        value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
-                        placeholder={isBn ? 'ইমেইল লিখুন' : 'Enter email'}
-                        className={cn(inputCls, "h-10")}
-                      />
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'যোগাযোগ ইমেইল' : 'Contact Email'}</label>
+                      <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Enter email" className={cn(inputCls, "h-10")} />
                     </div>
                     <div>
-                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                        {isBn ? 'সাপোর্ট ফোন' : 'Support Phone'}
-                      </label>
-                      <Input
-                        value={supportPhone}
-                        onChange={(e) => setSupportPhone(e.target.value)}
-                        placeholder={isBn ? 'ফোন নম্বর লিখুন' : 'Enter phone number'}
-                        className={cn(inputCls, "h-10")}
-                      />
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'সাপোর্ট ফোন' : 'Support Phone'}</label>
+                      <Input value={supportPhone} onChange={(e) => setSupportPhone(e.target.value)} placeholder="Enter phone" className={cn(inputCls, "h-10")} />
                     </div>
                   </div>
-
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'ঠিকানা' : 'Address'}
-                    </label>
-                    <Input
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder={isBn ? 'পূর্ণ ঠিকানা লিখুন' : 'Enter full address'}
-                      className={cn(inputCls, "h-10")}
-                    />
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা' : 'Address'}</label>
+                    <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" className={cn(inputCls, "h-10")} />
                   </div>
                 </div>
-
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
-                  <button
-                    onClick={handleSaveProfile}
-                    disabled={saving}
-                    className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
-                      saving && "opacity-60 cursor-not-allowed"
-                    )}
-                  >
-                    {saving ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
+                  <button onClick={handleSaveProfile} disabled={saving}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                    )}>
+                    {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
                   </button>
                 </div>
@@ -327,57 +277,25 @@ export default function SuperAdminSettingsPage() {
             {activeTab === "account" && (
               <div className={`${card} p-6`}>
                 <div className="mb-6">
-                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                    {isBn ? 'অ্যাকাউন্ট তথ্য' : 'Account Information'}
-                  </h2>
-                  <p className={`text-sm mt-1 ${subtextCls}`}>
-                    {isBn ? 'আপনার ব্যক্তিগত অ্যাকাউন্ট তথ্য পরিবর্তন করুন' : 'Update your personal account details'}
-                  </p>
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'অ্যাকাউন্ট তথ্য' : 'Account Information'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'আপনার ব্যক্তিগত অ্যাকাউন্ট তথ্য পরিবর্তন করুন' : 'Update your personal account details'}</p>
                 </div>
-
                 <div className="space-y-5">
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'আপনার নাম' : 'Your Name'}
-                    </label>
-                    <Input
-                      value={adminName}
-                      onChange={(e) => setAdminName(e.target.value)}
-                      placeholder={isBn ? 'নাম লিখুন' : 'Enter your name'}
-                      className={cn(inputCls, "h-10")}
-                    />
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'আপনার নাম' : 'Your Name'}</label>
+                    <Input value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Enter your name" className={cn(inputCls, "h-10")} />
                   </div>
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'ইমেইল' : 'Email'}
-                    </label>
-                    <Input
-                      type="email"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder={isBn ? 'ইমেইল লিখুন' : 'Enter email'}
-                      className={cn(inputCls, "h-10")}
-                    />
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইমেইল' : 'Email'}</label>
+                    <Input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="Enter email" className={cn(inputCls, "h-10")} />
                   </div>
                 </div>
-
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
-                  <button
-                    onClick={handleSaveAccount}
-                    disabled={saving}
-                    className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
-                      saving && "opacity-60 cursor-not-allowed"
-                    )}
-                  >
-                    {saving ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
+                  <button onClick={handleSaveAccount} disabled={saving}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                    )}>
+                    {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
                   </button>
                 </div>
@@ -388,115 +306,45 @@ export default function SuperAdminSettingsPage() {
             {activeTab === "password" && (
               <div className={`${card} p-6`}>
                 <div className="mb-6">
-                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                    {isBn ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}
-                  </h2>
-                  <p className={`text-sm mt-1 ${subtextCls}`}>
-                    {isBn ? 'আপনার অ্যাকাউন্টের পাসওয়ার্ড আপডেট করুন' : 'Update your account password'}
-                  </p>
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'আপনার অ্যাকাউন্টের পাসওয়ার্ড আপডেট করুন' : 'Update your account password'}</p>
                 </div>
-
                 <div className="max-w-md space-y-5">
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'বর্তমান পাসওয়ার্ড' : 'Current Password'}
-                    </label>
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বর্তমান পাসওয়ার্ড' : 'Current Password'}</label>
                     <div className="relative">
-                      <Input
-                        type={showCurrent ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder={isBn ? 'বর্তমান পাসওয়ার্ড লিখুন' : 'Enter current password'}
-                        className={cn(inputCls, "h-10 pr-10")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrent(!showCurrent)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}
-                      >
+                      <Input type={showCurrent ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" className={cn(inputCls, "h-10 pr-10")} />
+                      <button type="button" onClick={() => setShowCurrent(!showCurrent)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>
                         {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
-
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'নতুন পাসওয়ার্ড' : 'New Password'}
-                    </label>
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'নতুন পাসওয়ার্ড' : 'New Password'}</label>
                     <div className="relative">
-                      <Input
-                        type={showNew ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder={isBn ? 'নতুন পাসওয়ার্ড লিখুন' : 'Enter new password'}
-                        className={cn(inputCls, "h-10 pr-10")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNew(!showNew)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}
-                      >
+                      <Input type={showNew ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" className={cn(inputCls, "h-10 pr-10")} />
+                      <button type="button" onClick={() => setShowNew(!showNew)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>
                         {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    {newPassword && newPassword.length < 6 && (
-                      <p className="text-amber-500 text-xs mt-1.5">
-                        {isBn ? 'কমপক্ষে ৬ অক্ষর প্রয়োজন' : 'At least 6 characters required'}
-                      </p>
-                    )}
                   </div>
-
                   <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm Password'}
-                    </label>
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm Password'}</label>
                     <div className="relative">
-                      <Input
-                        type={showConfirm ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder={isBn ? 'পাসওয়ার্ড আবার লিখুন' : 'Re-enter new password'}
-                        className={cn(inputCls, "h-10 pr-10")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}
-                      >
+                      <Input type={showConfirm ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" className={cn(inputCls, "h-10 pr-10")} />
+                      <button type="button" onClick={() => setShowConfirm(!showConfirm)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>
                         {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    {confirmPassword && newPassword !== confirmPassword && (
-                      <p className="text-amber-500 text-xs mt-1.5">
-                        {isBn ? 'পাসওয়ার্ড মিলছে না' : 'Passwords do not match'}
-                      </p>
-                    )}
-                    {confirmPassword && newPassword === confirmPassword && confirmPassword.length >= 6 && (
-                      <p className="text-emerald-500 text-xs mt-1.5 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {isBn ? 'পাসওয়ার্ড মিলেছে' : 'Passwords match'}
-                      </p>
-                    )}
                   </div>
                 </div>
-
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
-                  <button
-                    onClick={handleChangePassword}
-                    disabled={saving || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
-                    className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
-                      (saving || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6) && "opacity-40 cursor-not-allowed"
-                    )}
-                  >
-                    {saving ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Lock className="h-4 w-4" />
-                    )}
+                  <button onClick={handleChangePassword} disabled={saving || !currentPassword || !newPassword || !confirmPassword}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      (saving || !currentPassword || !newPassword || !confirmPassword) && "opacity-40 cursor-not-allowed"
+                    )}>
+                    {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Lock className="h-4 w-4" />}
                     {isBn ? 'পাসওয়ার্ড পরিবর্তন করুন' : 'Change Password'}
                   </button>
                 </div>
@@ -508,232 +356,104 @@ export default function SuperAdminSettingsPage() {
               <div className={`${card} p-6`}>
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                      {isBn ? 'একাডেমিক সেশন' : 'Academic Sessions'}
-                    </h2>
-                    <p className={`text-sm mt-1 ${subtextCls}`}>
-                      {isBn ? 'সেশন পরিচালনা করুন এবং কারেন্ট সেশন পরিবর্তন করুন' : 'Manage sessions and switch the current active session'}
-                    </p>
+                    <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'একাডেমিক সেশন' : 'Academic Sessions'}</h2>
+                    <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'সেশন পরিচালনা করুন এবং কারেন্ট সেশন পরিবর্তন করুন' : 'Manage sessions and switch the current active session'}</p>
                   </div>
-                  <button
-                    onClick={() => setShowCreateSession(true)}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800"
-                    )}
-                  >
-                    <Plus className="h-4 w-4" />
-                    {isBn ? 'নতুন সেশন' : 'New Session'}
+                  <button onClick={() => setShowCreateSession(true)}
+                    className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                    )}>
+                    <Plus className="h-4 w-4" /> {isBn ? 'নতুন সেশন' : 'New Session'}
                   </button>
                 </div>
 
-                {/* Create Session Form */}
                 {showCreateSession && (
                   <div className={`mb-6 p-4 rounded-md border ${isDark ? "border-white/[0.08] bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"}`}>
-                    <h3 className={`text-sm font-medium mb-4 ${isDark ? "text-white" : "text-zinc-900"}`}>
-                      {isBn ? 'নতুন সেশন তৈরি করুন' : 'Create New Session'}
-                    </h3>
+                    <h3 className={`text-sm font-medium mb-4 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'নতুন সেশন তৈরি করুন' : 'Create New Session'}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                          {isBn ? 'সেশনের নাম' : 'Session Name'} (e.g., 2025-2026)
-                        </label>
-                        <Input
-                          value={newSession.name}
-                          onChange={(e) => setNewSession({ ...newSession, name: e.target.value })}
-                          placeholder="2025-2026"
-                          className={cn(inputCls, "h-10")}
-                        />
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Session Name</label>
+                        <Input value={newSession.name} onChange={(e) => setNewSession({ ...newSession, name: e.target.value })} placeholder="2025-2026" className={cn(inputCls, "h-10")} />
                       </div>
                       <div>
-                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                          {isBn ? 'কোড' : 'Code'} (e.g., 2025-26)
-                        </label>
-                        <Input
-                          value={newSession.code}
-                          onChange={(e) => setNewSession({ ...newSession, code: e.target.value })}
-                          placeholder="2025-26"
-                          className={cn(inputCls, "h-10")}
-                        />
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Code</label>
+                        <Input value={newSession.code} onChange={(e) => setNewSession({ ...newSession, code: e.target.value })} placeholder="2025-26" className={cn(inputCls, "h-10")} />
                       </div>
                       <div>
-                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                          {isBn ? 'শুরুর তারিখ' : 'Start Date'}
-                        </label>
-                        <Input
-                          type="date"
-                          value={newSession.startDate}
-                          onChange={(e) => setNewSession({ ...newSession, startDate: e.target.value })}
-                          className={cn(inputCls, "h-10")}
-                        />
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Start Date</label>
+                        <Input type="date" value={newSession.startDate} onChange={(e) => setNewSession({ ...newSession, startDate: e.target.value })} className={cn(inputCls, "h-10")} />
                       </div>
                       <div>
-                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                          {isBn ? 'শেষের তারিখ' : 'End Date'}
-                        </label>
-                        <Input
-                          type="date"
-                          value={newSession.endDate}
-                          onChange={(e) => setNewSession({ ...newSession, endDate: e.target.value })}
-                          className={cn(inputCls, "h-10")}
-                        />
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>End Date</label>
+                        <Input type="date" value={newSession.endDate} onChange={(e) => setNewSession({ ...newSession, endDate: e.target.value })} className={cn(inputCls, "h-10")} />
                       </div>
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
-                      <button
-                        onClick={() => setShowCreateSession(false)}
-                        className={cn(
-                          "px-4 py-2 rounded-md text-[13px] font-medium transition-all",
-                          isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
-                        )}
-                      >
+                      <button onClick={() => setShowCreateSession(false)} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900")}>
                         {isBn ? 'বাতিল' : 'Cancel'}
                       </button>
-                      <button
-                        onClick={async () => {
-                          if (!newSession.name || !newSession.code) {
-                            toast("error", isBn ? "নাম এবং কোড প্রয়োজন" : "Name and code are required");
-                            return;
-                          }
-                          try {
-                            await createSession({
-                              name: newSession.name,
-                              code: newSession.code,
-                              startDate: newSession.startDate,
-                              endDate: newSession.endDate,
-                              isActive: true,
-                              isCurrent: sessions.length === 0,
-                            });
-                            setSessions(getSessions());
-                            setNewSession({ name: "", code: "", startDate: "", endDate: "" });
-                            setShowCreateSession(false);
-                            toast("success", isBn ? "সেশন তৈরি হয়েছে!" : "Session created!");
-                          } catch (err: any) {
-                            toast("error", err.message || "Failed to create session");
-                          }
-                        }}
-                        disabled={!newSession.name || !newSession.code}
-                        className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all",
-                          isDark ? "bg-white text-black" : "bg-zinc-900 text-white",
-                          (!newSession.name || !newSession.code) && "opacity-40 cursor-not-allowed"
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                        {isBn ? 'তৈরি করুন' : 'Create'}
+                      <button onClick={async () => {
+                        if (!newSession.name || !newSession.code) { toast("error", "Name and code required"); return; }
+                        try {
+                          await createSession.mutateAsync({ name: newSession.name, code: newSession.code, startDate: newSession.startDate, endDate: newSession.endDate, isActive: true, isCurrent: sessions.length === 0 });
+                          setNewSession({ name: "", code: "", startDate: "", endDate: "" });
+                          setShowCreateSession(false);
+                          toast("success", isBn ? "সেশন তৈরি হয়েছে!" : "Session created!");
+                        } catch (err: any) { toast("error", err.message || "Failed"); }
+                      }} disabled={!newSession.name || !newSession.code}
+                        className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all",
+                          isDark ? "bg-white text-black" : "bg-zinc-900 text-white", (!newSession.name || !newSession.code) && "opacity-40 cursor-not-allowed"
+                        )}>
+                        <Check className="h-4 w-4" /> {isBn ? 'তৈরি করুন' : 'Create'}
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Sessions List */}
                 <div className="space-y-2">
                   {sessions.length === 0 ? (
-                    <p className={`text-sm py-8 text-center ${subtextCls}`}>
-                      {isBn ? 'কোনো সেশন নেই। উপরে নতুন সেশন তৈরি করুন।' : 'No sessions yet. Create one above.'}
-                    </p>
-                  ) : (
-                    sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className={cn(
-                          "flex items-center justify-between p-4 rounded-md border transition-all",
-                          session.isCurrent
-                            ? isDark
-                              ? "border-white/20 bg-white/[0.04]"
-                              : "border-zinc-400 bg-zinc-100"
-                            : isDark
-                              ? "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]"
-                              : "border-zinc-200 bg-white hover:border-zinc-300"
-                        )}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "h-10 w-10 rounded-md flex items-center justify-center",
-                            session.isCurrent
-                              ? isDark ? "bg-white/10" : "bg-zinc-900/10"
-                              : isDark ? "bg-white/[0.04]" : "bg-zinc-100"
-                          )}>
-                            <Calendar className={cn(
-                              "h-5 w-5",
-                              session.isCurrent
-                                ? isDark ? "text-white" : "text-zinc-900"
-                                : isDark ? "text-zinc-500" : "text-zinc-400"
-                            )} />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>
-                                {session.name}
-                              </span>
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? "bg-white/[0.06] text-zinc-400" : "bg-zinc-100 text-zinc-500"}`}>
-                                {session.code}
-                              </span>
-                              {session.isCurrent && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium">
-                                  {isBn ? 'কারেন্ট' : 'Current'}
-                                </span>
-                              )}
-                              {!session.isActive && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500">
-                                  {isBn ? 'নিষ্ক্রিয়' : 'Inactive'}
-                                </span>
-                              )}
-                            </div>
-                            <p className={`text-xs mt-0.5 ${subtextCls}`}>
-                              {session.startDate} → {session.endDate}
-                            </p>
-                          </div>
+                    <p className={`text-sm py-8 text-center ${subtextCls}`}>{isBn ? 'কোনো সেশন নেই।' : 'No sessions yet.'}</p>
+                  ) : sessions.map((session) => (
+                    <div key={session.id} className={cn("flex items-center justify-between p-4 rounded-md border transition-all",
+                      session.isCurrent ? isDark ? "border-white/20 bg-white/[0.04]" : "border-zinc-400 bg-zinc-100"
+                        : isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-zinc-200 bg-white"
+                    )}>
+                      <div className="flex items-center gap-4">
+                        <div className={cn("h-10 w-10 rounded-md flex items-center justify-center",
+                          session.isCurrent ? isDark ? "bg-white/10" : "bg-zinc-900/10" : isDark ? "bg-white/[0.04]" : "bg-zinc-100"
+                        )}>
+                          <Calendar className={cn("h-5 w-5", session.isCurrent ? isDark ? "text-white" : "text-zinc-900" : isDark ? "text-zinc-500" : "text-zinc-400")} />
                         </div>
-                        <div className="flex items-center gap-2">
-                          {!session.isCurrent && (
-                            <button
-                              onClick={async () => {
-                                await setCurrentSession(session.id);
-                                setSessions(getSessions());
-                                toast("success", isBn ? `"${session.name}" কারেন্ট সেশন হিসেবে সেট করা হয়েছে` : `"${session.name}" set as current session`);
-                              }}
-                              className={cn(
-                                "px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
-                                isDark
-                                  ? "bg-white/10 text-white hover:bg-white/20"
-                                  : "bg-zinc-900/10 text-zinc-900 hover:bg-zinc-900/20"
-                              )}
-                            >
-                              {isBn ? 'কারেন্ট সেশন' : 'Set Current'}
-                            </button>
-                          )}
-                          <button
-                            onClick={async () => {
-                              await updateSession(session.id, { isActive: !session.isActive });
-                              setSessions(getSessions());
-                            }}
-                            className={cn(
-                              "px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
-                              session.isActive
-                                ? isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-900"
-                                : isDark ? "text-emerald-400 hover:text-emerald-300" : "text-emerald-600 hover:text-emerald-700"
-                            )}
-                          >
-                            {session.isActive ? (isBn ? 'নিষ্ক্রিয়' : 'Deactivate') : (isBn ? 'সক্রিয়' : 'Activate')}
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!confirm(isBn ? `"${session.name}" মুছে ফেলতে চান?` : `Delete "${session.name}"?`)) return;
-                              await deleteSession(session.id);
-                              setSessions(getSessions());
-                              toast("success", isBn ? "সেশন মুছে ফেলা হয়েছে" : "Session deleted");
-                            }}
-                            className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{session.name}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? "bg-white/[0.06] text-zinc-400" : "bg-zinc-100 text-zinc-500"}`}>{session.code}</span>
+                            {session.isCurrent && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium">{isBn ? 'কারেন্ট' : 'Current'}</span>}
+                            {!session.isActive && <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500">{isBn ? 'নিষ্ক্রিয়' : 'Inactive'}</span>}
+                          </div>
+                          <p className={`text-xs mt-0.5 ${subtextCls}`}>{session.startDate} → {session.endDate}</p>
                         </div>
                       </div>
-                    ))
-                  )}
+                      <div className="flex items-center gap-2">
+                        {!session.isCurrent && (
+                          <button onClick={() => setCurrentSession.mutate(session.id)}
+                            className={cn("px-3 py-1.5 rounded-md text-[12px] font-medium transition-all", isDark ? "bg-white/10 text-white hover:bg-white/20" : "bg-zinc-900/10 text-zinc-900 hover:bg-zinc-900/20")}>
+                            {isBn ? 'কারেন্ট' : 'Set Current'}
+                          </button>
+                        )}
+                        <button onClick={() => updateSession.mutate({ id: session.id, data: { isActive: !session.isActive } })}
+                          className={cn("px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                            session.isActive ? isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-900" : "text-emerald-500 hover:text-emerald-400"
+                          )}>
+                          {session.isActive ? (isBn ? 'নিষ্ক্রিয়' : 'Deactivate') : (isBn ? 'সক্রিয়' : 'Activate')}
+                        </button>
+                        <button onClick={() => { if (confirm(`Delete "${session.name}"?`)) deleteSession.mutate(session.id); }}
+                          className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -742,74 +462,37 @@ export default function SuperAdminSettingsPage() {
             {activeTab === "notifications" && (
               <div className={`${card} p-6`}>
                 <div className="mb-6">
-                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                    {isBn ? 'বিজ্ঞপ্তি সেটিংস' : 'Notification Settings'}
-                  </h2>
-                  <p className={`text-sm mt-1 ${subtextCls}`}>
-                    {isBn ? 'কোন বিজ্ঞপ্তি পেতে চান তা নির্বাচন করুন' : 'Choose which notifications you want to receive'}
-                  </p>
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'বিজ্ঞপ্তি সেটিংস' : 'Notification Settings'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'কোন বিজ্ঞপ্তি পেতে চান তা নির্বাচন করুন' : 'Choose which notifications you want to receive'}</p>
                 </div>
-
                 <div className="space-y-1">
                   {[
-                    { label: "ইমেইল বিজ্ঞপ্তি", labelEn: "Email Notifications", desc: "গুরুত্বপূর্ণ ইভেন্টের জন্য ইমেইল আপডেট পান", descEn: "Receive email updates for important events", value: emailNotifications, setter: setEmailNotifications },
-                    { label: "নিবন্ধন সতর্কতা", labelEn: "Registration Alerts", desc: "নতুন নিবন্ধন জমা হলে সতর্ক করুন", descEn: "Notify when new registrations are submitted", value: registrationAlerts, setter: setRegistrationAlerts },
-                    { label: "ফলাফল সতর্কতা", labelEn: "Result Alerts", desc: "ফলাফল প্রকাশিত হলে সতর্ক করুন", descEn: "Notify when results are published", value: resultAlerts, setter: setResultAlerts },
-                    { label: "পেমেন্ট সতর্কতা", labelEn: "Payment Alerts", desc: "পেমেন্ট সম্পন্ন হলে সতর্ক করুন", descEn: "Notify when payments are received", value: paymentAlerts, setter: setPaymentAlerts },
+                    { label: "ইমেইল বিজ্ঞপ্তি", labelEn: "Email Notifications", value: emailNotifications, setter: setEmailNotifications },
+                    { label: "নিবন্ধন সতর্কতা", labelEn: "Registration Alerts", value: registrationAlerts, setter: setRegistrationAlerts },
+                    { label: "ফলাফল সতর্কতা", labelEn: "Result Alerts", value: resultAlerts, setter: setResultAlerts },
+                    { label: "পেমেন্ট সতর্কতা", labelEn: "Payment Alerts", value: paymentAlerts, setter: setPaymentAlerts },
                   ].map((item, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-center justify-between py-4 px-4 rounded-md transition-colors ${
-                        i === 0 ? "" : `border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}`
-                      }`}
-                    >
+                    <div key={i} className={`flex items-center justify-between py-4 px-4 rounded-md transition-colors ${i > 0 ? `border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}` : ""}`}>
                       <div>
-                        <p className={`text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>
-                          {isBn ? item.label : item.labelEn}
-                        </p>
-                        <p className={`text-xs mt-0.5 ${subtextCls}`}>
-                          {isBn ? item.desc : item.descEn}
-                        </p>
+                        <p className={`text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>{isBn ? item.label : item.labelEn}</p>
                       </div>
-                      <button
-                        onClick={() => item.setter(!item.value)}
-                        className={cn(
-                          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200",
-                          item.value
-                            ? isDark ? "bg-white" : "bg-zinc-900"
-                            : isDark ? "bg-white/20" : "bg-zinc-300"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition duration-200",
-                            item.value
-                              ? isDark ? "translate-x-4 bg-black" : "translate-x-4"
-                              : "translate-x-0.5"
-                          )}
-                        />
+                      <button onClick={() => item.setter(!item.value)}
+                        className={cn("relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200",
+                          item.value ? isDark ? "bg-white" : "bg-zinc-900" : isDark ? "bg-white/20" : "bg-zinc-300"
+                        )}>
+                        <span className={cn("pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition duration-200",
+                          item.value ? "translate-x-4" : "translate-x-0.5"
+                        )} />
                       </button>
                     </div>
                   ))}
                 </div>
-
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
-                  <button
-                    onClick={handleSaveNotifications}
-                    disabled={saving}
-                    className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
-                      saving && "opacity-60 cursor-not-allowed"
-                    )}
-                  >
-                    {saving ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
+                  <button onClick={handleSaveNotifications} disabled={saving}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                    )}>
+                    {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
                   </button>
                 </div>
@@ -824,7 +507,6 @@ export default function SuperAdminSettingsPage() {
 
 function SettingsSkeleton({ isDark }: { isDark: boolean }) {
   const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
-
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">

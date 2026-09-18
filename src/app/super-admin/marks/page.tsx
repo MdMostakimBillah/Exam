@@ -7,10 +7,10 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { getExams } from "@/lib/storage/exams";
-import { getRegistrations } from "@/lib/storage/registrations";
-import { getMarks, createMark, updateMark } from "@/lib/storage/marks";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useExams } from "@/lib/storage/exams";
+import { useRegistrations } from "@/lib/storage/registrations";
+import { useMarks, useCreateMark, useUpdateMark } from "@/lib/storage/marks";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { BookOpen, Save, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -27,10 +27,14 @@ export default function MarksPage() {
   const [mounted, setMounted] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const exams = useMemo(() => getExams(), []);
+  const { data: exams = [] } = useExams();
   const selectedExamData = useMemo(() => exams.find(e => e.id === selectedExam), [exams, selectedExam]);
-  const approvedRegs = useMemo(() => getRegistrations().filter(r => r.examId === selectedExam && r.status === 'APPROVED'), [selectedExam]);
-  const existingMarks = useMemo(() => getMarks().filter(m => m.examId === selectedExam && m.subjectId === selectedSubject), [selectedExam, selectedSubject]);
+  const { data: allRegistrations = [] } = useRegistrations();
+  const approvedRegs = useMemo(() => allRegistrations.filter(r => r.examId === selectedExam && r.status === 'APPROVED'), [selectedExam, allRegistrations]);
+  const { data: allMarks = [] } = useMarks();
+  const existingMarks = useMemo(() => allMarks.filter(m => m.examId === selectedExam && m.subjectId === selectedSubject), [selectedExam, selectedSubject, allMarks]);
+  const createMarkMutation = useCreateMark();
+  const updateMarkMutation = useUpdateMark();
 
   const filtered = useMemo(() => {
     const existingMarkMap = new Map(existingMarks.map(m => [m.registrationId, m]));
@@ -63,7 +67,7 @@ export default function MarksPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const currentSession = getCurrentSession();
+  const { data: currentSession } = useCurrentSession();
 
   if (!mounted) return <MarksSkeleton isDark={isDark} />;
 
@@ -71,20 +75,20 @@ export default function MarksPage() {
     setMarksData(prev => ({ ...prev, [regId]: parseInt(value) || 0 }));
   };
 
-  const handleSaveAll = () => {
-    approvedRegs.forEach(reg => {
+  const handleSaveAll = async () => {
+    for (const reg of approvedRegs) {
       const marks = marksData[reg.id];
       if (marks !== undefined) {
         const existing = existingMarks.find(m => m.registrationId === reg.id);
-        if (existing) updateMark(existing.id, { marks });
-        else createMark({
+        if (existing) await updateMarkMutation.mutateAsync({ id: existing.id, data: { marks } });
+        else await createMarkMutation.mutateAsync({
           sessionId: currentSession?.id || '',
           studentId: reg.studentId, registrationId: reg.id, examId: selectedExam,
           subjectId: selectedSubject, subjectName: selectedExamData?.subjects.find(s => s.id === selectedSubject)?.name || '',
           marks, enteredBy: 'u1',
         });
       }
-    });
+    }
     toast('success', isBn ? 'নম্বর সফলভাবে সংরক্ষিত হয়েছে' : 'Marks saved successfully');
   };
 

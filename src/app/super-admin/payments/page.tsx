@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { getPayments, updatePayment } from "@/lib/storage/payments";
-import { updateRegistration } from "@/lib/storage/registrations";
+import { usePayments, useUpdatePayment } from "@/lib/storage/payments";
+import { useUpdateRegistration } from "@/lib/storage/registrations";
 import { createClient } from "@/lib/supabase/client";
 import { Payment } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
@@ -41,7 +41,9 @@ export default function PaymentsPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: "approve" | "reject"; payment: Payment } | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  const payments = useMemo(() => getPayments(), [refreshKey]);
+  const payments = usePayments().data || [];
+  const updatePaymentMutation = useUpdatePayment();
+  const updateRegistrationMutation = useUpdateRegistration();
   const filtered = useMemo(() => payments.filter(p => {
     const matchesSearch = p.institutionName.toLowerCase().includes(search.toLowerCase()) || p.transactionId.toLowerCase().includes(search.toLowerCase()) || p.studentName?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter ||
@@ -79,19 +81,23 @@ export default function PaymentsPage() {
   const handleApprove = async (payment: Payment) => {
     setProcessing(true);
     try {
-      // Update payment status to PAID
-      updatePayment(payment.id, {
-        status: "PAID",
-        verifiedBySuperAdmin: "super-admin",
-        verifiedAt: new Date().toISOString(),
+      await updatePaymentMutation.mutateAsync({
+        id: payment.id,
+        data: {
+          status: "PAID",
+          verifiedBySuperAdmin: "super-admin",
+          verifiedAt: new Date().toISOString(),
+        },
       });
 
-      // Update registration to APPROVED if linked
       if (payment.registrationId) {
-        updateRegistration(payment.registrationId, {
-          status: "APPROVED",
-          paymentStatus: "PAID",
-          studentPaymentStatus: "VERIFIED",
+        await updateRegistrationMutation.mutateAsync({
+          id: payment.registrationId,
+          data: {
+            status: "APPROVED",
+            paymentStatus: "PAID",
+            studentPaymentStatus: "VERIFIED",
+          },
         });
       }
 
@@ -111,14 +117,20 @@ export default function PaymentsPage() {
     }
     setProcessing(true);
     try {
-      updatePayment(payment.id, {
-        status: "FAILED",
-        rejectionReason: rejectReason,
+      await updatePaymentMutation.mutateAsync({
+        id: payment.id,
+        data: {
+          status: "FAILED",
+          rejectionReason: rejectReason,
+        },
       });
 
       if (payment.registrationId) {
-        updateRegistration(payment.registrationId, {
-          studentPaymentStatus: "REJECTED",
+        await updateRegistrationMutation.mutateAsync({
+          id: payment.registrationId,
+          data: {
+            studentPaymentStatus: "REJECTED",
+          },
         });
       }
 

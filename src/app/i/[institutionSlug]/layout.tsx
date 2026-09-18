@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/auth";
+import { useAuth } from "@/lib/auth/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppShell } from "@/components/layout/app-shell";
 
@@ -9,15 +9,13 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
   const router = useRouter();
   const params = useParams();
   const slug = params.institutionSlug as string;
+  const { user, loading } = useAuth();
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const user = getCurrentUser();
+    if (loading) return;
     if (!user) { router.push('/login'); return; }
-    if (user.role === 'SUPER_ADMIN') {
-      setAuthorized(true);
-      return;
-    }
+    if (user.role === 'SUPER_ADMIN') { setAuthorized(true); return; }
     if (!user.institutionId) { router.push('/login'); return; }
 
     const supabase = createClient();
@@ -29,9 +27,13 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
           router.push('/login');
         }
       });
-  }, [slug, router]);
+  }, [slug, router, user, loading]);
 
-  if (!authorized) return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><div className="h-6 w-32 skeleton rounded" /></div>;
+  if (loading || !authorized) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="h-6 w-32 skeleton rounded" />
+    </div>
+  );
 
   return <AppShell>{children}</AppShell>;
 }

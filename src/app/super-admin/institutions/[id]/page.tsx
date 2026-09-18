@@ -4,12 +4,12 @@ import { useRouter, useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInstitutionById } from "@/lib/storage/institutions";
-import { getStudentsByInstitution } from "@/lib/storage/students";
-import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { getPaymentsByInstitution } from "@/lib/storage/payments";
-import { getResultsByInstitution } from "@/lib/storage/results";
-import { getCertificatesByInstitution } from "@/lib/storage/certificates";
+import { useInstitutionById } from "@/lib/storage/institutions";
+import { useStudentsByInstitution } from "@/lib/storage/students";
+import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { usePaymentsByInstitution } from "@/lib/storage/payments";
+import { useResultsByInstitution } from "@/lib/storage/results";
+import { useCertificatesByInstitution } from "@/lib/storage/certificates";
 import { Building2, Users, CreditCard, Award, ArrowLeft, Mail, Phone, MapPin, Calendar } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -24,16 +24,16 @@ export default function InstitutionDetailPage() {
   const isBn = language === "bn";
 
   useEffect(() => { setMounted(true); }, []);
+
+  const { data: inst } = useInstitutionById(params.id as string);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: regs = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: certs = [] } = useCertificatesByInstitution(inst?.id || '');
+
   if (!mounted) return <InstitutionSkeleton isDark={isDark} />;
-
-  const inst = getInstitutionById(params.id as string);
   if (!inst) return <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a0b]' : 'bg-zinc-50'}`}><p className={isDark ? 'text-zinc-400' : 'text-zinc-500'}>Institution not found</p></div>;
-
-  const students = getStudentsByInstitution(inst.id);
-  const regs = getRegistrationsByInstitution(inst.id);
-  const payments = getPaymentsByInstitution(inst.id);
-  const results = getResultsByInstitution(inst.id);
-  const certs = getCertificatesByInstitution(inst.id);
 
   const totalPaid = payments.reduce((s, p) => s + (p.status === 'PAID' ? p.amount : 0), 0);
   const totalDue = payments.reduce((s, p) => s + (p.status === 'PENDING' ? p.amount : 0), 0);

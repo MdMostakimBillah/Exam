@@ -7,7 +7,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { getClasses, createClass, updateClass, deleteClass } from "@/lib/storage/classes";
+import { useClasses, useCreateClass, useUpdateClass, useDeleteClass } from "@/lib/storage/classes";
 import { Class } from "@/lib/types";
 import { BookMarked, Plus, Search, Edit, Trash2, CheckCircle, XCircle, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -30,7 +30,10 @@ export default function ClassesPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const allClasses = useMemo(() => getClasses(), []);
+  const { data: allClasses = [] } = useClasses();
+  const createClassMutation = useCreateClass();
+  const updateClassMutation = useUpdateClass();
+  const deleteClassMutation = useDeleteClass();
   const activeClasses = useMemo(() => allClasses.filter(c => c.isActive).length, [allClasses]);
   const inactiveClasses = useMemo(() => allClasses.filter(c => !c.isActive).length, [allClasses]);
   const filtered = useMemo(() => allClasses.filter(c =>
@@ -69,30 +72,30 @@ export default function ClassesPage() {
     setMenuOpenId(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.code) {
       toast('error', isBn ? 'নাম এবং কোড আবশ্যক' : 'Name and code are required');
       return;
     }
     if (editingClass) {
-      updateClass(editingClass.id, formData);
+      await updateClassMutation.mutateAsync({ id: editingClass.id, data: formData });
       toast('success', isBn ? 'শ্রেণী আপডেট হয়েছে' : 'Class updated');
     } else {
-      createClass({ ...formData, isActive: true });
+      await createClassMutation.mutateAsync({ ...formData, isActive: true });
       toast('success', isBn ? 'শ্রেণী তৈরি হয়েছে' : 'Class created');
     }
     setShowModal(false);
   };
 
-  const handleToggleActive = (cls: Class) => {
-    updateClass(cls.id, { isActive: !cls.isActive });
+  const handleToggleActive = async (cls: Class) => {
+    await updateClassMutation.mutateAsync({ id: cls.id, data: { isActive: !cls.isActive } });
     toast('success', isBn ? (cls.isActive ? 'শ্রেণী নিষ্ক্রিয় হয়েছে' : 'শ্রেণী সক্রিয় হয়েছে') : (cls.isActive ? 'Class deactivated' : 'Class activated'));
     setMenuOpenId(null);
   };
 
-  const handleDelete = (cls: Class) => {
+  const handleDelete = async (cls: Class) => {
     if (confirm(isBn ? `"${cls.name}" মুছে ফেলতে চান?` : `Delete "${cls.name}"?`)) {
-      deleteClass(cls.id);
+      await deleteClassMutation.mutateAsync(cls.id);
       toast('success', isBn ? 'শ্রেণী মুছে ফেলা হয়েছে' : 'Class deleted');
     }
     setMenuOpenId(null);

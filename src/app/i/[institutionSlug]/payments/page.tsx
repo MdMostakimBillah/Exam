@@ -7,10 +7,10 @@ import { Select } from "@/components/ui/select";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getPaymentsByInstitution, createPayment, updatePayment } from "@/lib/storage/payments";
-import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { usePaymentsByInstitution, useCreatePayment, useUpdatePayment } from "@/lib/storage/payments";
+import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Payment } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
 import { CreditCard, Search, Plus, Eye, CheckCircle, XCircle, Wallet, FileDown } from "lucide-react";
@@ -49,10 +49,12 @@ export default function InstitutionPaymentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = getInstitutionBySlug(slug);
-  const currentSession = getCurrentSession();
-  const payments = inst ? getPaymentsByInstitution(inst.id) : [];
-  const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: currentSession } = useCurrentSession();
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const createPaymentMutation = useCreatePayment();
+  const updatePaymentMutation = useUpdatePayment();
 
   const filtered = payments.filter(p => {
     const matchesSearch = !search ||
@@ -99,7 +101,7 @@ export default function InstitutionPaymentsPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.registrationId || !formData.amount || !formData.paymentMethod) {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
@@ -109,11 +111,11 @@ export default function InstitutionPaymentsPage() {
       toast("error", isBn ? "নিবন্ধন পাওয়া যায়নি" : "Registration not found");
       return;
     }
-    createPayment({
+    await createPaymentMutation.mutateAsync({
       sessionId: currentSession?.id || '',
       transactionId: `TXN-${Date.now()}`,
-      institutionId: inst.id,
-      institutionName: inst.name,
+      institutionId: inst!.id,
+      institutionName: inst!.name,
       examId: reg.examId,
       examName: reg.examName,
       studentCount: 1,
@@ -133,14 +135,14 @@ export default function InstitutionPaymentsPage() {
     setRefreshKey(k => k + 1);
   };
 
-  const handleMarkConfirmed = (p: Payment) => {
-    updatePayment(p.id, { status: 'CONFIRMED' });
+  const handleMarkConfirmed = async (p: Payment) => {
+    await updatePaymentMutation.mutateAsync({ id: p.id, data: { status: 'CONFIRMED' } });
     toast("success", isBn ? "পেমেন্ট নিশ্চিত হয়েছে" : "Payment confirmed");
     setRefreshKey(k => k + 1);
   };
 
-  const handleMarkFailed = (p: Payment) => {
-    updatePayment(p.id, { status: 'FAILED' });
+  const handleMarkFailed = async (p: Payment) => {
+    await updatePaymentMutation.mutateAsync({ id: p.id, data: { status: 'FAILED' } });
     toast("success", isBn ? "পেমেন্ট ব্যর্থ হিসেবে চিহ্নিত" : "Payment marked as failed");
     setRefreshKey(k => k + 1);
   };

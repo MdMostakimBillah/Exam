@@ -7,11 +7,11 @@ import { Select } from "@/components/ui/select";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { getCertificatesByInstitution, createCertificate, updateCertificate } from "@/lib/storage/certificates";
-import { getResultsByInstitution } from "@/lib/storage/results";
-import { getExams } from "@/lib/storage/exams";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useCertificatesByInstitution, useCreateCertificate, useUpdateCertificate, createCertificate, updateCertificate } from "@/lib/storage/certificates";
+import { useResultsByInstitution } from "@/lib/storage/results";
+import { useExams } from "@/lib/storage/exams";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Certificate, Result } from "@/lib/types";
 import { Award, Search, Plus, Eye, XCircle, FileText, Layers, FileDown } from "lucide-react";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -55,11 +55,13 @@ export default function InstitutionCertificatesPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = getInstitutionBySlug(slug);
-  const currentSession = getCurrentSession();
-  const certificates = inst ? getCertificatesByInstitution(inst.id) : [];
-  const results = inst ? getResultsByInstitution(inst.id) : [];
-  const allExams = getExams();
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: currentSession } = useCurrentSession();
+  const { data: certificates = [] } = useCertificatesByInstitution(inst?.id || '');
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: allExams = [] } = useExams();
+  const createCert = useCreateCertificate();
+  const updateCert = useUpdateCertificate();
   const exams = allExams.filter(e => results.some(r => r.examId === e.id));
   const publishedResults = results.filter(r => r.status === 'PUBLISHED');
 

@@ -7,10 +7,10 @@ import { Select } from "@/components/ui/select";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exams";
-import { getClasses } from "@/lib/storage/classes";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from "@/lib/storage/exams";
+import { useClasses } from "@/lib/storage/classes";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam, ExamStatus } from "@/lib/types";
 import { FileText, Search, Calendar, Users, CreditCard, Plus, Edit, Trash2, X, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -67,10 +67,13 @@ export default function InstitutionExamsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = getInstitutionBySlug(slug);
-  const currentSession = getCurrentSession();
-  const exams = getExams();
-  const allClasses = getClasses();
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: currentSession } = useCurrentSession();
+  const { data: exams = [] } = useExams();
+  const { data: allClasses = [] } = useClasses();
+  const createExamMutation = useCreateExam();
+  const updateExamMutation = useUpdateExam();
+  const deleteExamMutation = useDeleteExam();
 
   const filtered = exams.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.code.toLowerCase().includes(search.toLowerCase());
@@ -133,29 +136,32 @@ export default function InstitutionExamsPage() {
     setMenuOpenId(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.code || !formData.academicYear) {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
     }
     if (editingExam) {
-      updateExam(editingExam.id, {
-        name: formData.name,
-        code: formData.code,
-        academicYear: formData.academicYear,
-        description: formData.description,
-        registrationStartDate: formData.registrationStartDate,
-        registrationEndDate: formData.registrationEndDate,
-        examDate: formData.examDate,
-        registrationFee: formData.registrationFee,
-        lateFee: formData.lateFee,
-        classes: formData.classes,
-        subjects: formData.subjects,
-        status: formData.status,
+      await updateExamMutation.mutateAsync({
+        id: editingExam.id,
+        data: {
+          name: formData.name,
+          code: formData.code,
+          academicYear: formData.academicYear,
+          description: formData.description,
+          registrationStartDate: formData.registrationStartDate,
+          registrationEndDate: formData.registrationEndDate,
+          examDate: formData.examDate,
+          registrationFee: formData.registrationFee,
+          lateFee: formData.lateFee,
+          classes: formData.classes,
+          subjects: formData.subjects,
+          status: formData.status,
+        },
       });
       toast("success", isBn ? "পরীক্ষা আপডেট হয়েছে" : "Exam updated");
     } else {
-      createExam({
+      await createExamMutation.mutateAsync({
         sessionId: currentSession?.id || '',
         name: formData.name,
         code: formData.code,
@@ -176,8 +182,8 @@ export default function InstitutionExamsPage() {
     setRefreshKey(k => k + 1);
   };
 
-  const handleDelete = (e: Exam) => {
-    deleteExam(e.id);
+  const handleDelete = async (e: Exam) => {
+    await deleteExamMutation.mutateAsync(e.id);
     toast("success", isBn ? "পরীক্ষা মুছে ফেলা হয়েছে" : "Exam deleted");
     setShowDeleteConfirm(null);
     setRefreshKey(k => k + 1);

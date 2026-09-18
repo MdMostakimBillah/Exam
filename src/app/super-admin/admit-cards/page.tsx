@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { getAdmitCards } from "@/lib/storage/admit-cards";
+import { useAdmitCards } from "@/lib/storage/admit-cards";
 import { FileCheck, Download, Printer, Eye, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -17,7 +17,7 @@ export default function AdmitCardsPage() {
   const [mounted, setMounted] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const cards = useMemo(() => getAdmitCards(), []);
+  const { data: cards = [] } = useAdmitCards();
 
   const selection = useTableSelection(cards);
 

@@ -1,8 +1,7 @@
 import { AcademicSession } from '../types';
-import { getStore, setStore } from './storage';
 import { createClient } from '@/lib/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-const KEY = 'academic_sessions';
 const SUPABASE_TABLE = 'academic_sessions';
 
 function mapSession(data: any): AcademicSession {
@@ -19,126 +18,129 @@ function mapSession(data: any): AcademicSession {
   };
 }
 
-async function syncFromSupabase(): Promise<void> {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from(SUPABASE_TABLE)
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (!error && data) {
-      const sessions = data.map(mapSession);
-      setStore(KEY, sessions);
-    }
-  } catch {
-    // Ignore sync errors
-  }
-}
-
-if (typeof window !== 'undefined') {
-  syncFromSupabase();
-}
-
-export function getSessions(): AcademicSession[] {
-  return getStore<AcademicSession>(KEY);
-}
-
-export function getSessionById(id: string): AcademicSession | undefined {
-  return getSessions().find(s => s.id === id);
-}
-
-export function getCurrentSession(): AcademicSession | undefined {
-  return getSessions().find(s => s.isCurrent);
-}
-
-export function getActiveSessions(): AcademicSession[] {
-  return getSessions().filter(s => s.isActive);
-}
-
-export async function createSession(data: Omit<AcademicSession, 'id' | 'createdAt' | 'updatedAt'>): Promise<AcademicSession> {
+// Async getters (for non-React contexts)
+export async function fetchSessions(): Promise<AcademicSession[]> {
   const supabase = createClient();
-  const { data: result, error } = await supabase
+  const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .insert({
-      name: data.name,
-      code: data.code,
-      start_date: data.startDate,
-      end_date: data.endDate,
-      is_active: data.isActive,
-      is_current: data.isCurrent,
-    })
-    .select()
-    .single();
-  
-  if (error) throw error;
-  
-  const session = mapSession(result);
-  
-  const items = getSessions();
-  items.unshift(session);
-  setStore(KEY, items);
-  
-  return session;
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data.map(mapSession);
 }
 
-export async function updateSession(id: string, data: Partial<AcademicSession>): Promise<AcademicSession | undefined> {
-  const supabase = createClient();
-  const updateData: any = { updated_at: new Date().toISOString() };
-  if (data.name !== undefined) updateData.name = data.name;
-  if (data.code !== undefined) updateData.code = data.code;
-  if (data.startDate !== undefined) updateData.start_date = data.startDate;
-  if (data.endDate !== undefined) updateData.end_date = data.endDate;
-  if (data.isActive !== undefined) updateData.is_active = data.isActive;
-  if (data.isCurrent !== undefined) updateData.is_current = data.isCurrent;
-  
-  const { data: result, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
-  
-  if (error) return undefined;
-  
-  const session = mapSession(result);
-  
-  const items = getSessions();
-  const idx = items.findIndex(s => s.id === id);
-  if (idx !== -1) {
-    items[idx] = session;
-    setStore(KEY, items);
-  }
-  
-  return session;
+export async function fetchCurrentSession(): Promise<AcademicSession | undefined> {
+  const sessions = await fetchSessions();
+  return sessions.find(s => s.isCurrent);
 }
 
-export async function deleteSession(id: string): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from(SUPABASE_TABLE)
-    .delete()
-    .eq('id', id);
-  
-  if (error) return false;
-  
-  const items = getSessions();
-  const filtered = items.filter(s => s.id !== id);
-  if (filtered.length === items.length) return false;
-  setStore(KEY, filtered);
-  return true;
+export const getCurrentSession = fetchCurrentSession;
+
+// React Query hooks
+export function useSessions() {
+  return useQuery({
+    queryKey: ['academic_sessions'],
+    queryFn: fetchSessions,
+  });
 }
 
-export async function setCurrentSession(id: string): Promise<AcademicSession | undefined> {
-  // First, unset all current sessions
-  const supabase = createClient();
-  await supabase
-    .from(SUPABASE_TABLE)
-    .update({ is_current: false, updated_at: new Date().toISOString() })
-    .eq('is_current', true);
-  
-  // Then set the new current session
-  return updateSession(id, { isCurrent: true });
+export function useCurrentSession() {
+  return useQuery({
+    queryKey: ['academic_sessions', 'current'],
+    queryFn: fetchCurrentSession,
+  });
+}
+
+export function useCreateSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: Omit<AcademicSession, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const supabase = createClient();
+      const { data: result, error } = await supabase
+        .from(SUPABASE_TABLE)
+        .insert({
+          name: data.name,
+          code: data.code,
+          start_date: data.startDate,
+          end_date: data.endDate,
+          is_active: data.isActive,
+          is_current: data.isCurrent,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return mapSession(result);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
+    },
+  });
+}
+
+export function useUpdateSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<AcademicSession> }) => {
+      const supabase = createClient();
+      const updateData: any = { updated_at: new Date().toISOString() };
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.code !== undefined) updateData.code = data.code;
+      if (data.startDate !== undefined) updateData.start_date = data.startDate;
+      if (data.endDate !== undefined) updateData.end_date = data.endDate;
+      if (data.isActive !== undefined) updateData.is_active = data.isActive;
+      if (data.isCurrent !== undefined) updateData.is_current = data.isCurrent;
+
+      const { data: result, error } = await supabase
+        .from(SUPABASE_TABLE)
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return mapSession(result);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
+    },
+  });
+}
+
+export function useDeleteSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const supabase = createClient();
+      const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
+    },
+  });
+}
+
+export function useSetCurrentSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const supabase = createClient();
+      // Unset all current sessions
+      await supabase
+        .from(SUPABASE_TABLE)
+        .update({ is_current: false, updated_at: new Date().toISOString() })
+        .eq('is_current', true);
+      // Set new current session
+      const { data: result, error } = await supabase
+        .from(SUPABASE_TABLE)
+        .update({ is_current: true, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return mapSession(result);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
+    },
+  });
 }

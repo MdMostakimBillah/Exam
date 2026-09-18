@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { Select } from "@/components/ui/select";
-import { getExams } from "@/lib/storage/exams";
-import { getStudents } from "@/lib/storage/students";
-import { getInstitutions } from "@/lib/storage/institutions";
-import { getResults } from "@/lib/storage/results";
+import { useExams } from "@/lib/storage/exams";
+import { useStudents } from "@/lib/storage/students";
+import { useInstitutions } from "@/lib/storage/institutions";
+import { useResults } from "@/lib/storage/results";
 import { BarChart3, Users, Building2, Trophy, TrendingUp } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -19,10 +19,10 @@ export default function ReportsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const exams = useMemo(() => getExams(), []);
-  const students = useMemo(() => getStudents(), []);
-  const institutions = useMemo(() => getInstitutions(), []);
-  const allResults = useMemo(() => getResults(), []);
+  const { data: exams = [] } = useExams();
+  const { data: students = [] } = useStudents();
+  const { data: institutions = [] } = useInstitutions();
+  const { data: allResults = [] } = useResults();
 
   const filteredResults = useMemo(() => examFilter ? allResults.filter(r => r.examId === examFilter) : allResults, [examFilter, allResults]);
 

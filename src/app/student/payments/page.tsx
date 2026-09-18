@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { type StudentSession } from "@/lib/auth/student-auth";
+import { getStudentSession, type StudentSession } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -47,14 +47,14 @@ export default function StudentPaymentsPage() {
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("scholarx_student_session");
-    if (!stored) {
-      router.push("/student/login");
-      return;
-    }
-    const parsed = JSON.parse(stored) as StudentSession;
-    setStudent(parsed);
-    fetchPayments(parsed.id);
+    getStudentSession().then((session) => {
+      if (!session) {
+        router.push("/student/login");
+        return;
+      }
+      setStudent(session);
+      fetchPayments(session.id);
+    });
   }, [router]);
 
   const fetchPayments = async (studentId: string) => {

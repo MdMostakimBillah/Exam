@@ -1,33 +1,20 @@
-const PREFIX = 'scholarx_';
-
 export function getStore<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
   try {
-    const data = localStorage.getItem(PREFIX + key);
-    return data ? JSON.parse(data) : [];
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function setStore<T>(key: string, data: T[]): void {
+export function setStore<T>(key: string, items: T[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(PREFIX + key, JSON.stringify(data));
-}
-
-export function getStoreItem<T>(key: string): T | null {
-  if (typeof window === 'undefined') return null;
   try {
-    const data = localStorage.getItem(PREFIX + key);
-    return data ? JSON.parse(data) : null;
+    localStorage.setItem(key, JSON.stringify(items));
   } catch {
-    return null;
+    // Ignore storage errors
   }
-}
-
-export function setStoreItem<T>(key: string, data: T): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PREFIX + key, JSON.stringify(data));
 }
 
 export function generateId(): string {
@@ -51,24 +38,24 @@ export function formatCurrency(amount: number): string {
 }
 
 export async function generateApplicationId(institutionId: string, sessionCode: string): Promise<string> {
-  const { getRegistrationsByInstitution } = await import('./registrations');
-  const registrations = await getRegistrationsByInstitution(institutionId);
+  const { fetchRegistrationsByInstitution } = await import('./registrations');
+  const registrations = await fetchRegistrationsByInstitution(institutionId);
   const sessionRegistrations = registrations.filter(r => r.applicationId.startsWith(`APP-${sessionCode}-`));
   const count = sessionRegistrations.length + 1;
   return `APP-${sessionCode}-${String(count).padStart(4, '0')}`;
 }
 
 export async function generateStudentId(institutionId: string, sessionCode: string): Promise<string> {
-  const { getStudentsByInstitution } = await import('./students');
-  const students = await getStudentsByInstitution(institutionId);
+  const { fetchStudentsByInstitution } = await import('./students');
+  const students = await fetchStudentsByInstitution(institutionId);
   const sessionStudents = students.filter(s => s.studentId.startsWith(`STU-${sessionCode}-`));
   const count = sessionStudents.length + 1;
   return `STU-${sessionCode}-${String(count).padStart(4, '0')}`;
 }
 
 export async function generateCertificateNumber(sessionCode: string): Promise<string> {
-  const { getCertificates } = await import('./certificates');
-  const certificates = await getCertificates();
+  const { fetchCertificates } = await import('./certificates');
+  const certificates = await fetchCertificates();
   const sessionCerts = certificates.filter(c => c.certificateNumber.startsWith(`CERT-${sessionCode}-`));
   const count = sessionCerts.length + 1;
   return `CERT-${sessionCode}-${String(count).padStart(6, '0')}`;

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { getUsers, createUser, updateUser, deleteUser } from "@/lib/storage/users";
-import { getInstitutions } from "@/lib/storage/institutions";
+import { useInstitutions } from "@/lib/storage/institutions";
 import { User } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -56,7 +56,7 @@ export default function UsersPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const [users, setUsers] = useState<User[]>([]);
-  const institutions = useMemo(() => getInstitutions(), []);
+  const { data: institutions = [] } = useInstitutions();
 
   useEffect(() => {
     const loadUsers = async () => {

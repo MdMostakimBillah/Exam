@@ -6,12 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getStudentsByInstitution } from "@/lib/storage/students";
-import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { getExams } from "@/lib/storage/exams";
-import { getResultsByInstitution } from "@/lib/storage/results";
-import { getPaymentsByInstitution } from "@/lib/storage/payments";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useStudentsByInstitution } from "@/lib/storage/students";
+import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useExams } from "@/lib/storage/exams";
+import { useResultsByInstitution } from "@/lib/storage/results";
+import { usePaymentsByInstitution } from "@/lib/storage/payments";
 import { Users, FileText, ClipboardList, Clock, CheckCircle, XCircle, DollarSign, Wallet, Activity, ArrowRight, FileDown } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/contexts/theme-context";
@@ -30,13 +30,12 @@ export default function InstitutionDashboardPage() {
   const isDark = theme === "dark";
   const isBn = language === "bn";
 
-  const inst = getInstitutionBySlug(slug);
-
-  const students = inst ? getStudentsByInstitution(inst.id) : [];
-  const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
-  const exams = getExams();
-  const results = inst ? getResultsByInstitution(inst.id) : [];
-  const payments = inst ? getPaymentsByInstitution(inst.id) : [];
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: exams = [] } = useExams();
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
 
   const selection = useTableSelection(students);
 

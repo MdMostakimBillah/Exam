@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { type StudentSession } from "@/lib/auth/student-auth";
+import { getStudentSession, type StudentSession } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -20,13 +20,20 @@ import {
 
 interface Registration {
   id: string;
-  application_id: string;
-  student_id: string;
-  student_name: string;
-  exam_name: string;
-  class_name: string;
-  payment_amount: number;
-  student_payment_status: string;
+  sessionId: string;
+  applicationId: string;
+  studentId: string;
+  studentName: string;
+  institutionId: string;
+  institutionName: string;
+  examId: string;
+  examName: string;
+  className: string;
+  status: string;
+  paymentStatus: string;
+  studentPaymentStatus: string;
+  paymentAmount: number;
+  transactionId?: string;
 }
 
 type PaymentMethod = "BKASH" | "ROCKET" | "BANK_TRANSFER" | "CASH";
@@ -54,18 +61,19 @@ export default function PaymentSubmitPage() {
   const [receiptNumber, setReceiptNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
-  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("scholarx_student_session");
-    if (!stored) {
-      router.push("/student/login");
-      return;
-    }
-    const parsed = JSON.parse(stored) as StudentSession;
-    setStudent(parsed);
-    fetchRegistration(parsed.id);
+    getStudentSession().then((session) => {
+      if (!session) {
+        router.push("/student/login");
+        return;
+      }
+      setStudent(session);
+      fetchRegistration(session.id);
+    });
   }, [router, registrationId]);
 
   const fetchRegistration = async (studentId: string) => {
@@ -79,7 +87,25 @@ export default function PaymentSubmitPage() {
       .single();
 
     if (data) {
-      setRegistration(data as Registration);
+      setRegistration({
+        id: data.id,
+        sessionId: data.session_id,
+        applicationId: data.application_id,
+        studentId: data.student_id,
+        studentName: data.student_name,
+        institutionId: data.institution_id,
+        institutionName: data.institution_name,
+        examId: data.exam_id,
+        examName: data.exam_name,
+        className: data.class_name,
+        status: data.status,
+        paymentStatus: data.payment_status,
+        studentPaymentStatus: data.student_payment_status || 'NOT_SUBMITTED',
+        paymentAmount: data.payment_amount,
+        transactionId: data.transaction_id,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      } as unknown as Registration);
       setAmount(String(data.payment_amount || ""));
     } else {
       setError(isBn ? "নিবন্ধন পাওয়া যায়নি" : "Registration not found");
@@ -94,9 +120,9 @@ export default function PaymentSubmitPage() {
       setError(isBn ? "ছবির আকার 5MB এর বেশি হতে পারে না" : "Image must be under 5MB");
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => setProofImage(reader.result as string);
-    reader.readAsDataURL(file);
+    setProofImageFile(file);
+    const url = URL.createObjectURL(file);
+    setProofImagePreview(url);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,13 +140,32 @@ export default function PaymentSubmitPage() {
     const supabase = createClient();
     const txId = `TXN-STU-${Date.now().toString(36).toUpperCase()}`;
 
+    // Upload proof image to Storage
+    let proofImageUrl = "";
+    if (proofImageFile) {
+      try {
+        const ext = proofImageFile.name.split(".").pop() || "jpg";
+        const path = `payment-proofs/${txId}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("public")
+          .upload(path, proofImageFile, { contentType: proofImageFile.type, upsert: true });
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from("public").getPublicUrl(path);
+          proofImageUrl = urlData?.publicUrl || "";
+        }
+      } catch {
+        // Continue without image
+      }
+    }
+
     // Create payment record
     const { error: paymentError } = await supabase.from("payments").insert({
+      session_id: registration.sessionId,
       transaction_id: txId,
       institution_id: student.institutionId,
       institution_name: student.institutionName,
-      exam_id: "",
-      exam_name: registration.exam_name,
+      exam_id: registration.examId,
+      exam_name: registration.examName,
       student_count: 1,
       amount: Number(amount),
       payment_method: paymentMethod,
@@ -136,7 +181,7 @@ export default function PaymentSubmitPage() {
       submitted_at: new Date().toISOString(),
       receipt_number: receiptNumber,
       account_number: accountNumber,
-      proof_image: proofImage,
+      proof_image: proofImageUrl,
     });
 
     if (paymentError) {
@@ -231,9 +276,9 @@ export default function PaymentSubmitPage() {
               {/* Registration Info */}
               <div className={`p-3 rounded-lg ${isDark ? "bg-white/[0.02] border border-white/[0.06]" : "bg-zinc-50 border border-zinc-200"}`}>
                 <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "নিবন্ধন" : "Registration"}</p>
-                <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{registration.exam_name}</p>
+                <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{registration.examName}</p>
                 <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                  {registration.application_id} &middot; {registration.class_name}
+                  {registration.applicationId} &middot; {registration.className}
                 </p>
               </div>
 
@@ -322,10 +367,10 @@ export default function PaymentSubmitPage() {
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "h-20 w-20 rounded-lg flex items-center justify-center shrink-0 overflow-hidden",
-                    proofImage ? "" : isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"
+                    proofImagePreview ? "" : isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"
                   )}>
-                    {proofImage ? (
-                      <img src={proofImage} alt="Proof" className="h-full w-full object-cover" />
+                    {proofImagePreview ? (
+                      <img src={proofImagePreview} alt="Proof" className="h-full w-full object-cover" />
                     ) : (
                       <Camera className={cn("h-5 w-5", isDark ? "text-zinc-600" : "text-zinc-400")} />
                     )}
@@ -338,8 +383,8 @@ export default function PaymentSubmitPage() {
                       <Upload className="h-3.5 w-3.5" /> {isBn ? "ছবি আপলোড" : "Upload"}
                       <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                     </label>
-                    {proofImage && (
-                      <button type="button" onClick={() => setProofImage(null)} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
+                    {proofImagePreview && (
+                      <button type="button" onClick={() => { setProofImageFile(null); setProofImagePreview(null); }} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
                         <X className="h-3 w-3 inline" /> {isBn ? "সরান" : "Remove"}
                       </button>
                     )}

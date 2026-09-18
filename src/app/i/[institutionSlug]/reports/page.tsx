@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getStudentsByInstitution } from "@/lib/storage/students";
-import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { getResultsByInstitution } from "@/lib/storage/results";
-import { getPaymentsByInstitution } from "@/lib/storage/payments";
-import { getExams } from "@/lib/storage/exams";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useStudentsByInstitution } from "@/lib/storage/students";
+import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useResultsByInstitution } from "@/lib/storage/results";
+import { usePaymentsByInstitution } from "@/lib/storage/payments";
+import { useExams } from "@/lib/storage/exams";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { BarChart3, Download, FileText, Users, GraduationCap, CreditCard, TrendingUp } from "lucide-react";
@@ -22,16 +22,16 @@ export default function InstitutionReportsPage() {
   const [generating, setGenerating] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
+  const { data: exams = [] } = useExams();
+
   if (!mounted) return <ReportsSkeleton isDark={isDark} />;
-
-  const inst = getInstitutionBySlug(slug);
   if (!inst) return null;
-
-  const students = getStudentsByInstitution(inst.id);
-  const registrations = getRegistrationsByInstitution(inst.id);
-  const results = getResultsByInstitution(inst.id);
-  const payments = getPaymentsByInstitution(inst.id);
-  const exams = getExams();
 
   const classBreakdown = students.reduce<Record<string, number>>((acc, s) => {
     acc[s.class] = (acc[s.class] || 0) + 1;

@@ -8,7 +8,7 @@ import {
   ClipboardList, FileCheck, School, BookOpen,
   GraduationCap, LogOut, ChevronRight, BookMarked
 } from "lucide-react";
-import { getCurrentUser, logout } from "@/lib/auth/auth";
+import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -47,7 +47,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
   const router = useRouter();
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
-  const user = React.useMemo(() => getCurrentUser(), []);
+  const { user } = useAuth();
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';

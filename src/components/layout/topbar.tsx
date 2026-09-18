@@ -1,11 +1,11 @@
 "use client";
 import * as React from "react";
 import { cn } from "@/lib/utils/helpers";
-import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut, Calendar } from "lucide-react";
+import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut, Calendar, Check } from "lucide-react";
 import { Avatar } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuCheckboxItem } from "../ui/dropdown-menu";
-import { getCurrentUser, logout } from "@/lib/auth/auth";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useAuth, logout } from "@/lib/auth/auth";
+import { useSessions, useCurrentSession, useSetCurrentSession } from "@/lib/storage/sessions";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -19,8 +19,10 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { lang: language, setLang } = useLang();
-  const user = React.useMemo(() => getCurrentUser(), []);
-  const currentSession = React.useMemo(() => getCurrentSession(), []);
+  const { user } = useAuth();
+  const { data: currentSession } = useCurrentSession();
+  const { data: sessions = [] } = useSessions();
+  const setCurrentSession = useSetCurrentSession();
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';
@@ -34,6 +36,14 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
     logout();
     router.push('/login');
   };
+
+  const handleSessionSwitch = async (sessionId: string) => {
+    if (sessionId !== currentSession?.id) {
+      await setCurrentSession.mutateAsync(sessionId);
+    }
+  };
+
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   return (
     <header className={cn(
@@ -65,17 +75,54 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
-        {/* Current Session Indicator */}
+        {/* Session Switcher */}
         {currentSession && (
-          <div className={cn(
-            'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium border',
-            isDark
-              ? 'border-white/[0.06] bg-white/[0.02] text-zinc-400'
-              : 'border-zinc-200 bg-zinc-50 text-zinc-600'
-          )}>
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{currentSession.name}</span>
-          </div>
+          <DropdownMenu
+            align="right"
+            trigger={
+              <button className={cn(
+                'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium border transition-all duration-200',
+                isDark
+                  ? 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-300'
+                  : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+              )}>
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{currentSession.name}</span>
+                {isSuperAdmin && sessions.length > 1 && (
+                  <ChevronDown className="h-3 w-3 ml-0.5" />
+                )}
+              </button>
+            }
+          >
+            <DropdownMenuLabel className={isDark ? 'text-zinc-400' : 'text-gray-600'}>
+              {isBn ? 'একাডেমিক সেশন' : 'Academic Session'}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
+            {sessions.map((session) => (
+              <DropdownMenuItem
+                key={session.id}
+                onClick={() => handleSessionSwitch(session.id)}
+                className={cn(
+                  'flex items-center gap-2',
+                  isDark ? 'text-white' : 'text-gray-700'
+                )}
+              >
+                <Check className={cn(
+                  'h-3.5 w-3.5',
+                  session.id === currentSession.id ? 'opacity-100' : 'opacity-0'
+                )} />
+                <span>{session.name}</span>
+                {session.isCurrent && (
+                  <span className={cn(
+                    'text-[10px] px-1.5 py-0.5 rounded-full',
+                    isDark ? 'bg-white/10 text-zinc-400' : 'bg-zinc-200 text-zinc-600'
+                  )}>
+                    {isBn ? 'বর্তমান' : 'Current'}
+                  </span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenu>
         )}
 
         <button className={cn(

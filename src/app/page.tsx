@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth/auth";
+import { useAuth } from "@/lib/auth/auth";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 import { EducationIllustration } from "@/components/ui/education-illustration";
@@ -30,15 +30,15 @@ export default function HomePage() {
   const router = useRouter();
   const { t, lang, setLang } = useLang();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const isDark = theme === "dark";
 
   useEffect(() => {
-    const user = getCurrentUser();
     if (user) {
       if (user.role === "SUPER_ADMIN") router.push("/super-admin");
       else if (user.role === "INSTITUTION_ADMIN") router.push("/i");
     }
-  }, [router]);
+  }, [user, router]);
 
   const glassBg = isDark 
     ? "bg-white/5 backdrop-blur-xl border border-white/10" 

@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getResults } from "@/lib/storage/results";
-import { getStudents } from "@/lib/storage/students";
+import { fetchResults } from "@/lib/storage/results";
+import { fetchStudents } from "@/lib/storage/students";
 import { Result } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,9 +25,9 @@ export default function ResultPage() {
 
   // Data loaded from Supabase via storage modules
 
-  const handleSearch = () => {
-    const results = getResults().filter(r => r.status === 'PUBLISHED');
-    const students = getStudents();
+  const handleSearch = async () => {
+    const results = (await fetchResults()).filter(r => r.status === 'PUBLISHED');
+    const students = await fetchStudents();
     const found = results.find(r => {
       const regMatch = r.registrationNumber === regNumber || r.registrationNumber.toLowerCase() === regNumber.toLowerCase();
       if (searchType === 'dob') {

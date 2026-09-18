@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginWithLockout } from "@/lib/auth/server-auth";
-import { setCurrentUser } from "@/lib/auth/auth";
+import { useAuth } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -67,7 +67,7 @@ export default function LoginPage() {
           : `Account locked. Wait ${formatTime(result.retryAfter || 300)}.`
         );
       } else if (result.success && result.user) {
-        setCurrentUser(result.user as any);
+        // Auth provider's onAuthStateChange will automatically pick up the session
         if (result.user.role === "SUPER_ADMIN") router.push("/super-admin");
         else router.push("/i");
       } else {

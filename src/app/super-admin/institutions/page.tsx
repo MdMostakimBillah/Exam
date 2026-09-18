@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { getInstitutions, createInstitution, updateInstitution, deleteInstitution } from "@/lib/storage/institutions";
+import { useInstitutions, useCreateInstitution, useUpdateInstitution, useDeleteInstitution } from "@/lib/storage/institutions";
 import { Institution } from "@/lib/types";
 import { Building2, Search, Users, Mail, Phone, Trash2, Eye, Check, X, Ban, Plus, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem, TableActionDivider } from "@/components/ui/table-action-menu";
@@ -34,7 +34,10 @@ export default function InstitutionsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const institutions = useMemo(() => getInstitutions(), []);
+  const { data: institutions = [] } = useInstitutions();
+  const createInstitutionMutation = useCreateInstitution();
+  const updateInstitutionMutation = useUpdateInstitution();
+  const deleteInstitutionMutation = useDeleteInstitution();
   const filtered = useMemo(() => institutions.filter(i => {
     const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || i.status === statusFilter;
@@ -76,14 +79,14 @@ export default function InstitutionsPage() {
     SUSPENDED: suspendedCount,
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    updateInstitution(id, { status: newStatus as Institution['status'] });
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    await updateInstitutionMutation.mutateAsync({ id, data: { status: newStatus as Institution['status'] } });
     setRefreshKey(k => k + 1);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm(isBn ? 'আপনি কি নিশ্চিত?' : 'Are you sure?')) {
-      deleteInstitution(id);
+      await deleteInstitutionMutation.mutateAsync(id);
       setRefreshKey(k => k + 1);
     }
   };
@@ -92,9 +95,9 @@ export default function InstitutionsPage() {
     name: "", code: "", slug: "", email: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING",
   });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.name || !form.code) return;
-    createInstitution({
+    await createInstitutionMutation.mutateAsync({
       name: form.name, code: form.code, slug: form.slug, email: form.email, phone: form.phone,
       address: form.address, city: form.city, district: form.district, contactPerson: form.contactPerson,
       contactPersonPhone: form.contactPersonPhone, status: form.status, totalStudents: 0, totalApplications: 0,

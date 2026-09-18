@@ -6,7 +6,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
-import { getNotifications, markAsRead, markAllAsRead, createNotification } from "@/lib/storage/notifications";
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useCreateNotification, getNotifications } from "@/lib/storage/notifications";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { Notification } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
@@ -64,6 +64,10 @@ export default function NotificationsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  const markReadMutation = useMarkNotificationRead();
+  const markAllReadMutation = useMarkAllNotificationsRead();
+  const createNotificationMutation = useCreateNotification();
+
   useEffect(() => {
     const loadNotifications = async () => {
       if (mounted) {
@@ -84,14 +88,14 @@ export default function NotificationsPage() {
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
   const handleMarkAsRead = (id: string) => {
-    markAsRead(id);
+    markReadMutation.mutate(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     toast("success", isBn ? "বিজ্ঞপ্তি পঠিত হিসাবে চিহ্নিত" : "Notification marked as read");
   };
 
   const handleMarkAllAsRead = () => {
     if (!user) return;
-    markAllAsRead(user.id);
+    markAllReadMutation.mutate(user.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     toast("success", isBn ? "সব বিজ্ঞপ্তি পঠিত হিসাবে চিহ্নিত" : "All notifications marked as read");
   };
@@ -102,7 +106,7 @@ export default function NotificationsPage() {
       toast("error", isBn ? "শিরোনাম এবং বার্তা প্রয়োজন" : "Title and message are required");
       return;
     }
-    createNotification({
+    createNotificationMutation.mutate({
       userId: user.id,
       title: newTitle.trim(),
       message: newMessage.trim(),

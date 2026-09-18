@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { clearStudentSession, type StudentSession } from "@/lib/auth/student-auth";
+import { clearStudentSession, getStudentSession, type StudentSession } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -24,16 +24,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("scholarx_student_session");
-    if (!stored) {
-      router.push("/student/login");
-      return;
-    }
-    try {
-      setStudent(JSON.parse(stored));
-    } catch {
-      router.push("/student/login");
-    }
+    getStudentSession().then((session) => {
+      if (!session) {
+        router.push("/student/login");
+        return;
+      }
+      setStudent(session);
+    });
   }, [router]);
 
   const handleLogout = () => {

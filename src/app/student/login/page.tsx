@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { loginStudent, setStudentSession } from "@/lib/auth/student-auth";
+import { loginStudent } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -66,7 +66,6 @@ export default function StudentLoginPage() {
             : `Account locked. Wait ${formatTime(result.retryAfter || 300)}.`
         );
       } else if (result.success && result.student) {
-        setStudentSession(result.student);
         router.push("/student/dashboard");
       } else {
         setError(isBn ? "ভুল শিক্ষার্থী আইডি বা তথ্য" : "Invalid student ID or credentials");

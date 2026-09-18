@@ -32,7 +32,38 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const pathname = request.nextUrl.pathname
+
+  // Protect super-admin routes
+  if (pathname.startsWith('/super-admin') && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Protect institution routes (except root /i which handles its own auth)
+  if (pathname.match(/^\/i\/[^/]+/) && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // If logged in super_admin tries to access /i, redirect to /super-admin
+  if (pathname.startsWith('/i') && user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    if (profile?.role === 'super_admin' && !pathname.startsWith('/super-admin')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/super-admin'
+      return NextResponse.redirect(url)
+    }
+  }
 
   return supabaseResponse
 }

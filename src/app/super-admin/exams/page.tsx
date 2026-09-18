@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { getExams, createExam, updateExam, deleteExam } from "@/lib/storage/exams";
-import { getClasses, getActiveClasses } from "@/lib/storage/classes";
-import { getRegistrations } from "@/lib/storage/registrations";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from "@/lib/storage/exams";
+import { useClasses, useActiveClasses, getActiveClasses } from "@/lib/storage/classes";
+import { useRegistrations } from "@/lib/storage/registrations";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
 import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -43,10 +43,13 @@ export default function ExamsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const currentSession = getCurrentSession();
-  const exams = useMemo(() => getExams(), []);
-  const registrations = useMemo(() => getRegistrations(), []);
-  const allClasses = useMemo(() => getClasses(), []);
+  const { data: currentSession } = useCurrentSession();
+  const { data: exams = [] } = useExams();
+  const { data: registrations = [] } = useRegistrations();
+  const { data: allClasses = [] } = useClasses();
+  const createExamMutation = useCreateExam();
+  const updateExamMutation = useUpdateExam();
+  const deleteExamMutation = useDeleteExam();
 
   const filtered = useMemo(() => exams.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.code.toLowerCase().includes(search.toLowerCase());
@@ -122,24 +125,24 @@ export default function ExamsPage() {
     setMenuOpenId(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.code) {
       toast('error', isBn ? 'নাম এবং কোড আবশ্যক' : 'Name and code are required');
       return;
     }
     if (editingExam) {
-      updateExam(editingExam.id, formData);
+      await updateExamMutation.mutateAsync({ id: editingExam.id, data: formData });
       toast('success', isBn ? 'পরীক্ষা আপডেট হয়েছে' : 'Exam updated');
     } else {
-      createExam({ ...formData, sessionId: currentSession?.id || '', status: 'DRAFT' });
+      await createExamMutation.mutateAsync({ ...formData, sessionId: currentSession?.id || '', status: 'DRAFT' });
       toast('success', isBn ? 'পরীক্ষা তৈরি হয়েছে' : 'Exam created');
     }
     setShowModal(false);
   };
 
-  const handleDelete = (exam: Exam) => {
+  const handleDelete = async (exam: Exam) => {
     if (confirm(isBn ? `"${exam.name}" মুছে ফেলতে চান?` : `Delete "${exam.name}"?`)) {
-      deleteExam(exam.id);
+      await deleteExamMutation.mutateAsync(exam.id);
       toast('success', isBn ? 'পরীক্ষা মুছে ফেলা হয়েছে' : 'Exam deleted');
     }
     setMenuOpenId(null);

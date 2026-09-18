@@ -7,8 +7,8 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { Input } from "@/components/ui/input";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { getExamCenters, createExamCenter, updateExamCenter } from "@/lib/storage/exam-centers";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useExamCenters, useCreateExamCenter, useUpdateExamCenter } from "@/lib/storage/exam-centers";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { School, Plus, Pencil, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -27,8 +27,10 @@ export default function ExamCentersPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const currentSession = getCurrentSession();
-  const centers = useMemo(() => getExamCenters(), []);
+  const { data: currentSession } = useCurrentSession();
+  const { data: centers = [] } = useExamCenters();
+  const createExamCenterMutation = useCreateExamCenter();
+  const updateExamCenterMutation = useUpdateExamCenter();
   const totalCapacity = useMemo(() => centers.reduce((s, c) => s + c.capacity, 0), [centers]);
   const totalAllocated = useMemo(() => centers.reduce((s, c) => s + c.allocated, 0), [centers]);
 
@@ -54,7 +56,7 @@ export default function ExamCentersPage() {
 
   if (!mounted) return <ExamCentersSkeleton isDark={isDark} />;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.capacity) return;
     const data = { 
       sessionId: currentSession?.id || '',
@@ -63,8 +65,8 @@ export default function ExamCentersPage() {
       capacity: parseInt(form.capacity), 
       allocated: 0 
     };
-    if (editId) { updateExamCenter(editId, data); toast('success', isBn ? 'কেন্দ্র আপডেট হয়েছে' : 'Center updated'); }
-    else { createExamCenter(data); toast('success', isBn ? 'কেন্দ্র তৈরি হয়েছে' : 'Center created'); }
+    if (editId) { await updateExamCenterMutation.mutateAsync({ id: editId, data }); toast('success', isBn ? 'কেন্দ্র আপডেট হয়েছে' : 'Center updated'); }
+    else { await createExamCenterMutation.mutateAsync(data); toast('success', isBn ? 'কেন্দ্র তৈরি হয়েছে' : 'Center created'); }
     setModalOpen(false); setEditId(null); setForm({ name: '', address: '', capacity: '' });
   };
 

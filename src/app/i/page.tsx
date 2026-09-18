@@ -1,13 +1,15 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/auth";
+import { useAuth } from "@/lib/auth/auth";
 import { createClient } from "@/lib/supabase/client";
 
 export default function InstitutionRootPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
+
   useEffect(() => {
-    const user = getCurrentUser();
+    if (loading) return;
     if (!user) { router.push('/login'); return; }
     if (user.role === 'SUPER_ADMIN') { router.push('/super-admin'); return; }
     if (user.institutionId) {
@@ -23,6 +25,7 @@ export default function InstitutionRootPage() {
       return;
     }
     router.push('/login');
-  }, [router]);
+  }, [router, user, loading]);
+
   return <div className="min-h-screen bg-[#080808] flex items-center justify-center"><div className="h-6 w-32 skeleton rounded" /></div>;
 }

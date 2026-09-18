@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { getStudents } from "@/lib/storage/students";
-import { getInstitutions } from "@/lib/storage/institutions";
+import { useStudents } from "@/lib/storage/students";
+import { useInstitutions } from "@/lib/storage/institutions";
 import { Users, Search, Download, GraduationCap, Building2, UserCheck, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -26,8 +26,8 @@ export default function StudentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const students = useMemo(() => getStudents(), []);
-  const institutions = useMemo(() => getInstitutions(), []);
+  const { data: students = [] } = useStudents();
+  const { data: institutions = [] } = useInstitutions();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
   const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
   const getInstitutionName = useCallback((id: string) => institutionMap.get(id) || 'Unknown', [institutionMap]);

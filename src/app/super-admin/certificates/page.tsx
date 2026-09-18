@@ -7,7 +7,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { getCertificates } from "@/lib/storage/certificates";
+import { useCertificates } from "@/lib/storage/certificates";
 import { Award, Search, Download, QrCode, FileDown } from "lucide-react";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -23,7 +23,7 @@ export default function CertificatesPage() {
   const [yearFilter, setYearFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const certificates = useMemo(() => getCertificates(), []);
+  const { data: certificates = [] } = useCertificates();
   const years = useMemo(() => [...new Set(certificates.map(c => c.examYear))], [certificates]);
   const filtered = useMemo(() => certificates.filter(c => {
     const matchesSearch = c.studentName.toLowerCase().includes(search.toLowerCase()) || c.certificateNumber.toLowerCase().includes(search.toLowerCase());

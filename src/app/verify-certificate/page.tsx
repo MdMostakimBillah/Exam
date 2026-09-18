@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getCertificateByNumber } from "@/lib/storage/certificates";
+import { fetchCertificateByNumber } from "@/lib/storage/certificates";
 import { Certificate } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,8 @@ export default function VerifyCertificatePage() {
 
   // Data loaded from Supabase via storage modules
 
-  const handleSearch = () => {
-    const found = getCertificateByNumber(certNumber);
+  const handleSearch = async () => {
+    const found = await fetchCertificateByNumber(certNumber);
     setCertificate(found || null);
     setSearched(true);
   };

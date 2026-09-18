@@ -1,6 +1,6 @@
-"use server";
+"use client";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 export interface StudentSession {
   id: string;
@@ -25,70 +25,40 @@ export interface StudentLoginResult {
   student?: StudentSession;
 }
 
-// Simple in-memory store for student login attempts (resets on server restart)
-// In production, use Redis or database
+// In-memory lockout tracking (resets on server restart - acceptable for now)
 const studentAttempts = new Map<string, { count: number; lastAttempt: number }>();
 
 function checkStudentLockout(identifier: string): { locked: boolean; retryAfter: number } {
   const record = studentAttempts.get(identifier);
   if (!record) return { locked: false, retryAfter: 0 };
-
   const now = Date.now();
   const fiveMinutes = 5 * 60 * 1000;
-
-  // Reset if last attempt was more than 5 minutes ago
-  if (now - record.lastAttempt > fiveMinutes) {
-    studentAttempts.delete(identifier);
-    return { locked: false, retryAfter: 0 };
-  }
-
-  if (record.count >= 3) {
-    const remaining = Math.ceil((fiveMinutes - (now - record.lastAttempt)) / 1000);
-    return { locked: true, retryAfter: remaining };
-  }
-
+  if (now - record.lastAttempt > fiveMinutes) { studentAttempts.delete(identifier); return { locked: false, retryAfter: 0 }; }
+  if (record.count >= 3) { return { locked: true, retryAfter: Math.ceil((fiveMinutes - (now - record.lastAttempt)) / 1000) }; }
   return { locked: false, retryAfter: 0 };
 }
 
 function recordStudentAttempt(identifier: string, success: boolean) {
-  if (success) {
-    studentAttempts.delete(identifier);
-    return;
-  }
-
+  if (success) { studentAttempts.delete(identifier); return; }
   const record = studentAttempts.get(identifier);
   const now = Date.now();
-
-  if (!record || now - record.lastAttempt > 5 * 60 * 1000) {
-    studentAttempts.set(identifier, { count: 1, lastAttempt: now });
-  } else {
-    record.count += 1;
-    record.lastAttempt = now;
-  }
+  if (!record || now - record.lastAttempt > 5 * 60 * 1000) { studentAttempts.set(identifier, { count: 1, lastAttempt: now }); }
+  else { record.count += 1; record.lastAttempt = now; }
 }
 
-export async function loginStudent(
-  studentId: string,
-  phoneOrEmail: string
-): Promise<StudentLoginResult> {
-  const supabase = await createClient();
+export async function loginStudent(studentId: string, phoneOrEmail: string): Promise<StudentLoginResult> {
+  const supabase = createClient();
   const identifier = `student:${studentId.toLowerCase()}`;
 
-  // Check lockout
   const lockStatus = checkStudentLockout(identifier);
   if (lockStatus.locked) {
-    return {
-      success: false,
-      error: "Account temporarily locked. Try again in 5 minutes.",
-      locked: true,
-      retryAfter: lockStatus.retryAfter,
-    };
+    return { success: false, error: "Account temporarily locked.", locked: true, retryAfter: lockStatus.retryAfter };
   }
 
   // Find student by student_id
   const { data: student, error: studentError } = await supabase
     .from("students")
-    .select("*")
+    .select("*, institutions(name)")
     .eq("student_id", studentId)
     .single();
 
@@ -104,25 +74,34 @@ export async function loginStudent(
 
   if (!phoneMatch && !emailMatch) {
     recordStudentAttempt(identifier, false);
-
-    // Check if this attempt caused lockout
     const lockStatusAfter = checkStudentLockout(identifier);
-    return {
-      success: false,
-      error: "Invalid student ID or credentials",
-      locked: lockStatusAfter.locked,
-      retryAfter: lockStatusAfter.retryAfter,
-    };
+    return { success: false, error: "Invalid student ID or credentials", locked: lockStatusAfter.locked, retryAfter: lockStatusAfter.locked ? lockStatusAfter.retryAfter : 0 };
   }
 
-  // Get institution name
-  const { data: institution } = await supabase
-    .from("institutions")
-    .select("name")
-    .eq("id", student.institution_id)
-    .single();
+  // Create or sign in with Supabase Auth
+  const authEmail = `student_${studentId}@scholarx.local`;
+  const authPassword = `student_${studentId}_${phoneOrEmail}`;
 
-  // Success
+  // Try to sign in first
+  let { error: signInError } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+
+  // If sign in fails, create the auth user
+  if (signInError) {
+    const { error: signUpError } = await supabase.auth.signUp({ email: authEmail, password: authPassword, options: { data: { role: "student", student_id: studentId } } });
+    if (signUpError && !signUpError.message.includes("already registered")) {
+      recordStudentAttempt(identifier, false);
+      return { success: false, error: "Authentication failed" };
+    }
+    // Try sign in again
+    await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+  }
+
+  // Link student to auth user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase.from("students").update({ user_id: user.id }).eq("id", student.id);
+  }
+
   recordStudentAttempt(identifier, true);
 
   return {
@@ -135,7 +114,7 @@ export async function loginStudent(
       email: student.email || "",
       phone: student.phone || "",
       institutionId: student.institution_id,
-      institutionName: institution?.name || "",
+      institutionName: student.institutions?.name || "",
       class: student.class,
       section: student.section || "",
       roll: student.roll || "",
@@ -145,34 +124,41 @@ export async function loginStudent(
 }
 
 export async function getStudentSession(): Promise<StudentSession | null> {
-  // Server-side: read from headers or cookie
-  // Client-side: read from localStorage
-  if (typeof window === "undefined") {
-    // Server-side: would need cookie-based session
-    // For now, client-side auth via localStorage
-    return null;
-  }
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
-  try {
-    const stored = localStorage.getItem("scholarx_student_session");
-    if (!stored) return null;
-    return JSON.parse(stored) as StudentSession;
-  } catch {
-    return null;
-  }
-}
+  const { data: student } = await supabase
+    .from("students")
+    .select("*, institutions(name)")
+    .eq("user_id", user.id)
+    .single();
 
-export async function setStudentSession(student: StudentSession): Promise<void> {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("scholarx_student_session", JSON.stringify(student));
+  if (!student) return null;
+
+  return {
+    id: student.id,
+    studentId: student.student_id,
+    firstName: student.first_name,
+    lastName: student.last_name,
+    email: student.email || "",
+    phone: student.phone || "",
+    institutionId: student.institution_id,
+    institutionName: student.institutions?.name || "",
+    class: student.class,
+    section: student.section || "",
+    roll: student.roll || "",
+    photo: student.photo_url,
+  };
 }
 
 export async function clearStudentSession(): Promise<void> {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("scholarx_student_session");
+  const supabase = createClient();
+  await supabase.auth.signOut();
 }
 
 export async function isStudentAuthenticated(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("scholarx_student_session");
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return !!user;
 }

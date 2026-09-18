@@ -6,8 +6,8 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { getResults } from "@/lib/storage/results";
-import { getExams } from "@/lib/storage/exams";
+import { useResults } from "@/lib/storage/results";
+import { useExams } from "@/lib/storage/exams";
 import { Award, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -21,8 +21,8 @@ export default function ResultsPage() {
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const results = useMemo(() => getResults(), []);
-  const exams = useMemo(() => getExams(), []);
+  const { data: results = [] } = useResults();
+  const { data: exams = [] } = useExams();
   const filtered = useMemo(() => examFilter ? results.filter(r => r.examId === examFilter) : results, [results, examFilter]);
 
   const totalCandidates = filtered.length;

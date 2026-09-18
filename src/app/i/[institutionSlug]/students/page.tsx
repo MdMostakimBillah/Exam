@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getStudentsByInstitution } from "@/lib/storage/students";
-import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { getClasses } from "@/lib/storage/classes";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useStudentsByInstitution } from "@/lib/storage/students";
+import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useClasses } from "@/lib/storage/classes";
 import { Student, Registration } from "@/lib/types";
 import { Users, Search, GraduationCap, FileDown, UserCheck, ClipboardList } from "lucide-react";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -46,10 +46,10 @@ export default function InstitutionStudentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = useMemo(() => getInstitutionBySlug(slug), [slug]);
-  const students = useMemo(() => inst ? getStudentsByInstitution(inst.id) : [], [inst]);
-  const registrations = useMemo(() => inst ? getRegistrationsByInstitution(inst.id) : [], [inst]);
-  const allClasses = useMemo(() => getClasses(), []);
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: allClasses = [] } = useClasses();
   const classNames = useMemo(() => allClasses.length > 0 ? allClasses.map(c => c.name) : [...new Set(students.map(s => s.class))], [allClasses, students]);
 
   const studentRegStatus = useMemo(() => {

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { getInstitutionBySlug, updateInstitution } from "@/lib/storage/institutions";
+import { useInstitutionBySlug, useUpdateInstitution } from "@/lib/storage/institutions";
 import { updateUser } from "@/lib/storage/users";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react";
@@ -24,6 +24,9 @@ export default function InstitutionSettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [saving, setSaving] = useState(false);
+
+  const { data: inst } = useInstitutionBySlug(slug);
+  const updateInstitutionMutation = useUpdateInstitution();
 
   // Profile fields
   const [instName, setInstName] = useState("");
@@ -54,7 +57,6 @@ export default function InstitutionSettingsPage() {
 
   useEffect(() => {
     setMounted(true);
-    const inst = getInstitutionBySlug(slug);
     if (inst) {
       setInstName(inst.name);
       setInstEmail(inst.email);
@@ -69,20 +71,22 @@ export default function InstitutionSettingsPage() {
       setAdminName(currentUser.name);
       setAdminEmail(currentUser.email);
     }
-  }, [slug]);
+  }, [slug, inst]);
 
   const handleSaveProfile = async () => {
     setSaving(true);
-    const inst = getInstitutionBySlug(slug);
     if (inst) {
-      updateInstitution(inst.id, {
-        name: instName,
-        email: instEmail,
-        phone,
-        address,
-        contactPerson,
-        city,
-        district,
+      await updateInstitutionMutation.mutateAsync({
+        id: inst.id,
+        data: {
+          name: instName,
+          email: instEmail,
+          phone,
+          address,
+          contactPerson,
+          city,
+          district,
+        },
       });
     }
     await new Promise((r) => setTimeout(r, 600));

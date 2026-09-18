@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { getRegistrations } from "@/lib/storage/registrations";
+import { useRegistrations } from "@/lib/storage/registrations";
 import { ClipboardList, Search, Download, FileDown } from "lucide-react";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -25,7 +25,7 @@ export default function RegistrationsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const registrations = useMemo(() => getRegistrations(), []);
+  const { data: registrations = [] } = useRegistrations();
 
   const filtered = useMemo(() => registrations.filter(r => {
     const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.applicationId.toLowerCase().includes(search.toLowerCase());

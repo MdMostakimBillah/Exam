@@ -7,12 +7,12 @@ import { Select } from "@/components/ui/select";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
-import { getResultsByInstitution, createResult, updateResult, deleteResult } from "@/lib/storage/results";
-import { getRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { getExams, getExamById } from "@/lib/storage/exams";
-import { getStudentsByInstitution } from "@/lib/storage/students";
-import { getCurrentSession } from "@/lib/storage/sessions";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
+import { useResultsByInstitution, useCreateResult, useUpdateResult, useDeleteResult } from "@/lib/storage/results";
+import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useExams, useExamById } from "@/lib/storage/exams";
+import { useStudentsByInstitution } from "@/lib/storage/students";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Result, Registration, Exam, ExamSubject } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { Award, Trophy, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown } from "lucide-react";
@@ -57,12 +57,15 @@ export default function InstitutionResultsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const inst = getInstitutionBySlug(slug);
-  const currentSession = getCurrentSession();
-  const results = inst ? getResultsByInstitution(inst.id) : [];
-  const exams = getExams();
-  const registrations = inst ? getRegistrationsByInstitution(inst.id) : [];
-  const students = inst ? getStudentsByInstitution(inst.id) : [];
+  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: currentSession } = useCurrentSession();
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: exams = [] } = useExams();
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const createResultMutation = useCreateResult();
+  const updateResultMutation = useUpdateResult();
+  const deleteResultMutation = useDeleteResult();
 
   const approvedRegistrations = registrations.filter(r => r.status === "APPROVED");
   const existingRegNumbers = new Set(results.map(r => r.registrationNumber));
@@ -120,16 +123,16 @@ export default function InstitutionResultsPage() {
     setMenuOpenId(null);
   };
 
-  const handleDelete = (r: Result) => {
-    deleteResult(r.id);
+  const handleDelete = async (r: Result) => {
+    await deleteResultMutation.mutateAsync(r.id);
     toast("success", isBn ? "ফলাফল মুছে ফেলা হয়েছে" : "Result deleted");
     setShowDeleteConfirm(null);
     setRefreshKey(k => k + 1);
   };
 
-  const handleTogglePublish = (r: Result) => {
+  const handleTogglePublish = async (r: Result) => {
     const newStatus = r.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
-    updateResult(r.id, { status: newStatus });
+    await updateResultMutation.mutateAsync({ id: r.id, data: { status: newStatus } });
     toast("success", isBn
       ? (newStatus === "PUBLISHED" ? "ফলাফল প্রকাশিত হয়েছে" : "ফলাফল খসড়ায় ফেরানো হয়েছে")
       : (newStatus === "PUBLISHED" ? "Result published" : "Result moved to draft")
@@ -137,7 +140,7 @@ export default function InstitutionResultsPage() {
     setRefreshKey(k => k + 1);
   };
 
-  const handlePublishAll = () => {
+  const handlePublishAll = async () => {
     if (!examFilter) {
       toast("error", isBn ? "প্রথমে একটি পরীক্ষা নির্বাচন করুন" : "Please select an exam first");
       return;
@@ -147,14 +150,16 @@ export default function InstitutionResultsPage() {
       toast("error", isBn ? "কোনো অপ্রকাশিত ফলাফল নেই" : "No unpublished results for this exam");
       return;
     }
-    unpublished.forEach(r => updateResult(r.id, { status: "PUBLISHED" }));
+    for (const r of unpublished) {
+      await updateResultMutation.mutateAsync({ id: r.id, data: { status: "PUBLISHED" } });
+    }
     toast("success", isBn ? `${unpublished.length}টি ফলাফল প্রকাশিত হয়েছে` : `${unpublished.length} results published`);
     setRefreshKey(k => k + 1);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingResult) {
-      const exam = getExamById(editingResult.examId);
+      const exam = exams.find(e => e.id === editingResult.examId);
       if (!exam) return;
       let totalM = 0;
       let totalFull = 0;
@@ -165,14 +170,17 @@ export default function InstitutionResultsPage() {
         return { subjectId: subj.id, subjectName: subj.name, marks: m, fullMarks: subj.fullMarks };
       });
       const pct = totalFull > 0 ? Math.round((totalM / totalFull) * 1000) / 10 : 0;
-      updateResult(editingResult.id, {
-        subjectMarks,
-        totalMarks: totalM,
-        totalFullMarks: totalFull,
-        percentage: pct,
-        grade: calcGrade(pct),
-        pass: pct >= 33,
-        scholarshipStatus: pct >= 60 ? "ELIGIBLE" : "NOT_ELIGIBLE",
+      await updateResultMutation.mutateAsync({
+        id: editingResult.id,
+        data: {
+          subjectMarks,
+          totalMarks: totalM,
+          totalFullMarks: totalFull,
+          percentage: pct,
+          grade: calcGrade(pct),
+          pass: pct >= 33,
+          scholarshipStatus: pct >= 60 ? "ELIGIBLE" : "NOT_ELIGIBLE",
+        },
       });
       toast("success", isBn ? "ফলাফল আপডেট হয়েছে" : "Result updated");
     } else {
@@ -182,7 +190,7 @@ export default function InstitutionResultsPage() {
       }
       const reg = registrations.find(r => r.id === selectedRegistration);
       if (!reg) return;
-      const exam = getExamById(reg.examId);
+      const exam = exams.find(e => e.id === reg.examId);
       if (!exam) return;
       let totalM = 0;
       let totalFull = 0;
@@ -194,12 +202,12 @@ export default function InstitutionResultsPage() {
       });
       const pct = totalFull > 0 ? Math.round((totalM / totalFull) * 1000) / 10 : 0;
       const student = students.find(s => s.id === reg.studentId);
-      createResult({
+      await createResultMutation.mutateAsync({
         sessionId: currentSession?.id || '',
         studentId: reg.studentId,
         studentName: reg.studentName,
-        institutionId: inst.id,
-        institutionName: inst.name,
+        institutionId: inst!.id,
+        institutionName: inst!.name,
         examId: reg.examId,
         examName: reg.examName,
         className: reg.className,
@@ -222,9 +230,9 @@ export default function InstitutionResultsPage() {
   };
 
   const selectedExamForModal = editingResult
-    ? getExamById(editingResult.examId)
+    ? exams.find(e => e.id === editingResult.examId)
     : selectedRegistration
-      ? getExamById(registrations.find(r => r.id === selectedRegistration)?.examId || "")
+      ? exams.find(e => e.id === registrations.find(r => r.id === selectedRegistration)?.examId)
       : null;
 
   const card = isDark

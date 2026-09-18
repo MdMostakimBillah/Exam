@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { getInstitutions } from "@/lib/storage/institutions";
-import { getStudents } from "@/lib/storage/students";
-import { getExams } from "@/lib/storage/exams";
-import { getRegistrations } from "@/lib/storage/registrations";
-import { getResults } from "@/lib/storage/results";
-import { getPayments } from "@/lib/storage/payments";
+import { useInstitutions } from "@/lib/storage/institutions";
+import { useStudents } from "@/lib/storage/students";
+import { useExams } from "@/lib/storage/exams";
+import { useRegistrations } from "@/lib/storage/registrations";
+import { useResults } from "@/lib/storage/results";
+import { usePayments } from "@/lib/storage/payments";
 import { Building2, Users, FileText, DollarSign, ArrowRight, TrendingUp, GraduationCap, CheckCircle, Download } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -22,12 +22,12 @@ export default function SuperAdminDashboard() {
   const isDark = theme === "dark";
   const isBn = language === "bn";
 
-  const institutions = useMemo(() => getInstitutions(), []);
-  const students = useMemo(() => getStudents(), []);
-  const exams = useMemo(() => getExams(), []);
-  const registrations = useMemo(() => getRegistrations(), []);
-  const results = useMemo(() => getResults(), []);
-  const payments = useMemo(() => getPayments(), []);
+  const { data: institutions = [] } = useInstitutions();
+  const { data: students = [] } = useStudents();
+  const { data: exams = [] } = useExams();
+  const { data: registrations = [] } = useRegistrations();
+  const { data: results = [] } = useResults();
+  const { data: payments = [] } = usePayments();
 
   const monthlyInstitutions = useMemo(() => Array.from({ length: 12 }, (_, i) =>
     institutions.filter(inst => {
