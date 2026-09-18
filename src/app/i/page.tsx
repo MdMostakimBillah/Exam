@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { getInstitutionById } from "@/lib/storage/institutions";
+import { createClient } from "@/lib/supabase/client";
 
 export default function InstitutionRootPage() {
   const router = useRouter();
@@ -11,8 +11,16 @@ export default function InstitutionRootPage() {
     if (!user) { router.push('/login'); return; }
     if (user.role === 'SUPER_ADMIN') { router.push('/super-admin'); return; }
     if (user.institutionId) {
-      const inst = getInstitutionById(user.institutionId);
-      if (inst) { router.push(`/i/${inst.slug}`); return; }
+      const supabase = createClient();
+      supabase.from('institutions').select('slug').eq('id', user.institutionId).single()
+        .then(({ data, error }) => {
+          if (data && !error) {
+            router.push(`/i/${data.slug}`);
+          } else {
+            router.push('/login');
+          }
+        });
+      return;
     }
     router.push('/login');
   }, [router]);

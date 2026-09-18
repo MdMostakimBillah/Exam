@@ -58,7 +58,6 @@ export default function LoginPage() {
 
     try {
       const result = await loginWithLockout(email, password);
-      console.log("Login result:", JSON.stringify(result));
 
       if (result.locked) {
         setLocked(true);
@@ -69,11 +68,9 @@ export default function LoginPage() {
         );
       } else if (result.success && result.user) {
         setCurrentUser(result.user as any);
-        console.log("Redirecting to:", result.user.role === "SUPER_ADMIN" ? "/super-admin" : "/i");
         if (result.user.role === "SUPER_ADMIN") router.push("/super-admin");
         else router.push("/i");
       } else {
-        console.log("Login failed:", result.error);
         setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : result.error || "Invalid email or password");
       }
     } catch {

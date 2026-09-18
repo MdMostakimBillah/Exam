@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { getInstitutionBySlug } from "@/lib/storage/institutions";
+import { createClient } from "@/lib/supabase/client";
 import { AppShell } from "@/components/layout/app-shell";
 
 export default function InstitutionLayout({ children }: { children: React.ReactNode }) {
@@ -14,11 +14,21 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
   useEffect(() => {
     const user = getCurrentUser();
     if (!user) { router.push('/login'); return; }
-    if (user.role === 'SUPER_ADMIN') { router.push('/super-admin'); return; }
-    const inst = getInstitutionBySlug(slug);
-    if (!inst) { router.push('/login'); return; }
-    if (user.institutionId !== inst.id) { router.push('/login'); return; }
-    setAuthorized(true);
+    if (user.role === 'SUPER_ADMIN') {
+      setAuthorized(true);
+      return;
+    }
+    if (!user.institutionId) { router.push('/login'); return; }
+
+    const supabase = createClient();
+    supabase.from('institutions').select('id').eq('slug', slug).eq('id', user.institutionId).single()
+      .then(({ data, error }) => {
+        if (data && !error) {
+          setAuthorized(true);
+        } else {
+          router.push('/login');
+        }
+      });
   }, [slug, router]);
 
   if (!authorized) return <div className="min-h-screen bg-zinc-950 flex items-center justify-center"><div className="h-6 w-32 skeleton rounded" /></div>;
