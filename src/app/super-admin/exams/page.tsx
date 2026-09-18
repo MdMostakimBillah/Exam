@@ -4,14 +4,13 @@ import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from "@/lib/storage/exams";
 import { useClasses, useActiveClasses, getActiveClasses } from "@/lib/storage/classes";
 import { useRegistrations } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -359,15 +358,23 @@ export default function ExamsPage() {
       </div>
 
       {/* Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)}>
-        <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-md w-[90dvw] max-h-[90dvh] flex flex-col`}>
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-lg shadow-2xl w-[90dvw] h-[90dvh] relative z-50 flex flex-col overflow-hidden animate-scaleIn`}>
           {/* Header */}
-          <div className={`px-6 py-4 border-b ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
-            <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-              {editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')}
-            </h3>
-            {/* Step Indicator */}
-            <div className="flex items-center gap-2 mt-3">
+          <div className={`px-6 py-4 border-b flex items-start justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+            <div>
+              <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                {editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')}
+              </h3>
+            </div>
+            <button onClick={() => setShowModal(false)} className={`rounded-md p-1.5 transition-all ${isDark ? "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {/* Step Indicator */}
+          <div className={`px-6 py-3 border-b flex items-center gap-2 ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
               {[
                 { num: 1, label: isBn ? 'পরীক্ষার তথ্য' : 'Exam Info' },
                 { num: 2, label: isBn ? 'শ্রেণী নির্বাচন' : 'Select Classes' },
@@ -392,7 +399,6 @@ export default function ExamsPage() {
                 </div>
               ))}
             </div>
-          </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -590,7 +596,8 @@ export default function ExamsPage() {
             </div>
           </div>
         </div>
-      </Modal>
+        </div>
+      )}
 
       {/* Floating PDF Download Button */}
       <button

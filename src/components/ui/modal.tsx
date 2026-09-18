@@ -32,13 +32,13 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className={cn(
-        'relative z-50 w-full rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl',
+        'relative z-50 w-full rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl max-h-[90vh] flex flex-col',
         isDark
           ? 'border border-white/[0.06] bg-[#0D0D0D] shadow-black/50'
           : 'border border-zinc-200 bg-white shadow-zinc-200/50',
         maxWidth
       )}>
-        <div className="flex items-start justify-between mb-5">
+        <div className="flex items-start justify-between mb-5 shrink-0">
           <div>
             {title && <h2 className={`text-lg font-semibold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{title}</h2>}
             {description && <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>{description}</p>}
@@ -47,7 +47,9 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
             <X className="h-4 w-4" />
           </button>
         </div>
-        {children}
+        <div className="overflow-y-auto flex-1 min-h-0">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -58,7 +60,7 @@ function ModalFooter({ children, className }: { children: React.ReactNode; class
   const isDark = theme === "dark";
 
   return (
-    <div className={cn('flex justify-end gap-2 mt-6 pt-5 border-t', isDark ? 'border-white/[0.06]' : 'border-zinc-200', className)}>
+    <div className={cn('flex justify-end gap-2 mt-6 pt-5 border-t sticky bottom-0 -mb-6 -mx-6 px-6 pb-6', isDark ? 'border-white/[0.06] bg-[#0D0D0D]' : 'border-zinc-200 bg-white', className)}>
       {children}
     </div>
   );

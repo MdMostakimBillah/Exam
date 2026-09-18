@@ -26,8 +26,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     setMounted(true);
     getStudentSession().then((session) => {
       if (!session) {
-        router.push("/student/login");
-        return;
+        const timer = setTimeout(() => router.push("/student/login"), 500);
+        return () => clearTimeout(timer);
       }
       setStudent(session);
     });

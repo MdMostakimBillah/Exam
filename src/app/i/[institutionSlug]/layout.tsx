@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -20,10 +20,16 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
   const isBn = language === "bn";
   const [authorized, setAuthorized] = useState(false);
   const [instStatus, setInstStatus] = useState<string | null>(null);
+  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (loading) return;
-    if (!user) { router.push('/login'); return; }
+    if (!user) {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = setTimeout(() => router.push('/login'), 500);
+      return;
+    }
+    if (redirectTimerRef.current) { clearTimeout(redirectTimerRef.current); redirectTimerRef.current = null; }
     if (user.role === 'SUPER_ADMIN') { setAuthorized(true); return; }
     if (!user.institutionId) { router.push('/login'); return; }
 
@@ -37,7 +43,7 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
           router.push('/login');
         }
       });
-  }, [slug, router, user, loading]);
+  }, [slug, user, loading]);
 
   if (loading || !authorized) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
