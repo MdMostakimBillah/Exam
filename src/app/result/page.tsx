@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { initializeDemoData } from "@/lib/storage/seed";
 import { getResults } from "@/lib/storage/results";
 import { getStudents } from "@/lib/storage/students";
 import { Result } from "@/lib/types";
@@ -24,7 +23,7 @@ export default function ResultPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [searched, setSearched] = useState(false);
 
-  useEffect(() => { initializeDemoData(); }, []);
+  // Data loaded from Supabase via storage modules
 
   const handleSearch = () => {
     const results = getResults().filter(r => r.status === 'PUBLISHED');

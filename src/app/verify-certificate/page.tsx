@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { initializeDemoData } from "@/lib/storage/seed";
 import { getCertificateByNumber } from "@/lib/storage/certificates";
 import { Certificate } from "@/lib/types";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,7 @@ export default function VerifyCertificatePage() {
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [searched, setSearched] = useState(false);
 
-  useEffect(() => { initializeDemoData(); }, []);
+  // Data loaded from Supabase via storage modules
 
   const handleSearch = () => {
     const found = getCertificateByNumber(certNumber);

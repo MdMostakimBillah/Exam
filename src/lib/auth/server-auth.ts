@@ -122,3 +122,34 @@ export async function logoutServer(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  // Verify current password by re-authenticating
+  const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+  if (getUserError || !user) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  // Sign in with current password to verify it
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: currentPassword,
+  });
+
+  if (verifyError) {
+    return { success: false, error: "Current password is incorrect" };
+  }
+
+  // Update to new password
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  return { success: true };
+}

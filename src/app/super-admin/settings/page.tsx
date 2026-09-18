@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { updateUser } from "@/lib/storage/users";
-import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { getSessions, createSession, setCurrentSession, updateSession, deleteSession } from "@/lib/storage/sessions";
+import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { getStoreItem, setStoreItem } from "@/lib/storage/storage";
 
-type Tab = "profile" | "account" | "password" | "notifications";
+type Tab = "profile" | "account" | "password" | "notifications" | "sessions";
 
 interface PlatformSettings {
   platformName: string;
@@ -70,6 +71,11 @@ export default function SuperAdminSettingsPage() {
   const [resultAlerts, setResultAlerts] = useState(true);
   const [paymentAlerts, setPaymentAlerts] = useState(true);
 
+  // Sessions state
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [showCreateSession, setShowCreateSession] = useState(false);
+  const [newSession, setNewSession] = useState({ name: "", code: "", startDate: "", endDate: "" });
+
   useEffect(() => {
     setMounted(true);
     const stored = getStoreItem<PlatformSettings>(SETTINGS_KEY);
@@ -88,12 +94,17 @@ export default function SuperAdminSettingsPage() {
       setAdminName(currentUser.name);
       setAdminEmail(currentUser.email);
     }
+
+    // Load sessions
+    const loadedSessions = getSessions();
+    setSessions(loadedSessions);
   }, []);
 
   const tabs: { id: Tab; label: string; labelBn: string; icon: React.ReactNode }[] = useMemo(() => [
     { id: "profile", label: "Profile", labelBn: "প্রোফাইল", icon: <Building2 className="h-4 w-4" /> },
     { id: "account", label: "Account", labelBn: "অ্যাকাউন্ট", icon: <User className="h-4 w-4" /> },
     { id: "password", label: "Password", labelBn: "পাসওয়ার্ড", icon: <Lock className="h-4 w-4" /> },
+    { id: "sessions", label: "Academic Sessions", labelBn: "একাডেমিক সেশন", icon: <Calendar className="h-4 w-4" /> },
     { id: "notifications", label: "Notifications", labelBn: "বিজ্ঞপ্তি", icon: <Bell className="h-4 w-4" /> },
   ], []);
 
@@ -137,21 +148,22 @@ export default function SuperAdminSettingsPage() {
       toast("error", isBn ? "নতুন পাসওয়ার্ড মিলছে না" : "Passwords do not match");
       return;
     }
-    const currentUser = getCurrentUser();
-    if (currentUser && currentUser.password !== currentPassword) {
-      toast("error", isBn ? "বর্তমান পাসওয়ার্ড সঠিক নয়" : "Current password is incorrect");
-      return;
-    }
     setSaving(true);
-    if (currentUser) {
-      updateUser(currentUser.id, { password: newPassword });
+    try {
+      const { changePassword } = await import("@/lib/auth/server-auth");
+      const result = await changePassword(currentPassword, newPassword);
+      if (result.success) {
+        toast("success", isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!" : "Password changed successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        toast("error", result.error || (isBn ? "পাসওয়ার্ড পরিবর্তন ব্যর্থ" : "Failed to change password"));
+      }
+    } catch {
+      toast("error", isBn ? "পাসওয়ার্ড পরিবর্তন ব্যর্থ" : "Failed to change password");
     }
-    await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    toast("success", isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!" : "Password changed successfully!");
   };
 
   const handleSaveNotifications = async () => {
@@ -487,6 +499,241 @@ export default function SuperAdminSettingsPage() {
                     )}
                     {isBn ? 'পাসওয়ার্ড পরিবর্তন করুন' : 'Change Password'}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Sessions Tab */}
+            {activeTab === "sessions" && (
+              <div className={`${card} p-6`}>
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                      {isBn ? 'একাডেমিক সেশন' : 'Academic Sessions'}
+                    </h2>
+                    <p className={`text-sm mt-1 ${subtextCls}`}>
+                      {isBn ? 'সেশন পরিচালনা করুন এবং কারেন্ট সেশন পরিবর্তন করুন' : 'Manage sessions and switch the current active session'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowCreateSession(true)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark
+                        ? "bg-white text-black hover:bg-white/90"
+                        : "bg-zinc-900 text-white hover:bg-zinc-800"
+                    )}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {isBn ? 'নতুন সেশন' : 'New Session'}
+                  </button>
+                </div>
+
+                {/* Create Session Form */}
+                {showCreateSession && (
+                  <div className={`mb-6 p-4 rounded-md border ${isDark ? "border-white/[0.08] bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"}`}>
+                    <h3 className={`text-sm font-medium mb-4 ${isDark ? "text-white" : "text-zinc-900"}`}>
+                      {isBn ? 'নতুন সেশন তৈরি করুন' : 'Create New Session'}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                          {isBn ? 'সেশনের নাম' : 'Session Name'} (e.g., 2025-2026)
+                        </label>
+                        <Input
+                          value={newSession.name}
+                          onChange={(e) => setNewSession({ ...newSession, name: e.target.value })}
+                          placeholder="2025-2026"
+                          className={cn(inputCls, "h-10")}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                          {isBn ? 'কোড' : 'Code'} (e.g., 2025-26)
+                        </label>
+                        <Input
+                          value={newSession.code}
+                          onChange={(e) => setNewSession({ ...newSession, code: e.target.value })}
+                          placeholder="2025-26"
+                          className={cn(inputCls, "h-10")}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                          {isBn ? 'শুরুর তারিখ' : 'Start Date'}
+                        </label>
+                        <Input
+                          type="date"
+                          value={newSession.startDate}
+                          onChange={(e) => setNewSession({ ...newSession, startDate: e.target.value })}
+                          className={cn(inputCls, "h-10")}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                          {isBn ? 'শেষের তারিখ' : 'End Date'}
+                        </label>
+                        <Input
+                          type="date"
+                          value={newSession.endDate}
+                          onChange={(e) => setNewSession({ ...newSession, endDate: e.target.value })}
+                          className={cn(inputCls, "h-10")}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button
+                        onClick={() => setShowCreateSession(false)}
+                        className={cn(
+                          "px-4 py-2 rounded-md text-[13px] font-medium transition-all",
+                          isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
+                        )}
+                      >
+                        {isBn ? 'বাতিল' : 'Cancel'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!newSession.name || !newSession.code) {
+                            toast("error", isBn ? "নাম এবং কোড প্রয়োজন" : "Name and code are required");
+                            return;
+                          }
+                          try {
+                            await createSession({
+                              name: newSession.name,
+                              code: newSession.code,
+                              startDate: newSession.startDate,
+                              endDate: newSession.endDate,
+                              isActive: true,
+                              isCurrent: sessions.length === 0,
+                            });
+                            setSessions(getSessions());
+                            setNewSession({ name: "", code: "", startDate: "", endDate: "" });
+                            setShowCreateSession(false);
+                            toast("success", isBn ? "সেশন তৈরি হয়েছে!" : "Session created!");
+                          } catch (err: any) {
+                            toast("error", err.message || "Failed to create session");
+                          }
+                        }}
+                        disabled={!newSession.name || !newSession.code}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all",
+                          isDark ? "bg-white text-black" : "bg-zinc-900 text-white",
+                          (!newSession.name || !newSession.code) && "opacity-40 cursor-not-allowed"
+                        )}
+                      >
+                        <Check className="h-4 w-4" />
+                        {isBn ? 'তৈরি করুন' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sessions List */}
+                <div className="space-y-2">
+                  {sessions.length === 0 ? (
+                    <p className={`text-sm py-8 text-center ${subtextCls}`}>
+                      {isBn ? 'কোনো সেশন নেই। উপরে নতুন সেশন তৈরি করুন।' : 'No sessions yet. Create one above.'}
+                    </p>
+                  ) : (
+                    sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-md border transition-all",
+                          session.isCurrent
+                            ? isDark
+                              ? "border-white/20 bg-white/[0.04]"
+                              : "border-zinc-400 bg-zinc-100"
+                            : isDark
+                              ? "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]"
+                              : "border-zinc-200 bg-white hover:border-zinc-300"
+                        )}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "h-10 w-10 rounded-md flex items-center justify-center",
+                            session.isCurrent
+                              ? isDark ? "bg-white/10" : "bg-zinc-900/10"
+                              : isDark ? "bg-white/[0.04]" : "bg-zinc-100"
+                          )}>
+                            <Calendar className={cn(
+                              "h-5 w-5",
+                              session.isCurrent
+                                ? isDark ? "text-white" : "text-zinc-900"
+                                : isDark ? "text-zinc-500" : "text-zinc-400"
+                            )} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>
+                                {session.name}
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? "bg-white/[0.06] text-zinc-400" : "bg-zinc-100 text-zinc-500"}`}>
+                                {session.code}
+                              </span>
+                              {session.isCurrent && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium">
+                                  {isBn ? 'কারেন্ট' : 'Current'}
+                                </span>
+                              )}
+                              {!session.isActive && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500">
+                                  {isBn ? 'নিষ্ক্রিয়' : 'Inactive'}
+                                </span>
+                              )}
+                            </div>
+                            <p className={`text-xs mt-0.5 ${subtextCls}`}>
+                              {session.startDate} → {session.endDate}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!session.isCurrent && (
+                            <button
+                              onClick={async () => {
+                                await setCurrentSession(session.id);
+                                setSessions(getSessions());
+                                toast("success", isBn ? `"${session.name}" কারেন্ট সেশন হিসেবে সেট করা হয়েছে` : `"${session.name}" set as current session`);
+                              }}
+                              className={cn(
+                                "px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                                isDark
+                                  ? "bg-white/10 text-white hover:bg-white/20"
+                                  : "bg-zinc-900/10 text-zinc-900 hover:bg-zinc-900/20"
+                              )}
+                            >
+                              {isBn ? 'কারেন্ট সেশন' : 'Set Current'}
+                            </button>
+                          )}
+                          <button
+                            onClick={async () => {
+                              await updateSession(session.id, { isActive: !session.isActive });
+                              setSessions(getSessions());
+                            }}
+                            className={cn(
+                              "px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                              session.isActive
+                                ? isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-900"
+                                : isDark ? "text-emerald-400 hover:text-emerald-300" : "text-emerald-600 hover:text-emerald-700"
+                            )}
+                          >
+                            {session.isActive ? (isBn ? 'নিষ্ক্রিয়' : 'Deactivate') : (isBn ? 'সক্রিয়' : 'Activate')}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(isBn ? `"${session.name}" মুছে ফেলতে চান?` : `Delete "${session.name}"?`)) return;
+                              await deleteSession(session.id);
+                              setSessions(getSessions());
+                              toast("success", isBn ? "সেশন মুছে ফেলা হয়েছে" : "Session deleted");
+                            }}
+                            className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}

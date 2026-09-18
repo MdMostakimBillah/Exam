@@ -2,7 +2,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { initializeDemoData } from "@/lib/storage/seed";
 import { getCurrentUser } from "@/lib/auth/auth";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -34,7 +33,6 @@ export default function HomePage() {
   const isDark = theme === "dark";
 
   useEffect(() => {
-    initializeDemoData();
     const user = getCurrentUser();
     if (user) {
       if (user.role === "SUPER_ADMIN") router.push("/super-admin");

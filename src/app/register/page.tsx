@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { initializeDemoData } from "@/lib/storage/seed";
 import { registerInstitution, uploadLogo } from "@/lib/auth/register-action";
 import { EMAILJS_CONFIG } from "@/lib/emailjs/config";
 import { Input } from "@/components/ui/input";
@@ -71,7 +70,6 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    initializeDemoData();
     import("@emailjs/browser").then(({ default: emailjs }) => {
       emailjs.init(EMAILJS_CONFIG.publicKey);
     });

@@ -1,10 +1,11 @@
 "use client";
 import * as React from "react";
 import { cn } from "@/lib/utils/helpers";
-import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut } from "lucide-react";
+import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut, Calendar } from "lucide-react";
 import { Avatar } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuCheckboxItem } from "../ui/dropdown-menu";
 import { getCurrentUser, logout } from "@/lib/auth/auth";
+import { getCurrentSession } from "@/lib/storage/sessions";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -19,6 +20,7 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
   const { lang: language, setLang } = useLang();
   const user = React.useMemo(() => getCurrentUser(), []);
+  const currentSession = React.useMemo(() => getCurrentSession(), []);
 
   const isDark = theme === 'dark';
   const isBn = language === 'bn';
@@ -63,6 +65,19 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
+        {/* Current Session Indicator */}
+        {currentSession && (
+          <div className={cn(
+            'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium border',
+            isDark
+              ? 'border-white/[0.06] bg-white/[0.02] text-zinc-400'
+              : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+          )}>
+            <Calendar className="h-3.5 w-3.5" />
+            <span>{currentSession.name}</span>
+          </div>
+        )}
+
         <button className={cn(
           'rounded-md p-2.5 transition-all duration-200 relative',
           isDark 
