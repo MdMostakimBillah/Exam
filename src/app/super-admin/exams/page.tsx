@@ -10,7 +10,7 @@ import { useClasses, useActiveClasses, getActiveClasses } from "@/lib/storage/cl
 import { useRegistrations } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X, Copy } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -187,6 +187,33 @@ export default function ExamsPage() {
       ...prev,
       subjects: prev.subjects.filter((_, i) => i !== index)
     }));
+  };
+
+  const copySubjectsToOtherClasses = (sourceClassId: string) => {
+    const sourceSubjects = formData.subjects.filter(s => s.classId === sourceClassId);
+    if (sourceSubjects.length === 0) return;
+    const otherClasses = formData.classes.filter(c => c !== sourceClassId);
+    if (otherClasses.length === 0) return;
+    setFormData(prev => {
+      let newSubjects = [...prev.subjects];
+      for (const targetClassId of otherClasses) {
+        const existingNames = newSubjects.filter(s => s.classId === targetClassId).map(s => s.name);
+        for (const src of sourceSubjects) {
+          if (existingNames.includes(src.name)) continue;
+          newSubjects.push({
+            id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            classId: targetClassId,
+            name: src.name,
+            fullMarks: src.fullMarks,
+            passMarks: src.passMarks,
+            duration: src.duration,
+            negativeMarks: src.negativeMarks,
+          });
+        }
+      }
+      return { ...prev, subjects: newSubjects };
+    });
+    toast('success', isBn ? 'বিষয়গুলো অন্য শ্রেণীতে কপি করা হয়েছে' : 'Subjects copied to other classes');
   };
 
   const card = isDark
@@ -521,15 +548,28 @@ export default function ExamsPage() {
                             <h4 className={`text-[13px] font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{cls?.name || classId}</h4>
                             <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{classSubjects.length} {isBn ? 'টি বিষয়' : 'subject(s)'}</p>
                           </div>
-                          <button
-                            onClick={() => addSubjectForClass(classId)}
-                            className={cn(
-                              "flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
-                              isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12]" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+                          <div className="flex items-center gap-2">
+                            {classSubjects.length > 0 && formData.classes.length > 1 && (
+                              <button
+                                onClick={() => copySubjectsToOtherClasses(classId)}
+                                className={cn(
+                                  "flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+                                  isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12]" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+                                )}
+                              >
+                                <Copy className="h-3 w-3" /> {isBn ? 'অন্য শ্রেণীতে কপি' : 'Copy to others'}
+                              </button>
                             )}
-                          >
-                            <Plus className="h-3 w-3" /> {isBn ? 'বিষয় যোগ' : 'Add Subject'}
-                          </button>
+                            <button
+                              onClick={() => addSubjectForClass(classId)}
+                              className={cn(
+                                "flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+                                isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12]" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+                              )}
+                            >
+                              <Plus className="h-3 w-3" /> {isBn ? 'বিষয় যোগ' : 'Add Subject'}
+                            </button>
+                          </div>
                         </div>
                         {classSubjects.length > 0 ? (
                           <div className="p-3">
