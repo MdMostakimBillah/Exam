@@ -15,7 +15,7 @@ export default function InstitutionRootPage() {
     if (user.institutionId) {
       const supabase = createClient();
       supabase.from('institutions').select('slug').eq('id', user.institutionId).single()
-        .then(({ data, error }) => {
+        .then(({ data, error }: { data: { slug: string } | null; error: any }) => {
           if (data && !error) {
             router.push(`/i/${data.slug}`);
           } else {

@@ -35,7 +35,7 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
 
     const supabase = createClient();
     supabase.from('institutions').select('id, status').eq('slug', slug).eq('id', user.institutionId).single()
-      .then(({ data, error }) => {
+      .then(({ data, error }: { data: { status: string } | null; error: any }) => {
         if (data && !error) {
           setInstStatus(data.status);
           setAuthorized(true);
