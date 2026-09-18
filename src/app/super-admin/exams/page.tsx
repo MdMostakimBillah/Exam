@@ -11,7 +11,7 @@ import { useClasses, useActiveClasses, getActiveClasses } from "@/lib/storage/cl
 import { useRegistrations } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -19,6 +19,7 @@ import { useLang } from "@/contexts/language-context";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
+import { cn } from "@/lib/utils/helpers";
 
 export default function ExamsPage() {
   const { theme } = useTheme();
@@ -34,11 +35,12 @@ export default function ExamsPage() {
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [examStep, setExamStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "", code: "", academicYear: "", description: "",
     registrationStartDate: "", registrationEndDate: "", examDate: "",
     registrationFee: 0, lateFee: 0, classes: [] as string[],
-    subjects: [] as { id: string; name: string; fullMarks: number; passMarks: number; duration: number; negativeMarks: number }[]
+    subjects: [] as { id: string; classId: string; name: string; fullMarks: number; passMarks: number; duration: number; negativeMarks: number }[]
   });
 
   useEffect(() => { setMounted(true); }, []);
@@ -110,6 +112,7 @@ export default function ExamsPage() {
       registrationFee: 0, lateFee: 0, classes: [],
       subjects: []
     });
+    setExamStep(1);
     setShowModal(true);
   };
 
@@ -119,8 +122,9 @@ export default function ExamsPage() {
       name: exam.name, code: exam.code, academicYear: exam.academicYear, description: exam.description,
       registrationStartDate: exam.registrationStartDate, registrationEndDate: exam.registrationEndDate,
       examDate: exam.examDate, registrationFee: exam.registrationFee, lateFee: exam.lateFee,
-      classes: exam.classes, subjects: exam.subjects
+      classes: exam.classes, subjects: exam.subjects.map(s => ({ ...s, classId: (s as any).classId || exam.classes[0] || '' }))
     });
+    setExamStep(1);
     setShowModal(true);
     setMenuOpenId(null);
   };
@@ -157,10 +161,10 @@ export default function ExamsPage() {
     }));
   };
 
-  const addSubject = () => {
+  const addSubjectForClass = (classId: string) => {
     setFormData(prev => ({
       ...prev,
-      subjects: [...prev.subjects, { id: `sub_${Date.now()}`, name: "", fullMarks: 100, passMarks: 40, duration: 60, negativeMarks: 0 }]
+      subjects: [...prev.subjects, { id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, classId, name: "", fullMarks: 100, passMarks: 40, duration: 60, negativeMarks: 0 }]
     }));
   };
 
@@ -356,123 +360,234 @@ export default function ExamsPage() {
 
       {/* Modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)}>
-        <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-md p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto`}>
-          <h3 className={`text-sm font-semibold mb-4 ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-            {editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')}
-          </h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</label>
-                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder={isBn ? 'পরীক্ষার নাম' : 'Exam name'}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</label>
-                <Input value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} placeholder={isBn ? 'পরীক্ষা কোড' : 'Exam code'}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষাবর্ষ' : 'Academic Year'}</label>
-                <Input value={formData.academicYear} onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })} placeholder="2024-2025"
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষার তারিখ' : 'Exam Date'}</label>
-                <Input type="date" value={formData.examDate} onChange={(e) => setFormData({ ...formData, examDate: e.target.value })}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন শুরু' : 'Registration Start'}</label>
-                <Input type="date" value={formData.registrationStartDate} onChange={(e) => setFormData({ ...formData, registrationStartDate: e.target.value })}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন শেষ' : 'Registration End'}</label>
-                <Input type="date" value={formData.registrationEndDate} onChange={(e) => setFormData({ ...formData, registrationEndDate: e.target.value })}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন ফি' : 'Registration Fee'}</label>
-                <Input type="number" value={formData.registrationFee} onChange={(e) => setFormData({ ...formData, registrationFee: Number(e.target.value) })}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'বিলম্ব ফি' : 'Late Fee'}</label>
-                <Input type="number" value={formData.lateFee} onChange={(e) => setFormData({ ...formData, lateFee: Number(e.target.value) })}
-                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-              </div>
-            </div>
-            <div>
-              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'বিবরণ' : 'Description'}</label>
-              <Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder={isBn ? 'পরীক্ষার বিবরণ' : 'Exam description'}
-                className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
-            </div>
-
-            {/* Classes Selection */}
-            <div>
-              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী নির্বাচন করুন' : 'Select Classes'}</label>
-              <div className={`p-3 rounded-md border ${isDark ? 'bg-white/[0.02] border-white/[0.06]' : 'bg-zinc-50 border-zinc-200'}`}>
-                <div className="flex flex-wrap gap-2">
-                  {activeClasses.map(cls => (
-                    <button
-                      key={cls.id}
-                      onClick={() => toggleClass(cls.id)}
-                      className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
-                        formData.classes.includes(cls.id)
-                          ? isDark ? 'bg-white text-black' : 'bg-zinc-900 text-white'
-                          : isDark ? 'bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08]' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                      }`}
-                    >
-                      {cls.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Subjects */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'বিষয়সমূহ' : 'Subjects'}</label>
-                <button onClick={addSubject} className={`text-[11px] ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'}`}>
-                  + {isBn ? 'বিষয় যোগ করুন' : 'Add Subject'}
-                </button>
-              </div>
-              {formData.subjects.length > 0 && (
-                <div className={`p-3 rounded-md border ${isDark ? 'bg-white/[0.02] border-white/[0.06]' : 'bg-zinc-50 border-zinc-200'}`}>
-                  <div className="space-y-2">
-                    {formData.subjects.map((subject, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Input value={subject.name} onChange={(e) => updateSubject(idx, 'name', e.target.value)} placeholder={isBn ? 'বিষয়ের নাম' : 'Subject name'}
-                          className={`flex-1 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200"}`} />
-                        <Input type="number" value={subject.fullMarks} onChange={(e) => updateSubject(idx, 'fullMarks', Number(e.target.value))} placeholder="Full"
-                          className={`w-16 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200"}`} />
-                        <Input type="number" value={subject.passMarks} onChange={(e) => updateSubject(idx, 'passMarks', Number(e.target.value))} placeholder="Pass"
-                          className={`w-16 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200"}`} />
-                        <button onClick={() => removeSubject(idx)} className="text-red-400 hover:text-red-300">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
+        <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-md w-full max-w-4xl max-h-[90vh] flex flex-col`}>
+          {/* Header */}
+          <div className={`px-6 py-4 border-b ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+            <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+              {editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')}
+            </h3>
+            {/* Step Indicator */}
+            <div className="flex items-center gap-2 mt-3">
+              {[
+                { num: 1, label: isBn ? 'পরীক্ষার তথ্য' : 'Exam Info' },
+                { num: 2, label: isBn ? 'শ্রেণী নির্বাচন' : 'Select Classes' },
+                { num: 3, label: isBn ? 'বিষয় ও নম্বর' : 'Subjects & Marks' },
+              ].map((step, i) => (
+                <div key={step.num} className="flex items-center gap-2 flex-1">
+                  <div className={cn(
+                    "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors",
+                    examStep > step.num ? "bg-green-500 text-white"
+                      : examStep === step.num ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white")
+                      : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
+                  )}>
+                    {examStep > step.num ? "✓" : step.num}
                   </div>
+                  <span className={cn(
+                    "text-[11px] font-medium hidden sm:block",
+                    examStep === step.num ? (isDark ? "text-white" : "text-zinc-900") : (isDark ? "text-zinc-500" : "text-zinc-400")
+                  )}>
+                    {step.label}
+                  </span>
+                  {i < 2 && <div className={cn("flex-1 h-px mx-2", examStep > step.num ? "bg-green-500" : isDark ? "bg-white/[0.08]" : "bg-zinc-200")} />}
                 </div>
-              )}
+              ))}
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-6">
-            <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"}`}>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {/* Step 1: Exam Info */}
+            {examStep === 1 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষার নাম *' : 'Exam Name *'}</label>
+                    <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder={isBn ? 'পরীক্ষার নাম' : 'e.g. Scholarship Exam 2025'}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'কোড *' : 'Code *'}</label>
+                    <Input value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} placeholder={isBn ? 'পরীক্ষা কোড' : 'e.g. SE-2025'}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শিক্ষাবর্ষ' : 'Academic Year'}</label>
+                    <Input value={formData.academicYear} onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })} placeholder="2024-2025"
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষার তারিখ' : 'Exam Date'}</label>
+                    <Input type="date" value={formData.examDate} onChange={(e) => setFormData({ ...formData, examDate: e.target.value })}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'নিবন্ধন শুরু' : 'Registration Start'}</label>
+                    <Input type="date" value={formData.registrationStartDate} onChange={(e) => setFormData({ ...formData, registrationStartDate: e.target.value })}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'নিবন্ধন শেষ' : 'Registration End'}</label>
+                    <Input type="date" value={formData.registrationEndDate} onChange={(e) => setFormData({ ...formData, registrationEndDate: e.target.value })}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'নিবন্ধন ফি (টাকা)' : 'Registration Fee (৳)'}</label>
+                    <Input type="number" value={formData.registrationFee} onChange={(e) => setFormData({ ...formData, registrationFee: Number(e.target.value) })}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'বিলম্ব ফি (টাকা)' : 'Late Fee (৳)'}</label>
+                    <Input type="number" value={formData.lateFee} onChange={(e) => setFormData({ ...formData, lateFee: Number(e.target.value) })}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'বিবরণ' : 'Description'}</label>
+                  <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder={isBn ? 'পরীক্ষার বিবরণ' : 'Exam description'}
+                    rows={3}
+                    className={cn("w-full px-3 py-2 rounded-md text-sm resize-none", isDark ? "bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400")} />
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Select Classes */}
+            {examStep === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শ্রেণী নির্বাচন করুন' : 'Select Classes'}</label>
+                  <p className={`text-[11px] mb-3 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'এক বা একাধিক শ্রেণী নির্বাচন করুন' : 'Select one or more classes for this exam'}</p>
+                  <div className={`p-4 rounded-md border ${isDark ? 'bg-white/[0.02] border-white/[0.06]' : 'bg-zinc-50 border-zinc-200'}`}>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                      {activeClasses.map(cls => (
+                        <button
+                          key={cls.id}
+                          onClick={() => toggleClass(cls.id)}
+                          className={cn(
+                            "px-3 py-2.5 rounded-md text-[12px] font-medium transition-all border",
+                            formData.classes.includes(cls.id)
+                              ? isDark ? 'bg-white text-black border-white' : 'bg-zinc-900 text-white border-zinc-900'
+                              : isDark ? 'bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:bg-white/[0.08] hover:border-white/[0.12]' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100 hover:border-zinc-300'
+                          )}
+                        >
+                          {cls.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {formData.classes.length > 0 && (
+                    <p className={`text-[11px] mt-2 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                      {formData.classes.length} {isBn ? 'টি শ্রেণী নির্বাচিত' : 'class(es) selected'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Subjects per Class */}
+            {examStep === 3 && (
+              <div className="space-y-5">
+                {formData.classes.length === 0 ? (
+                  <div className={`text-center py-8 ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                    <p className="text-sm">{isBn ? 'কোনো শ্রেণী নির্বাচিত হয়নি' : 'No classes selected'}</p>
+                  </div>
+                ) : (
+                  formData.classes.map((classId) => {
+                    const cls = activeClasses.find(c => c.id === classId);
+                    const classSubjects = formData.subjects.filter(s => s.classId === classId);
+                    return (
+                      <div key={classId} className={`rounded-md border ${isDark ? 'border-white/[0.06] bg-white/[0.02]' : 'border-zinc-200 bg-zinc-50'}`}>
+                        <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+                          <div>
+                            <h4 className={`text-[13px] font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{cls?.name || classId}</h4>
+                            <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{classSubjects.length} {isBn ? 'টি বিষয়' : 'subject(s)'}</p>
+                          </div>
+                          <button
+                            onClick={() => addSubjectForClass(classId)}
+                            className={cn(
+                              "flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+                              isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12]" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+                            )}
+                          >
+                            <Plus className="h-3 w-3" /> {isBn ? 'বিষয় যোগ' : 'Add Subject'}
+                          </button>
+                        </div>
+                        {classSubjects.length > 0 ? (
+                          <div className="p-3">
+                            <div className="grid grid-cols-[1fr_80px_80px_32px] gap-2 mb-2 px-1">
+                              <span className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'বিষয়ের নাম' : 'Subject Name'}</span>
+                              <span className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'পূর্ণ নম্বর' : 'Full Marks'}</span>
+                              <span className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'পাস নম্বর' : 'Pass Marks'}</span>
+                              <span></span>
+                            </div>
+                            <div className="space-y-2">
+                              {classSubjects.map((subject) => {
+                                const globalIdx = formData.subjects.findIndex(s => s.id === subject.id);
+                                return (
+                                  <div key={subject.id} className="grid grid-cols-[1fr_80px_80px_32px] gap-2 items-center">
+                                    <Input value={subject.name} onChange={(e) => updateSubject(globalIdx, 'name', e.target.value)} placeholder={isBn ? 'বিষয়ের নাম' : 'Subject name'}
+                                      className={cn("h-9 text-[12px]", isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200")} />
+                                    <Input type="number" value={subject.fullMarks} onChange={(e) => updateSubject(globalIdx, 'fullMarks', Number(e.target.value))} placeholder="100"
+                                      className={cn("h-9 text-[12px] text-center", isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200")} />
+                                    <Input type="number" value={subject.passMarks} onChange={(e) => updateSubject(globalIdx, 'passMarks', Number(e.target.value))} placeholder="40"
+                                      className={cn("h-9 text-[12px] text-center", isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200")} />
+                                    <button onClick={() => removeSubject(globalIdx)} className="text-red-400 hover:text-red-300 flex items-center justify-center">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={`px-4 py-4 text-center text-[11px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                            {isBn ? 'এই শ্রেণীর জন্য কোনো বিষয় যোগ করা হয়নি' : 'No subjects added for this class'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className={`px-6 py-4 border-t flex items-center justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+            <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"}`}>
               {isBn ? 'বাতিল' : 'Cancel'}
             </button>
-            <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-              {editingExam ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি' : 'Create')}
-            </button>
+            <div className="flex gap-2">
+              {examStep > 1 && (
+                <button onClick={() => setExamStep(s => s - 1)} className={`flex items-center gap-1 px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                  <ArrowLeft className="h-3.5 w-3.5" /> {isBn ? 'পূর্ববর্তী' : 'Back'}
+                </button>
+              )}
+              {examStep < 3 ? (
+                <button onClick={() => {
+                  if (examStep === 1 && (!formData.name || !formData.code)) {
+                    toast('error', isBn ? 'নাম এবং কোড আবশ্যক' : 'Name and code are required');
+                    return;
+                  }
+                  if (examStep === 2 && formData.classes.length === 0) {
+                    toast('error', isBn ? 'অন্তত একটি শ্রেণী নির্বাচন করুন' : 'Select at least one class');
+                    return;
+                  }
+                  setExamStep(s => s + 1);
+                }} className={`flex items-center gap-1 px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                  {isBn ? 'পরবর্তী' : 'Next'} <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              ) : (
+                <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                  {editingExam ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create Exam')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </Modal>
