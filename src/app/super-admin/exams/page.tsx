@@ -360,7 +360,7 @@ export default function ExamsPage() {
 
       {/* Modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)}>
-        <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-md w-full max-w-4xl max-h-[90vh] flex flex-col`}>
+        <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-md w-[90dvw] max-h-[90dvh] flex flex-col`}>
           {/* Header */}
           <div className={`px-6 py-4 border-b ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
             <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
