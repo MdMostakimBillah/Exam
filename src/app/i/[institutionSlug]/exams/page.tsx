@@ -141,10 +141,33 @@ export default function InstitutionExamsPage() {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
     }
-    if (editingExam) {
-      await updateExamMutation.mutateAsync({
-        id: editingExam.id,
-        data: {
+    if (!currentSession?.id && !editingExam) {
+      toast("error", isBn ? "কোনো সক্রিয় সেশন পাওয়া যায়নি" : "No active session found");
+      return;
+    }
+    try {
+      if (editingExam) {
+        await updateExamMutation.mutateAsync({
+          id: editingExam.id,
+          data: {
+            name: formData.name,
+            code: formData.code,
+            academicYear: formData.academicYear,
+            description: formData.description,
+            registrationStartDate: formData.registrationStartDate,
+            registrationEndDate: formData.registrationEndDate,
+            examDate: formData.examDate,
+            registrationFee: formData.registrationFee,
+            lateFee: formData.lateFee,
+            classes: formData.classes,
+            subjects: formData.subjects,
+            status: formData.status,
+          },
+        });
+        toast("success", isBn ? "পরীক্ষা আপডেট হয়েছে" : "Exam updated");
+      } else {
+        await createExamMutation.mutateAsync({
+          sessionId: currentSession!.id,
           name: formData.name,
           code: formData.code,
           academicYear: formData.academicYear,
@@ -157,29 +180,14 @@ export default function InstitutionExamsPage() {
           classes: formData.classes,
           subjects: formData.subjects,
           status: formData.status,
-        },
-      });
-      toast("success", isBn ? "পরীক্ষা আপডেট হয়েছে" : "Exam updated");
-    } else {
-      await createExamMutation.mutateAsync({
-        sessionId: currentSession?.id || '',
-        name: formData.name,
-        code: formData.code,
-        academicYear: formData.academicYear,
-        description: formData.description,
-        registrationStartDate: formData.registrationStartDate,
-        registrationEndDate: formData.registrationEndDate,
-        examDate: formData.examDate,
-        registrationFee: formData.registrationFee,
-        lateFee: formData.lateFee,
-        classes: formData.classes,
-        subjects: formData.subjects,
-        status: formData.status,
-      });
-      toast("success", isBn ? "পরীক্ষা যোগ হয়েছে" : "Exam created");
+        });
+        toast("success", isBn ? "পরীক্ষা যোগ হয়েছে" : "Exam created");
+      }
+      setShowModal(false);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      toast("error", isBn ? "পরীক্ষা সংরক্ষণ করা যায়নি" : (err?.message || "Failed to save exam"));
     }
-    setShowModal(false);
-    setRefreshKey(k => k + 1);
   };
 
   const handleDelete = async (e: Exam) => {
@@ -477,8 +485,15 @@ export default function InstitutionExamsPage() {
         </div>
         <ModalFooter>
           <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-            {editingExam ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create')}
+          <button
+            onClick={handleSave}
+            disabled={createExamMutation.isPending || updateExamMutation.isPending}
+            className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+          >
+            {(createExamMutation.isPending || updateExamMutation.isPending)
+              ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+              : editingExam ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create')
+            }
           </button>
         </ModalFooter>
       </Modal>

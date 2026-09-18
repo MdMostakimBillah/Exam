@@ -133,14 +133,22 @@ export default function ExamsPage() {
       toast('error', isBn ? 'নাম এবং কোড আবশ্যক' : 'Name and code are required');
       return;
     }
-    if (editingExam) {
-      await updateExamMutation.mutateAsync({ id: editingExam.id, data: formData });
-      toast('success', isBn ? 'পরীক্ষা আপডেট হয়েছে' : 'Exam updated');
-    } else {
-      await createExamMutation.mutateAsync({ ...formData, sessionId: currentSession?.id || '', status: 'DRAFT' });
-      toast('success', isBn ? 'পরীক্ষা তৈরি হয়েছে' : 'Exam created');
+    if (!currentSession?.id && !editingExam) {
+      toast('error', isBn ? 'কোনো সক্রিয় সেশন পাওয়া যায়নি' : 'No active session found');
+      return;
     }
-    setShowModal(false);
+    try {
+      if (editingExam) {
+        await updateExamMutation.mutateAsync({ id: editingExam.id, data: formData });
+        toast('success', isBn ? 'পরীক্ষা আপডেট হয়েছে' : 'Exam updated');
+      } else {
+        await createExamMutation.mutateAsync({ ...formData, sessionId: currentSession!.id, status: 'DRAFT' });
+        toast('success', isBn ? 'পরীক্ষা তৈরি হয়েছে' : 'Exam created');
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      toast('error', isBn ? 'পরীক্ষা তৈরি করা যায়নি' : (err?.message || 'Failed to create exam'));
+    }
   };
 
   const handleDelete = async (exam: Exam) => {
@@ -589,8 +597,15 @@ export default function ExamsPage() {
                   {isBn ? 'পরবর্তী' : 'Next'} <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-                  {editingExam ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create Exam')}
+                <button
+                  onClick={handleSave}
+                  disabled={createExamMutation.isPending || updateExamMutation.isPending}
+                  className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+                >
+                  {(createExamMutation.isPending || updateExamMutation.isPending)
+                    ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+                    : editingExam ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি করুন' : 'Create Exam')
+                  }
                 </button>
               )}
             </div>

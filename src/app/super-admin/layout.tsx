@@ -16,7 +16,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     if (loading) return;
     if (!user) {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-      redirectTimerRef.current = setTimeout(() => router.push('/login'), 500);
+      redirectTimerRef.current = setTimeout(() => router.push('/login'), 3000);
       return;
     }
     if (redirectTimerRef.current) { clearTimeout(redirectTimerRef.current); redirectTimerRef.current = null; }
