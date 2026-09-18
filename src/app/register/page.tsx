@@ -133,10 +133,7 @@ export default function RegisterPage() {
       setStoredCode(code);
       setCountdown(60);
     } catch {
-      // EmailJS failed — use local verification for testing
-      setStoredCode(code);
-      setCountdown(60);
-      setEmailError(`Test mode — your code is: ${code}`);
+      setEmailError("Failed to send verification email. Please try again.");
     } finally {
       setSending(false);
     }
