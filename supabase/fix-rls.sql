@@ -194,22 +194,6 @@ CREATE POLICY "Institution admin read own exams" ON exams
       AND r.institution_id = get_user_institution_id()
     )
   );
-CREATE POLICY "Institution admin update own exams" ON exams
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM registrations r
-      WHERE r.exam_id = exams.id
-      AND r.institution_id = get_user_institution_id()
-    )
-  );
-CREATE POLICY "Institution admin delete own exams" ON exams
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM registrations r
-      WHERE r.exam_id = exams.id
-      AND r.institution_id = get_user_institution_id()
-    )
-  );
 
 -- REGISTRATIONS
 CREATE POLICY "Super admin full access registrations" ON registrations
