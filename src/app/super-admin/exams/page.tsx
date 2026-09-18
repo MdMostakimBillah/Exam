@@ -10,7 +10,7 @@ import { useClasses, useActiveClasses, getActiveClasses } from "@/lib/storage/cl
 import { useRegistrations } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X, Copy } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X, Copy, ClipboardPaste } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -35,6 +35,7 @@ export default function ExamsPage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [examStep, setExamStep] = useState(1);
+  const [copiedSubjects, setCopiedSubjects] = useState<{ name: string; fullMarks: number; passMarks: number; duration: number; negativeMarks: number }[] | null>(null);
   const [formData, setFormData] = useState({
     name: "", code: "", academicYear: "", description: "",
     registrationStartDate: "", registrationEndDate: "", examDate: "",
@@ -43,6 +44,7 @@ export default function ExamsPage() {
   });
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { if (!showModal) setCopiedSubjects(null); }, [showModal]);
 
   const { data: currentSession } = useCurrentSession();
   const { data: exams = [] } = useExams();
@@ -112,6 +114,7 @@ export default function ExamsPage() {
       subjects: []
     });
     setExamStep(1);
+    setCopiedSubjects(null);
     setShowModal(true);
   };
 
@@ -124,6 +127,7 @@ export default function ExamsPage() {
       classes: exam.classes, subjects: exam.subjects.map(s => ({ ...s, classId: (s as any).classId || exam.classes[0] || '' }))
     });
     setExamStep(1);
+    setCopiedSubjects(null);
     setShowModal(true);
     setMenuOpenId(null);
   };
@@ -189,31 +193,33 @@ export default function ExamsPage() {
     }));
   };
 
-  const copySubjectsToOtherClasses = (sourceClassId: string) => {
+  const copySubjectsFromClass = (sourceClassId: string) => {
     const sourceSubjects = formData.subjects.filter(s => s.classId === sourceClassId);
     if (sourceSubjects.length === 0) return;
-    const otherClasses = formData.classes.filter(c => c !== sourceClassId);
-    if (otherClasses.length === 0) return;
-    setFormData(prev => {
-      let newSubjects = [...prev.subjects];
-      for (const targetClassId of otherClasses) {
-        const existingNames = newSubjects.filter(s => s.classId === targetClassId).map(s => s.name);
-        for (const src of sourceSubjects) {
-          if (existingNames.includes(src.name)) continue;
-          newSubjects.push({
-            id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            classId: targetClassId,
-            name: src.name,
-            fullMarks: src.fullMarks,
-            passMarks: src.passMarks,
-            duration: src.duration,
-            negativeMarks: src.negativeMarks,
-          });
-        }
-      }
-      return { ...prev, subjects: newSubjects };
-    });
-    toast('success', isBn ? 'বিষয়গুলো অন্য শ্রেণীতে কপি করা হয়েছে' : 'Subjects copied to other classes');
+    setCopiedSubjects(sourceSubjects.map(s => ({ name: s.name, fullMarks: s.fullMarks, passMarks: s.passMarks, duration: s.duration, negativeMarks: s.negativeMarks })));
+    toast('success', isBn ? 'বিষয়গুলো কপি হয়েছে। এখন যেকোনো শ্রেণীতে পেস্ট করুন।' : 'Subjects copied. Now paste to any class.');
+  };
+
+  const pasteSubjectsToClass = (targetClassId: string) => {
+    if (!copiedSubjects || copiedSubjects.length === 0) return;
+    const existingNames = formData.subjects.filter(s => s.classId === targetClassId).map(s => s.name);
+    const newSubjects = copiedSubjects
+      .filter(s => !existingNames.includes(s.name))
+      .map(s => ({
+        id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        classId: targetClassId,
+        name: s.name,
+        fullMarks: s.fullMarks,
+        passMarks: s.passMarks,
+        duration: s.duration,
+        negativeMarks: s.negativeMarks,
+      }));
+    if (newSubjects.length === 0) {
+      toast('error', isBn ? 'সব বিষয় ইতিমধ্যে এই শ্রেণীতে আছে' : 'All subjects already exist in this class');
+      return;
+    }
+    setFormData(prev => ({ ...prev, subjects: [...prev.subjects, ...newSubjects] }));
+    toast('success', isBn ? `${newSubjects.length} টি বিষয় পেস্ট হয়েছে` : `${newSubjects.length} subject(s) pasted`);
   };
 
   const card = isDark
@@ -549,15 +555,28 @@ export default function ExamsPage() {
                             <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{classSubjects.length} {isBn ? 'টি বিষয়' : 'subject(s)'}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            {classSubjects.length > 0 && formData.classes.length > 1 && (
+                            {classSubjects.length > 0 && (
                               <button
-                                onClick={() => copySubjectsToOtherClasses(classId)}
+                                onClick={() => copySubjectsFromClass(classId)}
                                 className={cn(
                                   "flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
-                                  isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12]" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+                                  copiedSubjects
+                                    ? isDark ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-green-50 text-green-700 border border-green-200"
+                                    : isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12]" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
                                 )}
                               >
-                                <Copy className="h-3 w-3" /> {isBn ? 'অন্য শ্রেণীতে কপি' : 'Copy to others'}
+                                <Copy className="h-3 w-3" /> {copiedSubjects ? (isBn ? 'আবার কপি' : 'Copy again') : (isBn ? 'কপি' : 'Copy')}
+                              </button>
+                            )}
+                            {copiedSubjects && (
+                              <button
+                                onClick={() => pasteSubjectsToClass(classId)}
+                                className={cn(
+                                  "flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+                                  isDark ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30" : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                                )}
+                              >
+                                <ClipboardPaste className="h-3 w-3" /> {isBn ? 'পেস্ট' : 'Paste'}
                               </button>
                             )}
                             <button
