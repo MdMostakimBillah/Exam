@@ -181,6 +181,14 @@ CREATE POLICY "Super admin full access registrations" ON registrations
   FOR ALL USING (is_super_admin());
 CREATE POLICY "Institution admin own registrations" ON registrations
   FOR ALL USING (institution_id = get_user_institution_id());
+CREATE POLICY "Students read own registrations" ON registrations
+  FOR SELECT USING (
+    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
+  );
+CREATE POLICY "Students update own registrations" ON registrations
+  FOR UPDATE USING (
+    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
+  );
 
 -- PAYMENTS
 CREATE POLICY "Super admin full access payments" ON payments
@@ -189,9 +197,11 @@ CREATE POLICY "Institution admin own payments" ON payments
   FOR ALL USING (institution_id = get_user_institution_id());
 CREATE POLICY "Students read own payments" ON payments
   FOR SELECT USING (
-    student_id IN (
-      SELECT id FROM students WHERE user_id = auth.uid()
-    )
+    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
+  );
+CREATE POLICY "Students insert own payments" ON payments
+  FOR INSERT WITH CHECK (
+    student_id IN (SELECT id FROM students WHERE user_id = auth.uid())
   );
 
 -- RESULTS
@@ -261,6 +271,28 @@ CREATE POLICY "Allow anonymous insert login_attempts" ON login_attempts
   FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "Allow authenticated read login_attempts" ON login_attempts
   FOR SELECT TO authenticated USING (true);
+
+-- ============================================
+-- STORAGE POLICIES (for student proof image uploads)
+-- ============================================
+-- Allow authenticated users to upload to payment-proofs folder
+INSERT INTO storage.buckets (id, name, public) VALUES ('public', 'public', true)
+  ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Authenticated upload payment proofs" ON storage.objects;
+CREATE POLICY "Authenticated upload payment proofs" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'public' AND (storage.foldername(name))[1] = 'payment-proofs');
+
+DROP POLICY IF EXISTS "Public read payment proofs" ON storage.objects;
+CREATE POLICY "Public read payment proofs" ON storage.objects
+  FOR SELECT TO public
+  USING (bucket_id = 'public');
+
+DROP POLICY IF EXISTS "Authenticated delete own payment proofs" ON storage.objects;
+CREATE POLICY "Authenticated delete own payment proofs" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'public' AND (storage.foldername(name))[1] = 'payment-proofs');
 
 -- ============================================
 -- LOGIN ATTEMPT FUNCTIONS (ensure they exist)
