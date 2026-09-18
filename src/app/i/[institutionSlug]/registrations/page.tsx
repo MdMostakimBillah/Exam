@@ -189,6 +189,10 @@ export default function InstitutionRegistrationsPage() {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
     }
+    if (inst && inst.status !== "ACTIVE") {
+      toast("error", isBn ? "প্রতিষ্ঠান সক্রিয় হয়নি। শিক্ষার্থী নিবন্ধন করা যাবে না।" : "Institution is not active. Cannot register students.");
+      return;
+    }
     const exam = exams.find(e => e.id === selectedExamId);
     if (!exam) return;
 
