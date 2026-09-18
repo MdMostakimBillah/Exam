@@ -16,109 +16,53 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const EMAIL = 'superadmin@scholarx.local';
-const PASSWORD = 'SuperAdmin@2024!';
+async function fixSuperAdminProfile() {
+  console.log('Checking super admin profile...\n');
 
-async function setupSuperAdmin() {
-  console.log('Setting up Super Admin...\n');
-
-  // 1. Find existing user
   const { data: existingUsers } = await supabase.auth.admin.listUsers();
-  const existing = existingUsers.users.find(u => u.email === EMAIL);
+  const superAdmin = existingUsers.users.find(u =>
+    u.user_metadata?.role === 'super_admin' || u.email?.includes('admin')
+  );
 
-  let userId: string;
-
-  if (existing) {
-    console.log(`User ${EMAIL} already exists (id: ${existing.id})`);
-    userId = existing.id;
-
-    // Reset password to ensure it works
-    const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
-      password: PASSWORD,
-      email_confirm: true,
-      user_metadata: {
-        name: 'Super Admin',
-        role: 'super_admin',
-        username: 'super_admin',
-      },
-    });
-
-    if (updateError) {
-      console.error('Error updating password:', updateError);
-      process.exit(1);
-    }
-    console.log('Password reset successfully');
-  } else {
-    // Create new user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: EMAIL,
-      password: PASSWORD,
-      email_confirm: true,
-      user_metadata: {
-        name: 'Super Admin',
-        role: 'super_admin',
-        username: 'super_admin',
-      },
-    });
-
-    if (authError) {
-      console.error('Error creating auth user:', authError);
-      process.exit(1);
-    }
-    userId = authData.user.id;
-    console.log('Auth user created:', userId);
+  if (!superAdmin) {
+    console.log('No super admin auth user found. Create one in Supabase Dashboard > Auth > Users.');
+    return;
   }
 
-  // 2. Ensure profile exists with correct role
+  console.log(`Found auth user: ${superAdmin.email} (id: ${superAdmin.id})`);
+
+  // Check if profile exists
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, role')
-    .eq('id', userId)
+    .eq('id', superAdmin.id)
     .single();
 
   if (profile) {
     console.log(`Profile exists (role: ${profile.role})`);
     if (profile.role !== 'super_admin') {
-      const { error } = await supabase
+      await supabase
         .from('profiles')
         .update({ role: 'super_admin', name: 'Super Admin' })
-        .eq('id', userId);
-      if (error) {
-        console.error('Error updating profile role:', error);
-      } else {
-        console.log('Profile role updated to super_admin');
-      }
+        .eq('id', superAdmin.id);
+      console.log('Fixed: role updated to super_admin');
+    } else {
+      console.log('Profile is correct. Login should work.');
     }
   } else {
-    const { error } = await supabase
+    await supabase
       .from('profiles')
       .insert({
-        id: userId,
-        email: EMAIL,
+        id: superAdmin.id,
+        email: superAdmin.email,
         name: 'Super Admin',
         role: 'super_admin',
         username: 'super_admin',
       });
-    if (error) {
-      console.error('Error creating profile:', error);
-    } else {
-      console.log('Profile created with role super_admin');
-    }
+    console.log('Created missing profile with role super_admin');
   }
 
-  // 3. Save credentials
-  const fs = await import('fs');
-  fs.writeFileSync(
-    '.super-admin-credentials.json',
-    JSON.stringify({ email: EMAIL, password: PASSWORD, created_at: new Date().toISOString() }, null, 2)
-  );
-
-  console.log('\n========================================');
-  console.log('Super Admin ready!');
-  console.log('========================================');
-  console.log(`  Email:    ${EMAIL}`);
-  console.log(`  Password: ${PASSWORD}`);
-  console.log('========================================\n');
+  console.log(`\nLogin with: ${superAdmin.email}`);
 }
 
-setupSuperAdmin().catch(console.error);
+fixSuperAdminProfile().catch(console.error);
