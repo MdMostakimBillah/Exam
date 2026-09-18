@@ -2,6 +2,16 @@
 -- COMPREHENSIVE SEED DATA FOR TESTING
 -- Run after fix-rls.sql
 -- ============================================
+--
+-- ADMIN USERS:
+-- Auth users must be created via Supabase Auth API (not raw SQL).
+-- Run the setup script: npm run setup:super-admin
+-- This creates:
+--   Super Admin:  superadmin@scholarx.local / qvML&v@FgrRZ$qXkUL1qr@*^0J9068ay
+--
+-- For institution admin users, register through the /register page.
+-- Or create manually in Supabase Dashboard > Auth > Users.
+-- ============================================
 
 DO $$
 DECLARE
