@@ -57,7 +57,7 @@ export async function registerInstitution(data: {
       email_confirm: true,
       user_metadata: {
         name: data.nameEnglish || data.name,
-        role: "INSTITUTION_ADMIN",
+        role: "institution_admin",
         institution_id: institution.id,
       },
     });
