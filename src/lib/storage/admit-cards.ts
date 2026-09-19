@@ -1,11 +1,13 @@
 import { AdmitCard } from '../types';
-import { getStore, setStore } from './storage';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentSession } from './sessions';
 
-const KEY = 'admit_cards';
 const SUPABASE_TABLE = 'admit_cards';
+
+const ADMIT_CARD_COLUMNS = 'id,session_id,registration_id,student_id,student_name,institution_name,exam_name,class_name,roll,registration_number,exam_date,exam_center,qr_code,instructions,created_at,updated_at';
+
+const DEFAULT_PAGE_SIZE = 20;
 
 function mapAdmitCard(data: any): AdmitCard {
   return {
@@ -28,97 +30,86 @@ function mapAdmitCard(data: any): AdmitCard {
   };
 }
 
-async function syncFromSupabase(sessionId?: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  try {
-    const supabase = createClient();
-    const sid = sessionId || (await fetchCurrentSession())?.id;
-    if (!sid) return;
-    const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('session_id', sid).order('created_at', { ascending: false });
-    if (!error && data) {
-      const items = data.map(mapAdmitCard);
-      const existing = getStore<AdmitCard>(KEY);
-      const otherSessions = existing.filter(a => a.sessionId !== sid);
-      setStore(KEY, [...items, ...otherSessions]);
-    }
-  } catch {
-    // Ignore sync errors
-  }
-}
-
-if (typeof window !== 'undefined') {
-  syncFromSupabase();
-}
-
-// Sync getters (localStorage)
-export function getAdmitCards(): AdmitCard[] {
-  return getStore<AdmitCard>(KEY);
-}
-
-// Async getters
-export async function fetchAdmitCards(sessionId?: string): Promise<AdmitCard[]> {
+export async function fetchAdmitCards(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<AdmitCard[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('session_id', sid).order('created_at', { ascending: false });
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(ADMIT_CARD_COLUMNS)
+    .eq('session_id', sid)
+    .order('created_at', { ascending: false })
+    .range(from, to);
   if (error || !data) return [];
   return data.map(mapAdmitCard);
 }
 
 export async function fetchAdmitCardById(id: string): Promise<AdmitCard | undefined> {
-  const supabase = createClient();
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('id', id).single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select(ADMIT_CARD_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
   return mapAdmitCard(data);
 }
 
-// Async standalone CRUD
 export async function createAdmitCard(data: Omit<AdmitCard, 'id' | 'createdAt' | 'updatedAt'>): Promise<AdmitCard> {
   const supabase = createClient();
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).insert({
-    session_id: data.sessionId, registration_id: data.registrationId, student_id: data.studentId,
-    student_name: data.studentName, institution_name: data.institutionName, exam_name: data.examName,
-    class_name: data.className, roll: data.roll, registration_number: data.registrationNumber,
-    exam_date: data.examDate, exam_center: data.examCenter, qr_code: data.qrCode, instructions: data.instructions,
-  }).select().single();
+  const { data: result, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .insert({
+      session_id: data.sessionId,
+      registration_id: data.registrationId,
+      student_id: data.studentId,
+      student_name: data.studentName,
+      institution_name: data.institutionName,
+      exam_name: data.examName,
+      class_name: data.className,
+      roll: data.roll,
+      registration_number: data.registrationNumber,
+      exam_date: data.examDate,
+      exam_center: data.examCenter,
+      qr_code: data.qrCode,
+      instructions: data.instructions,
+    })
+    .select(ADMIT_CARD_COLUMNS)
+    .single();
   if (error) throw error;
-  const card = mapAdmitCard(result);
-  const items = getAdmitCards();
-  items.unshift(card);
-  setStore(KEY, items);
-  return card;
+  return mapAdmitCard(result);
 }
 
 export async function deleteAdmitCard(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
-  if (error) return false;
-  const items = getAdmitCards().filter(a => a.id !== id);
-  setStore(KEY, items);
-  return true;
+  return !error;
 }
 
-// React Query hooks
-export function useAdmitCards(sessionId?: string) {
-  return useQuery({ queryKey: ['admit_cards', sessionId], queryFn: () => fetchAdmitCards(sessionId) });
+export function useAdmitCards(sessionId?: string, page?: number, pageSize?: number) {
+  return useQuery({
+    queryKey: ['admit_cards', sessionId, page, pageSize],
+    queryFn: () => fetchAdmitCards(sessionId, page, pageSize),
+    staleTime: 60 * 1000,
+  });
 }
-
 export function useAdmitCardById(id: string) {
-  return useQuery({ queryKey: ['admit_cards', id], queryFn: () => fetchAdmitCardById(id), enabled: !!id });
+  return useQuery({
+    queryKey: ['admit_cards', id],
+    queryFn: () => fetchAdmitCardById(id),
+    enabled: !!id,
+  });
 }
 
 export function useCreateAdmitCard() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<AdmitCard, 'id' | 'createdAt' | 'updatedAt'>) => createAdmitCard(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admit_cards'] }); },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admit_cards'] }),
   });
 }
 
 export function useDeleteAdmitCard() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteAdmitCard(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admit_cards'] }); },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admit_cards'] }),
   });
 }

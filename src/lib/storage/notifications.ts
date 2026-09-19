@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const TABLE = 'notifications';
 
+const NOTIFICATION_COLUMNS = 'id,user_id,title,message,type,read,created_at';
+
 function mapNotification(data: any): Notification {
   return {
     id: data.id,
@@ -16,28 +18,30 @@ function mapNotification(data: any): Notification {
   };
 }
 
-// Async getters
 export async function getNotifications(userId: string): Promise<Notification[]> {
   return fetchNotifications(userId);
 }
 
-export async function fetchNotifications(userId: string): Promise<Notification[]> {
+export async function fetchNotifications(userId: string, page: number = 1, pageSize: number = 50): Promise<Notification[]> {
   const supabase = createClient();
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select(NOTIFICATION_COLUMNS)
     .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(from, to);
   if (error) throw error;
   return (data || []).map(mapNotification);
 }
 
-// React Query hooks
 export function useNotifications(userId: string) {
   return useQuery({
     queryKey: ['notifications', userId],
     queryFn: () => fetchNotifications(userId),
     enabled: !!userId,
+    staleTime: 0,
   });
 }
 
@@ -55,7 +59,7 @@ export function useCreateNotification() {
           type: data.type,
           read: data.read,
         })
-        .select()
+        .select(NOTIFICATION_COLUMNS)
         .single();
       if (error) throw error;
       return mapNotification(result);

@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/client';
 
 const TABLE = 'system_settings';
 
+const SETTING_COLUMNS = 'id,key,value,category';
+
 function mapSetting(data: any): SystemSetting {
   return {
     id: data.id,
@@ -16,9 +18,9 @@ export async function getSystemSettings(): Promise<SystemSetting[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select(SETTING_COLUMNS)
     .order('category', { ascending: true });
-  
+
   if (error) throw error;
   return (data || []).map(mapSetting);
 }
@@ -27,10 +29,10 @@ export async function getSystemSetting(key: string): Promise<SystemSetting | und
   const supabase = createClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select(SETTING_COLUMNS)
     .eq('key', key)
     .single();
-  
+
   if (error) return undefined;
   return data ? mapSetting(data) : undefined;
 }
@@ -44,9 +46,9 @@ export async function setSystemSetting(key: string, value: string, category: str
       value,
       category,
     }, { onConflict: 'key' })
-    .select()
+    .select(SETTING_COLUMNS)
     .single();
-  
+
   if (error) throw error;
   return mapSetting(data);
 }
@@ -55,9 +57,9 @@ export async function getSettingsByCategory(category: string): Promise<SystemSet
   const supabase = createClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select(SETTING_COLUMNS)
     .eq('category', category);
-  
+
   if (error) throw error;
   return (data || []).map(mapSetting);
 }

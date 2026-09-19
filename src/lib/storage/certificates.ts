@@ -1,11 +1,13 @@
 import { Certificate } from '../types';
-import { getStore, setStore } from './storage';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentSession } from './sessions';
 
-const KEY = 'certificates';
 const SUPABASE_TABLE = 'certificates';
+
+const CERTIFICATE_COLUMNS = 'id,session_id,certificate_number,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,position,total_marks,exam_year,issue_date,result_id,qr_code,status,created_at,updated_at';
+
+const DEFAULT_PAGE_SIZE = 20;
 
 function mapCertificate(data: any): Certificate {
   return {
@@ -31,86 +33,77 @@ function mapCertificate(data: any): Certificate {
   };
 }
 
-async function syncFromSupabase(sessionId?: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  try {
-    const supabase = createClient();
-    const sid = sessionId || (await fetchCurrentSession())?.id;
-    if (!sid) return;
-    const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('session_id', sid).order('created_at', { ascending: false });
-    if (!error && data) {
-      const items = data.map(mapCertificate);
-      const existing = getStore<Certificate>(KEY);
-      const otherSessions = existing.filter(c => c.sessionId !== sid);
-      setStore(KEY, [...items, ...otherSessions]);
-    }
-  } catch {
-    // Ignore sync errors
-  }
-}
-
-if (typeof window !== 'undefined') {
-  syncFromSupabase();
-}
-
-// Sync getters (localStorage)
-export function getCertificates(): Certificate[] {
-  return getStore<Certificate>(KEY);
-}
-
-export function getCertificatesByInstitution(institutionId: string): Certificate[] {
-  return getCertificates().filter(c => c.institutionId === institutionId);
-}
-
-export function getCertificateByNumber(certificateNumber: string): Certificate | undefined {
-  return getCertificates().find(c => c.certificateNumber === certificateNumber);
-}
-
-// Async getters
-export async function fetchCertificates(sessionId?: string): Promise<Certificate[]> {
+export async function fetchCertificates(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Certificate[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('session_id', sid).order('created_at', { ascending: false });
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(CERTIFICATE_COLUMNS)
+    .eq('session_id', sid)
+    .order('created_at', { ascending: false })
+    .range(from, to);
   if (error || !data) return [];
   return data.map(mapCertificate);
 }
 
-export async function fetchCertificatesByInstitution(institutionId: string, sessionId?: string): Promise<Certificate[]> {
-  const certs = await fetchCertificates(sessionId);
-  return certs.filter(c => c.institutionId === institutionId);
+export async function fetchCertificatesByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Certificate[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(CERTIFICATE_COLUMNS)
+    .eq('session_id', sid)
+    .eq('institution_id', institutionId)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error || !data) return [];
+  return data.map(mapCertificate);
 }
 
 export async function fetchCertificateById(id: string): Promise<Certificate | undefined> {
-  const supabase = createClient();
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('id', id).single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select(CERTIFICATE_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
   return mapCertificate(data);
 }
 
 export async function fetchCertificateByNumber(certificateNumber: string): Promise<Certificate | undefined> {
-  const supabase = createClient();
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('certificate_number', certificateNumber).single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select(CERTIFICATE_COLUMNS).eq('certificate_number', certificateNumber).single();
   if (error || !data) return undefined;
   return mapCertificate(data);
 }
 
-// Async standalone CRUD
 export async function createCertificate(data: Omit<Certificate, 'id' | 'createdAt' | 'updatedAt'>): Promise<Certificate> {
   const supabase = createClient();
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).insert({
-    session_id: data.sessionId, certificate_number: data.certificateNumber, student_id: data.studentId,
-    student_name: data.studentName, institution_id: data.institutionId, institution_name: data.institutionName,
-    exam_id: data.examId, exam_name: data.examName, class_name: data.className, position: data.position,
-    total_marks: data.totalMarks, exam_year: data.examYear, issue_date: data.issueDate, result_id: data.resultId,
-    qr_code: data.qrCode, status: data.status,
-  }).select().single();
+  const { data: result, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .insert({
+      session_id: data.sessionId,
+      certificate_number: data.certificateNumber,
+      student_id: data.studentId,
+      student_name: data.studentName,
+      institution_id: data.institutionId,
+      institution_name: data.institutionName,
+      exam_id: data.examId,
+      exam_name: data.examName,
+      class_name: data.className,
+      position: data.position,
+      total_marks: data.totalMarks,
+      exam_year: data.examYear,
+      issue_date: data.issueDate,
+      result_id: data.resultId,
+      qr_code: data.qrCode,
+      status: data.status,
+    })
+    .select(CERTIFICATE_COLUMNS)
+    .single();
   if (error) throw error;
-  const cert = mapCertificate(result);
-  const items = getCertificates();
-  items.unshift(cert);
-  setStore(KEY, items);
-  return cert;
+  return mapCertificate(result);
 }
 
 export async function updateCertificate(id: string, data: Partial<Certificate>): Promise<Certificate | undefined> {
@@ -132,40 +125,48 @@ export async function updateCertificate(id: string, data: Partial<Certificate>):
   if (data.resultId !== undefined) u.result_id = data.resultId;
   if (data.qrCode !== undefined) u.qr_code = data.qrCode;
   if (data.status !== undefined) u.status = data.status;
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select().single();
+  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(CERTIFICATE_COLUMNS).single();
   if (error) return undefined;
-  const cert = mapCertificate(result);
-  const items = getCertificates();
-  const idx = items.findIndex(c => c.id === id);
-  if (idx !== -1) items[idx] = cert;
-  setStore(KEY, items);
-  return cert;
+  return mapCertificate(result);
 }
 
 export async function deleteCertificate(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
-  if (error) return false;
-  const items = getCertificates().filter(c => c.id !== id);
-  setStore(KEY, items);
-  return true;
+  return !error;
 }
 
-// React Query hooks
-export function useCertificates(sessionId?: string) {
-  return useQuery({ queryKey: ['certificates', sessionId], queryFn: () => fetchCertificates(sessionId) });
+export function useCertificates(sessionId?: string, page?: number, pageSize?: number) {
+  return useQuery({
+    queryKey: ['certificates', sessionId, page, pageSize],
+    queryFn: () => fetchCertificates(sessionId, page, pageSize),
+    staleTime: 60 * 1000,
+  });
 }
 
-export function useCertificatesByInstitution(institutionId: string, sessionId?: string) {
-  return useQuery({ queryKey: ['certificates', 'institution', institutionId], queryFn: () => fetchCertificatesByInstitution(institutionId, sessionId), enabled: !!institutionId });
+export function useCertificatesByInstitution(institutionId: string, sessionId?: string, page?: number, pageSize?: number) {
+  return useQuery({
+    queryKey: ['certificates', 'institution', institutionId, sessionId, page, pageSize],
+    queryFn: () => fetchCertificatesByInstitution(institutionId, sessionId, page, pageSize),
+    enabled: !!institutionId,
+    staleTime: 60 * 1000,
+  });
 }
 
 export function useCertificateById(id: string) {
-  return useQuery({ queryKey: ['certificates', id], queryFn: () => fetchCertificateById(id), enabled: !!id });
+  return useQuery({
+    queryKey: ['certificates', id],
+    queryFn: () => fetchCertificateById(id),
+    enabled: !!id,
+  });
 }
 
 export function useCertificateByNumber(certificateNumber: string) {
-  return useQuery({ queryKey: ['certificates', 'number', certificateNumber], queryFn: () => fetchCertificateByNumber(certificateNumber), enabled: !!certificateNumber });
+  return useQuery({
+    queryKey: ['certificates', 'number', certificateNumber],
+    queryFn: () => fetchCertificateByNumber(certificateNumber),
+    enabled: !!certificateNumber,
+  });
 }
 
 export function useCreateCertificate() {

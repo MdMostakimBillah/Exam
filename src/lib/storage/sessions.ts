@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const SUPABASE_TABLE = 'academic_sessions';
 
+const SESSION_COLUMNS = 'id,name,code,start_date,end_date,is_active,is_current,created_at,updated_at';
+
 function mapSession(data: any): AcademicSession {
   return {
     id: data.id,
@@ -18,25 +20,32 @@ function mapSession(data: any): AcademicSession {
   };
 }
 
-// Async getters (for non-React contexts)
 export async function fetchSessions(): Promise<AcademicSession[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select('*')
+    .select(SESSION_COLUMNS)
     .order('created_at', { ascending: false });
   if (error || !data) return [];
   return data.map(mapSession);
 }
 
 export async function fetchCurrentSession(): Promise<AcademicSession | undefined> {
-  const sessions = await fetchSessions();
-  return sessions.find(s => s.isCurrent);
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(SESSION_COLUMNS)
+    .eq('is_current', true)
+    .single();
+  if (error || !data) {
+    const sessions = await fetchSessions();
+    return sessions.find(s => s.isCurrent);
+  }
+  return mapSession(data);
 }
 
 export const getCurrentSession = fetchCurrentSession;
 
-// React Query hooks
 export function useSessions() {
   return useQuery({
     queryKey: ['academic_sessions'],
@@ -66,7 +75,7 @@ export function useCreateSession() {
           is_active: data.isActive,
           is_current: data.isCurrent,
         })
-        .select()
+        .select(SESSION_COLUMNS)
         .single();
       if (error) throw error;
       return mapSession(result);
@@ -94,7 +103,7 @@ export function useUpdateSession() {
         .from(SUPABASE_TABLE)
         .update(updateData)
         .eq('id', id)
-        .select()
+        .select(SESSION_COLUMNS)
         .single();
       if (error) throw error;
       return mapSession(result);
@@ -124,17 +133,15 @@ export function useSetCurrentSession() {
   return useMutation({
     mutationFn: async (id: string) => {
       const supabase = createClient();
-      // Unset all current sessions
       await supabase
         .from(SUPABASE_TABLE)
         .update({ is_current: false, updated_at: new Date().toISOString() })
         .eq('is_current', true);
-      // Set new current session
       const { data: result, error } = await supabase
         .from(SUPABASE_TABLE)
         .update({ is_current: true, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select()
+        .select(SESSION_COLUMNS)
         .single();
       if (error) throw error;
       return mapSession(result);

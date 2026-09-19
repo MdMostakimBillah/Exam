@@ -1,83 +1,116 @@
 import { Registration } from '../types';
-import { getStore, setStore } from './storage';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentSession } from './sessions';
 
-const KEY = 'registrations';
 const SUPABASE_TABLE = 'registrations';
 
+const REGISTRATION_COLUMNS = 'id,session_id,application_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,status,payment_status,student_payment_status,payment_amount,transaction_id,created_at,updated_at';
+
+const DEFAULT_PAGE_SIZE = 20;
+
 function mapRegistration(data: any): Registration {
-  return { id: data.id, sessionId: data.session_id, applicationId: data.application_id, studentId: data.student_id, studentName: data.student_name, institutionId: data.institution_id, institutionName: data.institution_name, examId: data.exam_id, examName: data.exam_name, className: data.class_name, status: data.status, paymentStatus: data.payment_status, studentPaymentStatus: data.student_payment_status || 'NOT_SUBMITTED', paymentAmount: data.payment_amount, transactionId: data.transaction_id, createdAt: data.created_at, updatedAt: data.updated_at };
+  return {
+    id: data.id,
+    sessionId: data.session_id,
+    applicationId: data.application_id,
+    studentId: data.student_id,
+    studentName: data.student_name,
+    institutionId: data.institution_id,
+    institutionName: data.institution_name,
+    examId: data.exam_id,
+    examName: data.exam_name,
+    className: data.class_name,
+    status: data.status,
+    paymentStatus: data.payment_status,
+    studentPaymentStatus: data.student_payment_status || 'NOT_SUBMITTED',
+    paymentAmount: data.payment_amount,
+    transactionId: data.transaction_id,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
-async function syncFromSupabase(sessionId?: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  try {
-    const supabase = createClient();
-    const sid = sessionId || (await fetchCurrentSession())?.id;
-    if (!sid) return;
-    const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('session_id', sid).order('created_at', { ascending: false });
-    if (!error && data) {
-      const items = data.map(mapRegistration);
-      const existing = getStore<Registration>(KEY);
-      const otherSessions = existing.filter(r => r.sessionId !== sid);
-      setStore(KEY, [...items, ...otherSessions]);
-    }
-  } catch {
-    // Ignore sync errors
-  }
-}
-
-if (typeof window !== 'undefined') {
-  syncFromSupabase();
-}
-
-// Sync getters (localStorage)
-export function getRegistrations(): Registration[] {
-  return getStore<Registration>(KEY);
-}
-
-export function getRegistrationsByInstitution(institutionId: string): Registration[] {
-  return getRegistrations().filter(r => r.institutionId === institutionId);
-}
-
-// Async getters
-export async function fetchRegistrations(sessionId?: string): Promise<Registration[]> {
+export async function fetchRegistrations(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Registration[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
-  const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').eq('session_id', sid).order('created_at', { ascending: false });
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(REGISTRATION_COLUMNS)
+    .eq('session_id', sid)
+    .order('created_at', { ascending: false })
+    .range(from, to);
   if (error || !data) return [];
   return data.map(mapRegistration);
 }
 
-export async function fetchRegistrationsByInstitution(institutionId: string, sessionId?: string): Promise<Registration[]> {
-  const regs = await fetchRegistrations(sessionId);
-  return regs.filter(r => r.institutionId === institutionId);
+export async function fetchRegistrationsByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Registration[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(REGISTRATION_COLUMNS)
+    .eq('session_id', sid)
+    .eq('institution_id', institutionId)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error || !data) return [];
+  return data.map(mapRegistration);
 }
 
-export async function fetchRegistrationsByExam(examId: string, sessionId?: string): Promise<Registration[]> {
-  const regs = await fetchRegistrations(sessionId);
-  return regs.filter(r => r.examId === examId);
+export async function fetchRegistrationsByExam(examId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Registration[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(REGISTRATION_COLUMNS)
+    .eq('session_id', sid)
+    .eq('exam_id', examId)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error || !data) return [];
+  return data.map(mapRegistration);
 }
 
 export async function fetchRegistrationById(id: string): Promise<Registration | undefined> {
-  const { data, error } = await createClient().from(SUPABASE_TABLE).select('*').eq('id', id).single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select(REGISTRATION_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
   return mapRegistration(data);
 }
 
-// Async standalone CRUD
 export async function createRegistration(data: Omit<Registration, 'id' | 'createdAt' | 'updatedAt'>): Promise<Registration> {
   const supabase = createClient();
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).insert({ session_id: data.sessionId, application_id: data.applicationId, student_id: data.studentId, student_name: data.studentName, institution_id: data.institutionId, institution_name: data.institutionName, exam_id: data.examId, exam_name: data.examName, class_name: data.className, status: data.status, payment_status: data.paymentStatus, student_payment_status: data.studentPaymentStatus, payment_amount: data.paymentAmount, transaction_id: data.transactionId }).select().single();
+  const { data: result, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .insert({
+      session_id: data.sessionId,
+      application_id: data.applicationId,
+      student_id: data.studentId,
+      student_name: data.studentName,
+      institution_id: data.institutionId,
+      institution_name: data.institutionName,
+      exam_id: data.examId,
+      exam_name: data.examName,
+      class_name: data.className,
+      status: data.status,
+      payment_status: data.paymentStatus,
+      student_payment_status: data.studentPaymentStatus,
+      payment_amount: data.paymentAmount,
+      transaction_id: data.transactionId,
+    })
+    .select(REGISTRATION_COLUMNS)
+    .single();
   if (error) throw error;
-  const reg = mapRegistration(result);
-  const items = getRegistrations();
-  items.unshift(reg);
-  setStore(KEY, items);
-  return reg;
+  return mapRegistration(result);
 }
 
 export async function updateRegistration(id: string, data: Partial<Registration>): Promise<Registration | undefined> {
@@ -97,30 +130,47 @@ export async function updateRegistration(id: string, data: Partial<Registration>
   if (data.studentPaymentStatus !== undefined) u.student_payment_status = data.studentPaymentStatus;
   if (data.paymentAmount !== undefined) u.payment_amount = data.paymentAmount;
   if (data.transactionId !== undefined) u.transaction_id = data.transactionId;
-  const { data: result, error } = await createClient().from(SUPABASE_TABLE).update(u).eq('id', id).select().single();
+  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(REGISTRATION_COLUMNS).single();
   if (error) return undefined;
-  const reg = mapRegistration(result);
-  const items = getRegistrations();
-  const idx = items.findIndex(r => r.id === id);
-  if (idx !== -1) items[idx] = reg;
-  setStore(KEY, items);
-  return reg;
+  return mapRegistration(result);
 }
 
 export async function deleteRegistration(id: string): Promise<boolean> {
   const supabase = createClient();
-  const { error } = await createClient().from(SUPABASE_TABLE).delete().eq('id', id);
-  if (error) return false;
-  const items = getRegistrations().filter(r => r.id !== id);
-  setStore(KEY, items);
-  return true;
+  const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
+  return !error;
 }
 
-// React Query hooks
-export function useRegistrations(sessionId?: string) { return useQuery({ queryKey: ['registrations', sessionId], queryFn: () => fetchRegistrations(sessionId) }); }
-export function useRegistrationsByInstitution(institutionId: string, sessionId?: string) { return useQuery({ queryKey: ['registrations', 'institution', institutionId], queryFn: () => fetchRegistrationsByInstitution(institutionId, sessionId), enabled: !!institutionId }); }
-export function useRegistrationsByExam(examId: string, sessionId?: string) { return useQuery({ queryKey: ['registrations', 'exam', examId], queryFn: () => fetchRegistrationsByExam(examId, sessionId), enabled: !!examId }); }
-export function useRegistrationById(id: string) { return useQuery({ queryKey: ['registrations', id], queryFn: () => fetchRegistrationById(id), enabled: !!id }); }
+export function useRegistrations(sessionId?: string, page?: number, pageSize?: number) {
+  return useQuery({
+    queryKey: ['registrations', sessionId, page, pageSize],
+    queryFn: () => fetchRegistrations(sessionId, page, pageSize),
+    staleTime: 30 * 1000,
+  });
+}
+export function useRegistrationsByInstitution(institutionId: string, sessionId?: string, page?: number, pageSize?: number) {
+  return useQuery({
+    queryKey: ['registrations', 'institution', institutionId, sessionId, page, pageSize],
+    queryFn: () => fetchRegistrationsByInstitution(institutionId, sessionId, page, pageSize),
+    enabled: !!institutionId,
+    staleTime: 30 * 1000,
+  });
+}
+export function useRegistrationsByExam(examId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['registrations', 'exam', examId, sessionId],
+    queryFn: () => fetchRegistrationsByExam(examId, sessionId),
+    enabled: !!examId,
+    staleTime: 30 * 1000,
+  });
+}
+export function useRegistrationById(id: string) {
+  return useQuery({
+    queryKey: ['registrations', id],
+    queryFn: () => fetchRegistrationById(id),
+    enabled: !!id,
+  });
+}
 
 export function useCreateRegistration() {
   const qc = useQueryClient();

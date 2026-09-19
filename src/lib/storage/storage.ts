@@ -1,3 +1,5 @@
+import { createClient } from '@/lib/supabase/client';
+
 export function getStore<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -38,27 +40,35 @@ export function formatCurrency(amount: number): string {
 }
 
 export async function generateApplicationId(institutionId: string, sessionCode: string): Promise<string> {
-  const { fetchRegistrationsByInstitution } = await import('./registrations');
-  const registrations = await fetchRegistrationsByInstitution(institutionId);
-  const sessionRegistrations = registrations.filter(r => r.applicationId.startsWith(`APP-${sessionCode}-`));
-  const count = sessionRegistrations.length + 1;
-  return `APP-${sessionCode}-${String(count).padStart(4, '0')}`;
+  const supabase = createClient();
+  const { count } = await supabase
+    .from('registrations')
+    .select('*', { count: 'exact', head: true })
+    .eq('institution_id', institutionId)
+    .like('application_id', `APP-${sessionCode}-%`);
+  const nextNum = (count || 0) + 1;
+  return `APP-${sessionCode}-${String(nextNum).padStart(4, '0')}`;
 }
 
 export async function generateStudentId(institutionId: string, sessionCode: string): Promise<string> {
-  const { fetchStudentsByInstitution } = await import('./students');
-  const students = await fetchStudentsByInstitution(institutionId);
-  const sessionStudents = students.filter(s => s.studentId.startsWith(`STU-${sessionCode}-`));
-  const count = sessionStudents.length + 1;
-  return `STU-${sessionCode}-${String(count).padStart(4, '0')}`;
+  const supabase = createClient();
+  const { count } = await supabase
+    .from('students')
+    .select('*', { count: 'exact', head: true })
+    .eq('institution_id', institutionId)
+    .like('student_id', `STU-${sessionCode}-%`);
+  const nextNum = (count || 0) + 1;
+  return `STU-${sessionCode}-${String(nextNum).padStart(4, '0')}`;
 }
 
 export async function generateCertificateNumber(sessionCode: string): Promise<string> {
-  const { fetchCertificates } = await import('./certificates');
-  const certificates = await fetchCertificates();
-  const sessionCerts = certificates.filter(c => c.certificateNumber.startsWith(`CERT-${sessionCode}-`));
-  const count = sessionCerts.length + 1;
-  return `CERT-${sessionCode}-${String(count).padStart(6, '0')}`;
+  const supabase = createClient();
+  const { count } = await supabase
+    .from('certificates')
+    .select('*', { count: 'exact', head: true })
+    .like('certificate_number', `CERT-${sessionCode}-%`);
+  const nextNum = (count || 0) + 1;
+  return `CERT-${sessionCode}-${String(nextNum).padStart(6, '0')}`;
 }
 
 export async function generateTransactionId(): Promise<string> {

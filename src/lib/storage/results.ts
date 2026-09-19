@@ -1,11 +1,15 @@
 import { Result } from '../types';
-import { getStore, setStore } from './storage';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentSession } from './sessions';
 
-const KEY = 'results';
 const SUPABASE_TABLE = 'results';
+
+const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,created_at,updated_at';
+
+const RESULT_FULL_COLUMNS = RESULT_LIST_COLUMNS + ',subject_marks';
+
+const DEFAULT_PAGE_SIZE = 20;
 
 function mapResult(data: any): Result {
   return {
@@ -34,77 +38,62 @@ function mapResult(data: any): Result {
   };
 }
 
-async function syncFromSupabase(sessionId?: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  try {
-    const supabase = createClient();
-    const sid = sessionId || (await fetchCurrentSession())?.id;
-    if (!sid) return;
-    const { data, error } = await supabase
-      .from(SUPABASE_TABLE)
-      .select('*')
-      .eq('session_id', sid)
-      .order('created_at', { ascending: false });
-    if (!error && data) {
-      const results = data.map(mapResult);
-      const existing = getStore<Result>(KEY);
-      const otherSessions = existing.filter(r => r.sessionId !== sid);
-      setStore(KEY, [...results, ...otherSessions]);
-    }
-  } catch {
-    // Ignore sync errors
-  }
-}
-
-if (typeof window !== 'undefined') {
-  syncFromSupabase();
-}
-
-// Sync getters (localStorage)
-export function getResults(): Result[] {
-  return getStore<Result>(KEY);
-}
-
-export function getResultsByInstitution(institutionId: string): Result[] {
-  return getResults().filter(r => r.institutionId === institutionId);
-}
-
-// Async getters
-export async function fetchResults(sessionId?: string): Promise<Result[]> {
+export async function fetchResults(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Result[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select('*')
+    .select(RESULT_LIST_COLUMNS)
     .eq('session_id', sid)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(from, to);
   if (error || !data) return [];
   return data.map(mapResult);
 }
 
-export async function fetchResultsByInstitution(institutionId: string, sessionId?: string): Promise<Result[]> {
-  const results = await fetchResults(sessionId);
-  return results.filter(r => r.institutionId === institutionId);
+export async function fetchResultsByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Result[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(RESULT_LIST_COLUMNS)
+    .eq('session_id', sid)
+    .eq('institution_id', institutionId)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error || !data) return [];
+  return data.map(mapResult);
 }
 
-export async function fetchResultsByExam(examId: string, sessionId?: string): Promise<Result[]> {
-  const results = await fetchResults(sessionId);
-  return results.filter(r => r.examId === examId);
+export async function fetchResultsByExam(examId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Result[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(RESULT_LIST_COLUMNS)
+    .eq('session_id', sid)
+    .eq('exam_id', examId)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error || !data) return [];
+  return data.map(mapResult);
 }
 
 export async function fetchResultById(id: string): Promise<Result | undefined> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select('*')
-    .eq('id', id)
-    .single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select(RESULT_FULL_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
   return mapResult(data);
 }
 
-// Async standalone CRUD
 export async function createResult(data: Omit<Result, 'id' | 'createdAt' | 'updatedAt'>): Promise<Result> {
   const supabase = createClient();
   const { data: result, error } = await supabase
@@ -130,14 +119,10 @@ export async function createResult(data: Omit<Result, 'id' | 'createdAt' | 'upda
       scholarship_status: data.scholarshipStatus,
       status: data.status,
     })
-    .select()
+    .select(RESULT_FULL_COLUMNS)
     .single();
   if (error) throw error;
-  const res = mapResult(result);
-  const items = getResults();
-  items.unshift(res);
-  setStore(KEY, items);
-  return res;
+  return mapResult(result);
 }
 
 export async function updateResult(id: string, data: Partial<Result>): Promise<Result | undefined> {
@@ -167,39 +152,32 @@ export async function updateResult(id: string, data: Partial<Result>): Promise<R
     .from(SUPABASE_TABLE)
     .update(updateData)
     .eq('id', id)
-    .select()
+    .select(RESULT_FULL_COLUMNS)
     .single();
   if (error) return undefined;
-  const res = mapResult(result);
-  const items = getResults();
-  const idx = items.findIndex(r => r.id === id);
-  if (idx !== -1) items[idx] = res;
-  setStore(KEY, items);
-  return res;
+  return mapResult(result);
 }
 
 export async function deleteResult(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
-  if (error) return false;
-  const items = getResults().filter(r => r.id !== id);
-  setStore(KEY, items);
-  return true;
+  return !error;
 }
 
-// React Query hooks
-export function useResults(sessionId?: string) {
+export function useResults(sessionId?: string, page?: number, pageSize?: number) {
   return useQuery({
-    queryKey: ['results', sessionId],
-    queryFn: () => fetchResults(sessionId),
+    queryKey: ['results', sessionId, page, pageSize],
+    queryFn: () => fetchResults(sessionId, page, pageSize),
+    staleTime: 60 * 1000,
   });
 }
 
-export function useResultsByInstitution(institutionId: string, sessionId?: string) {
+export function useResultsByInstitution(institutionId: string, sessionId?: string, page?: number, pageSize?: number) {
   return useQuery({
-    queryKey: ['results', 'institution', institutionId, sessionId],
-    queryFn: () => fetchResultsByInstitution(institutionId, sessionId),
+    queryKey: ['results', 'institution', institutionId, sessionId, page, pageSize],
+    queryFn: () => fetchResultsByInstitution(institutionId, sessionId, page, pageSize),
     enabled: !!institutionId,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -208,6 +186,7 @@ export function useResultsByExam(examId: string, sessionId?: string) {
     queryKey: ['results', 'exam', examId, sessionId],
     queryFn: () => fetchResultsByExam(examId, sessionId),
     enabled: !!examId,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -223,9 +202,7 @@ export function useCreateResult() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Result, 'id' | 'createdAt' | 'updatedAt'>) => createResult(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['results'] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['results'] }); },
   });
 }
 
@@ -233,9 +210,7 @@ export function useUpdateResult() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Result> }) => updateResult(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['results'] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['results'] }); },
   });
 }
 
@@ -243,8 +218,6 @@ export function useDeleteResult() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteResult(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['results'] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['results'] }); },
   });
 }

@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS students (
   session_id UUID REFERENCES academic_sessions(id) ON DELETE CASCADE NOT NULL,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
+  first_name_bn TEXT,
+  last_name_bn TEXT,
   student_id TEXT NOT NULL,
   class TEXT NOT NULL,
   section TEXT,

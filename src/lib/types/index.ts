@@ -40,6 +40,18 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Profile {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  username?: string;
+  institutionId?: string;
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Institution {
   id: string;
   name: string;
@@ -67,6 +79,8 @@ export interface Student {
   sessionId: string;
   firstName: string;
   lastName: string;
+  firstNameBn?: string;
+  lastNameBn?: string;
   studentId: string;
   class: string;
   section: string;

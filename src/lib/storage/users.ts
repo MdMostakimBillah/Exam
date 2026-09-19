@@ -1,17 +1,8 @@
-import { User, UserRole } from '../types';
+import { Profile, UserRole } from '../types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-export interface Profile {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  institutionId?: string;
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+const PROFILE_COLUMNS = 'id,email,name,role,username,institution_id,avatar,created_at,updated_at';
 
 function mapProfile(data: any): Profile {
   return {
@@ -26,12 +17,11 @@ function mapProfile(data: any): Profile {
   };
 }
 
-// Async getters
 export async function fetchUserProfile(userId: string): Promise<Profile | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .single();
   if (error) return null;
@@ -42,7 +32,7 @@ export async function fetchUsers(): Promise<Profile[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data || []).map(mapProfile);
@@ -52,7 +42,7 @@ export async function fetchUserByEmail(email: string): Promise<Profile | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .eq('email', email)
     .single();
   if (error) return null;
@@ -63,14 +53,13 @@ export async function fetchInstitutionAdmins(institutionId: string): Promise<Pro
   const supabase = createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .eq('institution_id', institutionId)
     .eq('role', 'INSTITUTION_ADMIN');
   if (error) throw error;
   return (data || []).map(mapProfile);
 }
 
-// Standalone async CRUD (backward-compatible names)
 export async function getUsers(): Promise<Profile[]> {
   return fetchUsers();
 }
@@ -93,7 +82,7 @@ export async function createUser(data: { email: string; name: string; password: 
       role: data.role,
       institution_id: data.institutionId,
     })
-    .select()
+    .select(PROFILE_COLUMNS)
     .single();
   if (error) throw error;
   return mapProfile(result);
@@ -102,7 +91,6 @@ export async function createUser(data: { email: string; name: string; password: 
 export async function updateUser(id: string, data: Partial<Profile> & { password?: string }): Promise<Profile | undefined> {
   const supabase = createClient();
 
-  // Handle password update via Supabase Auth if provided
   if (data.password) {
     const { error: pwError } = await supabase.auth.admin.updateUserById(id, { password: data.password });
     if (pwError) throw pwError;
@@ -118,7 +106,7 @@ export async function updateUser(id: string, data: Partial<Profile> & { password
     .from('profiles')
     .update(updateData)
     .eq('id', id)
-    .select()
+    .select(PROFILE_COLUMNS)
     .single();
   if (error) return undefined;
   return mapProfile(result);
@@ -130,7 +118,6 @@ export async function deleteUser(id: string): Promise<boolean> {
   return !error;
 }
 
-// React Query hooks
 export function useUserProfile(userId: string) {
   return useQuery({
     queryKey: ['profiles', userId],
@@ -169,7 +156,7 @@ export function useUpdateProfile() {
         .from('profiles')
         .update(updateData)
         .eq('id', userId)
-        .select()
+        .select(PROFILE_COLUMNS)
         .single();
       if (error) throw error;
       return mapProfile(result);

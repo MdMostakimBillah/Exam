@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from "@/lib/storage/exams";
-import { useClasses, useActiveClasses, getActiveClasses } from "@/lib/storage/classes";
+import { useClasses, useActiveClasses } from "@/lib/storage/classes";
 import { useRegistrations } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
@@ -47,9 +47,10 @@ export default function ExamsPage() {
   useEffect(() => { if (!showModal) setCopiedSubjects(null); }, [showModal]);
 
   const { data: currentSession } = useCurrentSession();
-  const { data: exams = [] } = useExams();
+  const { data: exams = [] } = useExams(currentSession?.id);
   const { data: registrations = [] } = useRegistrations();
   const { data: allClasses = [] } = useClasses();
+  const { data: activeClasses = [] } = useActiveClasses();
   const createExamMutation = useCreateExam();
   const updateExamMutation = useUpdateExam();
   const deleteExamMutation = useDeleteExam();
@@ -73,8 +74,6 @@ export default function ExamsPage() {
     allClasses.forEach(c => map.set(c.id, c));
     return map;
   }, [allClasses]);
-
-  const activeClasses = useMemo(() => getActiveClasses(), []);
 
   const selection = useTableSelection(filtered);
 
