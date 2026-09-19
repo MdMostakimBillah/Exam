@@ -412,9 +412,11 @@ export default function InstitutionRegistrationsPage() {
         width="w-[90dvw]"
         height="h-[90dvh]"
         overlayPadding="p-0"
+        containerClassName="rounded-lg dark:bg-[#141416] bg-white p-0 backdrop-blur-none dark:shadow-none shadow-none dark:border-white/[0.06] border-zinc-200"
+        headerClassName="border-b px-6 py-4 mb-0"
       >
         {/* Step Indicator */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-0 px-6 py-3 border-b">
           {stepLabels.map((label, i) => {
             const num = (i + 1) as Step;
             const isActive = step === num;
@@ -438,7 +440,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 1: Student Basic Info */}
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="px-6 py-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রথম নাম *' : 'First Name *'}</label>
@@ -492,7 +494,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 2: Guardian Info */}
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="px-6 py-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
@@ -516,7 +518,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 3: Photo & Exam */}
         {step === 3 && (
-          <div className="space-y-5">
+          <div className="px-6 py-5 space-y-5">
             {/* Profile Picture */}
             <div>
               <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(min 500KB)</span></label>
@@ -576,31 +578,30 @@ export default function InstitutionRegistrationsPage() {
           </div>
         )}
 
-        <ModalFooter>
-          <div className="flex items-center justify-between w-full">
-            <div>
-              {step > 1 && (
-                <button onClick={handleBack} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
-                  {isBn ? 'পূর্ববর্তী' : 'Back'}
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
-                {isBn ? 'বাতিল' : 'Cancel'}
+        {/* Footer */}
+        <div className={`px-6 py-4 border-t flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+          <div>
+            {step > 1 && (
+              <button onClick={handleBack} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'পূর্ববর্তী' : 'Back'}
               </button>
-              {step < 3 ? (
-                <button onClick={handleNext} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-                  {isBn ? 'পরবর্তী' : 'Next'}
-                </button>
-              ) : (
-                <button onClick={handleSave} disabled={!canSubmitStep3} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", canSubmitStep3 ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
-                  {isBn ? 'নিবন্ধন করুন' : 'Register'}
-                </button>
-              )}
-            </div>
+            )}
           </div>
-        </ModalFooter>
+          <div className="flex gap-2">
+            <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+              {isBn ? 'বাতিল' : 'Cancel'}
+            </button>
+            {step < 3 ? (
+              <button onClick={handleNext} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                {isBn ? 'পরবর্তী' : 'Next'}
+              </button>
+            ) : (
+              <button onClick={handleSave} disabled={!canSubmitStep3} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", canSubmitStep3 ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+                {isBn ? 'নিবন্ধন করুন' : 'Register'}
+              </button>
+            )}
+          </div>
+        </div>
       </Modal>
 
       {/* View Details Modal */}

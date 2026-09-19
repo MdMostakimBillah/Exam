@@ -15,9 +15,11 @@ interface ModalProps {
   width?: string;
   height?: string;
   overlayPadding?: string;
+  containerClassName?: string;
+  headerClassName?: string;
 }
 
-function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-lg', maxHeight = 'max-h-[90vh]', width, height, overlayPadding = 'p-4' }: ModalProps) {
+function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-lg', maxHeight = 'max-h-[90vh]', width, height, overlayPadding = 'p-4', containerClassName, headerClassName }: ModalProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -45,9 +47,10 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
           : 'border border-zinc-200 bg-white shadow-zinc-200/50',
         resolvedMaxWidth,
         resolvedHeight,
-        width
+        width,
+        containerClassName
       )}>
-        <div className="flex items-start justify-between mb-5 shrink-0">
+        <div className={cn("flex items-start justify-between mb-5 shrink-0", headerClassName)}>
           <div>
             {title && <h2 className={`text-lg font-semibold ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>{title}</h2>}
             {description && <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>{description}</p>}
