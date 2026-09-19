@@ -13,11 +13,16 @@ interface ModalProps {
   maxWidth?: string;
   maxHeight?: string;
   width?: string;
+  height?: string;
+  overlayPadding?: string;
 }
 
-function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-lg', maxHeight = 'max-h-[90vh]', width }: ModalProps) {
+function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-lg', maxHeight = 'max-h-[90vh]', width, height, overlayPadding = 'p-4' }: ModalProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+
+  const resolvedMaxWidth = maxWidth ?? (width ? 'max-w-none' : 'max-w-lg');
+  const resolvedHeight = height ?? maxHeight ?? 'max-h-[90vh]';
 
   React.useEffect(() => {
     if (open) {
@@ -31,15 +36,15 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={cn("fixed inset-0 z-50 flex items-center justify-center", overlayPadding)}>
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className={cn(
-        'relative z-50 w-full rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl flex flex-col',
+        'relative z-50 w-full rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl flex flex-col overflow-hidden',
         isDark
           ? 'border border-white/[0.06] bg-[#0D0D0D] shadow-black/50'
           : 'border border-zinc-200 bg-white shadow-zinc-200/50',
-        maxWidth,
-        maxHeight,
+        resolvedMaxWidth,
+        resolvedHeight,
         width
       )}>
         <div className="flex items-start justify-between mb-5 shrink-0">

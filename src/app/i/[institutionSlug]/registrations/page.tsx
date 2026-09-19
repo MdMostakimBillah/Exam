@@ -405,7 +405,14 @@ export default function InstitutionRegistrationsPage() {
       </div>
 
       {/* Multi-Step Registration Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? "নতুন নিবন্ধন" : "New Registration"} width="w-[90dvw]" maxHeight="max-h-[95dvh]">
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={isBn ? "নতুন নিবন্ধন" : "New Registration"}
+        width="w-[90dvw]"
+        height="h-[90dvh]"
+        overlayPadding="p-0"
+      >
         {/* Step Indicator */}
         <div className="flex items-center gap-2 mb-6">
           {stepLabels.map((label, i) => {
