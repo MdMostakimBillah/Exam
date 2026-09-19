@@ -32,6 +32,8 @@ type Step = 1 | 2 | 3;
 interface StudentForm {
   firstName: string;
   lastName: string;
+  firstNameBn: string;
+  lastNameBn: string;
   studentId: string;
   class: string;
   section: string;
@@ -46,7 +48,7 @@ interface StudentForm {
 }
 
 const emptyStudentForm: StudentForm = {
-  firstName: "", lastName: "", studentId: "", class: "", section: "", roll: "",
+  firstName: "", lastName: "", firstNameBn: "", lastNameBn: "", studentId: "", class: "", section: "", roll: "",
   dateOfBirth: "", gender: "MALE",
   fatherName: "", motherName: "", phone: "", address: "", photo: "",
 };
@@ -201,6 +203,8 @@ export default function InstitutionRegistrationsPage() {
       institutionId: inst!.id,
       firstName: studentForm.firstName.trim(),
       lastName: studentForm.lastName.trim(),
+      firstNameBn: studentForm.firstNameBn.trim() || undefined,
+      lastNameBn: studentForm.lastNameBn.trim() || undefined,
       studentId: studentForm.studentId.trim(),
       class: studentForm.class,
       section: studentForm.section.trim(),
@@ -443,12 +447,20 @@ export default function InstitutionRegistrationsPage() {
           <div className="px-6 py-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রথম নাম *' : 'First Name *'}</label>
-                <Input placeholder={isBn ? 'প্রথম নাম' : 'First name'} value={studentForm.firstName} onChange={(e) => setStudentForm({ ...studentForm, firstName: e.target.value })} className={inputCls} />
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি প্রথম নাম *' : 'English First Name *'}</label>
+                <Input placeholder={isBn ? 'ইংরেজি প্রথম নাম' : 'First name'} value={studentForm.firstName} onChange={(e) => setStudentForm({ ...studentForm, firstName: e.target.value })} className={inputCls} />
               </div>
               <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শেষ নাম *' : 'Last Name *'}</label>
-                <Input placeholder={isBn ? 'শেষ নাম' : 'Last name'} value={studentForm.lastName} onChange={(e) => setStudentForm({ ...studentForm, lastName: e.target.value })} className={inputCls} />
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি শেষ নাম *' : 'English Last Name *'}</label>
+                <Input placeholder={isBn ? 'ইংরেজি শেষ নাম' : 'Last name'} value={studentForm.lastName} onChange={(e) => setStudentForm({ ...studentForm, lastName: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা প্রথম নাম' : 'Bangla First Name'}</label>
+                <Input placeholder={isBn ? 'বাংলা প্রথম নাম' : 'Bangla first name'} value={studentForm.firstNameBn} onChange={(e) => setStudentForm({ ...studentForm, firstNameBn: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা শেষ নাম' : 'Bangla Last Name'}</label>
+                <Input placeholder={isBn ? 'বাংলা শেষ নাম' : 'Bangla last name'} value={studentForm.lastNameBn} onChange={(e) => setStudentForm({ ...studentForm, lastNameBn: e.target.value })} className={inputCls} />
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী আইডি *' : 'Student ID *'}</label>
