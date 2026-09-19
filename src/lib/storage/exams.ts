@@ -155,3 +155,24 @@ export function useDeleteExam() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['exams'] }),
   });
 }
+
+export async function fetchExamRegistrationCounts(sessionId?: string): Promise<Record<string, number>> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return {};
+  const { data, error } = await supabase.rpc('get_exam_registration_counts', { p_session_id: sid });
+  if (error || !data) return {};
+  return (data as Array<{ exam_id: string; registration_count: number }>).reduce(
+    (acc, row) => { acc[row.exam_id] = Number(row.registration_count); return acc; },
+    {} as Record<string, number>
+  );
+}
+
+export function useExamRegistrationCounts(sessionId?: string) {
+  return useQuery({
+    queryKey: ['exam_registration_counts', sessionId],
+    queryFn: () => fetchExamRegistrationCounts(sessionId),
+    enabled: !!sessionId,
+    staleTime: 60 * 1000,
+  });
+}

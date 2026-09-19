@@ -12,6 +12,7 @@ import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useResultsByInstitution } from "@/lib/storage/results";
 import { usePaymentsByInstitution } from "@/lib/storage/payments";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Users, FileText, ClipboardList, Clock, CheckCircle, XCircle, DollarSign, Wallet, Activity, ArrowRight, FileDown } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "@/contexts/theme-context";
@@ -31,11 +32,12 @@ export default function InstitutionDashboardPage() {
   const isBn = language === "bn";
 
   const { data: inst } = useInstitutionBySlug(slug);
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: currentSession } = useCurrentSession();
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
-  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
-  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
 
   const selection = useTableSelection(students);
 
@@ -59,7 +61,10 @@ export default function InstitutionDashboardPage() {
   if (!inst) return null;
 
   const totalCollected = payments.reduce((sum, p) => sum + (p.status === 'PAID' ? p.amount : 0), 0);
-  const totalDue = payments.reduce((sum, p) => sum + (p.status === 'PENDING' ? p.amount : 0), 0);
+  // Due = sum of exam fees for all pending (not yet approved) registrations
+  const totalDue = registrations
+    .filter(r => r.status === 'PENDING')
+    .reduce((sum, r) => sum + r.paymentAmount, 0);
   const pendingStudents = registrations.filter(r => r.status === 'PENDING').length;
   const approvedStudents = registrations.filter(r => r.status === 'APPROVED' || r.status === 'VERIFIED').length;
   const rejectedStudents = registrations.filter(r => r.status === 'REJECTED').length;

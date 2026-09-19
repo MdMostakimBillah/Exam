@@ -24,7 +24,9 @@ import { cn } from "@/lib/utils/helpers";
 const emptyForm = {
   registrationId: "",
   amount: "",
-  paymentMethod: "CASH" as "CASH" | "BANK" | "MOBILE",
+  paymentMethod: "BKASH" as "CASH" | "BANK" | "BKASH" | "NAGAD",
+  accountNumber: "",
+  invoiceNumber: "",
   paymentDate: new Date().toISOString().split("T")[0],
   reference: "",
   notes: "",
@@ -51,8 +53,8 @@ export default function InstitutionPaymentsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const createPaymentMutation = useCreatePayment();
   const updatePaymentMutation = useUpdatePayment();
 
@@ -126,9 +128,10 @@ export default function InstitutionPaymentsPage() {
       registrationId: reg.id,
       studentId: reg.studentId,
       studentName: reg.studentName,
-      reference: formData.reference,
+      reference: formData.invoiceNumber || formData.reference,
       paymentDate: formData.paymentDate,
       notes: formData.notes,
+      accountNumber: formData.accountNumber,
     });
     toast("success", isBn ? "পেমেন্ট রেকর্ড হয়েছে" : "Payment recorded");
     setShowModal(false);
@@ -318,22 +321,27 @@ export default function InstitutionPaymentsPage() {
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট পদ্ধতি *' : 'Payment Method *'}</label>
             <Select
               options={[
-                { label: isBn ? 'নগদ' : 'CASH', value: 'CASH' },
-                { label: isBn ? 'ব্যাংক' : 'BANK', value: 'BANK' },
-                { label: isBn ? 'মোবাইল' : 'MOBILE', value: 'MOBILE' },
+                { label: 'bKash', value: 'BKASH' },
+                { label: 'Nagad', value: 'NAGAD' },
+                { label: isBn ? 'ব্যাংক' : 'Bank Transfer', value: 'BANK' },
+                { label: isBn ? 'নগদ' : 'Cash', value: 'CASH' },
               ]}
               value={formData.paymentMethod}
-              onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as "CASH" | "BANK" | "MOBILE" })}
+              onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as any })}
               className={inputCls}
             />
           </div>
           <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট তারিখ' : 'Payment Date'}</label>
-            <Input type="date" value={formData.paymentDate} onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })} className={inputCls} />
+            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'অ্যাকাউন্ট নম্বর *' : 'Account Number *'}</label>
+            <Input placeholder={isBn ? 'bKash/Nagad/ব্যাংক অ্যাকাউন্ট' : 'bKash/Nagad/Bank account'} value={formData.accountNumber} onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })} className={inputCls} />
           </div>
           <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রেফারেন্স' : 'Reference'}</label>
-            <Input placeholder={isBn ? 'রেফারেন্স নম্বর' : 'Reference number'} value={formData.reference} onChange={(e) => setFormData({ ...formData, reference: e.target.value })} className={inputCls} />
+            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইনভয়েস নম্বর' : 'Invoice Number'}</label>
+            <Input placeholder={isBn ? 'ইনভয়েস নম্বর' : 'Invoice number'} value={formData.invoiceNumber} onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })} className={inputCls} />
+          </div>
+          <div>
+            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট তারিখ' : 'Payment Date'}</label>
+            <Input type="date" value={formData.paymentDate} onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })} className={inputCls} />
           </div>
           <div className="col-span-2">
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'নোট' : 'Notes'}</label>

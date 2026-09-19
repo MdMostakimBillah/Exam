@@ -9,7 +9,7 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useRegistrationsByInstitution, useCreateRegistration, useUpdateRegistration } from "@/lib/storage/registrations";
+import { useRegistrationsByInstitution, useCreateRegistration } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useStudentsByInstitution, useCreateStudent } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
@@ -19,13 +19,13 @@ import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ClipboardList, Search, Plus, Eye, CheckCircle, XCircle, Banknote, FileDown, Upload, User, Users, Camera, AlertCircle } from "lucide-react";
+import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 
-const MIN_PHOTO_SIZE = 500 * 1024;
+const MAX_PHOTO_SIZE = 500 * 1024;
 
 type Step = 1 | 2 | 3;
 
@@ -66,7 +66,6 @@ export default function InstitutionRegistrationsPage() {
   const [showModal, setShowModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [viewingReg, setViewingReg] = useState<Registration | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ type: "approve" | "reject"; reg: Registration } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [step, setStep] = useState<Step>(1);
@@ -84,7 +83,6 @@ export default function InstitutionRegistrationsPage() {
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allClasses = [] } = useClasses();
   const createRegistrationMutation = useCreateRegistration();
-  const updateRegistrationMutation = useUpdateRegistration();
   const createStudentMutation = useCreateStudent();
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
@@ -154,9 +152,9 @@ export default function InstitutionRegistrationsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoError("");
-    if (file.size < MIN_PHOTO_SIZE) {
+    if (file.size > MAX_PHOTO_SIZE) {
       const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। ন্যূনতম 500KB প্রয়োজন।` : `Photo is ${sizeKB}KB. Minimum 500KB required.`);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 500KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 500KB allowed.`);
       return;
     }
     const reader = new FileReader();
@@ -235,27 +233,6 @@ export default function InstitutionRegistrationsPage() {
 
     toast("success", isBn ? "শিক্ষার্থী ও নিবন্ধন তৈরি হয়েছে" : "Student and registration created");
     setShowModal(false);
-    setRefreshKey(k => k + 1);
-  };
-
-  const handleApprove = async (reg: Registration) => {
-    await updateRegistrationMutation.mutateAsync({ id: reg.id, data: { status: "APPROVED" } });
-    toast("success", isBn ? "নিবন্ধন অনুমোদিত হয়েছে" : "Registration approved");
-    setConfirmAction(null);
-    setRefreshKey(k => k + 1);
-  };
-
-  const handleReject = async (reg: Registration) => {
-    await updateRegistrationMutation.mutateAsync({ id: reg.id, data: { status: "REJECTED" } });
-    toast("success", isBn ? "নিবন্ধন প্রত্যাখ্যাত হয়েছে" : "Registration rejected");
-    setConfirmAction(null);
-    setRefreshKey(k => k + 1);
-  };
-
-  const handleMarkPaid = async (reg: Registration) => {
-    await updateRegistrationMutation.mutateAsync({ id: reg.id, data: { paymentStatus: "PAID" } });
-    toast("success", isBn ? "পেমেন্ট চিহ্নিত হয়েছে" : "Marked as paid");
-    setMenuOpenId(null);
     setRefreshKey(k => k + 1);
   };
 
@@ -381,21 +358,6 @@ export default function InstitutionRegistrationsPage() {
                         <TableActionItem onClick={() => { setViewingReg(reg); setMenuOpenId(null); }} isDark={isDark}>
                           <Eye className="h-3.5 w-3.5" /> {isBn ? "বিস্তারিত" : "View Details"}
                         </TableActionItem>
-                        {reg.status === "PENDING" && (
-                          <>
-                            <TableActionItem onClick={() => { setConfirmAction({ type: "approve", reg }); setMenuOpenId(null); }} isDark={isDark} variant="success">
-                              <CheckCircle className="h-3.5 w-3.5" /> {isBn ? "অনুমোদন" : "Approve"}
-                            </TableActionItem>
-                            <TableActionItem onClick={() => { setConfirmAction({ type: "reject", reg }); setMenuOpenId(null); }} isDark={isDark} variant="danger">
-                              <XCircle className="h-3.5 w-3.5" /> {isBn ? "প্রত্যাখ্যান" : "Reject"}
-                            </TableActionItem>
-                          </>
-                        )}
-                        {reg.paymentStatus !== "PAID" && (
-                          <TableActionItem onClick={() => handleMarkPaid(reg)} isDark={isDark}>
-                            <Banknote className="h-3.5 w-3.5" /> {isBn ? "পেমেন্ট চিহ্নিত করুন" : "Mark Paid"}
-                          </TableActionItem>
-                        )}
                       </TableActionMenu>
                     </TableCell>
                   </TableRow>
@@ -411,14 +373,10 @@ export default function InstitutionRegistrationsPage() {
         open={showModal}
         onClose={() => setShowModal(false)}
         title={isBn ? "নতুন নিবন্ধন" : "New Registration"}
-        width="w-[90dvw]"
-        height="h-[90dvh]"
-        overlayPadding="p-0"
-        containerClassName="rounded-lg dark:bg-[#141416] bg-white p-0 backdrop-blur-none dark:shadow-none shadow-none dark:border-white/[0.06] border-zinc-200"
-        headerClassName="border-b px-6 py-4 mb-0"
+        maxWidth="max-w-xl"
       >
         {/* Step Indicator */}
-        <div className="flex items-center gap-2 mb-0 px-6 py-3 border-b">
+        <div className="flex items-center gap-2 mb-4 px-2">
           {stepLabels.map((label, i) => {
             const num = (i + 1) as Step;
             const isActive = step === num;
@@ -442,7 +400,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 1: Student Basic Info */}
         {step === 1 && (
-          <div className="px-6 py-5">
+          <div className="px-2 py-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'English Name *'}</label>
@@ -496,7 +454,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 2: Guardian Info */}
         {step === 2 && (
-          <div className="px-6 py-5">
+          <div className="px-2 py-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
@@ -520,10 +478,10 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 3: Photo & Exam */}
         {step === 3 && (
-          <div className="px-6 py-5 space-y-5">
+          <div className="px-2 py-3 space-y-4">
             {/* Profile Picture */}
             <div>
-              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(min 500KB)</span></label>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 500KB)</span></label>
               <div className="flex items-start gap-4">
                 <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", studentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
                   {studentForm.photo ? (
@@ -549,7 +507,7 @@ export default function InstitutionRegistrationsPage() {
                     </p>
                   )}
                   <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                    {isBn ? 'JPG, PNG। ন্যূনতম 500KB আকার প্রয়োজন।' : 'JPG, PNG. Minimum 500KB file size required.'}
+                    {isBn ? 'JPG, PNG। সর্বোচ্চ 500KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 500KB file size allowed.'}
                   </p>
                 </div>
               </div>
@@ -581,7 +539,7 @@ export default function InstitutionRegistrationsPage() {
         )}
 
         {/* Footer */}
-        <div className={`px-6 py-4 border-t flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+        <div className={`px-2 py-3 border-t flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
           <div>
             {step > 1 && (
               <button onClick={handleBack} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
@@ -629,24 +587,6 @@ export default function InstitutionRegistrationsPage() {
         )}
         <ModalFooter>
           <button onClick={() => setViewingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বন্ধ" : "Close"}</button>
-        </ModalFooter>
-      </Modal>
-
-      {/* Approve / Reject Confirmation */}
-      <Modal open={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.type === "approve" ? (isBn ? "নিবন্ধন অনুমোদন?" : "Approve Registration?") : (isBn ? "নিবন্ধন প্রত্যাখ্যান?" : "Reject Registration?")}>
-        <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
-          {confirmAction?.type === "approve"
-            ? (isBn ? `"${confirmAction?.reg.applicationId}" অনুমোদিত হবে।` : `"${confirmAction?.reg.applicationId}" will be approved.`)
-            : (isBn ? `"${confirmAction?.reg.applicationId}" প্রত্যাখ্যাত হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `"${confirmAction?.reg.applicationId}" will be rejected. This action cannot be undone.`)}
-        </p>
-        <ModalFooter>
-          <button onClick={() => setConfirmAction(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বাতিল" : "Cancel"}</button>
-          <button
-            onClick={() => confirmAction && (confirmAction.type === "approve" ? handleApprove(confirmAction.reg) : handleReject(confirmAction.reg))}
-            className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", confirmAction?.type === "approve" ? "bg-green-600 text-white hover:bg-green-700" : "bg-red-600 text-white hover:bg-red-700")}
-          >
-            {confirmAction?.type === "approve" ? (isBn ? "অনুমোদন" : "Approve") : (isBn ? "প্রত্যাখ্যান" : "Reject")}
-          </button>
         </ModalFooter>
       </Modal>
 

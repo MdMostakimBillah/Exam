@@ -24,7 +24,10 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
   ), [institutions]);
   const maxMonthly = useMemo(() => Math.max(...monthlyInstitutions, 1), [monthlyInstitutions]);
   const totalRevenue = useMemo(() => payments.reduce((sum, p) => sum + (p.status === 'PAID' ? p.amount : 0), 0), [payments]);
-  const totalDue = useMemo(() => payments.reduce((sum, p) => sum + (p.status === 'PENDING' ? p.amount : 0), 0), [payments]);
+  // Due = sum of exam fees for all pending registrations across all institutions
+  const totalDue = useMemo(() => registrations
+    .filter(r => r.status === 'PENDING')
+    .reduce((sum, r) => sum + r.paymentAmount, 0), [registrations]);
   const activeExams = useMemo(() => exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length, [exams]);
   const pendingInstitutions = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
   const verifiedRegs = useMemo(() => registrations.filter(r => r.status === 'VERIFIED' || r.status === 'APPROVED').length, [registrations]);

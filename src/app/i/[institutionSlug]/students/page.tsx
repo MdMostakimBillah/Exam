@@ -7,17 +7,21 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useStudentsByInstitution } from "@/lib/storage/students";
+import { useStudentsByInstitution, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
 import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { useClasses } from "@/lib/storage/classes";
 import { Student, Registration } from "@/lib/types";
-import { Users, Search, GraduationCap, FileDown, UserCheck, ClipboardList } from "lucide-react";
+import { Users, Search, GraduationCap, FileDown, UserCheck, ClipboardList, Edit, Trash2 } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
+import { Modal, ModalFooter } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { useCurrentSession } from "@/lib/storage/sessions";
 
 function getRegistrationStatus(
   studentId: string,
@@ -43,12 +47,20 @@ export default function InstitutionStudentsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", class: "", section: "", roll: "" });
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const { toast } = useToast();
+  const updateStudentMutation = useUpdateStudent();
+  const deleteStudentMutation = useDeleteStudent();
 
   useEffect(() => { setMounted(true); }, []);
 
   const { data: inst } = useInstitutionBySlug(slug);
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: currentSession } = useCurrentSession();
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allClasses = [] } = useClasses();
   const classNames = useMemo(() => allClasses.length > 0 ? allClasses.map(c => c.name) : [...new Set(students.map(s => s.class))], [allClasses, students]);
 
@@ -98,6 +110,43 @@ export default function InstitutionStudentsPage() {
   const pendingCount = students.filter(s => studentRegStatus[s.id]?.status === "PENDING").length;
   const approvedCount = students.filter(s => studentRegStatus[s.id]?.status === "APPROVED").length;
   const rejectedCount = students.filter(s => studentRegStatus[s.id]?.status === "REJECTED").length;
+
+  const handleEdit = (student: Student) => {
+    setEditingStudent(student);
+    setEditForm({
+      firstName: student.firstName,
+      lastName: student.lastName,
+      class: student.class,
+      section: student.section,
+      roll: student.roll,
+    });
+    setMenuOpenId(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingStudent) return;
+    await updateStudentMutation.mutateAsync({
+      id: editingStudent.id,
+      data: {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        class: editForm.class,
+        section: editForm.section,
+        roll: editForm.roll,
+      },
+    });
+    toast("success", isBn ? "শিক্ষার্থী আপডেট হয়েছে" : "Student updated");
+    setEditingStudent(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingStudent) return;
+    await deleteStudentMutation.mutateAsync(deletingStudent.id);
+    toast("success", isBn ? "শিক্ষার্থী মুছে ফেলা হয়েছে" : "Student deleted");
+    setDeletingStudent(null);
+    setRefreshKey(k => k + 1);
+  };
 
   if (!mounted) return <StudentsSkeleton isDark={isDark} />;
   if (!inst) return null;
@@ -209,6 +258,7 @@ export default function InstitutionStudentsPage() {
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নিবন্ধন স্থিতি' : 'Registration'}</TableHead>
                     <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
+                    <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -241,6 +291,16 @@ export default function InstitutionStudentsPage() {
                         </span>
                       </TableCell>
                       <TableCell><Badge status={student.status} /></TableCell>
+                      <TableCell>
+                        <TableActionMenu id={student.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                          <TableActionItem onClick={() => handleEdit(student)} isDark={isDark}>
+                            <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                          </TableActionItem>
+                          <TableActionItem onClick={() => { setDeletingStudent(student); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                            <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                          </TableActionItem>
+                        </TableActionMenu>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -265,6 +325,72 @@ export default function InstitutionStudentsPage() {
       )}
 
       <PdfExportModal open={showPdfModal} onClose={() => setShowPdfModal(false)} title={isBn ? 'শিক্ষার্থী তালিকা' : 'Student List'} columns={pdfColumns} data={pdfData} />
+
+      {/* Edit Student Modal */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setEditingStudent(null)} />
+          <div className={`relative z-50 w-full max-w-xl rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'শিক্ষার্থী সম্পাদনা' : 'Edit Student'}</h3>
+              <button onClick={() => setEditingStudent(null)} className={`p-1 rounded ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>×</button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{isBn ? 'ইংরেজি নাম' : 'First Name'}</label>
+                  <Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{isBn ? 'শেষ নাম' : 'Last Name'}</label>
+                  <Input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{isBn ? 'শ্রেণী' : 'Class'}</label>
+                  <Input value={editForm.class} onChange={(e) => setEditForm({ ...editForm, class: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{isBn ? 'শাখা' : 'Section'}</label>
+                  <Input value={editForm.section} onChange={(e) => setEditForm({ ...editForm, section: e.target.value })} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <label className={`block text-[11px] mb-1.5 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{isBn ? 'রোল' : 'Roll'}</label>
+                  <Input value={editForm.roll} onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setEditingStudent(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                {isBn ? 'সংরক্ষণ' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setDeletingStudent(null)} />
+          <div className={`relative z-50 w-full max-w-md rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <h3 className={`text-sm font-semibold mb-2 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'শিক্ষার্থী মুছুন?' : 'Delete Student?'}</h3>
+            <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+              {isBn ? `"${deletingStudent.firstName} ${deletingStudent.lastName}" মুছে ফেলা হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `"${deletingStudent.firstName} ${deletingStudent.lastName}" will be deleted. This action cannot be undone.`}
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setDeletingStudent(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleDelete} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">
+                {isBn ? 'মুছুন' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

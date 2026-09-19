@@ -5,9 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from "@/lib/storage/exams";
+import { useExams, useCreateExam, useUpdateExam, useDeleteExam, useExamRegistrationCounts } from "@/lib/storage/exams";
 import { useClasses, useActiveClasses } from "@/lib/storage/classes";
-import { useRegistrations } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
 import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X, Copy, ClipboardPaste } from "lucide-react";
@@ -48,9 +47,9 @@ export default function ExamsPage() {
 
   const { data: currentSession } = useCurrentSession();
   const { data: exams = [] } = useExams(currentSession?.id);
-  const { data: registrations = [] } = useRegistrations();
   const { data: allClasses = [] } = useClasses();
   const { data: activeClasses = [] } = useActiveClasses();
+  const { data: regCounts = {} } = useExamRegistrationCounts(currentSession?.id);
   const createExamMutation = useCreateExam();
   const updateExamMutation = useUpdateExam();
   const deleteExamMutation = useDeleteExam();
@@ -63,11 +62,11 @@ export default function ExamsPage() {
 
   const registrationCountMap = useMemo(() => {
     const map = new Map<string, number>();
-    registrations.forEach(r => {
-      map.set(r.examId, (map.get(r.examId) || 0) + 1);
+    Object.entries(regCounts).forEach(([examId, count]) => {
+      map.set(examId, count);
     });
     return map;
-  }, [registrations]);
+  }, [regCounts]);
 
   const classMap = useMemo(() => {
     const map = new Map<string, typeof allClasses[0]>();
@@ -401,9 +400,9 @@ export default function ExamsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-lg shadow-2xl w-[90dvw] h-[90dvh] relative z-50 flex flex-col overflow-hidden animate-scaleIn`}>
+          <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-lg shadow-2xl max-w-xl w-full relative z-50 flex flex-col overflow-hidden animate-scaleIn max-h-[90vh]`}>
           {/* Header */}
-          <div className={`px-6 py-4 border-b flex items-start justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+          <div className={`px-4 py-3 border-b flex items-start justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
             <div>
               <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                 {editingExam ? (isBn ? 'পরীক্ষা সম্পাদনা' : 'Edit Exam') : (isBn ? 'নতুন পরীক্ষা' : 'New Exam')}
@@ -414,7 +413,7 @@ export default function ExamsPage() {
             </button>
           </div>
           {/* Step Indicator */}
-          <div className={`px-6 py-3 border-b flex items-center gap-2 ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+          <div className={`px-4 py-2 border-b flex items-center gap-2 ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
               {[
                 { num: 1, label: isBn ? 'পরীক্ষার তথ্য' : 'Exam Info' },
                 { num: 2, label: isBn ? 'শ্রেণী নির্বাচন' : 'Select Classes' },
@@ -441,7 +440,7 @@ export default function ExamsPage() {
             </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex-1 overflow-y-auto px-4 py-4">
             {/* Step 1: Exam Info */}
             {examStep === 1 && (
               <div className="space-y-4">
@@ -630,7 +629,7 @@ export default function ExamsPage() {
           </div>
 
           {/* Footer */}
-          <div className={`px-6 py-4 border-t flex items-center justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+          <div className={`px-4 py-3 border-t flex items-center justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
             <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"}`}>
               {isBn ? 'বাতিল' : 'Cancel'}
             </button>

@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS students (
   phone TEXT,
   address TEXT,
   photo_url TEXT,
-  status TEXT DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  status TEXT DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED')),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(institution_id, session_id, student_id)
