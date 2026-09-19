@@ -11,9 +11,11 @@ interface ModalProps {
   description?: string;
   children: React.ReactNode;
   maxWidth?: string;
+  maxHeight?: string;
+  width?: string;
 }
 
-function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-lg' }: ModalProps) {
+function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-lg', maxHeight = 'max-h-[90vh]', width }: ModalProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -32,11 +34,13 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className={cn(
-        'relative z-50 w-full rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl max-h-[90vh] flex flex-col',
+        'relative z-50 w-full rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl flex flex-col',
         isDark
           ? 'border border-white/[0.06] bg-[#0D0D0D] shadow-black/50'
           : 'border border-zinc-200 bg-white shadow-zinc-200/50',
-        maxWidth
+        maxWidth,
+        maxHeight,
+        width
       )}>
         <div className="flex items-start justify-between mb-5 shrink-0">
           <div>
