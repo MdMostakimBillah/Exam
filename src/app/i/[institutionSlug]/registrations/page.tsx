@@ -30,10 +30,8 @@ const MIN_PHOTO_SIZE = 500 * 1024;
 type Step = 1 | 2 | 3;
 
 interface StudentForm {
-  firstName: string;
-  lastName: string;
-  firstNameBn: string;
-  lastNameBn: string;
+  englishName: string;
+  banglaName: string;
   studentId: string;
   class: string;
   section: string;
@@ -48,7 +46,7 @@ interface StudentForm {
 }
 
 const emptyStudentForm: StudentForm = {
-  firstName: "", lastName: "", firstNameBn: "", lastNameBn: "", studentId: "", class: "", section: "", roll: "",
+  englishName: "", banglaName: "", studentId: "", class: "", section: "", roll: "",
   dateOfBirth: "", gender: "MALE",
   fatherName: "", motherName: "", phone: "", address: "", photo: "",
 };
@@ -81,9 +79,9 @@ export default function InstitutionRegistrationsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allClasses = [] } = useClasses();
   const createRegistrationMutation = useCreateRegistration();
   const updateRegistrationMutation = useUpdateRegistration();
@@ -168,7 +166,7 @@ export default function InstitutionRegistrationsPage() {
     reader.readAsDataURL(file);
   };
 
-  const canProceedStep1 = studentForm.firstName.trim() !== "" && studentForm.lastName.trim() !== "" && studentForm.studentId.trim() !== "" && studentForm.class.trim() !== "";
+  const canProceedStep1 = studentForm.englishName.trim() !== "" && studentForm.studentId.trim() !== "" && studentForm.class.trim() !== "";
   const canProceedStep2 = studentForm.fatherName.trim() !== "" && studentForm.phone.trim() !== "" && studentForm.address.trim() !== "";
   const canSubmitStep3 = selectedExamId !== "" && canProceedStep1 && canProceedStep2;
 
@@ -201,10 +199,10 @@ export default function InstitutionRegistrationsPage() {
     const newStudent = await createStudentMutation.mutateAsync({
       sessionId: currentSession?.id || '',
       institutionId: inst!.id,
-      firstName: studentForm.firstName.trim(),
-      lastName: studentForm.lastName.trim(),
-      firstNameBn: studentForm.firstNameBn.trim() || undefined,
-      lastNameBn: studentForm.lastNameBn.trim() || undefined,
+      firstName: studentForm.englishName.trim(),
+      lastName: "",
+      firstNameBn: studentForm.banglaName.trim() || undefined,
+      lastNameBn: undefined,
       studentId: studentForm.studentId.trim(),
       class: studentForm.class,
       section: studentForm.section.trim(),
@@ -223,7 +221,7 @@ export default function InstitutionRegistrationsPage() {
       sessionId: currentSession?.id || '',
       applicationId: generateAppId(),
       studentId: newStudent.id,
-      studentName: `${newStudent.firstName} ${newStudent.lastName}`,
+      studentName: newStudent.firstName,
       institutionId: inst!.id,
       institutionName: inst!.name,
       examId: exam.id,
@@ -447,20 +445,12 @@ export default function InstitutionRegistrationsPage() {
           <div className="px-6 py-5">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি প্রথম নাম *' : 'English First Name *'}</label>
-                <Input placeholder={isBn ? 'ইংরেজি প্রথম নাম' : 'First name'} value={studentForm.firstName} onChange={(e) => setStudentForm({ ...studentForm, firstName: e.target.value })} className={inputCls} />
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'English Name *'}</label>
+                <Input placeholder={isBn ? 'ইংরেজি নাম' : 'English name'} value={studentForm.englishName} onChange={(e) => setStudentForm({ ...studentForm, englishName: e.target.value })} className={inputCls} />
               </div>
               <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি শেষ নাম *' : 'English Last Name *'}</label>
-                <Input placeholder={isBn ? 'ইংরেজি শেষ নাম' : 'Last name'} value={studentForm.lastName} onChange={(e) => setStudentForm({ ...studentForm, lastName: e.target.value })} className={inputCls} />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা প্রথম নাম' : 'Bangla First Name'}</label>
-                <Input placeholder={isBn ? 'বাংলা প্রথম নাম' : 'Bangla first name'} value={studentForm.firstNameBn} onChange={(e) => setStudentForm({ ...studentForm, firstNameBn: e.target.value })} className={inputCls} />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা শেষ নাম' : 'Bangla Last Name'}</label>
-                <Input placeholder={isBn ? 'বাংলা শেষ নাম' : 'Bangla last name'} value={studentForm.lastNameBn} onChange={(e) => setStudentForm({ ...studentForm, lastNameBn: e.target.value })} className={inputCls} />
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা নাম' : 'Bangla Name'}</label>
+                <Input placeholder={isBn ? 'বাংলা নাম' : 'Bangla name'} value={studentForm.banglaName} onChange={(e) => setStudentForm({ ...studentForm, banglaName: e.target.value })} className={inputCls} />
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী আইডি *' : 'Student ID *'}</label>
