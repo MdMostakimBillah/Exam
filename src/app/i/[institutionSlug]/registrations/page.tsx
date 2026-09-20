@@ -137,14 +137,26 @@ export default function InstitutionRegistrationsPage() {
 
   const generateAppId = () => {
     const year = new Date().getFullYear();
-    const count = registrations.length + 1;
-    return `APP-${year}-${String(count).padStart(4, "0")}`;
+    const prefix = `APP-${year}-`;
+    const existingNums = registrations
+      .map(r => r.applicationId)
+      .filter(id => id.startsWith(prefix))
+      .map(id => parseInt(id.replace(prefix, ''), 10))
+      .filter(n => !isNaN(n));
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+    return `${prefix}${String(maxNum + 1).padStart(4, "0")}`;
   };
 
   const generateStudentId = () => {
     const year = new Date().getFullYear();
-    const count = students.length + 1;
-    return `STU-${year}-${String(count).padStart(4, "0")}`;
+    const prefix = `STU-${year}-`;
+    const existingNums = students
+      .map(s => s.studentId)
+      .filter(id => id.startsWith(prefix))
+      .map(id => parseInt(id.replace(prefix, ''), 10))
+      .filter(n => !isNaN(n));
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+    return `${prefix}${String(maxNum + 1).padStart(4, "0")}`;
   };
 
   const selectedExam = exams.find(e => e.id === selectedExamId);
