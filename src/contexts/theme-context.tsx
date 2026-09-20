@@ -1,6 +1,8 @@
 "use client";
 import * as React from "react";
-import { createContext, useContext, useState, useCallback, useEffect, useSyncExternalStore, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { useAuth } from "@/lib/auth/auth";
+import { createClient } from "@/lib/supabase/client";
 
 type Theme = "light" | "dark";
 
@@ -12,52 +14,82 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  return (localStorage.getItem("scholarx-theme") as Theme) || "dark";
-}
-
-function subscribe(callback: () => void) {
-  if (typeof window !== "undefined") {
-    window.addEventListener("storage", callback);
-    return () => window.removeEventListener("storage", callback);
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  if (theme === "light") {
+    root.classList.remove("dark");
+    root.classList.add("light");
+    document.body.classList.remove("dark");
+    document.body.classList.add("light");
+  } else {
+    root.classList.remove("light");
+    root.classList.add("dark");
+    document.body.classList.remove("light");
+    document.body.classList.add("dark");
   }
-  return () => {};
-}
-
-function getSnapshot(): Theme {
-  return getStoredTheme();
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, () => "dark" as Theme);
+  const { user, loading: authLoading } = useAuth();
+  const [theme, setThemeState] = useState<Theme>("dark");
 
+  // Load theme when user changes (login/logout)
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.remove("dark");
-      root.classList.add("light");
-      document.body.classList.remove("dark");
-      document.body.classList.add("light");
+    if (authLoading) return;
+
+    if (user) {
+      // Logged in: try localStorage first, then Supabase profile
+      const storageKey = `scholarx-theme-${user.id}`;
+      const stored = localStorage.getItem(storageKey) as Theme | null;
+      if (stored) {
+        setThemeState(stored);
+        applyTheme(stored);
+      } else {
+        // Load from Supabase profile
+        const supabase = createClient();
+        supabase.from("profiles").select("theme").eq("id", user.id).single()
+          .then(({ data }: { data: { theme: string | null } | null }) => {
+            const dbTheme = (data?.theme as Theme) || "dark";
+            setThemeState(dbTheme);
+            applyTheme(dbTheme);
+            localStorage.setItem(storageKey, dbTheme);
+          });
+      }
     } else {
-      root.classList.remove("light");
-      root.classList.add("dark");
-      document.body.classList.remove("light");
-      document.body.classList.add("dark");
+      // Not logged in: use default
+      setThemeState("dark");
+      applyTheme("dark");
     }
-    localStorage.setItem("scholarx-theme", theme);
-  }, [theme]);
+  }, [user, authLoading]);
 
   const toggleTheme = useCallback(() => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    localStorage.setItem("scholarx-theme", newTheme);
-    window.dispatchEvent(new Event("storage"));
-  }, [theme]);
+    setThemeState((prev) => {
+      const newTheme = prev === "dark" ? "light" : "dark";
+      applyTheme(newTheme);
+
+      if (user) {
+        const storageKey = `scholarx-theme-${user.id}`;
+        localStorage.setItem(storageKey, newTheme);
+        // Persist to Supabase
+        const supabase = createClient();
+        supabase.from("profiles").update({ theme: newTheme }).eq("id", user.id).then();
+      }
+
+      return newTheme;
+    });
+  }, [user]);
 
   const setTheme = useCallback((t: Theme) => {
-    localStorage.setItem("scholarx-theme", t);
-    window.dispatchEvent(new Event("storage"));
-  }, []);
+    setThemeState(t);
+    applyTheme(t);
+
+    if (user) {
+      const storageKey = `scholarx-theme-${user.id}`;
+      localStorage.setItem(storageKey, t);
+      const supabase = createClient();
+      supabase.from("profiles").update({ theme: t }).eq("id", user.id).then();
+    }
+  }, [user]);
 
   const value = React.useMemo(() => ({ theme, toggleTheme, setTheme }), [theme, toggleTheme, setTheme]);
 

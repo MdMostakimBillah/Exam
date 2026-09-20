@@ -19,11 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('scholarx-theme') || 'dark';
                   var lang = localStorage.getItem('scholarx-lang') || 'en';
-                  document.documentElement.classList.add(theme);
+                  document.documentElement.classList.add('dark');
                   document.documentElement.classList.add('lang-' + lang);
-                  document.body.classList.add(theme);
+                  document.body.classList.add('dark');
                 } catch (e) {}
               })();
             `,
