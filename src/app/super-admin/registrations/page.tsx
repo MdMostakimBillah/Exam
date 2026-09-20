@@ -10,7 +10,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useRegistrations, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
-import { ClipboardList, Search, Download, FileDown, Edit, Trash2 } from "lucide-react";
+import { ClipboardList, Search, Download, FileDown, Edit, Trash2, CheckCircle } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -29,7 +29,7 @@ export default function RegistrationsPage() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
-  const [editForm, setEditForm] = useState({ status: "", paymentStatus: "" });
+  const [editForm, setEditForm] = useState({ status: "" });
   const [deletingReg, setDeletingReg] = useState<Registration | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -54,7 +54,6 @@ export default function RegistrationsPage() {
     { header: isBn ? "প্রতিষ্ঠান" : "Institution", key: "institutionName" },
     { header: isBn ? "পরীক্ষা" : "Exam", key: "examName" },
     { header: isBn ? "তারিখ" : "Date", key: "date" },
-    { header: isBn ? "পেমেন্ট স্ট্যাটাস" : "Payment Status", key: "paymentStatus" },
     { header: isBn ? "স্ট্যাটাস" : "Status", key: "status" },
   ], [isBn]);
 
@@ -64,7 +63,6 @@ export default function RegistrationsPage() {
     institutionName: r.institutionName,
     examName: r.examName,
     date: formatDate(r.createdAt),
-    paymentStatus: r.paymentStatus,
     status: r.status,
   })), [filtered]);
 
@@ -79,20 +77,36 @@ export default function RegistrationsPage() {
 
   const handleEdit = (reg: Registration) => {
     setEditingReg(reg);
-    setEditForm({ status: reg.status, paymentStatus: reg.paymentStatus });
+    setEditForm({ status: reg.status });
     setMenuOpenId(null);
   };
 
   const handleSaveEdit = async () => {
     if (!editingReg) return;
+    const newStatus = editForm.status;
+    const isApprove = newStatus === 'APPROVED';
     await updateRegistrationMutation.mutateAsync({
       id: editingReg.id,
       data: {
-        status: editForm.status as any,
-        paymentStatus: editForm.paymentStatus as any,
+        status: newStatus as any,
+        paymentStatus: isApprove ? 'PAID' : 'PENDING',
       },
     });
     toast("success", isBn ? "নিবন্ধন আপডেট হয়েছে" : "Registration updated");
+    setEditingReg(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleApprove = async () => {
+    if (!editingReg) return;
+    await updateRegistrationMutation.mutateAsync({
+      id: editingReg.id,
+      data: {
+        status: 'APPROVED',
+        paymentStatus: 'PAID',
+      },
+    });
+    toast("success", isBn ? "নিবন্ধন অনুমোদিত ও পরিশোধিত হয়েছে" : "Registration approved and marked as paid");
     setEditingReg(null);
     setRefreshKey(k => k + 1);
   };
@@ -212,7 +226,6 @@ export default function RegistrationsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পেমেন্ট' : 'Payment'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}></TableHead>
                 </TableRow>
@@ -231,7 +244,6 @@ export default function RegistrationsPage() {
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.institutionName}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{formatDate(reg.createdAt)}</TableCell>
-                    <TableCell><Badge status={reg.paymentStatus} /></TableCell>
                     <TableCell><Badge status={reg.status} /></TableCell>
                     <TableCell>
                       <TableActionMenu id={reg.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
@@ -279,41 +291,34 @@ export default function RegistrationsPage() {
                   <Input value={editingReg.institutionName} disabled className={cn("opacity-60", inputCls)} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'স্থিতি *' : 'Status *'}</label>
-                  <Select
-                    options={[
-                      { label: 'PENDING', value: 'PENDING' },
-                      { label: 'APPROVED', value: 'APPROVED' },
-                      { label: 'REJECTED', value: 'REJECTED' },
-                    ]}
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট স্থিতি *' : 'Payment Status *'}</label>
-                  <Select
-                    options={[
-                      { label: 'PENDING', value: 'PENDING' },
-                      { label: 'CONFIRMED', value: 'CONFIRMED' },
-                      { label: 'PAID', value: 'PAID' },
-                      { label: 'FAILED', value: 'FAILED' },
-                      { label: 'REFUNDED', value: 'REFUNDED' },
-                    ]}
-                    value={editForm.paymentStatus}
-                    onChange={(e) => setEditForm({ ...editForm, paymentStatus: e.target.value })}
-                    className={inputCls}
-                  />
-                </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'স্থিতি *' : 'Status *'}</label>
+                <Select
+                  options={[
+                    { label: 'PENDING', value: 'PENDING' },
+                    { label: 'APPROVED', value: 'APPROVED' },
+                    { label: 'REJECTED', value: 'REJECTED' },
+                  ]}
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className={inputCls}
+                />
               </div>
+              {editForm.status === 'APPROVED' && (
+                <div className={`rounded-md p-3 text-[11px] ${isDark ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-green-50 text-green-700 border border-green-200"}`}>
+                  {isBn ? 'অনুমোদিত হলে পেমেন্ট স্বয়ংক্রিয়ভাবে PAID হবে' : 'Approving will automatically mark payment as PAID'}
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-end gap-2 mt-6">
               <button onClick={() => setEditingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
                 {isBn ? 'বাতিল' : 'Cancel'}
               </button>
+              {editingReg.status !== 'APPROVED' && (
+                <button onClick={handleApprove} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-green-600 text-white hover:bg-green-700">
+                  {isBn ? 'অনুমোদন ও পরিশোধ' : 'Approve & Mark Paid'}
+                </button>
+              )}
               <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
                 {isBn ? 'সংরক্ষণ' : 'Save'}
               </button>
