@@ -9,7 +9,7 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useRegistrationsByInstitution, useCreateRegistration } from "@/lib/storage/registrations";
+import { useRegistrationsByInstitution, useCreateRegistration, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useStudentsByInstitution, useCreateStudent } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle } from "lucide-react";
+import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Edit, Trash2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -66,6 +66,9 @@ export default function InstitutionRegistrationsPage() {
   const [showModal, setShowModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [viewingReg, setViewingReg] = useState<Registration | null>(null);
+  const [editingReg, setEditingReg] = useState<Registration | null>(null);
+  const [editForm, setEditForm] = useState({ examId: "", status: "" });
+  const [deletingReg, setDeletingReg] = useState<Registration | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [step, setStep] = useState<Step>(1);
@@ -83,6 +86,8 @@ export default function InstitutionRegistrationsPage() {
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allClasses = [] } = useClasses();
   const createRegistrationMutation = useCreateRegistration();
+  const updateRegistrationMutation = useUpdateRegistration();
+  const deleteRegistrationMutation = useDeleteRegistration();
   const createStudentMutation = useCreateStudent();
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
@@ -236,6 +241,37 @@ export default function InstitutionRegistrationsPage() {
     setRefreshKey(k => k + 1);
   };
 
+  const handleEdit = (reg: Registration) => {
+    setEditingReg(reg);
+    setEditForm({ examId: reg.examId, status: reg.status });
+    setMenuOpenId(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReg) return;
+    const exam = exams.find(e => e.id === editForm.examId);
+    await updateRegistrationMutation.mutateAsync({
+      id: editingReg.id,
+      data: {
+        examId: editForm.examId,
+        examName: exam?.name || editingReg.examName,
+        status: editForm.status as any,
+        paymentAmount: exam?.registrationFee || editingReg.paymentAmount,
+      },
+    });
+    toast("success", isBn ? "নিবন্ধন আপডেট হয়েছে" : "Registration updated");
+    setEditingReg(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingReg) return;
+    await deleteRegistrationMutation.mutateAsync(deletingReg.id);
+    toast("success", isBn ? "নিবন্ধন মুছে ফেলা হয়েছে" : "Registration deleted");
+    setDeletingReg(null);
+    setRefreshKey(k => k + 1);
+  };
+
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
@@ -357,6 +393,12 @@ export default function InstitutionRegistrationsPage() {
                       <TableActionMenu id={reg.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
                         <TableActionItem onClick={() => { setViewingReg(reg); setMenuOpenId(null); }} isDark={isDark}>
                           <Eye className="h-3.5 w-3.5" /> {isBn ? "বিস্তারিত" : "View Details"}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => handleEdit(reg)} isDark={isDark}>
+                          <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => { setDeletingReg(reg); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
                         </TableActionItem>
                       </TableActionMenu>
                     </TableCell>
@@ -589,6 +631,80 @@ export default function InstitutionRegistrationsPage() {
           <button onClick={() => setViewingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বন্ধ" : "Close"}</button>
         </ModalFooter>
       </Modal>
+
+      {/* Edit Registration Modal */}
+      {editingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setEditingReg(null)} />
+          <div className={`relative z-50 w-full max-w-xl rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'নিবন্ধন সম্পাদনা' : 'Edit Registration'}</h3>
+              <button onClick={() => setEditingReg(null)} className={`p-1 rounded ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>×</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</label>
+                <Input value={editingReg.studentName} disabled className={cn("opacity-60", inputCls)} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'আবেদন আইডি' : 'Application ID'}</label>
+                <Input value={editingReg.applicationId} disabled className={cn("opacity-60", inputCls)} />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পরীক্ষা *' : 'Exam *'}</label>
+                <Select
+                  options={exams.map(e => ({ label: `${e.name} (৳${e.registrationFee})`, value: e.id }))}
+                  value={editForm.examId}
+                  onChange={(e) => setEditForm({ ...editForm, examId: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'স্থিতি *' : 'Status *'}</label>
+                <Select
+                  options={[
+                    { label: 'PENDING', value: 'PENDING' },
+                    { label: 'APPROVED', value: 'APPROVED' },
+                    { label: 'REJECTED', value: 'REJECTED' },
+                  ]}
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setEditingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                {isBn ? 'সংরক্ষণ' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setDeletingReg(null)} />
+          <div className={`relative z-50 w-full max-w-md rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <h3 className={`text-sm font-semibold mb-2 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'নিবন্ধন মুছুন?' : 'Delete Registration?'}</h3>
+            <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+              {isBn ? `"${deletingReg.studentName}" -এর "${deletingReg.examName}" নিবন্ধন মুছে ফেলা হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `Registration for "${deletingReg.studentName}" in "${deletingReg.examName}" will be deleted. This action cannot be undone.`}
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setDeletingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleDelete} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">
+                {isBn ? 'মুছুন' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating PDF Download Button */}
       {selection.selectedCount > 0 && (
