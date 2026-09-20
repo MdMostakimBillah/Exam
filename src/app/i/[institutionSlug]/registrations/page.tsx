@@ -9,9 +9,9 @@ import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
+import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
-import { useStudentsByInstitution, useCreateStudent } from "@/lib/storage/students";
+import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Registration } from "@/lib/types";
@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2 } from "lucide-react";
+import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2, Edit } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -67,6 +67,12 @@ export default function InstitutionRegistrationsPage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [viewingReg, setViewingReg] = useState<Registration | null>(null);
   const [deletingReg, setDeletingReg] = useState<Registration | null>(null);
+  const [editingReg, setEditingReg] = useState<Registration | null>(null);
+  const [editStudentForm, setEditStudentForm] = useState({
+    firstName: "", lastName: "", class: "", section: "", roll: "",
+    dateOfBirth: "", gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
+    fatherName: "", motherName: "", phone: "", address: "",
+  });
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [step, setStep] = useState<Step>(1);
@@ -85,6 +91,8 @@ export default function InstitutionRegistrationsPage() {
   const { data: allClasses = [] } = useClasses();
   const createRegistrationMutation = useCreateRegistration();
   const deleteRegistrationMutation = useDeleteRegistration();
+  const updateRegistrationMutation = useUpdateRegistration();
+  const updateStudentMutation = useUpdateStudent();
   const createStudentMutation = useCreateStudent();
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
@@ -246,6 +254,64 @@ export default function InstitutionRegistrationsPage() {
     setRefreshKey(k => k + 1);
   };
 
+  const handleEdit = (reg: Registration) => {
+    setEditingReg(reg);
+    setMenuOpenId(null);
+    // Find the student from the students list
+    const student = students.find(s => s.id === reg.studentId);
+    if (student) {
+      setEditStudentForm({
+        firstName: student.firstName,
+        lastName: student.lastName,
+        class: student.class,
+        section: student.section,
+        roll: student.roll,
+        dateOfBirth: student.dateOfBirth || "",
+        gender: student.gender || "MALE",
+        fatherName: student.fatherName || "",
+        motherName: student.motherName || "",
+        phone: student.phone || "",
+        address: student.address || "",
+      });
+    } else {
+      setEditStudentForm({
+        firstName: reg.studentName.split(" ")[0] || "",
+        lastName: reg.studentName.split(" ").slice(1).join(" ") || "",
+        class: reg.className || "",
+        section: "", roll: "",
+        dateOfBirth: "", gender: "MALE",
+        fatherName: "", motherName: "", phone: "", address: "",
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReg) return;
+    // Update student data
+    const student = students.find(s => s.id === editingReg.studentId);
+    if (student) {
+      await updateStudentMutation.mutateAsync({
+        id: student.id,
+        data: {
+          firstName: editStudentForm.firstName,
+          lastName: editStudentForm.lastName,
+          class: editStudentForm.class,
+          section: editStudentForm.section,
+          roll: editStudentForm.roll,
+          dateOfBirth: editStudentForm.dateOfBirth,
+          gender: editStudentForm.gender,
+          fatherName: editStudentForm.fatherName,
+          motherName: editStudentForm.motherName,
+          phone: editStudentForm.phone,
+          address: editStudentForm.address,
+        },
+      });
+    }
+    toast("success", isBn ? "শিক্ষার্থী তথ্য আপডেট হয়েছে" : "Student data updated");
+    setEditingReg(null);
+    setRefreshKey(k => k + 1);
+  };
+
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
@@ -367,6 +433,9 @@ export default function InstitutionRegistrationsPage() {
                       <TableActionMenu id={reg.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
                         <TableActionItem onClick={() => { setViewingReg(reg); setMenuOpenId(null); }} isDark={isDark}>
                           <Eye className="h-3.5 w-3.5" /> {isBn ? "বিস্তারিত" : "View Details"}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => handleEdit(reg)} isDark={isDark}>
+                          <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
                         </TableActionItem>
                         <TableActionItem onClick={() => { setDeletingReg(reg); setMenuOpenId(null); }} isDark={isDark} variant="danger">
                           <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
@@ -583,6 +652,7 @@ export default function InstitutionRegistrationsPage() {
           const student = students.find(s => s.id === viewingReg.studentId);
           const studentPhoto = student?.photo;
           const initials = viewingReg.studentName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          const genderLabel = student?.gender === 'MALE' ? (isBn ? 'পুরুষ' : 'Male') : student?.gender === 'FEMALE' ? (isBn ? 'মহিলা' : 'Female') : (isBn ? 'অন্যান্য' : 'Other');
           return (
             <div className="-mt-2 -mb-1">
               {/* Profile Header */}
@@ -603,6 +673,7 @@ export default function InstitutionRegistrationsPage() {
                   )}
                 </div>
                 <h3 className={`text-base font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{viewingReg.studentName}</h3>
+                {student?.firstNameBn && <p className={`text-[12px] mt-0.5 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{student.firstNameBn}</p>}
                 <p className={`text-[11px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{viewingReg.className} &middot; {viewingReg.institutionName}</p>
               </div>
 
@@ -612,19 +683,62 @@ export default function InstitutionRegistrationsPage() {
                 <Badge status={viewingReg.paymentStatus} />
               </div>
 
-              {/* Details Grid */}
-              <div className={`rounded-lg p-4 space-y-3 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
-                {[
-                  { label: isBn ? "আবেদন আইডি" : "Application ID", value: viewingReg.applicationId },
-                  { label: isBn ? "পরীক্ষা" : "Exam", value: viewingReg.examName },
-                  { label: isBn ? "পরিমাণ" : "Amount", value: `৳${viewingReg.paymentAmount.toLocaleString()}` },
-                  { label: isBn ? "তৈরি" : "Created", value: formatDate(viewingReg.createdAt) },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{item.label}</span>
-                    <span className={`text-[12px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{item.value}</span>
+              {/* Student Info Section */}
+              <div className={`rounded-lg p-4 mb-3 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "শিক্ষার্থী তথ্য" : "Student Information"}</h4>
+                <div className="space-y-2.5">
+                  {([
+                    { label: isBn ? "আবেদন আইডি" : "Application ID", value: viewingReg.applicationId },
+                    { label: isBn ? "শিক্ষার্থী আইডি" : "Student ID", value: student?.studentId || viewingReg.studentId },
+                    { label: isBn ? "শ্রেণী" : "Class", value: viewingReg.className },
+                    student?.section ? { label: isBn ? "শাখা" : "Section", value: student.section } : null,
+                    student?.roll ? { label: isBn ? "রোল" : "Roll", value: student.roll } : null,
+                    student?.dateOfBirth ? { label: isBn ? "জন্ম তারিখ" : "Date of Birth", value: student.dateOfBirth } : null,
+                    student?.gender ? { label: isBn ? "লিঙ্গ" : "Gender", value: genderLabel } : null,
+                  ] as { label: string; value: string }[]).filter(Boolean).map((item) => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{item.label}</span>
+                      <span className={`text-[12px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Guardian Info Section */}
+              {student && (
+                <div className={`rounded-lg p-4 mb-3 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                  <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "অভিভাবক তথ্য" : "Guardian Information"}</h4>
+                  <div className="space-y-2.5">
+                    {([
+                      { label: isBn ? "পিতার নাম" : "Father's Name", value: student.fatherName },
+                      student.motherName ? { label: isBn ? "মাতার নাম" : "Mother's Name", value: student.motherName } : null,
+                      { label: isBn ? "ফোন" : "Phone", value: student.phone },
+                      { label: isBn ? "ঠিকানা" : "Address", value: student.address },
+                    ] as { label: string; value: string }[]).filter(Boolean).map((item) => (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{item.label}</span>
+                        <span className={`text-[12px] font-medium text-right max-w-[60%] ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{item.value}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+
+              {/* Exam & Payment Section */}
+              <div className={`rounded-lg p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "পরীক্ষা ও পেমেন্ট" : "Exam & Payment"}</h4>
+                <div className="space-y-2.5">
+                  {[
+                    { label: isBn ? "পরীক্ষা" : "Exam", value: viewingReg.examName },
+                    { label: isBn ? "পরিমাণ" : "Amount", value: `৳${viewingReg.paymentAmount.toLocaleString()}` },
+                    { label: isBn ? "তৈরি" : "Created", value: formatDate(viewingReg.createdAt) },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{item.label}</span>
+                      <span className={`text-[12px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Close Button */}
@@ -651,6 +765,98 @@ export default function InstitutionRegistrationsPage() {
               </button>
               <button onClick={handleDelete} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">
                 {isBn ? 'মুছুন' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Data Modal */}
+      {editingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setEditingReg(null)} />
+          <div className={`relative z-50 w-full max-w-xl rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl max-h-[90vh] overflow-y-auto ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'শিক্ষার্থী তথ্য সম্পাদনা' : 'Edit Student Data'}</h3>
+                <p className={`text-[11px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{editingReg.studentName} — {editingReg.examName}</p>
+              </div>
+              <button onClick={() => setEditingReg(null)} className={`p-1 rounded ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>×</button>
+            </div>
+            <div className="space-y-4">
+              {/* Basic Info */}
+              <div className={`rounded-lg p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "মৌলিক তথ্য" : "Basic Information"}</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'First Name *'}</label>
+                    <Input value={editStudentForm.firstName} onChange={(e) => setEditStudentForm({ ...editStudentForm, firstName: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শেষ নাম' : 'Last Name'}</label>
+                    <Input value={editStudentForm.lastName} onChange={(e) => setEditStudentForm({ ...editStudentForm, lastName: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শ্রেণী *' : 'Class *'}</label>
+                    <Input value={editStudentForm.class} onChange={(e) => setEditStudentForm({ ...editStudentForm, class: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শাখা' : 'Section'}</label>
+                    <Input value={editStudentForm.section} onChange={(e) => setEditStudentForm({ ...editStudentForm, section: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
+                    <Input value={editStudentForm.roll} onChange={(e) => setEditStudentForm({ ...editStudentForm, roll: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
+                    <Input type="date" value={editStudentForm.dateOfBirth} onChange={(e) => setEditStudentForm({ ...editStudentForm, dateOfBirth: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'লিঙ্গ' : 'Gender'}</label>
+                    <Select
+                      options={[
+                        { label: isBn ? 'পুরুষ' : 'Male', value: 'MALE' },
+                        { label: isBn ? 'মহিলা' : 'Female', value: 'FEMALE' },
+                        { label: isBn ? 'অন্যান্য' : 'Other', value: 'OTHER' },
+                      ]}
+                      value={editStudentForm.gender}
+                      onChange={(e) => setEditStudentForm({ ...editStudentForm, gender: e.target.value as "MALE" | "FEMALE" | "OTHER" })}
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Guardian Info */}
+              <div className={`rounded-lg p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "অভিভাবক তথ্য" : "Guardian Information"}</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম' : "Father's Name"}</label>
+                    <Input value={editStudentForm.fatherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, fatherName: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'মাতার নাম' : "Mother's Name"}</label>
+                    <Input value={editStudentForm.motherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, motherName: e.target.value })} className={inputCls} />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ফোন নম্বর' : 'Phone Number'}</label>
+                  <Input value={editStudentForm.phone} onChange={(e) => setEditStudentForm({ ...editStudentForm, phone: e.target.value })} className={inputCls} />
+                </div>
+                <div className="mt-3">
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা' : 'Address'}</label>
+                  <Input value={editStudentForm.address} onChange={(e) => setEditStudentForm({ ...editStudentForm, address: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setEditingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                {isBn ? 'সংরক্ষণ' : 'Save'}
               </button>
             </div>
           </div>

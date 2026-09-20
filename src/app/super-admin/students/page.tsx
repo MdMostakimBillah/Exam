@@ -11,7 +11,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useStudents, useUpdateStudent } from "@/lib/storage/students";
 import { useInstitutions } from "@/lib/storage/institutions";
 import { useToast } from "@/components/ui/toast";
-import { Users, Search, Download, GraduationCap, Building2, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
+import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -75,7 +75,6 @@ export default function StudentsPage() {
 
   const activeStudents = useMemo(() => students.filter(s => s.status === 'ACTIVE').length, [students]);
   const pendingStudents = useMemo(() => students.filter(s => s.status === 'PENDING').length, [students]);
-  const suspendedStudents = useMemo(() => students.filter(s => s.status === 'SUSPENDED').length, [students]);
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
@@ -136,7 +135,6 @@ export default function StudentsPage() {
             { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length },
             { icon: UserCheck, label: isBn ? 'সক্রিয়' : 'Active', value: activeStudents },
             { icon: Users, label: isBn ? 'মুলতুবি' : 'Pending', value: pendingStudents },
-            { icon: Building2, label: isBn ? 'বরোধাগ্রস্ত' : 'Suspended', value: suspendedStudents },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -179,7 +177,6 @@ export default function StudentsPage() {
                 { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
                 { label: 'ACTIVE', value: 'ACTIVE' },
                 { label: 'PENDING', value: 'PENDING' },
-                { label: 'SUSPENDED', value: 'SUSPENDED' },
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -330,7 +327,6 @@ export default function StudentsPage() {
                       options={[
                         { label: 'ACTIVE', value: 'ACTIVE' },
                         { label: 'PENDING', value: 'PENDING' },
-                        { label: 'SUSPENDED', value: 'SUSPENDED' },
                       ]}
                       value={editForm.status}
                       onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}

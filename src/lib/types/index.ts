@@ -92,7 +92,7 @@ export interface Student {
   phone: string;
   address: string;
   photo?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED';
+  status: 'ACTIVE' | 'PENDING';
   createdAt: string;
   updatedAt: string;
 }
