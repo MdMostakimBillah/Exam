@@ -368,8 +368,8 @@ function StudentsSkeleton({ isDark }: { isDark: boolean }) {
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
-        <div className={`h-8 w-48 rounded-md mb-2 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'}`} />
-        <div className={`h-4 w-64 rounded mb-6 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-200/60'}`} />
+        <div className={`h-8 w-48 rounded-md mb-2 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-300'}`} />
+        <div className={`h-4 w-64 rounded mb-6 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-300/80'}`} />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {[1, 2, 3].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
         </div>

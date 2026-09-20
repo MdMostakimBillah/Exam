@@ -1032,10 +1032,10 @@ function RegistrationsSkeleton({ isDark }: { isDark: boolean }) {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <div className={`h-8 w-48 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
-            <div className={`h-4 w-64 rounded mt-2 ${isDark ? "bg-white/[0.04]" : "bg-zinc-200/60"}`} />
+            <div className={`h-8 w-48 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-300"}`} />
+            <div className={`h-4 w-64 rounded mt-2 ${isDark ? "bg-white/[0.04]" : "bg-zinc-300/80"}`} />
           </div>
-          <div className={`h-10 w-36 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
+          <div className={`h-10 w-36 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-300"}`} />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[1, 2, 3, 4].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}

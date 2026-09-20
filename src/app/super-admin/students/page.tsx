@@ -354,7 +354,7 @@ export default function StudentsPage() {
 }
 
 function StudentsSkeleton({ isDark }: { isDark: boolean }) {
-  const shimmer = isDark ? "bg-white/[0.04]" : "bg-zinc-200/60";
+  const shimmer = isDark ? "bg-white/[0.04]" : "bg-zinc-300/80";
   const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
 
   return (

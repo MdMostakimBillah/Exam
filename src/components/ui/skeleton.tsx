@@ -5,7 +5,7 @@ function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
   return (
     <div
       className={cn(
-        'animate-shimmer rounded-md bg-zinc-200 dark:bg-zinc-800/50 bg-[length:200%_100%] relative overflow-hidden',
+        'animate-shimmer rounded-md bg-zinc-300 dark:bg-zinc-800/50 bg-[length:200%_100%] relative overflow-hidden',
         className
       )}
       {...props}
