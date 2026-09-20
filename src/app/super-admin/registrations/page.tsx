@@ -3,15 +3,20 @@ import { useState, useEffect, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { useRegistrations } from "@/lib/storage/registrations";
-import { ClipboardList, Search, Download, FileDown } from "lucide-react";
+import { useRegistrations, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
+import { useToast } from "@/components/ui/toast";
+import { ClipboardList, Search, Download, FileDown, Edit, Trash2 } from "lucide-react";
+import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { Registration } from "@/lib/types";
+import { cn } from "@/lib/utils/helpers";
 
 export default function RegistrationsPage() {
   const { theme } = useTheme();
@@ -22,10 +27,18 @@ export default function RegistrationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingReg, setEditingReg] = useState<Registration | null>(null);
+  const [editForm, setEditForm] = useState({ status: "", paymentStatus: "" });
+  const [deletingReg, setDeletingReg] = useState<Registration | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => { setMounted(true); }, []);
 
+  const { toast } = useToast();
   const { data: registrations = [] } = useRegistrations();
+  const updateRegistrationMutation = useUpdateRegistration();
+  const deleteRegistrationMutation = useDeleteRegistration();
 
   const filtered = useMemo(() => registrations.filter(r => {
     const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.applicationId.toLowerCase().includes(search.toLowerCase());
@@ -64,11 +77,41 @@ export default function RegistrationsPage() {
 
   if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
 
+  const handleEdit = (reg: Registration) => {
+    setEditingReg(reg);
+    setEditForm({ status: reg.status, paymentStatus: reg.paymentStatus });
+    setMenuOpenId(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReg) return;
+    await updateRegistrationMutation.mutateAsync({
+      id: editingReg.id,
+      data: {
+        status: editForm.status as any,
+        paymentStatus: editForm.paymentStatus as any,
+      },
+    });
+    toast("success", isBn ? "নিবন্ধন আপডেট হয়েছে" : "Registration updated");
+    setEditingReg(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingReg) return;
+    await deleteRegistrationMutation.mutateAsync(deletingReg.id);
+    toast("success", isBn ? "নিবন্ধন মুছে ফেলা হয়েছে" : "Registration deleted");
+    setDeletingReg(null);
+    setRefreshKey(k => k + 1);
+  };
+
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
   const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
+  const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -171,6 +214,7 @@ export default function RegistrationsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পেমেন্ট' : 'Payment'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -189,6 +233,16 @@ export default function RegistrationsPage() {
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{formatDate(reg.createdAt)}</TableCell>
                     <TableCell><Badge status={reg.paymentStatus} /></TableCell>
                     <TableCell><Badge status={reg.status} /></TableCell>
+                    <TableCell>
+                      <TableActionMenu id={reg.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
+                        <TableActionItem onClick={() => handleEdit(reg)} isDark={isDark}>
+                          <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                        </TableActionItem>
+                        <TableActionItem onClick={() => { setDeletingReg(reg); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                        </TableActionItem>
+                      </TableActionMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -196,6 +250,98 @@ export default function RegistrationsPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Registration Modal */}
+      {editingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setEditingReg(null)} />
+          <div className={`relative z-50 w-full max-w-xl rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'নিবন্ধন সম্পাদনা' : 'Edit Registration'}</h3>
+              <button onClick={() => setEditingReg(null)} className={`p-1 rounded ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>×</button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</label>
+                  <Input value={editingReg.studentName} disabled className={cn("opacity-60", inputCls)} />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'আবেদন আইডি' : 'Application ID'}</label>
+                  <Input value={editingReg.applicationId} disabled className={cn("opacity-60", inputCls)} />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
+                  <Input value={editingReg.examName} disabled className={cn("opacity-60", inputCls)} />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</label>
+                  <Input value={editingReg.institutionName} disabled className={cn("opacity-60", inputCls)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'স্থিতি *' : 'Status *'}</label>
+                  <Select
+                    options={[
+                      { label: 'PENDING', value: 'PENDING' },
+                      { label: 'APPROVED', value: 'APPROVED' },
+                      { label: 'REJECTED', value: 'REJECTED' },
+                    ]}
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট স্থিতি *' : 'Payment Status *'}</label>
+                  <Select
+                    options={[
+                      { label: 'PENDING', value: 'PENDING' },
+                      { label: 'CONFIRMED', value: 'CONFIRMED' },
+                      { label: 'PAID', value: 'PAID' },
+                      { label: 'FAILED', value: 'FAILED' },
+                      { label: 'REFUNDED', value: 'REFUNDED' },
+                    ]}
+                    value={editForm.paymentStatus}
+                    onChange={(e) => setEditForm({ ...editForm, paymentStatus: e.target.value })}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setEditingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                {isBn ? 'সংরক্ষণ' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setDeletingReg(null)} />
+          <div className={`relative z-50 w-full max-w-md rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+            <h3 className={`text-sm font-semibold mb-2 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'নিবন্ধন মুছুন?' : 'Delete Registration?'}</h3>
+            <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+              {isBn ? `"${deletingReg.studentName}" -এর "${deletingReg.examName}" নিবন্ধন মুছে ফেলা হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।` : `Registration for "${deletingReg.studentName}" in "${deletingReg.examName}" will be deleted. This action cannot be undone.`}
+            </p>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button onClick={() => setDeletingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button onClick={handleDelete} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">
+                {isBn ? 'মুছুন' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating PDF Download Button */}
       {selection.selectedCount > 0 && (
