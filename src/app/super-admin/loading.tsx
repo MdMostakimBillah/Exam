@@ -10,17 +10,17 @@ export default function SuperAdminLoading() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-[52px] rounded-md bg-zinc-300 dark:bg-white/[0.04]" />
+            <Skeleton key={i} className="h-[52px] rounded-md bg-zinc-200 dark:bg-white/[0.04]" />
           ))}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-[52px] rounded-md bg-zinc-300 dark:bg-white/[0.04]" />
+            <Skeleton key={i} className="h-[52px] rounded-md bg-zinc-200 dark:bg-white/[0.04]" />
           ))}
         </div>
         <div className="grid grid-cols-12 gap-6">
-          <Skeleton className="col-span-12 lg:col-span-7 h-64 rounded-md bg-zinc-300 dark:bg-white/[0.04]" />
-          <Skeleton className="col-span-12 lg:col-span-5 h-64 rounded-md bg-zinc-300 dark:bg-white/[0.04]" />
+          <Skeleton className="col-span-12 lg:col-span-7 h-64 rounded-md bg-zinc-200 dark:bg-white/[0.04]" />
+          <Skeleton className="col-span-12 lg:col-span-5 h-64 rounded-md bg-zinc-200 dark:bg-white/[0.04]" />
         </div>
       </div>
     </div>

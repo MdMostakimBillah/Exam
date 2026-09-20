@@ -407,7 +407,7 @@ export default function PaymentsPage() {
 const labelCls = ""; // placeholder - will be resolved in context
 
 function PaymentsSkeleton({ isDark }: { isDark: boolean }) {
-  const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-white border border-zinc-200 shadow-sm";
+  const card = isDark ? "bg-[#141416] border border-white/[0.06]" : "bg-zinc-200 border border-zinc-300 shadow-sm";
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
