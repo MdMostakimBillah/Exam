@@ -1,13 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { getStudentSession, type StudentSession } from "@/lib/auth/student-auth";
+import { useStudentSession } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { formatDate } from "@/lib/storage/storage";
+import { PageLoading } from "@/components/ui/page-loading";
+import { usePaymentsByStudent } from "@/lib/storage/payments";
 import {
   CreditCard,
   Clock,
@@ -17,61 +19,27 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-interface PaymentRecord {
-  id: string;
-  transaction_id: string;
-  amount: number;
-  payment_method: string;
-  status: string;
-  receipt_number: string;
-  account_number: string;
-  submitted_by_student: boolean;
-  submitted_at: string;
-  verified_at: string | null;
-  rejection_reason: string | null;
-  exam_name: string;
-  registration_id: string;
-  created_at: string;
-}
-
 export default function StudentPaymentsPage() {
   const router = useRouter();
   const { theme } = useTheme();
   const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
-  const [student, setStudent] = useState<StudentSession | null>(null);
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+
+  const { data: student, isLoading: studentLoading } = useStudentSession();
+  const { data: payments = [], isLoading: paymentsLoading } = usePaymentsByStudent(student?.id || '', {
+    enabled: !!student?.id,
+  });
 
   useEffect(() => {
-    setMounted(true);
-    getStudentSession().then((session) => {
-      if (!session) {
-        router.push("/student/login");
-        return;
-      }
-      setStudent(session);
-      fetchPayments(session.id);
-    });
-  }, [router]);
+    if (!studentLoading && !student) {
+      router.push("/student/login");
+    }
+  }, [student, studentLoading, router]);
 
-  const fetchPayments = async (studentId: string) => {
-    setLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("student_id", studentId)
-      .eq("submitted_by_student", true)
-      .order("created_at", { ascending: false });
+  if (studentLoading || !student) return <PageLoading isDark={isDark} />;
 
-    if (data) setPayments(data as PaymentRecord[]);
-    setLoading(false);
-  };
-
-  if (!mounted || !student) return null;
+  const loading = paymentsLoading;
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-xl"
@@ -161,21 +129,21 @@ export default function StudentPaymentsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
-                        {payment.exam_name}
+                        {payment.examName}
                       </p>
                       {statusBadge(payment.status)}
                     </div>
                     <div className="flex items-center gap-3 text-[11px]">
                       <span className={isDark ? "text-zinc-500" : "text-zinc-400"}>
-                        {isBn ? "ট্রানজেকশন" : "TX"}: {payment.transaction_id}
+                        {isBn ? "ট্রানজেকশন" : "TX"}: {payment.transactionId}
                       </span>
                       <span className={isDark ? "text-zinc-500" : "text-zinc-400"}>
-                        {isBn ? "রসিদ" : "Receipt"}: {payment.receipt_number}
+                        {isBn ? "রসিদ" : "Receipt"}: {payment.receiptNumber}
                       </span>
                     </div>
-                    {payment.rejection_reason && (
+                    {payment.rejectionReason && (
                       <p className="text-[11px] text-red-400 mt-1">
-                        {isBn ? "কারণ" : "Reason"}: {payment.rejection_reason}
+                        {isBn ? "কারণ" : "Reason"}: {payment.rejectionReason}
                       </p>
                     )}
                   </div>
@@ -184,7 +152,7 @@ export default function StudentPaymentsPage() {
                       ৳{payment.amount.toLocaleString()}
                     </p>
                     <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                      {formatDate(payment.created_at).split(",")[0]}
+                      {formatDate(payment.createdAt).split(",")[0]}
                     </p>
                   </div>
                 </div>

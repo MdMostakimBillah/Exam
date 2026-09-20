@@ -1,13 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { getStudentSession, type StudentSession } from "@/lib/auth/student-auth";
+import { useStudentSession } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { formatDate } from "@/lib/storage/storage";
+import { PageLoading } from "@/components/ui/page-loading";
+import { useRegistrationsByStudent } from "@/lib/storage/registrations";
+import { Registration } from "@/lib/types";
 import {
   FileText,
   CreditCard,
@@ -19,59 +22,27 @@ import {
   Loader2,
 } from "lucide-react";
 
-interface RegistrationWithExam {
-  id: string;
-  application_id: string;
-  student_name: string;
-  exam_name: string;
-  class_name: string;
-  status: string;
-  payment_status: string;
-  student_payment_status: string;
-  payment_amount: number;
-  exam_id: string;
-  created_at: string;
-}
-
 export default function StudentDashboardPage() {
   const router = useRouter();
   const { theme } = useTheme();
   const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
-  const [student, setStudent] = useState<StudentSession | null>(null);
-  const [registrations, setRegistrations] = useState<RegistrationWithExam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+
+  const { data: student, isLoading: studentLoading } = useStudentSession();
+  const { data: registrations = [], isLoading: registrationsLoading } = useRegistrationsByStudent(student?.id || '', {
+    enabled: !!student?.id,
+  });
 
   useEffect(() => {
-    setMounted(true);
-    getStudentSession().then((session) => {
-      if (!session) {
-        router.push("/student/login");
-        return;
-      }
-      setStudent(session);
-      fetchRegistrations(session.id);
-    });
-  }, [router]);
-
-  const fetchRegistrations = async (studentId: string) => {
-    setLoading(true);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("registrations")
-      .select("*")
-      .eq("student_id", studentId)
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      setRegistrations(data as RegistrationWithExam[]);
+    if (!studentLoading && !student) {
+      router.push("/student/login");
     }
-    setLoading(false);
-  };
+  }, [student, studentLoading, router]);
 
-  if (!mounted || !student) return null;
+  if (studentLoading || !student) return <PageLoading isDark={isDark} />;
+
+  const loading = registrationsLoading;
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-xl"
@@ -80,37 +51,38 @@ export default function StudentDashboardPage() {
   const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
 
   const totalDue = registrations
-    .filter((r) => r.payment_status !== "PAID" && r.student_payment_status !== "VERIFIED")
-    .reduce((sum, r) => sum + (r.payment_amount || 0), 0);
+    .filter((r) => r.paymentStatus !== "PAID" && r.studentPaymentStatus !== "VERIFIED")
+    .reduce((sum, r) => sum + (r.paymentAmount || 0), 0);
 
   const pendingCount = registrations.filter(
-    (r) => r.student_payment_status === "NOT_SUBMITTED" || r.student_payment_status === "REJECTED"
+    (r) => r.studentPaymentStatus === "NOT_SUBMITTED" || r.studentPaymentStatus === "REJECTED"
   ).length;
 
   const approvedCount = registrations.filter(
-    (r) => r.status === "APPROVED" || r.student_payment_status === "VERIFIED"
+    (r) => r.status === "APPROVED" || r.studentPaymentStatus === "VERIFIED"
   ).length;
 
   const submittedCount = registrations.filter(
-    (r) => r.student_payment_status === "SUBMITTED"
+    (r) => r.studentPaymentStatus === "SUBMITTED"
   ).length;
 
-  const statusBadge = (reg: RegistrationWithExam) => {
-    if (reg.status === "APPROVED" || reg.student_payment_status === "VERIFIED") {
+  const statusBadge = (reg: Registration | undefined) => {
+    if (!reg) return null;
+    if (reg.status === "APPROVED" || reg.studentPaymentStatus === "VERIFIED") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20">
           <CheckCircle className="h-3 w-3" /> {isBn ? "অনুমোদিত" : "Approved"}
         </span>
       );
     }
-    if (reg.student_payment_status === "SUBMITTED") {
+    if (reg.studentPaymentStatus === "SUBMITTED") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
           <Clock className="h-3 w-3" /> {isBn ? "পরিশোধ প্রক্রিয়াধীন" : "Payment Review"}
         </span>
       );
     }
-    if (reg.status === "REJECTED" || reg.student_payment_status === "REJECTED") {
+    if (reg.status === "REJECTED" || reg.studentPaymentStatus === "REJECTED") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
           <XCircle className="h-3 w-3" /> {isBn ? "প্রত্যাখ্যাত" : "Rejected"}
@@ -197,25 +169,25 @@ export default function StudentDashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
-                      {reg.exam_name}
+                      {reg.examName}
                     </p>
                     {statusBadge(reg)}
                   </div>
                   <div className="flex items-center gap-3 text-[11px]">
                     <span className={isDark ? "text-zinc-500" : "text-zinc-400"}>
-                      {isBn ? "আবেদন" : "Application"}: {reg.application_id}
+                      {isBn ? "আবেদন" : "Application"}: {reg.applicationId}
                     </span>
                     <span className={isDark ? "text-zinc-500" : "text-zinc-400"}>
-                      {isBn ? "তারিখ" : "Date"}: {formatDate(reg.created_at).split(",")[0]}
+                      {isBn ? "তারিখ" : "Date"}: {formatDate(reg.createdAt).split(",")[0]}
                     </span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
                   <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                    ৳{reg.payment_amount?.toLocaleString()}
+                    ৳{reg.paymentAmount?.toLocaleString()}
                   </p>
-                  {(reg.student_payment_status === "NOT_SUBMITTED" || reg.student_payment_status === "REJECTED") && (
+                  {(reg.studentPaymentStatus === "NOT_SUBMITTED" || reg.studentPaymentStatus === "REJECTED") && (
                     <Link
                       href={`/student/payments/${reg.id}/submit`}
                       className={cn(

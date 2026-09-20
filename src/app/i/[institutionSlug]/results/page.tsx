@@ -59,10 +59,10 @@ export default function InstitutionResultsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const createResultMutation = useCreateResult();
   const updateResultMutation = useUpdateResult();
   const deleteResultMutation = useDeleteResult();

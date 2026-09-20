@@ -164,6 +164,25 @@ export function useRegistrationsByExam(examId: string, sessionId?: string) {
     staleTime: 30 * 1000,
   });
 }
+export async function fetchRegistrationsByStudent(studentId: string): Promise<Registration[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(REGISTRATION_COLUMNS)
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data.map(mapRegistration);
+}
+
+export function useRegistrationsByStudent(studentId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['registrations', 'student', studentId],
+    queryFn: () => fetchRegistrationsByStudent(studentId),
+    enabled: !!studentId && (options?.enabled ?? true),
+  });
+}
+
 export function useRegistrationById(id: string) {
   return useQuery({
     queryKey: ['registrations', id],

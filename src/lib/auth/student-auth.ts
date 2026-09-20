@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export interface StudentSession {
   id: string;
@@ -161,4 +162,12 @@ export async function isStudentAuthenticated(): Promise<boolean> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   return !!user;
+}
+
+export function useStudentSession() {
+  return useQuery({
+    queryKey: ['studentSession'],
+    queryFn: getStudentSession,
+    staleTime: 5 * 60 * 1000,
+  });
 }

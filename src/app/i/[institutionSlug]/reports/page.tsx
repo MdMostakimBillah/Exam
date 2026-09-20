@@ -9,6 +9,7 @@ import { usePaymentsByInstitution } from "@/lib/storage/payments";
 import { useExams } from "@/lib/storage/exams";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { BarChart3, Download, FileText, Users, GraduationCap, CreditCard, TrendingUp } from "lucide-react";
 
 export default function InstitutionReportsPage() {
@@ -24,11 +25,12 @@ export default function InstitutionReportsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const { data: inst } = useInstitutionBySlug(slug);
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '');
-  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
-  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
-  const { data: exams = [] } = useExams();
+  const { data: currentSession } = useCurrentSession();
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: exams = [] } = useExams(currentSession?.id);
 
   if (!mounted) return <ReportsSkeleton isDark={isDark} />;
   if (!inst) return null;

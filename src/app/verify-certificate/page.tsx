@@ -1,6 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { fetchCertificateByNumber } from "@/lib/storage/certificates";
 import { Certificate } from "@/lib/types";
 import { Input } from "@/components/ui/input";
@@ -15,16 +17,24 @@ export default function VerifyCertificatePage() {
   const { t } = useLang();
   const isDark = theme === "dark";
   const [certNumber, setCertNumber] = useState("");
-  const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [searched, setSearched] = useState(false);
 
-  // Data loaded from Supabase via storage modules
+  const {
+    data: certificate,
+    isLoading: searchLoading,
+    refetch: refetchCertificate,
+  } = useQuery<Certificate | undefined>({
+    queryKey: ['certificate', certNumber],
+    queryFn: () => fetchCertificateByNumber(certNumber),
+    enabled: false,
+  });
 
-  const handleSearch = async () => {
-    const found = await fetchCertificateByNumber(certNumber);
-    setCertificate(found || null);
+  const isButtonLoading = searchLoading;
+
+  const handleSearch = useCallback(async () => {
     setSearched(true);
-  };
+    await refetchCertificate();
+  }, [refetchCertificate]);
 
   const bg = isDark ? "bg-[#080808]" : "bg-gray-50";
   const text = isDark ? "text-zinc-100" : "text-gray-900";
@@ -65,14 +75,14 @@ export default function VerifyCertificatePage() {
                   placeholder="e.g. SCX-2026-000001"
                 />
               </div>
-              <Button onClick={handleSearch} className="w-full">
-                <Search className="h-4 w-4 mr-2" /> Verify Certificate
+              <Button onClick={handleSearch} disabled={isButtonLoading || !certNumber} className="w-full">
+                <Search className="h-4 w-4 mr-2" /> {isButtonLoading ? "Verifying..." : "Verify Certificate"}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {searched && !certificate && (
+        {searched && !certificate && !isButtonLoading && (
           <div className="mt-6 text-center py-8">
             <XCircle className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
             <p className="text-sm text-zinc-500">Certificate not found. Please check the certificate number.</p>

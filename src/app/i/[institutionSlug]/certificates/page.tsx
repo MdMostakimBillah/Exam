@@ -57,8 +57,8 @@ export default function InstitutionCertificatesPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: certificates = [] } = useCertificatesByInstitution(inst?.id || '');
-  const { data: results = [] } = useResultsByInstitution(inst?.id || '');
+  const { data: certificates = [] } = useCertificatesByInstitution(inst?.id || '', currentSession?.id);
+  const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allExams = [] } = useExams();
   const createCert = useCreateCertificate();
   const updateCert = useUpdateCertificate();

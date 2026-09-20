@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useExams } from "@/lib/storage/exams";
 import { useClasses } from "@/lib/storage/classes";
@@ -33,7 +34,8 @@ export default function InstitutionExamsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const { data: inst } = useInstitutionBySlug(slug);
-  const { data: exams = [] } = useExams();
+  const { data: currentSession } = useCurrentSession();
+  const { data: exams = [] } = useExams(currentSession?.id);
   const { data: allClasses = [] } = useClasses();
 
   const filtered = exams.filter(e => {

@@ -164,6 +164,25 @@ export function usePaymentsByInstitution(institutionId: string, sessionId?: stri
     staleTime: 30 * 1000,
   });
 }
+export async function fetchPaymentsByStudent(studentId: string): Promise<Payment[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(PAYMENT_COLUMNS)
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data.map(mapPayment);
+}
+
+export function usePaymentsByStudent(studentId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['payments', 'student', studentId],
+    queryFn: () => fetchPaymentsByStudent(studentId),
+    enabled: !!studentId && (options?.enabled ?? true),
+  });
+}
+
 export function usePaymentById(id: string) {
   return useQuery({
     queryKey: ['payments', id],

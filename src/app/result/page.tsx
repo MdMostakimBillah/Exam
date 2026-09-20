@@ -1,6 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { fetchResults } from "@/lib/storage/results";
 import { fetchStudents } from "@/lib/storage/students";
 import { Result } from "@/lib/types";
@@ -20,26 +22,53 @@ export default function ResultPage() {
   const [regNumber, setRegNumber] = useState("");
   const [dob, setDob] = useState("");
   const [roll, setRoll] = useState("");
-  const [result, setResult] = useState<Result | null>(null);
   const [searched, setSearched] = useState(false);
 
-  // Data loaded from Supabase via storage modules
+  const {
+    data: results = [],
+    isLoading: resultsLoading,
+    refetch: refetchResults,
+  } = useQuery<Result[]>({
+    queryKey: ['results', 'published'],
+    queryFn: () => fetchResults(),
+    staleTime: 60 * 1000,
+  });
 
-  const handleSearch = async () => {
-    const results = (await fetchResults()).filter(r => r.status === 'PUBLISHED');
-    const students = await fetchStudents();
-    const found = results.find(r => {
+  const {
+    data: students = [],
+    isLoading: studentsLoading,
+    refetch: refetchStudents,
+  } = useQuery({
+    queryKey: ['students', 'all'],
+    queryFn: () => fetchStudents(),
+    staleTime: 60 * 1000,
+  });
+
+  const [foundResult, setFoundResult] = useState<Result | null>(null);
+  const isButtonLoading = resultsLoading || studentsLoading;
+
+  const handleSearch = useCallback(async () => {
+    setSearched(true);
+    setFoundResult(null);
+
+    if (results.length === 0 || students.length === 0) {
+      await Promise.all([refetchResults(), refetchStudents()]);
+    }
+
+    const currentResults = results.length > 0 ? results : [];
+    const currentStudents = students.length > 0 ? students : [];
+
+    const found = currentResults.find(r => {
       const regMatch = r.registrationNumber === regNumber || r.registrationNumber.toLowerCase() === regNumber.toLowerCase();
       if (searchType === 'dob') {
         if (!regMatch) return false;
-        const student = students.find(s => s.id === r.studentId);
+        const student = currentStudents.find(s => s.id === r.studentId);
         return student && student.dateOfBirth === dob;
       }
       return regMatch && r.roll === roll;
     });
-    setResult(found || null);
-    setSearched(true);
-  };
+    setFoundResult(found || null);
+  }, [results, students, regNumber, searchType, dob, roll, refetchResults, refetchStudents]);
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#080808]" : "bg-gray-50"}`}>
@@ -99,37 +128,37 @@ export default function ResultPage() {
                   <Input value={roll} onChange={(e) => setRoll(e.target.value)} placeholder="e.g. 1" />
                 </div>
               )}
-              <Button onClick={handleSearch} className="w-full">
-                <Search className="h-4 w-4 mr-2" /> Search Result
+              <Button onClick={handleSearch} disabled={isButtonLoading} className="w-full">
+                <Search className="h-4 w-4 mr-2" /> {isButtonLoading ? "Searching..." : "Search Result"}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {searched && !result && (
+        {searched && !foundResult && !isButtonLoading && (
           <div className="mt-6 text-center py-8">
             <XCircle className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
             <p className="text-sm text-zinc-500">No result found. Please check your details and try again.</p>
           </div>
         )}
 
-        {result && (
+        {foundResult && (
           <Card className="mt-6">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Result</CardTitle>
-                <Badge status={result.pass ? 'ACTIVE' : 'REJECTED'}>{result.pass ? 'Passed' : 'Failed'}</Badge>
+                <Badge status={foundResult.pass ? 'ACTIVE' : 'REJECTED'}>{foundResult.pass ? 'Passed' : 'Failed'}</Badge>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Student Name', value: result.studentName },
-                  { label: 'Institution', value: result.institutionName },
-                  { label: 'Class', value: result.className },
-                  { label: 'Exam', value: result.examName },
-                  { label: 'Roll', value: result.roll },
-                  { label: 'Registration No', value: result.registrationNumber },
+                  { label: 'Student Name', value: foundResult.studentName },
+                  { label: 'Institution', value: foundResult.institutionName },
+                  { label: 'Class', value: foundResult.className },
+                  { label: 'Exam', value: foundResult.examName },
+                  { label: 'Roll', value: foundResult.roll },
+                  { label: 'Registration No', value: foundResult.registrationNumber },
                 ].map(item => (
                   <div key={item.label}>
                     <span className="text-[10px] text-zinc-600 uppercase tracking-wider">{item.label}</span>
@@ -141,7 +170,7 @@ export default function ResultPage() {
               <div className="border-t border-white/[0.06] pt-4">
                 <h4 className="text-xs text-zinc-500 mb-2">Subject-wise Marks</h4>
                 <div className="space-y-1">
-                  {result.subjectMarks.map(sm => (
+                  {foundResult.subjectMarks.map(sm => (
                     <div key={sm.subjectId} className="flex items-center justify-between text-sm py-1">
                       <span className="text-zinc-400">{sm.subjectName}</span>
                       <span className="text-zinc-200 font-medium">{sm.marks} / {sm.fullMarks}</span>
@@ -153,23 +182,23 @@ export default function ResultPage() {
               <div className="border-t border-white/[0.06] pt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Total</span>
-                  <p className="text-lg font-bold text-zinc-100">{result.totalMarks}/{result.totalFullMarks}</p>
+                  <p className="text-lg font-bold text-zinc-100">{foundResult.totalMarks}/{foundResult.totalFullMarks}</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Percentage</span>
-                  <p className="text-lg font-bold text-zinc-100">{result.percentage.toFixed(1)}%</p>
+                  <p className="text-lg font-bold text-zinc-100">{foundResult.percentage.toFixed(1)}%</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Grade</span>
-                  <p className="text-lg font-bold text-zinc-100">{result.grade}</p>
+                  <p className="text-lg font-bold text-zinc-100">{foundResult.grade}</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white/[0.02]">
                   <span className="text-[10px] text-zinc-600 uppercase">Position</span>
-                  <p className="text-lg font-bold text-zinc-100">#{result.position}</p>
+                  <p className="text-lg font-bold text-zinc-100">#{foundResult.position}</p>
                 </div>
               </div>
 
-              {result.scholarshipStatus === 'ELIGIBLE' && (
+              {foundResult.scholarshipStatus === 'ELIGIBLE' && (
                 <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3">
                   <CheckCircle className="h-4 w-4 text-emerald-400" />
                   <span className="text-sm text-emerald-300">Congratulations! You are eligible for the scholarship.</span>
