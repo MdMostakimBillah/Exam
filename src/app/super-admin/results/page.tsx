@@ -69,7 +69,7 @@ export default function ResultsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <LoadingBar isLoading={isFetching} isDark={isDark} />
+      <LoadingBar isLoading={isFetching} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">

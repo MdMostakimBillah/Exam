@@ -57,7 +57,7 @@ export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardDa
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <LoadingBar isLoading={!!isLoading} isDark={isDark} />
+      <LoadingBar isLoading={!!isLoading} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">

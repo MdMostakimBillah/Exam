@@ -208,7 +208,7 @@ export default function SuperAdminSettingsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <LoadingBar isLoading={isFetching} isDark={isDark} />
+      <LoadingBar isLoading={isFetching} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
           <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
