@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2, Edit } from "lucide-react";
+import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2, Edit, Loader2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -80,6 +80,7 @@ export default function InstitutionRegistrationsPage() {
   const [selectedExamId, setSelectedExamId] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -204,46 +205,54 @@ export default function InstitutionRegistrationsPage() {
     const exam = exams.find(e => e.id === selectedExamId);
     if (!exam) return;
 
-    const newStudent = await createStudentMutation.mutateAsync({
-      sessionId: currentSession?.id || '',
-      institutionId: inst!.id,
-      firstName: studentForm.englishName.trim(),
-      lastName: "",
-      firstNameBn: studentForm.banglaName.trim() || undefined,
-      lastNameBn: undefined,
-      studentId: studentForm.studentId.trim(),
-      class: studentForm.class,
-      section: studentForm.section.trim(),
-      roll: studentForm.roll.trim(),
-      dateOfBirth: studentForm.dateOfBirth,
-      gender: studentForm.gender,
-      fatherName: studentForm.fatherName.trim(),
-      motherName: studentForm.motherName.trim(),
-      phone: studentForm.phone.trim(),
-      address: studentForm.address.trim(),
-      photo: studentForm.photo || undefined,
-      status: "ACTIVE",
-    });
+    setSubmitting(true);
+    try {
+      const newStudent = await createStudentMutation.mutateAsync({
+        sessionId: currentSession?.id || '',
+        institutionId: inst!.id,
+        firstName: studentForm.englishName.trim(),
+        lastName: "",
+        firstNameBn: studentForm.banglaName.trim() || undefined,
+        lastNameBn: undefined,
+        studentId: studentForm.studentId.trim(),
+        class: studentForm.class,
+        section: studentForm.section.trim(),
+        roll: studentForm.roll.trim(),
+        dateOfBirth: studentForm.dateOfBirth,
+        gender: studentForm.gender,
+        fatherName: studentForm.fatherName.trim(),
+        motherName: studentForm.motherName.trim(),
+        phone: studentForm.phone.trim(),
+        address: studentForm.address.trim(),
+        photo: studentForm.photo || undefined,
+        status: "ACTIVE",
+      });
 
-    await createRegistrationMutation.mutateAsync({
-      sessionId: currentSession?.id || '',
-      applicationId: generateAppId(),
-      studentId: newStudent.id,
-      studentName: newStudent.firstName,
-      institutionId: inst!.id,
-      institutionName: inst!.name,
-      examId: exam.id,
-      examName: exam.name,
-      className: newStudent.class,
-      status: "PENDING",
-      paymentStatus: "PENDING",
-      studentPaymentStatus: "NOT_SUBMITTED",
-      paymentAmount: exam.registrationFee,
-    });
+      await createRegistrationMutation.mutateAsync({
+        sessionId: currentSession?.id || '',
+        applicationId: generateAppId(),
+        studentId: newStudent.id,
+        studentName: newStudent.firstName,
+        institutionId: inst!.id,
+        institutionName: inst!.name,
+        examId: exam.id,
+        examName: exam.name,
+        className: newStudent.class,
+        status: "PENDING",
+        paymentStatus: "PENDING",
+        studentPaymentStatus: "NOT_SUBMITTED",
+        paymentAmount: exam.registrationFee,
+      });
 
-    toast("success", isBn ? "শিক্ষার্থী ও নিবন্ধন তৈরি হয়েছে" : "Student and registration created");
-    setShowModal(false);
-    setRefreshKey(k => k + 1);
+      toast("success", isBn ? "শিক্ষার্থী ও নিবন্ধন তৈরি হয়েছে" : "Student and registration created");
+      setShowModal(false);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      console.error("Registration failed:", err);
+      toast("error", isBn ? "নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।" : "Registration failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -638,7 +647,8 @@ export default function InstitutionRegistrationsPage() {
                 {isBn ? 'পরবর্তী' : 'Next'}
               </button>
             ) : (
-              <button onClick={handleSave} disabled={!canSubmitStep3} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", canSubmitStep3 ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+              <button onClick={handleSave} disabled={!canSubmitStep3 || submitting} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all flex items-center gap-2", canSubmitStep3 && !submitting ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+                {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {isBn ? 'নিবন্ধন করুন' : 'Register'}
               </button>
             )}
