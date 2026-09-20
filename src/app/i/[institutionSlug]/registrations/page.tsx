@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
-import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById } from "@/lib/storage/students";
+import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Registration } from "@/lib/types";
@@ -147,11 +147,12 @@ export default function InstitutionRegistrationsPage() {
     return `${prefix}${String(maxNum + 1).padStart(4, "0")}`;
   };
 
-  const generateStudentId = () => {
+  const generateStudentId = async () => {
     const year = new Date().getFullYear();
     const prefix = `STU-${year}-`;
-    const existingNums = students
-      .map(s => s.studentId)
+    // Fetch ALL student_ids for this institution+session (no pagination)
+    const allIds = await fetchStudentIdsByInstitution(inst?.id || '', currentSession?.id);
+    const existingNums = allIds
       .filter(id => id.startsWith(prefix))
       .map(id => parseInt(id.replace(prefix, ''), 10))
       .filter(n => !isNaN(n));
@@ -164,9 +165,10 @@ export default function InstitutionRegistrationsPage() {
   if (!mounted) return <RegistrationsSkeleton isDark={isDark} />;
   if (!inst) return null;
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    const newStudentId = await generateStudentId();
     setStep(1);
-    setStudentForm({ ...emptyStudentForm, studentId: generateStudentId() });
+    setStudentForm({ ...emptyStudentForm, studentId: newStudentId });
     setSelectedExamId("");
     setPhotoError("");
     setShowModal(true);

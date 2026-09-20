@@ -51,6 +51,23 @@ export async function fetchStudents(sessionId?: string, page: number = 1, pageSi
   return data.map(mapStudent);
 }
 
+/**
+ * Fetches only student_id values for an institution+session (lightweight, no pagination).
+ * Used by generateStudentId to find the next available number.
+ */
+export async function fetchStudentIdsByInstitution(institutionId: string, sessionId?: string): Promise<string[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('student_id')
+    .eq('session_id', sid)
+    .eq('institution_id', institutionId);
+  if (error || !data) return [];
+  return data.map((row: { student_id: string }) => row.student_id);
+}
+
 export async function fetchStudentsByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Student[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
