@@ -142,9 +142,6 @@ export default function InstitutionDashboardPage() {
                       {isBn ? 'উপলব্ধ পরীক্ষা' : 'Available Exams'}
                     </h3>
                   </div>
-                  <Link href={`/i/${slug}/exams`} className={`text-[11px] font-medium transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-600'}`}>
-                    {isBn ? 'সব দেখুন' : 'View all'} <ArrowRight className="h-3 w-3 inline ml-0.5" />
-                  </Link>
                 </div>
               </div>
               {exams.length === 0 ? (

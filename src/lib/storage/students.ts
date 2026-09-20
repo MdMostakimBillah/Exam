@@ -141,6 +141,9 @@ export async function updateStudent(id: string, data: Partial<Student>): Promise
 
 export async function deleteStudent(id: string): Promise<boolean> {
   const supabase = createClient();
+  // First delete related registrations
+  await supabase.from('registrations').delete().eq('student_id', id);
+  // Then delete the student
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
   return !error;
 }
@@ -196,6 +199,7 @@ export function useDeleteStudent() {
     mutationFn: (id: string) => deleteStudent(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['registrations'] });
     },
   });
 }

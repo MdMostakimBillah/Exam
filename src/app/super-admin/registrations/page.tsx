@@ -10,6 +10,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useRegistrations, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
+import { LoadingBar } from "@/components/ui/loading-bar";
 import { ClipboardList, Search, Download, FileDown, Edit, Trash2, CheckCircle } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
@@ -36,7 +37,7 @@ export default function RegistrationsPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const { toast } = useToast();
-  const { data: registrations = [] } = useRegistrations();
+  const { data: registrations = [], isFetching } = useRegistrations();
   const updateRegistrationMutation = useUpdateRegistration();
   const deleteRegistrationMutation = useDeleteRegistration();
 
@@ -147,6 +148,7 @@ export default function RegistrationsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">
