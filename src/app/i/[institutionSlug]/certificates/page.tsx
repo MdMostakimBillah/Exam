@@ -21,6 +21,7 @@ import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 function generateCertNumber(existingCerts: Certificate[]): string {
   const year = new Date().getFullYear();
@@ -57,7 +58,7 @@ export default function InstitutionCertificatesPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: certificates = [] } = useCertificatesByInstitution(inst?.id || '', currentSession?.id);
+  const { data: certificates = [], isFetching } = useCertificatesByInstitution(inst?.id || '', currentSession?.id);
   const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allExams = [] } = useExams();
   const createCert = useCreateCertificate();
@@ -199,6 +200,7 @@ export default function InstitutionCertificatesPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">

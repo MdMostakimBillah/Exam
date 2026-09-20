@@ -11,6 +11,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { BarChart3, Download, FileText, Users, GraduationCap, CreditCard, TrendingUp } from "lucide-react";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function InstitutionReportsPage() {
   const params = useParams();
@@ -26,7 +27,7 @@ export default function InstitutionReportsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: students = [], isFetching } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
   const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
@@ -137,6 +138,7 @@ export default function InstitutionReportsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
           <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>

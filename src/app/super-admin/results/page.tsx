@@ -11,6 +11,7 @@ import { useExams } from "@/lib/storage/exams";
 import { Award, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function ResultsPage() {
   const { theme } = useTheme();
@@ -21,7 +22,7 @@ export default function ResultsPage() {
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const { data: results = [] } = useResults();
+  const { data: results = [], isFetching } = useResults();
   const { data: exams = [] } = useExams();
   const filtered = useMemo(() => examFilter ? results.filter(r => r.examId === examFilter) : results, [results, examFilter]);
 
@@ -68,6 +69,7 @@ export default function ResultsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">

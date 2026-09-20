@@ -6,8 +6,9 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
 import type { DashboardData } from "@/lib/data/dashboard";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
-export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
+export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardData; isLoading?: boolean }) {
   const { theme } = useTheme();
   const { lang: language } = useLang();
 
@@ -56,6 +57,7 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={!!isLoading} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">

@@ -15,6 +15,7 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function InstitutionsPage() {
   const [mounted, setMounted] = useState(false);
@@ -34,7 +35,7 @@ export default function InstitutionsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: institutions = [] } = useInstitutions();
+  const { data: institutions = [], isFetching } = useInstitutions();
   const createInstitutionMutation = useCreateInstitution();
   const updateInstitutionMutation = useUpdateInstitution();
   const deleteInstitutionMutation = useDeleteInstitution();
@@ -115,6 +116,7 @@ export default function InstitutionsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="flex items-start justify-between mb-8">

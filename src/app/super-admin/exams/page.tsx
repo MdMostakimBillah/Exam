@@ -18,6 +18,7 @@ import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { cn } from "@/lib/utils/helpers";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function ExamsPage() {
   const { theme } = useTheme();
@@ -46,7 +47,7 @@ export default function ExamsPage() {
   useEffect(() => { if (!showModal) setCopiedSubjects(null); }, [showModal]);
 
   const { data: currentSession } = useCurrentSession();
-  const { data: exams = [] } = useExams(currentSession?.id);
+  const { data: exams = [], isFetching } = useExams(currentSession?.id);
   const { data: allClasses = [] } = useClasses();
   const { data: activeClasses = [] } = useActiveClasses();
   const { data: regCounts = {} } = useExamRegistrationCounts(currentSession?.id);
@@ -228,6 +229,7 @@ export default function ExamsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">

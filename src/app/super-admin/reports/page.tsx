@@ -8,6 +8,7 @@ import { useResults } from "@/lib/storage/results";
 import { BarChart3, Users, Building2, Trophy, TrendingUp } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function ReportsPage() {
   const { theme } = useTheme();
@@ -19,7 +20,7 @@ export default function ReportsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: exams = [] } = useExams();
+  const { data: exams = [], isFetching } = useExams();
   const { data: students = [] } = useStudents();
   const { data: institutions = [] } = useInstitutions();
   const { data: allResults = [] } = useResults();
@@ -48,6 +49,7 @@ export default function ReportsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">

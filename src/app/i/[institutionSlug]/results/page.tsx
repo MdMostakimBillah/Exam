@@ -23,6 +23,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 function calcGrade(pct: number): string {
   if (pct >= 80) return "A+";
@@ -59,7 +60,7 @@ export default function InstitutionResultsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: results = [], isFetching } = useResultsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
   const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
@@ -245,6 +246,7 @@ export default function InstitutionResultsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>

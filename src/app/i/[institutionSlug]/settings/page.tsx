@@ -10,6 +10,7 @@ import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2 
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 type Tab = "profile" | "account" | "password" | "notifications";
 
@@ -25,7 +26,7 @@ export default function InstitutionSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [saving, setSaving] = useState(false);
 
-  const { data: inst } = useInstitutionBySlug(slug);
+  const { data: inst, isLoading: isFetching } = useInstitutionBySlug(slug);
   const updateInstitutionMutation = useUpdateInstitution();
 
   // Profile fields
@@ -164,6 +165,7 @@ export default function InstitutionSettingsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">

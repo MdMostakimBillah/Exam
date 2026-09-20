@@ -9,6 +9,7 @@ import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { createClient } from "@/lib/supabase/client";
 import { useSessions, useCreateSession, useSetCurrentSession, useUpdateSession, useDeleteSession } from "@/lib/storage/sessions";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 type Tab = "profile" | "account" | "password" | "notifications" | "sessions";
 
@@ -50,7 +51,7 @@ export default function SuperAdminSettingsPage() {
   const { user } = useAuth();
 
   // Sessions
-  const { data: sessions = [] } = useSessions();
+  const { data: sessions = [], isFetching } = useSessions();
   const createSession = useCreateSession();
   const setCurrentSession = useSetCurrentSession();
   const updateSession = useUpdateSession();
@@ -207,6 +208,7 @@ export default function SuperAdminSettingsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
           <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>

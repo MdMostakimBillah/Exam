@@ -24,6 +24,7 @@ import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-m
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 const MAX_PHOTO_SIZE = 500 * 1024;
 
@@ -87,7 +88,7 @@ export default function InstitutionRegistrationsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [], isFetching } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: allClasses = [] } = useClasses();
@@ -368,6 +369,7 @@ export default function InstitutionRegistrationsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="flex items-center justify-between mb-8">
           <div>

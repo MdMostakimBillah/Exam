@@ -18,6 +18,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { Edit, Trash2, Search, Plus, Users, Shield, Building2, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function UsersPage() {
   const { theme } = useTheme();
@@ -56,12 +57,15 @@ export default function UsersPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const [users, setUsers] = useState<User[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
   const { data: institutions = [] } = useInstitutions();
 
   useEffect(() => {
     const loadUsers = async () => {
+      setIsFetching(true);
       const data = await getUsers();
       setUsers(data);
+      setIsFetching(false);
     };
     loadUsers();
   }, [refreshKey]);
@@ -192,6 +196,7 @@ export default function UsersPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="flex items-start justify-between mb-8">

@@ -20,6 +20,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 const emptyForm = {
   registrationId: "",
@@ -53,7 +54,7 @@ export default function InstitutionPaymentsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: payments = [], isFetching } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const createPaymentMutation = useCreatePayment();
   const updatePaymentMutation = useUpdatePayment();
@@ -160,6 +161,7 @@ export default function InstitutionPaymentsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">

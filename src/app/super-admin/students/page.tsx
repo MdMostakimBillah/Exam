@@ -16,6 +16,7 @@ import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-m
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { Student } from "@/lib/types";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function StudentsPage() {
   const { theme } = useTheme();
@@ -36,7 +37,7 @@ export default function StudentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: students = [] } = useStudents();
+  const { data: students = [], isFetching } = useStudents();
   const { data: institutions = [] } = useInstitutions();
   const updateStudentMutation = useUpdateStudent();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
@@ -119,6 +120,7 @@ export default function StudentsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">

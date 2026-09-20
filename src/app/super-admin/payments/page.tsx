@@ -19,6 +19,7 @@ import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-m
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 const formatCurrency = (amount: number) => `৳${amount.toLocaleString()}`;
 
@@ -41,7 +42,8 @@ export default function PaymentsPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: "approve" | "reject"; payment: Payment } | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  const payments = usePayments().data || [];
+  const { data: paymentsData = [], isFetching: isFetchingPayments } = usePayments();
+  const payments = paymentsData;
   const updatePaymentMutation = useUpdatePayment();
   const updateRegistrationMutation = useUpdateRegistration();
   const filtered = useMemo(() => payments.filter(p => {
@@ -153,6 +155,7 @@ export default function PaymentsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetchingPayments} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         <div className="mb-8">
           <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>

@@ -17,6 +17,7 @@ import { Users, FileText, ClipboardList, Clock, CheckCircle, XCircle, DollarSign
 import Link from "next/link";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function InstitutionDashboardPage() {
   const params = useParams();
@@ -33,7 +34,7 @@ export default function InstitutionDashboardPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: students = [], isFetching } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
   const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
   const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
@@ -76,6 +77,7 @@ export default function InstitutionDashboardPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
+      <LoadingBar isLoading={isFetching} isDark={isDark} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">
