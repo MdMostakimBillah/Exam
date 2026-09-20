@@ -81,6 +81,19 @@ export async function fetchRegistrationsByExam(examId: string, sessionId?: strin
   return data.map(mapRegistration);
 }
 
+/**
+ * Fetches ALL application_ids globally (no institution filter, no pagination).
+ * Used by generateAppId to find the next available number.
+ */
+export async function fetchAllApplicationIds(): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('application_id');
+  if (error || !data) return [];
+  return data.map((row: { application_id: string }) => row.application_id);
+}
+
 export async function fetchRegistrationById(id: string): Promise<Registration | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(REGISTRATION_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;

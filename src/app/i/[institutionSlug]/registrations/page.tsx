@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration } from "@/lib/storage/registrations";
+import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, fetchAllApplicationIds } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
@@ -83,6 +83,7 @@ export default function InstitutionRegistrationsPage() {
   const [photoError, setPhotoError] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generatedAppId, setGeneratedAppId] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -135,11 +136,12 @@ export default function InstitutionRegistrationsPage() {
     REJECTED: registrations.filter(r => r.status === "REJECTED").length,
   };
 
-  const generateAppId = () => {
+  const generateAppId = async () => {
     const year = new Date().getFullYear();
     const prefix = `APP-${year}-`;
-    const existingNums = registrations
-      .map(r => r.applicationId)
+    // Fetch ALL application_ids globally (not just current institution)
+    const allAppIds = await fetchAllApplicationIds();
+    const existingNums = allAppIds
       .filter(id => id.startsWith(prefix))
       .map(id => parseInt(id.replace(prefix, ''), 10))
       .filter(n => !isNaN(n));
@@ -166,9 +168,10 @@ export default function InstitutionRegistrationsPage() {
   if (!inst) return null;
 
   const handleCreate = async () => {
-    const newStudentId = await generateStudentId();
+    const [newStudentId, newAppId] = await Promise.all([generateStudentId(), generateAppId()]);
     setStep(1);
     setStudentForm({ ...emptyStudentForm, studentId: newStudentId });
+    setGeneratedAppId(newAppId);
     setSelectedExamId("");
     setPhotoError("");
     setShowModal(true);
@@ -246,7 +249,7 @@ export default function InstitutionRegistrationsPage() {
 
       await createRegistrationMutation.mutateAsync({
         sessionId: currentSession?.id || '',
-        applicationId: generateAppId(),
+        applicationId: generatedAppId,
         studentId: newStudent.id,
         studentName: newStudent.firstName,
         institutionId: inst!.id,
@@ -671,7 +674,7 @@ export default function InstitutionRegistrationsPage() {
 
             <div>
               <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "আবেদন আইডি" : "Application ID"}</label>
-              <Input value={generateAppId()} disabled className={cn("opacity-60", inputCls)} />
+              <Input value={generatedAppId} disabled className={cn("opacity-60", inputCls)} />
             </div>
           </div>
         )}
