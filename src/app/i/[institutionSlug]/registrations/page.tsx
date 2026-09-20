@@ -68,10 +68,11 @@ export default function InstitutionRegistrationsPage() {
   const [viewingReg, setViewingReg] = useState<Registration | null>(null);
   const [deletingReg, setDeletingReg] = useState<Registration | null>(null);
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
+  const [editStep, setEditStep] = useState<Step>(1);
   const [editStudentForm, setEditStudentForm] = useState({
-    firstName: "", lastName: "", class: "", section: "", roll: "",
+    englishName: "", banglaName: "", studentId: "", class: "", section: "", roll: "",
     dateOfBirth: "", gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
-    fatherName: "", motherName: "", phone: "", address: "",
+    fatherName: "", motherName: "", phone: "", address: "", photo: "",
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -270,8 +271,9 @@ export default function InstitutionRegistrationsPage() {
     const student = students.find(s => s.id === reg.studentId);
     if (student) {
       setEditStudentForm({
-        firstName: student.firstName,
-        lastName: student.lastName,
+        englishName: student.firstName,
+        banglaName: student.firstNameBn || "",
+        studentId: student.studentId || "",
         class: student.class,
         section: student.section,
         roll: student.roll,
@@ -281,44 +283,73 @@ export default function InstitutionRegistrationsPage() {
         motherName: student.motherName || "",
         phone: student.phone || "",
         address: student.address || "",
+        photo: student.photo || "",
       });
     } else {
       setEditStudentForm({
-        firstName: reg.studentName.split(" ")[0] || "",
-        lastName: reg.studentName.split(" ").slice(1).join(" ") || "",
+        englishName: reg.studentName.split(" ")[0] || "",
+        banglaName: "",
+        studentId: "",
         class: reg.className || "",
         section: "", roll: "",
         dateOfBirth: "", gender: "MALE",
         fatherName: "", motherName: "", phone: "", address: "",
+        photo: "",
       });
     }
+    setEditStep(1);
   };
 
   const handleSaveEdit = async () => {
     if (!editingReg) return;
-    // Update student data
-    const student = students.find(s => s.id === editingReg.studentId);
-    if (student) {
-      await updateStudentMutation.mutateAsync({
-        id: student.id,
-        data: {
-          firstName: editStudentForm.firstName,
-          lastName: editStudentForm.lastName,
-          class: editStudentForm.class,
-          section: editStudentForm.section,
-          roll: editStudentForm.roll,
-          dateOfBirth: editStudentForm.dateOfBirth,
-          gender: editStudentForm.gender,
-          fatherName: editStudentForm.fatherName,
-          motherName: editStudentForm.motherName,
-          phone: editStudentForm.phone,
-          address: editStudentForm.address,
-        },
-      });
+    setSubmitting(true);
+    try {
+      const student = students.find(s => s.id === editingReg.studentId);
+      if (student) {
+        await updateStudentMutation.mutateAsync({
+          id: student.id,
+          data: {
+            firstName: editStudentForm.englishName.trim(),
+            firstNameBn: editStudentForm.banglaName.trim() || undefined,
+            studentId: editStudentForm.studentId.trim(),
+            class: editStudentForm.class,
+            section: editStudentForm.section.trim(),
+            roll: editStudentForm.roll.trim(),
+            dateOfBirth: editStudentForm.dateOfBirth,
+            gender: editStudentForm.gender,
+            fatherName: editStudentForm.fatherName.trim(),
+            motherName: editStudentForm.motherName.trim(),
+            phone: editStudentForm.phone.trim(),
+            address: editStudentForm.address.trim(),
+            photo: editStudentForm.photo || undefined,
+          },
+        });
+      }
+      toast("success", isBn ? "শিক্ষার্থী তথ্য আপডেট হয়েছে" : "Student data updated");
+      setEditingReg(null);
+      setRefreshKey(k => k + 1);
+    } catch (err: any) {
+      console.error("Update failed:", err);
+      toast("error", isBn ? "আপডেট ব্যর্থ হয়েছে। আবার চেষ্টা করুন।" : "Update failed. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    toast("success", isBn ? "শিক্ষার্থী তথ্য আপডেট হয়েছে" : "Student data updated");
-    setEditingReg(null);
-    setRefreshKey(k => k + 1);
+  };
+
+  const handleEditPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError("");
+    if (file.size > MAX_PHOTO_SIZE) {
+      const sizeKB = (file.size / 1024).toFixed(1);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 500KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 500KB allowed.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditStudentForm(prev => ({ ...prev, photo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const card = isDark
@@ -781,42 +812,67 @@ export default function InstitutionRegistrationsPage() {
         </div>
       )}
 
-      {/* Edit Student Data Modal */}
-      {editingReg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setEditingReg(null)} />
-          <div className={`relative z-50 w-full max-w-xl rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl max-h-[90vh] overflow-y-auto ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'শিক্ষার্থী তথ্য সম্পাদনা' : 'Edit Student Data'}</h3>
-                <p className={`text-[11px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{editingReg.studentName} — {editingReg.examName}</p>
-              </div>
-              <button onClick={() => setEditingReg(null)} className={`p-1 rounded ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>×</button>
+      {/* Edit Student Data Modal - Multi-Step */}
+      <Modal open={!!editingReg} onClose={() => setEditingReg(null)} title={isBn ? "শিক্ষার্থী তথ্য সম্পাদনা" : "Edit Student Data"} maxWidth="max-w-xl">
+        {editingReg && (
+          <>
+            <p className={`text-[11px] -mt-2 mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{editingReg.studentName} — {editingReg.examName}</p>
+
+            {/* Step Indicator */}
+            <div className="flex items-center gap-2 mb-4">
+              {stepLabels.map((label, i) => {
+                const num = (i + 1) as Step;
+                const isActive = editStep === num;
+                const isDone = editStep > num;
+                return (
+                  <div key={i} className="flex items-center gap-2 flex-1">
+                    <div className={cn(
+                      "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors",
+                      isDone ? "bg-green-500 text-white" : isActive ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white") : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
+                    )}>
+                      {isDone ? "✓" : num}
+                    </div>
+                    <span className={cn("text-[11px] font-medium hidden sm:block", isActive ? (isDark ? "text-white" : "text-zinc-900") : (isDark ? "text-zinc-500" : "text-zinc-400"))}>
+                      {label}
+                    </span>
+                    {i < 2 && <div className={cn("flex-1 h-px mx-2", isDone ? "bg-green-500" : isDark ? "bg-white/[0.08]" : "bg-zinc-200")} />}
+                  </div>
+                );
+              })}
             </div>
-            <div className="space-y-4">
-              {/* Basic Info */}
-              <div className={`rounded-lg p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
-                <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "মৌলিক তথ্য" : "Basic Information"}</h4>
-                <div className="grid grid-cols-2 gap-3">
+
+            {/* Step 1: Student Basic Info */}
+            {editStep === 1 && (
+              <div className="py-2">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'First Name *'}</label>
-                    <Input value={editStudentForm.firstName} onChange={(e) => setEditStudentForm({ ...editStudentForm, firstName: e.target.value })} className={inputCls} />
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'English Name *'}</label>
+                    <Input placeholder={isBn ? 'ইংরেজি নাম' : 'English name'} value={editStudentForm.englishName} onChange={(e) => setEditStudentForm({ ...editStudentForm, englishName: e.target.value })} className={inputCls} />
                   </div>
                   <div>
-                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শেষ নাম' : 'Last Name'}</label>
-                    <Input value={editStudentForm.lastName} onChange={(e) => setEditStudentForm({ ...editStudentForm, lastName: e.target.value })} className={inputCls} />
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা নাম' : 'Bangla Name'}</label>
+                    <Input placeholder={isBn ? 'বাংলা নাম' : 'Bangla name'} value={editStudentForm.banglaName} onChange={(e) => setEditStudentForm({ ...editStudentForm, banglaName: e.target.value })} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী আইডি' : 'Student ID'}</label>
+                    <Input placeholder={isBn ? 'আইডি' : 'Student ID'} value={editStudentForm.studentId} onChange={(e) => setEditStudentForm({ ...editStudentForm, studentId: e.target.value })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শ্রেণী *' : 'Class *'}</label>
-                    <Input value={editStudentForm.class} onChange={(e) => setEditStudentForm({ ...editStudentForm, class: e.target.value })} className={inputCls} />
+                    <Select
+                      options={[{ label: isBn ? 'শ্রেণী নির্বাচন' : 'Select class', value: '' }, ...classNames.map(c => ({ label: c, value: c }))]}
+                      value={editStudentForm.class}
+                      onChange={(e) => setEditStudentForm({ ...editStudentForm, class: e.target.value })}
+                      className={inputCls}
+                    />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শাখা' : 'Section'}</label>
-                    <Input value={editStudentForm.section} onChange={(e) => setEditStudentForm({ ...editStudentForm, section: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'শাখা' : 'Section'} value={editStudentForm.section} onChange={(e) => setEditStudentForm({ ...editStudentForm, section: e.target.value })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
-                    <Input value={editStudentForm.roll} onChange={(e) => setEditStudentForm({ ...editStudentForm, roll: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'রোল নম্বর' : 'Roll number'} value={editStudentForm.roll} onChange={(e) => setEditStudentForm({ ...editStudentForm, roll: e.target.value })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
@@ -837,41 +893,98 @@ export default function InstitutionRegistrationsPage() {
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Guardian Info */}
-              <div className={`rounded-lg p-4 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
-                <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "অভিভাবক তথ্য" : "Guardian Information"}</h4>
-                <div className="grid grid-cols-2 gap-3">
+            {/* Step 2: Guardian Info */}
+            {editStep === 2 && (
+              <div className="py-2">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম' : "Father's Name"}</label>
-                    <Input value={editStudentForm.fatherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, fatherName: e.target.value })} className={inputCls} />
+                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
+                    <Input placeholder={isBn ? 'পিতার নাম' : "Father's name"} value={editStudentForm.fatherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, fatherName: e.target.value })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'মাতার নাম' : "Mother's Name"}</label>
-                    <Input value={editStudentForm.motherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, motherName: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'মাতার নাম' : "Mother's name"} value={editStudentForm.motherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, motherName: e.target.value })} className={inputCls} />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ফোন নম্বর' : 'Phone Number'}</label>
-                  <Input value={editStudentForm.phone} onChange={(e) => setEditStudentForm({ ...editStudentForm, phone: e.target.value })} className={inputCls} />
+                <div className="mt-4">
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ফোন নম্বর *' : 'Phone Number *'}</label>
+                  <Input placeholder={isBn ? 'ফোন নম্বর' : 'Phone number'} value={editStudentForm.phone} onChange={(e) => setEditStudentForm({ ...editStudentForm, phone: e.target.value })} className={inputCls} />
                 </div>
-                <div className="mt-3">
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা' : 'Address'}</label>
-                  <Input value={editStudentForm.address} onChange={(e) => setEditStudentForm({ ...editStudentForm, address: e.target.value })} className={inputCls} />
+                <div className="mt-4">
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা *' : 'Address *'}</label>
+                  <Input placeholder={isBn ? 'পূর্ণ ঠিকানা' : 'Full address'} value={editStudentForm.address} onChange={(e) => setEditStudentForm({ ...editStudentForm, address: e.target.value })} className={inputCls} />
                 </div>
               </div>
+            )}
+
+            {/* Step 3: Photo */}
+            {editStep === 3 && (
+              <div className="py-2 space-y-4">
+                <div>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 500KB)</span></label>
+                  <div className="flex items-start gap-4">
+                    <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", editStudentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
+                      {editStudentForm.photo ? (
+                        <Image src={editStudentForm.photo} alt="Preview" width={80} height={80} unoptimized className="h-full w-full object-cover" />
+                      ) : (
+                        <Camera className={cn("h-6 w-6", isDark ? "text-zinc-600" : "text-zinc-400")} />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <label className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium cursor-pointer transition-colors", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
+                        <Upload className="h-3.5 w-3.5" />
+                        {isBn ? 'ছবি আপলোড করুন' : 'Upload Photo'}
+                        <input type="file" accept="image/*" onChange={handleEditPhotoChange} className="hidden" />
+                      </label>
+                      {editStudentForm.photo && (
+                        <button onClick={() => setEditStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
+                          {isBn ? 'সরান' : 'Remove'}
+                        </button>
+                      )}
+                      {photoError && (
+                        <p className="text-[11px] text-red-400 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> {photoError}
+                        </p>
+                      )}
+                      <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
+                        {isBn ? 'JPG, PNG। সর্বোচ্চ 500KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 500KB file size allowed.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className={`px-0 py-3 border-t flex items-center justify-between mt-2 ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+              <div>
+                {editStep > 1 && (
+                  <button onClick={() => setEditStep(s => (s - 1) as Step)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                    {isBn ? 'পূর্ববর্তী' : 'Back'}
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setEditingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                  {isBn ? 'বাতিল' : 'Cancel'}
+                </button>
+                {editStep < 3 ? (
+                  <button onClick={() => setEditStep(s => (s + 1) as Step)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                    {isBn ? 'পরবর্তী' : 'Next'}
+                  </button>
+                ) : (
+                  <button onClick={handleSaveEdit} disabled={submitting} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all flex items-center gap-2", !submitting ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+                    {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {isBn ? 'সংরক্ষণ' : 'Save'}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-2 mt-6">
-              <button onClick={() => setEditingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
-                {isBn ? 'বাতিল' : 'Cancel'}
-              </button>
-              <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-                {isBn ? 'সংরক্ষণ' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* Floating PDF Download Button */}
       {selection.selectedCount > 0 && (
