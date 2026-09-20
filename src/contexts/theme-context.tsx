@@ -29,9 +29,28 @@ function applyTheme(theme: Theme) {
   }
 }
 
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'dark';
+  // Check localStorage first for immediate theme (avoids flash)
+  try {
+    const keys = Object.keys(localStorage);
+    const themeKey = keys.find(k => k.startsWith('scholarx-theme-'));
+    if (themeKey) {
+      const stored = localStorage.getItem(themeKey) as Theme | null;
+      if (stored === 'light' || stored === 'dark') return stored;
+    }
+  } catch {}
+  return 'dark';
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+
+  // Apply theme immediately on mount
+  useEffect(() => {
+    applyTheme(theme);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load theme when user changes (login/logout)
   useEffect(() => {
