@@ -657,14 +657,14 @@ export default function InstitutionRegistrationsPage() {
       </Modal>
 
       {/* View Details Modal - Profile Style */}
-      <Modal open={!!viewingReg} onClose={() => setViewingReg(null)} title="" maxWidth="max-w-md">
+      <Modal open={!!viewingReg} onClose={() => setViewingReg(null)} title="" maxWidth="max-w-xl">
         {viewingReg && (() => {
           const student = students.find(s => s.id === viewingReg.studentId);
           const studentPhoto = student?.photo;
           const initials = viewingReg.studentName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
           const genderLabel = student?.gender === 'MALE' ? (isBn ? 'পুরুষ' : 'Male') : student?.gender === 'FEMALE' ? (isBn ? 'মহিলা' : 'Female') : (isBn ? 'অন্যান্য' : 'Other');
           return (
-            <div className="-mt-2 -mb-1">
+            <div className="-mt-2 -mb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {/* Profile Header */}
               <div className="flex flex-col items-center mb-5">
                 <div className={cn(
