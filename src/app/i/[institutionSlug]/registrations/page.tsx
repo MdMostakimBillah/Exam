@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Modal, ModalFooter } from "@/components/ui/modal";
+import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
@@ -577,30 +577,63 @@ export default function InstitutionRegistrationsPage() {
         </div>
       </Modal>
 
-      {/* View Details Modal */}
-      <Modal open={!!viewingReg} onClose={() => setViewingReg(null)} title={isBn ? "নিবন্ধন বিস্তারিত" : "Registration Details"} maxWidth="max-w-lg">
-        {viewingReg && (
-          <div className="space-y-3">
-            {[
-              { label: isBn ? "আবেদন আইডি" : "Application ID", value: viewingReg.applicationId },
-              { label: isBn ? "শিক্ষার্থী" : "Student", value: viewingReg.studentName },
-              { label: isBn ? "পরীক্ষা" : "Exam", value: viewingReg.examName },
-              { label: isBn ? "শ্রেণী" : "Class", value: viewingReg.className },
-              { label: isBn ? "স্থিতি" : "Status", value: viewingReg.status, isStatus: true },
-              { label: isBn ? "পেমেন্ট স্থিতি" : "Payment Status", value: viewingReg.paymentStatus, isStatus: true },
-              { label: isBn ? "পরিমাণ" : "Amount", value: `৳${viewingReg.paymentAmount.toLocaleString()}` },
-              { label: isBn ? "তৈরি" : "Created", value: formatDate(viewingReg.createdAt) },
-            ].map((item) => (
-              <div key={item.label} className={`flex items-center justify-between py-2 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
-                <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{item.label}</span>
-                {item.isStatus ? <Badge status={item.value as string} /> : <span className={`text-[11px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{item.value}</span>}
+      {/* View Details Modal - Profile Style */}
+      <Modal open={!!viewingReg} onClose={() => setViewingReg(null)} title="" maxWidth="max-w-md">
+        {viewingReg && (() => {
+          const student = students.find(s => s.id === viewingReg.studentId);
+          const studentPhoto = student?.photo;
+          const initials = viewingReg.studentName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          return (
+            <div className="-mt-2 -mb-1">
+              {/* Profile Header */}
+              <div className="flex flex-col items-center mb-5">
+                <div className={cn(
+                  "h-20 w-20 rounded-full flex items-center justify-center overflow-hidden mb-3 ring-2 ring-offset-2",
+                  isDark ? "ring-white/10 ring-offset-[#141416]" : "ring-zinc-200 ring-offset-white"
+                )}>
+                  {studentPhoto ? (
+                    <Image src={studentPhoto} alt={viewingReg.studentName} width={80} height={80} unoptimized className="h-full w-full object-cover" />
+                  ) : (
+                    <div className={cn(
+                      "h-full w-full flex items-center justify-center text-lg font-bold",
+                      isDark ? "bg-white/[0.08] text-white" : "bg-zinc-100 text-zinc-700"
+                    )}>
+                      {initials}
+                    </div>
+                  )}
+                </div>
+                <h3 className={`text-base font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{viewingReg.studentName}</h3>
+                <p className={`text-[11px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{viewingReg.className} &middot; {viewingReg.institutionName}</p>
               </div>
-            ))}
-          </div>
-        )}
-        <ModalFooter>
-          <button onClick={() => setViewingReg(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বন্ধ" : "Close"}</button>
-        </ModalFooter>
+
+              {/* Status Badges */}
+              <div className="flex items-center justify-center gap-2 mb-5">
+                <Badge status={viewingReg.status} />
+                <Badge status={viewingReg.paymentStatus} />
+              </div>
+
+              {/* Details Grid */}
+              <div className={`rounded-lg p-4 space-y-3 ${isDark ? "bg-white/[0.03]" : "bg-zinc-50"}`}>
+                {[
+                  { label: isBn ? "আবেদন আইডি" : "Application ID", value: viewingReg.applicationId },
+                  { label: isBn ? "পরীক্ষা" : "Exam", value: viewingReg.examName },
+                  { label: isBn ? "পরিমাণ" : "Amount", value: `৳${viewingReg.paymentAmount.toLocaleString()}` },
+                  { label: isBn ? "তৈরি" : "Created", value: formatDate(viewingReg.createdAt) },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{item.label}</span>
+                    <span className={`text-[12px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end mt-5">
+                <button onClick={() => setViewingReg(null)} className={`px-5 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? "বন্ধ" : "Close"}</button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* Delete Confirmation Modal */}
