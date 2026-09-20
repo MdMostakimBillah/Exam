@@ -111,6 +111,24 @@ export default function RegistrationsPage() {
     setRefreshKey(k => k + 1);
   };
 
+  const handleBulkApprove = async () => {
+    const selectedIds = filtered.filter(r => selection.isSelected(r.id)).map(r => r.id);
+    if (selectedIds.length === 0) return;
+    let count = 0;
+    for (const id of selectedIds) {
+      try {
+        await updateRegistrationMutation.mutateAsync({
+          id,
+          data: { status: 'APPROVED', paymentStatus: 'PAID' },
+        });
+        count++;
+      } catch { /* skip failed */ }
+    }
+    toast("success", isBn ? `${count} টি নিবন্ধন অনুমোদিত ও পরিশোধিত হয়েছে` : `${count} registration(s) approved and marked as paid`);
+    selection.toggleAll();
+    setRefreshKey(k => k + 1);
+  };
+
   const handleDelete = async () => {
     if (!deletingReg) return;
     await deleteRegistrationMutation.mutateAsync(deletingReg.id);
@@ -348,15 +366,21 @@ export default function RegistrationsPage() {
         </div>
       )}
 
-      {/* Floating PDF Download Button */}
+      {/* Floating Action Bar */}
       {selection.selectedCount > 0 && (
-        <button
-          onClick={() => setShowPdfModal(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3 rounded-md text-[11px] font-medium bg-[#9333ea] text-white shadow-lg shadow-[#9333ea]/30 hover:bg-[#7e22ce] transition-colors"
-        >
-          <FileDown className="h-4 w-4" />
-          {isBn ? `পিডিএফ ডাউনলোড (${selection.selectedCount})` : `Download PDF (${selection.selectedCount})`}
-        </button>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slideUp">
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-md shadow-2xl ${isDark ? 'bg-[#1a1a1c] border border-white/[0.1]' : 'bg-white border border-zinc-200'}`}>
+            <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+              {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
+            </span>
+            <button onClick={handleBulkApprove} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-green-600 text-white hover:bg-green-700 transition-colors">
+              <CheckCircle className="h-3.5 w-3.5" /> {isBn ? 'অনুমোদন ও পরিশোধ' : 'Approve & Mark Paid'}
+            </button>
+            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors">
+              <FileDown className="h-3.5 w-3.5" /> {isBn ? 'পিডিএফ' : 'PDF'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* PDF Export Modal */}
