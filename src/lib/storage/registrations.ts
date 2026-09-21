@@ -108,6 +108,30 @@ export async function fetchAllRegistrationNumbers(): Promise<string[]> {
   return data.map((row: { registration_number: string }) => row.registration_number).filter(Boolean);
 }
 
+/**
+ * Generate the next global registration number using a database function.
+ * This bypasses RLS and ensures sequential numbers across ALL institutions.
+ * Format: YYYYNNNNNN (e.g., 2026000001, 2026000002, ...)
+ */
+export async function generateGlobalRegistrationNumber(): Promise<string> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc('get_next_registration_number');
+  if (error || !data) {
+    // Fallback: use client-side generation if function not available
+    return fetchAllRegistrationNumbers().then(numbers => {
+      const year = new Date().getFullYear();
+      const prefix = String(year);
+      const existingNums = numbers
+        .filter(num => num.startsWith(prefix))
+        .map(num => parseInt(num.slice(4), 10))
+        .filter(n => !isNaN(n));
+      const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+      return `${prefix}${String(maxNum + 1).padStart(6, "0")}`;
+    });
+  }
+  return data as string;
+}
+
 export async function fetchRegistrationById(id: string): Promise<Registration | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(REGISTRATION_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;

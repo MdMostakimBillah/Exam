@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, fetchAllRegistrationNumbers } from "@/lib/storage/registrations";
+import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, generateGlobalRegistrationNumber } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
@@ -136,21 +136,12 @@ export default function InstitutionRegistrationsPage() {
   };
 
   /**
-   * Generate a global 10-digit registration number.
+   * Generate a global 10-digit registration number using the database function.
    * Format: YYYYNNNNNN (e.g., 2026000001, 2026000002, ...)
    * The sequential number is global across ALL institutions.
    */
   const generateRegistrationNumber = async () => {
-    const year = new Date().getFullYear();
-    const prefix = String(year);
-    // Fetch ALL registration_numbers globally (not just current institution)
-    const allRegNumbers = await fetchAllRegistrationNumbers();
-    const existingNums = allRegNumbers
-      .filter(num => num.startsWith(prefix))
-      .map(num => parseInt(num.slice(4), 10))
-      .filter(n => !isNaN(n));
-    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
-    return `${prefix}${String(maxNum + 1).padStart(6, "0")}`;
+    return generateGlobalRegistrationNumber();
   };
 
   const generateStudentId = async () => {

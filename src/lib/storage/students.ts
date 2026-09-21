@@ -215,8 +215,14 @@ export function useDeleteStudent() {
   return useMutation({
     mutationFn: (id: string) => deleteStudent(id),
     onSuccess: () => {
+      // Invalidate ALL related queries so deleted student data disappears everywhere
       qc.invalidateQueries({ queryKey: ['students'] });
       qc.invalidateQueries({ queryKey: ['registrations'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['admit-cards'] });
+      qc.invalidateQueries({ queryKey: ['marks'] });
+      qc.invalidateQueries({ queryKey: ['results'] });
+      qc.invalidateQueries({ queryKey: ['certificates'] });
     },
   });
 }
