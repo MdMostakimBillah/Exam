@@ -33,9 +33,7 @@ type Step = 1 | 2 | 3;
 interface StudentForm {
   englishName: string;
   banglaName: string;
-  studentId: string;
   class: string;
-  section: string;
   roll: string;
   dateOfBirth: string;
   gender: "MALE" | "FEMALE" | "OTHER";
@@ -47,7 +45,7 @@ interface StudentForm {
 }
 
 const emptyStudentForm: StudentForm = {
-  englishName: "", banglaName: "", studentId: "", class: "", section: "", roll: "",
+  englishName: "", banglaName: "", class: "", roll: "",
   dateOfBirth: "", gender: "MALE",
   fatherName: "", motherName: "", phone: "", address: "", photo: "",
 };
@@ -71,7 +69,7 @@ export default function InstitutionRegistrationsPage() {
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
   const [editStep, setEditStep] = useState<Step>(1);
   const [editStudentForm, setEditStudentForm] = useState({
-    englishName: "", banglaName: "", studentId: "", class: "", section: "", roll: "",
+    englishName: "", banglaName: "", class: "", roll: "",
     dateOfBirth: "", gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
     fatherName: "", motherName: "", phone: "", address: "", photo: "",
   });
@@ -84,6 +82,7 @@ export default function InstitutionRegistrationsPage() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [generatedRegNumber, setGeneratedRegNumber] = useState("");
+  const [generatedStudentId, setGeneratedStudentId] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -175,7 +174,8 @@ export default function InstitutionRegistrationsPage() {
   const handleCreate = async () => {
     const [newStudentId, newRegNumber] = await Promise.all([generateStudentId(), generateRegistrationNumber()]);
     setStep(1);
-    setStudentForm({ ...emptyStudentForm, studentId: newStudentId });
+    setStudentForm({ ...emptyStudentForm });
+    setGeneratedStudentId(newStudentId);
     setGeneratedRegNumber(newRegNumber);
     setSelectedExamId("");
     setPhotoError("");
@@ -199,7 +199,7 @@ export default function InstitutionRegistrationsPage() {
     reader.readAsDataURL(file);
   };
 
-  const canProceedStep1 = studentForm.englishName.trim() !== "" && studentForm.studentId.trim() !== "" && studentForm.class.trim() !== "";
+  const canProceedStep1 = studentForm.englishName.trim() !== "" && studentForm.class.trim() !== "";
   const canProceedStep2 = studentForm.fatherName.trim() !== "" && studentForm.phone.trim() !== "" && studentForm.address.trim() !== "";
   const canSubmitStep3 = selectedExamId !== "" && canProceedStep1 && canProceedStep2;
 
@@ -238,9 +238,9 @@ export default function InstitutionRegistrationsPage() {
         lastName: "",
         firstNameBn: studentForm.banglaName.trim() || undefined,
         lastNameBn: undefined,
-        studentId: studentForm.studentId.trim(),
+        studentId: generatedStudentId,
         class: studentForm.class,
-        section: studentForm.section.trim(),
+        section: "",
         roll: studentForm.roll.trim(),
         dateOfBirth: studentForm.dateOfBirth,
         gender: studentForm.gender,
@@ -297,9 +297,7 @@ export default function InstitutionRegistrationsPage() {
       setEditStudentForm({
         englishName: student.firstName,
         banglaName: student.firstNameBn || "",
-        studentId: student.studentId || "",
         class: student.class,
-        section: student.section,
         roll: student.roll,
         dateOfBirth: student.dateOfBirth || "",
         gender: student.gender || "MALE",
@@ -313,9 +311,8 @@ export default function InstitutionRegistrationsPage() {
       setEditStudentForm({
         englishName: reg.studentName.split(" ")[0] || "",
         banglaName: "",
-        studentId: "",
         class: reg.className || "",
-        section: "", roll: "",
+        roll: "",
         dateOfBirth: "", gender: "MALE",
         fatherName: "", motherName: "", phone: "", address: "",
         photo: "",
@@ -335,9 +332,7 @@ export default function InstitutionRegistrationsPage() {
           data: {
             firstName: editStudentForm.englishName.trim(),
             firstNameBn: editStudentForm.banglaName.trim() || undefined,
-            studentId: editStudentForm.studentId.trim(),
             class: editStudentForm.class,
-            section: editStudentForm.section.trim(),
             roll: editStudentForm.roll.trim(),
             dateOfBirth: editStudentForm.dateOfBirth,
             gender: editStudentForm.gender,
@@ -558,10 +553,6 @@ export default function InstitutionRegistrationsPage() {
                 <Input placeholder={isBn ? 'বাংলা নাম' : 'Bangla name'} value={studentForm.banglaName} onChange={(e) => setStudentForm({ ...studentForm, banglaName: e.target.value })} className={inputCls} />
               </div>
               <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী আইডি *' : 'Student ID *'}</label>
-                <Input placeholder={isBn ? 'আইডি' : 'Student ID'} value={studentForm.studentId} onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value })} className={inputCls} />
-              </div>
-              <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শ্রেণী *' : 'Class *'}</label>
                 <Select
                   options={[{ label: isBn ? 'শ্রেণী নির্বাচন' : 'Select class', value: '' }, ...classNames.map(c => ({ label: c, value: c }))]}
@@ -569,10 +560,6 @@ export default function InstitutionRegistrationsPage() {
                   onChange={(e) => setStudentForm({ ...studentForm, class: e.target.value })}
                   className={inputCls}
                 />
-              </div>
-              <div>
-                <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শাখা' : 'Section'}</label>
-                <Input placeholder={isBn ? 'শাখা' : 'Section'} value={studentForm.section} onChange={(e) => setStudentForm({ ...studentForm, section: e.target.value })} className={inputCls} />
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
@@ -879,10 +866,6 @@ export default function InstitutionRegistrationsPage() {
                     <Input placeholder={isBn ? 'বাংলা নাম' : 'Bangla name'} value={editStudentForm.banglaName} onChange={(e) => setEditStudentForm({ ...editStudentForm, banglaName: e.target.value })} className={inputCls} />
                   </div>
                   <div>
-                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী আইডি' : 'Student ID'}</label>
-                    <Input placeholder={isBn ? 'আইডি' : 'Student ID'} value={editStudentForm.studentId} onChange={(e) => setEditStudentForm({ ...editStudentForm, studentId: e.target.value })} className={inputCls} />
-                  </div>
-                  <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শ্রেণী *' : 'Class *'}</label>
                     <Select
                       options={[{ label: isBn ? 'শ্রেণী নির্বাচন' : 'Select class', value: '' }, ...classNames.map(c => ({ label: c, value: c }))]}
@@ -890,10 +873,6 @@ export default function InstitutionRegistrationsPage() {
                       onChange={(e) => setEditStudentForm({ ...editStudentForm, class: e.target.value })}
                       className={inputCls}
                     />
-                  </div>
-                  <div>
-                    <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শাখা' : 'Section'}</label>
-                    <Input placeholder={isBn ? 'শাখা' : 'Section'} value={editStudentForm.section} onChange={(e) => setEditStudentForm({ ...editStudentForm, section: e.target.value })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
