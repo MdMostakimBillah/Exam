@@ -158,10 +158,42 @@ export async function updateStudent(id: string, data: Partial<Student>): Promise
 
 export async function deleteStudent(id: string): Promise<boolean> {
   const supabase = createClient();
-  // First delete related registrations
+  
+  // First, get the student to find the photo URL for cleanup
+  const { data: student } = await supabase.from(SUPABASE_TABLE).select('photo_url').eq('id', id).single();
+  
+  // Delete all related data (RLS may block some, but ON DELETE CASCADE handles the rest at DB level)
+  // Delete registrations first (they reference student_id)
   await supabase.from('registrations').delete().eq('student_id', id);
-  // Then delete the student
+  // Delete marks
+  await supabase.from('marks').delete().eq('student_id', id);
+  // Delete results  
+  await supabase.from('results').delete().eq('student_id', id);
+  // Delete certificates
+  await supabase.from('certificates').delete().eq('student_id', id);
+  // Delete admit cards
+  await supabase.from('admit_cards').delete().eq('student_id', id);
+  // Delete payments referencing this student
+  await supabase.from('payments').delete().eq('student_id', id);
+  
+  // Delete the student record
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
+  
+  // Try to delete the student photo from storage if it exists
+  if (student?.photo_url) {
+    try {
+      // Extract file path from the URL
+      const urlParts = student.photo_url.split('/');
+      const bucketIndex = urlParts.findIndex((p: string) => p === 'student-photos' || p === 'students');
+      if (bucketIndex !== -1) {
+        const filePath = urlParts.slice(bucketIndex + 1).join('/');
+        await supabase.storage.from(urlParts[bucketIndex]).remove([filePath]);
+      }
+    } catch {
+      // Ignore storage errors - photo cleanup is best-effort
+    }
+  }
+  
   return !error;
 }
 

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { useStudents, useUpdateStudent } from "@/lib/storage/students";
+import { useStudents, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutions } from "@/lib/storage/institutions";
 import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
@@ -32,6 +32,7 @@ export default function StudentsPage() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", class: "", section: "", roll: "", status: "" });
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -40,6 +41,7 @@ export default function StudentsPage() {
   const { data: students = [], isFetching } = useStudents();
   const { data: institutions = [] } = useInstitutions();
   const updateStudentMutation = useUpdateStudent();
+  const deleteStudentMutation = useDeleteStudent();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
   const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
   const getInstitutionName = useCallback((id: string) => institutionMap.get(id) || 'Unknown', [institutionMap]);
@@ -105,6 +107,14 @@ export default function StudentsPage() {
     });
     toast("success", isBn ? "শিক্ষার্থী আপডেট হয়েছে" : "Student updated");
     setEditingStudent(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingStudent) return;
+    await deleteStudentMutation.mutateAsync(deletingStudent.id);
+    toast("success", isBn ? "শিক্ষার্থী মুছে ফেলা হয়েছে" : "Student deleted permanently");
+    setDeletingStudent(null);
     setRefreshKey(k => k + 1);
   };
 
@@ -257,6 +267,9 @@ export default function StudentsPage() {
                         <TableActionItem onClick={() => handleEdit(student)} isDark={isDark}>
                           <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
                         </TableActionItem>
+                        <TableActionItem onClick={() => { setDeletingStudent(student); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                        </TableActionItem>
                       </TableActionMenu>
                     </TableCell>
                   </TableRow>
@@ -343,6 +356,29 @@ export default function StudentsPage() {
                 </button>
                 <button onClick={handleSaveEdit} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
                   {isBn ? 'সংরক্ষণ' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deletingStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" onClick={() => setDeletingStudent(null)} />
+            <div className={`relative z-50 w-full max-w-md rounded-md p-6 shadow-2xl animate-scaleIn backdrop-blur-xl ${isDark ? 'border border-white/[0.06] bg-[#0D0D0D]' : 'border border-zinc-200 bg-white'}`}>
+              <h3 className={`text-sm font-semibold mb-2 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'শিক্ষার্থী মুছুন?' : 'Delete Student?'}</h3>
+              <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                {isBn 
+                  ? `"${deletingStudent.firstName} ${deletingStudent.lastName}" কে সম্পূর্ণভাবে মুছে ফেলা হবে। এই শিক্ষার্থীর সমস্ত নিবন্ধন, পরীক্ষার ফলাফল, মার্কস, অ্যাডমিট কার্ড এবং ছবি ডাটাবেজ থেকে মুছে ফেলা হবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`
+                  : `"${deletingStudent.firstName} ${deletingStudent.lastName}" will be permanently deleted. All registrations, exam results, marks, admit cards, and photos will be removed from the database. This action cannot be undone.`}
+              </p>
+              <div className="flex items-center justify-end gap-2 mt-6">
+                <button onClick={() => setDeletingStudent(null)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                  {isBn ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button onClick={handleDelete} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">
+                  {isBn ? 'মুছুন' : 'Delete Permanently'}
                 </button>
               </div>
             </div>
