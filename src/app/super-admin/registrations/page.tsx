@@ -42,7 +42,7 @@ export default function RegistrationsPage() {
   const deleteRegistrationMutation = useDeleteRegistration();
 
   const filtered = useMemo(() => registrations.filter(r => {
-    const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.applicationId.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.registrationNumber.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || r.status === statusFilter;
     return matchesSearch && matchesStatus;
   }), [registrations, search, statusFilter]);
@@ -50,7 +50,7 @@ export default function RegistrationsPage() {
   const selection = useTableSelection(filtered);
 
   const pdfColumns = useMemo<PdfColumn[]>(() => [
-    { header: isBn ? "আবেদন আইডি" : "Application ID", key: "applicationId" },
+    { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: "registrationNumber" },
     { header: isBn ? "শিক্ষার্থী" : "Student", key: "studentName" },
     { header: isBn ? "প্রতিষ্ঠান" : "Institution", key: "institutionName" },
     { header: isBn ? "পরীক্ষা" : "Exam", key: "examName" },
@@ -59,7 +59,7 @@ export default function RegistrationsPage() {
   ], [isBn]);
 
   const pdfData = useMemo(() => filtered.map(r => ({
-    applicationId: r.applicationId,
+    registrationNumber: r.registrationNumber,
     studentName: r.studentName,
     institutionName: r.institutionName,
     examName: r.examName,
@@ -185,7 +185,7 @@ export default function RegistrationsPage() {
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
               <Input
-                placeholder={isBn ? "শিক্ষার্থী বা আবেদন আইডি দিয়ে অনুসন্ধান..." : "Search by student or application ID..."}
+                placeholder={isBn ? "শিক্ষার্থী বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by student or registration number..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`pl-10 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
@@ -241,7 +241,7 @@ export default function RegistrationsPage() {
                       onChange={selection.toggleAll}
                     />
                   </TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'আবেদন আইডি' : 'Application ID'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
@@ -259,7 +259,7 @@ export default function RegistrationsPage() {
                         onChange={() => selection.toggle(reg.id)}
                       />
                     </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.applicationId}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.institutionName}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
@@ -299,8 +299,8 @@ export default function RegistrationsPage() {
                   <Input value={editingReg.studentName} disabled className={cn("opacity-60", inputCls)} />
                 </div>
                 <div>
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'আবেদন আইডি' : 'Application ID'}</label>
-                  <Input value={editingReg.applicationId} disabled className={cn("opacity-60", inputCls)} />
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</label>
+                  <Input value={editingReg.registrationNumber} disabled className={cn("opacity-60", inputCls)} />
                 </div>
                 <div>
                   <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>

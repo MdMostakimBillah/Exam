@@ -5,7 +5,7 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'registrations';
 
-const REGISTRATION_COLUMNS = 'id,session_id,application_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,status,payment_status,student_payment_status,payment_amount,transaction_id,created_at,updated_at';
+const REGISTRATION_COLUMNS = 'id,session_id,application_id,registration_number,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,status,payment_status,student_payment_status,payment_amount,transaction_id,created_at,updated_at';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -14,6 +14,7 @@ function mapRegistration(data: any): Registration {
     id: data.id,
     sessionId: data.session_id,
     applicationId: data.application_id,
+    registrationNumber: data.registration_number || '',
     studentId: data.student_id,
     studentName: data.student_name,
     institutionId: data.institution_id,
@@ -94,6 +95,19 @@ export async function fetchAllApplicationIds(): Promise<string[]> {
   return data.map((row: { application_id: string }) => row.application_id);
 }
 
+/**
+ * Fetches ALL registration_numbers globally (no institution filter, no pagination).
+ * Used by generateRegistrationNumber to find the next available number.
+ */
+export async function fetchAllRegistrationNumbers(): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('registration_number');
+  if (error || !data) return [];
+  return data.map((row: { registration_number: string }) => row.registration_number).filter(Boolean);
+}
+
 export async function fetchRegistrationById(id: string): Promise<Registration | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(REGISTRATION_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
@@ -107,6 +121,7 @@ export async function createRegistration(data: Omit<Registration, 'id' | 'create
     .insert({
       session_id: data.sessionId,
       application_id: data.applicationId,
+      registration_number: data.registrationNumber,
       student_id: data.studentId,
       student_name: data.studentName,
       institution_id: data.institutionId,
@@ -131,6 +146,7 @@ export async function updateRegistration(id: string, data: Partial<Registration>
   const u: any = { updated_at: new Date().toISOString() };
   if (data.sessionId !== undefined) u.session_id = data.sessionId;
   if (data.applicationId !== undefined) u.application_id = data.applicationId;
+  if (data.registrationNumber !== undefined) u.registration_number = data.registrationNumber;
   if (data.studentId !== undefined) u.student_id = data.studentId;
   if (data.studentName !== undefined) u.student_name = data.studentName;
   if (data.institutionId !== undefined) u.institution_id = data.institutionId;

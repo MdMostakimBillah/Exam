@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, fetchAllApplicationIds } from "@/lib/storage/registrations";
+import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, fetchAllRegistrationNumbers } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
@@ -83,7 +83,7 @@ export default function InstitutionRegistrationsPage() {
   const [photoError, setPhotoError] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [generatedAppId, setGeneratedAppId] = useState("");
+  const [generatedRegNumber, setGeneratedRegNumber] = useState("");
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -101,7 +101,7 @@ export default function InstitutionRegistrationsPage() {
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
   const filtered = registrations.filter(r => {
-    const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.applicationId.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.registrationNumber.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesExam = !examFilter || r.examId === examFilter;
     return matchesSearch && matchesStatus && matchesExam;
@@ -110,7 +110,7 @@ export default function InstitutionRegistrationsPage() {
   const selection = useTableSelection(filtered);
 
   const pdfColumns: PdfColumn[] = [
-    { header: isBn ? "আবেদন আইডি" : "Application ID", key: 'applicationId' },
+    { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: 'registrationNumber' },
     { header: isBn ? "শিক্ষার্থী" : "Student", key: 'studentName' },
     { header: isBn ? "পরীক্ষা" : "Exam", key: 'examName' },
     { header: isBn ? "স্থিতি" : "Status", key: 'status' },
@@ -120,7 +120,7 @@ export default function InstitutionRegistrationsPage() {
   ];
 
   const pdfData = filtered.map(r => ({
-    applicationId: r.applicationId,
+    registrationNumber: r.registrationNumber,
     studentName: r.studentName,
     examName: r.examName,
     status: r.status,
@@ -136,17 +136,22 @@ export default function InstitutionRegistrationsPage() {
     REJECTED: registrations.filter(r => r.status === "REJECTED").length,
   };
 
-  const generateAppId = async () => {
+  /**
+   * Generate a global 10-digit registration number.
+   * Format: YYYYNNNNNN (e.g., 2026000001, 2026000002, ...)
+   * The sequential number is global across ALL institutions.
+   */
+  const generateRegistrationNumber = async () => {
     const year = new Date().getFullYear();
-    const prefix = `APP-${year}-`;
-    // Fetch ALL application_ids globally (not just current institution)
-    const allAppIds = await fetchAllApplicationIds();
-    const existingNums = allAppIds
-      .filter(id => id.startsWith(prefix))
-      .map(id => parseInt(id.replace(prefix, ''), 10))
+    const prefix = String(year);
+    // Fetch ALL registration_numbers globally (not just current institution)
+    const allRegNumbers = await fetchAllRegistrationNumbers();
+    const existingNums = allRegNumbers
+      .filter(num => num.startsWith(prefix))
+      .map(num => parseInt(num.slice(4), 10))
       .filter(n => !isNaN(n));
     const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
-    return `${prefix}${String(maxNum + 1).padStart(4, "0")}`;
+    return `${prefix}${String(maxNum + 1).padStart(6, "0")}`;
   };
 
   const generateStudentId = async () => {
@@ -168,10 +173,10 @@ export default function InstitutionRegistrationsPage() {
   if (!inst) return null;
 
   const handleCreate = async () => {
-    const [newStudentId, newAppId] = await Promise.all([generateStudentId(), generateAppId()]);
+    const [newStudentId, newRegNumber] = await Promise.all([generateStudentId(), generateRegistrationNumber()]);
     setStep(1);
     setStudentForm({ ...emptyStudentForm, studentId: newStudentId });
-    setGeneratedAppId(newAppId);
+    setGeneratedRegNumber(newRegNumber);
     setSelectedExamId("");
     setPhotoError("");
     setShowModal(true);
@@ -249,7 +254,8 @@ export default function InstitutionRegistrationsPage() {
 
       await createRegistrationMutation.mutateAsync({
         sessionId: currentSession?.id || '',
-        applicationId: generatedAppId,
+        applicationId: generatedRegNumber,
+        registrationNumber: generatedRegNumber,
         studentId: newStudent.id,
         studentName: newStudent.firstName,
         institutionId: inst!.id,
@@ -425,7 +431,7 @@ export default function InstitutionRegistrationsPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
-              <Input placeholder={isBn ? "শিক্ষার্থী বা আবেদন আইডি দিয়ে অনুসন্ধান..." : "Search by student or application ID..."} value={search} onChange={(e) => setSearch(e.target.value)} className={cn("pl-10", inputCls)} />
+              <Input placeholder={isBn ? "শিক্ষার্থী বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by student or registration number..."} value={search} onChange={(e) => setSearch(e.target.value)} className={cn("pl-10", inputCls)} />
             </div>
             <Select options={[{ label: isBn ? "সব পরীক্ষা" : "All Exams", value: "" }, ...exams.map(e => ({ label: e.name, value: e.id }))]} value={examFilter} onChange={(e) => setExamFilter(e.target.value)} className={cn("w-full sm:w-48", inputCls)} />
             <Select
@@ -465,7 +471,7 @@ export default function InstitutionRegistrationsPage() {
                   <TableHead className="w-10">
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "আবেদন আইডি" : "Application ID"}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "শিক্ষার্থী" : "Student"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "পরীক্ষা" : "Exam"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "স্থিতি" : "Status"}</TableHead>
@@ -481,7 +487,7 @@ export default function InstitutionRegistrationsPage() {
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(reg.id)} onChange={() => selection.toggle(reg.id)} />
                     </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.applicationId}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
                     <TableCell><Badge status={reg.status} /></TableCell>
@@ -673,8 +679,8 @@ export default function InstitutionRegistrationsPage() {
             )}
 
             <div>
-              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "আবেদন আইডি" : "Application ID"}</label>
-              <Input value={generatedAppId} disabled className={cn("opacity-60", inputCls)} />
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number"}</label>
+              <Input value={generatedRegNumber} disabled className={cn("opacity-60", inputCls)} />
             </div>
           </div>
         )}
@@ -748,7 +754,7 @@ export default function InstitutionRegistrationsPage() {
                 <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "শিক্ষার্থী তথ্য" : "Student Information"}</h4>
                 <div className="space-y-2.5">
                   {([
-                    { label: isBn ? "আবেদন আইডি" : "Application ID", value: viewingReg.applicationId },
+                    { label: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", value: viewingReg.registrationNumber },
                     { label: isBn ? "শিক্ষার্থী আইডি" : "Student ID", value: student?.studentId || viewingReg.studentId },
                     { label: isBn ? "শ্রেণী" : "Class", value: viewingReg.className },
                     student?.section ? { label: isBn ? "শাখা" : "Section", value: student.section } : null,

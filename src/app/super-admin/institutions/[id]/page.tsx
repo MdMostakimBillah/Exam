@@ -156,7 +156,7 @@ export default function InstitutionDetailPage() {
                           ) : (
                             regs.slice(0, 10).map(r => (
                               <TableRow key={r.id} className={isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'}>
-                                <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{r.applicationId}</TableCell>
+                                <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{r.registrationNumber}</TableCell>
                                 <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{r.studentName}</TableCell>
                                 <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{r.examName}</TableCell>
                                 <TableCell><Badge status={r.status} /></TableCell>

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 const SUPABASE_TABLE = 'registrations';
 
-const REGISTRATION_COLUMNS = 'id,session_id,application_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,status,payment_status,student_payment_status,payment_amount,transaction_id,created_at,updated_at';
+const REGISTRATION_COLUMNS = 'id,session_id,application_id,registration_number,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,status,payment_status,student_payment_status,payment_amount,transaction_id,created_at,updated_at';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -12,6 +12,7 @@ function mapRegistration(data: any): Registration {
     id: data.id,
     sessionId: data.session_id,
     applicationId: data.application_id,
+    registrationNumber: data.registration_number || '',
     studentId: data.student_id,
     studentName: data.student_name,
     institutionId: data.institution_id,

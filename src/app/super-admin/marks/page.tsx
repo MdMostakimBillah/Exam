@@ -51,14 +51,14 @@ export default function MarksPage() {
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'রোল' : 'Roll', key: "roll" },
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
-    { header: isBn ? 'আবেদন আইডি' : 'Reg No', key: "applicationId" },
+    { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Reg No', key: "registrationNumber" },
     { header: isBn ? 'নম্বর' : 'Marks', key: "marks" },
   ], [isBn]);
 
   const pdfData = useMemo(() => filtered.map(reg => ({
     roll: reg.id.slice(-3),
     studentName: reg.studentName,
-    applicationId: reg.applicationId,
+    registrationNumber: reg.registrationNumber,
     marks: reg.currentMarks !== undefined ? String(reg.currentMarks) : '',
   })), [filtered]);
 
@@ -178,7 +178,7 @@ export default function MarksPage() {
                   </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'আবেদন আইডি' : 'Reg No'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Reg No'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নম্বর' : 'Marks'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
                 </TableRow>
@@ -196,7 +196,7 @@ export default function MarksPage() {
                       </TableCell>
                       <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{reg.id.slice(-3)}</TableCell>
                       <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{reg.studentName}</TableCell>
-                      <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{reg.applicationId}</TableCell>
+                      <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{reg.registrationNumber}</TableCell>
                       <TableCell>
                         <Input type="number" min={0} max={fullMarks} value={currentMarks || ''}
                           onChange={(e) => handleMarkChange(reg.id, e.target.value)}

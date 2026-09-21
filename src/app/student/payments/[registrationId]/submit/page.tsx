@@ -22,6 +22,7 @@ interface Registration {
   id: string;
   sessionId: string;
   applicationId: string;
+  registrationNumber: string;
   studentId: string;
   studentName: string;
   institutionId: string;
@@ -91,6 +92,7 @@ export default function PaymentSubmitPage() {
         id: data.id,
         sessionId: data.session_id,
         applicationId: data.application_id,
+        registrationNumber: data.registration_number || '',
         studentId: data.student_id,
         studentName: data.student_name,
         institutionId: data.institution_id,
@@ -278,7 +280,7 @@ export default function PaymentSubmitPage() {
                 <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "নিবন্ধন" : "Registration"}</p>
                 <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{registration.examName}</p>
                 <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                  {registration.applicationId} &middot; {registration.className}
+                  {registration.registrationNumber} &middot; {registration.className}
                 </p>
               </div>
 

@@ -187,24 +187,24 @@ BEGIN
   -- Registration 1: Mohammad Rahman for NTSE (APPROVED, payment submitted)
   SELECT id INTO v_reg1_id FROM registrations WHERE student_id = v_student1_id AND exam_id = v_exam1_id LIMIT 1;
   IF v_reg1_id IS NULL THEN
-    INSERT INTO registrations (session_id, application_id, student_id, student_name, institution_id, institution_name, exam_id, exam_name, class_name, status, payment_status, student_payment_status, payment_amount)
-    VALUES (v_session_id, 'APP-2024-25-0001', v_student1_id, 'Mohammad Rahman', v_inst_id, 'Dhaka Model Madrasa', v_exam1_id, 'National Talent Scholarship Examination 2026', '5', 'APPROVED', 'CONFIRMED', 'VERIFIED', 150)
+    INSERT INTO registrations (session_id, application_id, registration_number, student_id, student_name, institution_id, institution_name, exam_id, exam_name, class_name, status, payment_status, student_payment_status, payment_amount)
+    VALUES (v_session_id, 'APP-2024-25-0001', '2024000001', v_student1_id, 'Mohammad Rahman', v_inst_id, 'Dhaka Model Madrasa', v_exam1_id, 'National Talent Scholarship Examination 2026', '5', 'APPROVED', 'CONFIRMED', 'VERIFIED', 150)
     RETURNING id INTO v_reg1_id;
   END IF;
 
   -- Registration 2: Fatima Khatun for NTSE (PENDING, not submitted)
   SELECT id INTO v_reg2_id FROM registrations WHERE student_id = v_student2_id AND exam_id = v_exam1_id LIMIT 1;
   IF v_reg2_id IS NULL THEN
-    INSERT INTO registrations (session_id, application_id, student_id, student_name, institution_id, institution_name, exam_id, exam_name, class_name, status, payment_status, student_payment_status, payment_amount)
-    VALUES (v_session_id, 'APP-2024-25-0002', v_student2_id, 'Fatima Khatun', v_inst_id, 'Dhaka Model Madrasa', v_exam1_id, 'National Talent Scholarship Examination 2026', '5', 'PENDING', 'PENDING', 'NOT_SUBMITTED', 150)
+    INSERT INTO registrations (session_id, application_id, registration_number, student_id, student_name, institution_id, institution_name, exam_id, exam_name, class_name, status, payment_status, student_payment_status, payment_amount)
+    VALUES (v_session_id, 'APP-2024-25-0002', '2024000002', v_student2_id, 'Fatima Khatun', v_inst_id, 'Dhaka Model Madrasa', v_exam1_id, 'National Talent Scholarship Examination 2026', '5', 'PENDING', 'PENDING', 'NOT_SUBMITTED', 150)
     RETURNING id INTO v_reg2_id;
   END IF;
 
   -- Registration 3: Fatima Khatun for DMS (SUBMITTED, awaiting verification)
   SELECT id INTO v_reg3_id FROM registrations WHERE student_id = v_student2_id AND exam_id = v_exam2_id LIMIT 1;
   IF v_reg3_id IS NULL THEN
-    INSERT INTO registrations (session_id, application_id, student_id, student_name, institution_id, institution_name, exam_id, exam_name, class_name, status, payment_status, student_payment_status, payment_amount)
-    VALUES (v_session_id, 'APP-2024-25-0003', v_student2_id, 'Fatima Khatun', v_inst_id, 'Dhaka Model Madrasa', v_exam2_id, 'District Merit Scholarship 2026', '5', 'PENDING', 'PENDING', 'SUBMITTED', 100)
+    INSERT INTO registrations (session_id, application_id, registration_number, student_id, student_name, institution_id, institution_name, exam_id, exam_name, class_name, status, payment_status, student_payment_status, payment_amount)
+    VALUES (v_session_id, 'APP-2024-25-0003', '2024000003', v_student2_id, 'Fatima Khatun', v_inst_id, 'Dhaka Model Madrasa', v_exam2_id, 'District Merit Scholarship 2026', '5', 'PENDING', 'PENDING', 'SUBMITTED', 100)
     RETURNING id INTO v_reg3_id;
   END IF;
 

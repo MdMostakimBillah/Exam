@@ -175,7 +175,7 @@ export default function StudentDashboardPage() {
                   </div>
                   <div className="flex items-center gap-3 text-[11px]">
                     <span className={isDark ? "text-zinc-500" : "text-zinc-400"}>
-                      {isBn ? "আবেদন" : "Application"}: {reg.applicationId}
+                      {isBn ? "নিবন্ধন" : "Registration"}: {reg.registrationNumber}
                     </span>
                     <span className={isDark ? "text-zinc-500" : "text-zinc-400"}>
                       {isBn ? "তারিখ" : "Date"}: {formatDate(reg.createdAt).split(",")[0]}

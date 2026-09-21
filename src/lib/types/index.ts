@@ -129,6 +129,7 @@ export interface Registration {
   id: string;
   sessionId: string;
   applicationId: string;
+  registrationNumber: string;
   studentId: string;
   studentName: string;
   institutionId: string;
