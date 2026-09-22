@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +8,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useStudentsByInstitution } from "@/lib/storage/students";
-import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useAllRegistrationsByInstitution, normalizeRegistrationStatus } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
 import { useResultsByInstitution } from "@/lib/storage/results";
 import { usePaymentsByInstitution } from "@/lib/storage/payments";
@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { LoadingBar } from "@/components/ui/loading-bar";
+import { Registration } from "@/lib/types";
 
 export default function InstitutionDashboardPage() {
   const params = useParams();
@@ -35,16 +36,31 @@ export default function InstitutionDashboardPage() {
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
   const { data: students = [], isFetching } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [] } = useAllRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const { data: exams = [] } = useExams();
   const { data: results = [] } = useResultsByInstitution(inst?.id || '', currentSession?.id);
   const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
+
+  // Latest registration per student (for Registration Number + status).
+  const latestReg = useMemo(() => {
+    const map = new Map<string, Registration>();
+    for (const r of registrations) {
+      if (!r.studentId) continue;
+      const existing = map.get(r.studentId);
+      if (!existing || new Date(r.createdAt || 0) >= new Date(existing.createdAt || 0)) {
+        map.set(r.studentId, r);
+      }
+    }
+    return map;
+  }, [registrations]);
+  const getRegNumber = (studentId: string) => latestReg.get(studentId)?.registrationNumber || '-';
+  const getRegStatus = (studentId: string) => normalizeRegistrationStatus(latestReg.get(studentId)?.status);
 
   const selection = useTableSelection(students);
 
   const pdfColumns: PdfColumn[] = [
     { header: isBn ? 'নাম' : 'Name', key: 'name' },
-    { header: isBn ? 'আইডি' : 'Student ID', key: 'studentId' },
+    { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number', key: 'regNumber' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
   ];
@@ -53,9 +69,9 @@ export default function InstitutionDashboardPage() {
     .filter((s) => selection.isSelected(s.id))
     .map((s) => ({
       name: `${s.firstName} ${s.lastName}`,
-      studentId: s.studentId,
+      regNumber: latestReg.get(s.id)?.registrationNumber || '-',
       class: s.class,
-      status: s.status,
+      status: getRegStatus(s.id) || s.status,
     }));
 
   if (!mounted) return <DashboardSkeleton isDark={isDark} />;
@@ -231,7 +247,7 @@ export default function InstitutionDashboardPage() {
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'আইডি' : 'Student ID'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
                 </TableRow>
@@ -243,9 +259,9 @@ export default function InstitutionDashboardPage() {
                       <TableCheckbox checked={selection.isSelected(s.id)} onChange={() => selection.toggle(s.id)} />
                     </TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{s.firstName} {s.lastName}</TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{s.studentId}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{getRegNumber(s.id)}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{s.class}</TableCell>
-                    <TableCell><Badge status={s.status} /></TableCell>
+                    <TableCell><Badge status={getRegStatus(s.id) || s.status} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
