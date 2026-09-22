@@ -5,10 +5,10 @@ import { Building2, Users, FileText, DollarSign, ArrowRight, TrendingUp, Graduat
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import Link from "next/link";
-import type { DashboardData } from "@/lib/data/dashboard";
+import type { DashboardData, DashboardStats } from "@/lib/data/dashboard";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
-export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardData; isLoading?: boolean }) {
+export function SuperAdminDashboardView({ data, stats, isLoading }: { data: DashboardData; stats: DashboardStats; isLoading?: boolean }) {
   const { theme } = useTheme();
   const { lang: language } = useLang();
 
@@ -24,16 +24,6 @@ export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardDa
     }).length
   ), [institutions]);
   const maxMonthly = useMemo(() => Math.max(...monthlyInstitutions, 1), [monthlyInstitutions]);
-  const totalRevenue = useMemo(() => payments.reduce((sum, p) => sum + (p.status === 'PAID' ? p.amount : 0), 0), [payments]);
-  // Due = sum of exam fees for all pending registrations across all institutions
-  const totalDue = useMemo(() => registrations
-    .filter(r => r.status === 'PENDING')
-    .reduce((sum, r) => sum + r.paymentAmount, 0), [registrations]);
-  const activeExams = useMemo(() => exams.filter(e => e.status === 'OPEN' || e.status === 'PUBLISHED').length, [exams]);
-  const pendingInstitutions = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
-  const verifiedRegs = useMemo(() => registrations.filter(r => r.status === 'VERIFIED' || r.status === 'APPROVED').length, [registrations]);
-  const approvedStudents = useMemo(() => registrations.filter(r => r.status === 'APPROVED').length, [registrations]);
-
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
@@ -72,10 +62,10 @@ export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardDa
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: Building2, label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', value: institutions.length, href: '/super-admin/institutions' },
-            { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length, href: '/super-admin/students' },
-            { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams, href: '/super-admin/exams' },
-            { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: results.length, href: '/super-admin/results' },
+            { icon: Building2, label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', value: stats.institutions_total, href: '/super-admin/institutions' },
+            { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: stats.students_total, href: '/super-admin/students' },
+            { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: stats.exams_active, href: '/super-admin/exams' },
+            { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: stats.results_total, href: '/super-admin/results' },
           ].map((s) => (
             <Link key={s.label} href={s.href} className="block">
               <div className={`${card} ${cardHover} px-4 py-3 flex items-center gap-3`}>
@@ -95,10 +85,10 @@ export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardDa
         {/* Revenue Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: TrendingUp, label: isBn ? 'মোট আয়' : 'Total Revenue', value: '৳' + totalRevenue.toLocaleString() },
-            { icon: DollarSign, label: isBn ? 'বকেয়া' : 'Total Due', value: '৳' + totalDue.toLocaleString() },
-            { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: registrations.length },
-            { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
+            { icon: TrendingUp, label: isBn ? 'মোট আয়' : 'Total Revenue', value: '৳' + stats.payments_total.toLocaleString() },
+            { icon: DollarSign, label: isBn ? 'বকেয়া' : 'Total Due', value: '৳' + stats.payments_due.toLocaleString() },
+            { icon: Users, label: isBn ? 'নিবন্ধিত' : 'Registered', value: stats.registrations_total },
+            { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: stats.registrations_approved },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -170,11 +160,11 @@ export function SuperAdminDashboardView({ data, isLoading }: { data: DashboardDa
                 </div>
                 <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}`}>
                   <div>
-                    <p className={`text-2xl font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{institutions.length}</p>
+                    <p className={`text-2xl font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{stats.institutions_total}</p>
                     <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions'}</p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>+{institutions.filter(i => i.status === 'PENDING').length}</p>
+                    <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>+{stats.institutions_pending}</p>
                     <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'বাকি অনুমোদন' : 'Pending'}</p>
                   </div>
                 </div>

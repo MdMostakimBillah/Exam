@@ -46,13 +46,17 @@ DECLARE
   result JSON;
 BEGIN
   SELECT json_build_object(
-    'institutions', (SELECT count(*) FROM institutions),
-    'students', (SELECT count(*) FROM students),
-    'exams', (SELECT count(*) FROM exams WHERE status IN ('OPEN', 'PUBLISHED')),
-    'results', (SELECT count(*) FROM results),
+    'institutions_total', (SELECT count(*) FROM institutions),
+    'institutions_pending', (SELECT count(*) FROM institutions WHERE status = 'PENDING'),
+    'students_total', (SELECT count(*) FROM students),
+    'exams_active', (SELECT count(*) FROM exams WHERE status IN ('OPEN', 'PUBLISHED')),
+    'registrations_total', (SELECT count(*) FROM registrations),
+    'registrations_pending', (SELECT count(*) FROM registrations WHERE status = 'PENDING'),
+    'registrations_verified_approved', (SELECT count(*) FROM registrations WHERE status IN ('VERIFIED', 'APPROVED')),
+    'registrations_approved', (SELECT count(*) FROM registrations WHERE status = 'APPROVED'),
+    'results_total', (SELECT count(*) FROM results),
     'payments_total', (SELECT coalesce(sum(amount), 0) FROM payments WHERE status = 'PAID'),
-    'payments_due', (SELECT coalesce(sum(amount), 0) FROM payments WHERE status = 'PENDING'),
-    'registrations', (SELECT count(*) FROM registrations)
+    'payments_due', (SELECT coalesce(sum(amount), 0) FROM payments WHERE status = 'PENDING')
   ) INTO result;
   RETURN result;
 END;

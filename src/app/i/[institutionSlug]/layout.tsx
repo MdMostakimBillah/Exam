@@ -31,18 +31,46 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
     }
     if (redirectTimerRef.current) { clearTimeout(redirectTimerRef.current); redirectTimerRef.current = null; }
     if (user.role === 'SUPER_ADMIN') { setAuthorized(true); return; }
-    if (!user.institutionId) { router.push('/login'); return; }
 
+    let cancelled = false;
     const supabase = createClient();
-    supabase.from('institutions').select('id, status').eq('slug', slug).eq('id', user.institutionId).single()
-      .then(({ data, error }: { data: { status: string } | null; error: any }) => {
-        if (data && !error) {
-          setInstStatus(data.status);
+
+    const authorize = async () => {
+      // Primary: institution linked on the profile.
+      if (user.institutionId) {
+        const { data } = await supabase
+          .from('institutions')
+          .select('id, status')
+          .eq('slug', slug)
+          .eq('id', user.institutionId)
+          .maybeSingle();
+        if (data) return data as { status: string };
+      }
+      // Fallback: institution whose admin is this user.
+      const { data } = await supabase
+        .from('institutions')
+        .select('id, status')
+        .eq('slug', slug)
+        .eq('admin_user_id', user.id)
+        .maybeSingle();
+      return (data as { status: string } | null) ?? null;
+    };
+
+    authorize()
+      .then((inst) => {
+        if (cancelled) return;
+        if (inst) {
+          setInstStatus(inst.status);
           setAuthorized(true);
         } else {
           router.push('/login');
         }
+      })
+      .catch(() => {
+        if (!cancelled) router.push('/login');
       });
+
+    return () => { cancelled = true; };
   }, [slug, user, loading]);
 
   if (loading || !authorized) return (
