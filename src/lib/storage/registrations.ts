@@ -109,25 +109,23 @@ export async function fetchAllRegistrationNumbers(): Promise<string[]> {
 }
 
 /**
- * Generate the next global registration number using a database function.
- * This bypasses RLS and ensures sequential numbers across ALL institutions.
+ * Generate the next GLOBAL registration number using a database function.
+ * The function is SECURITY DEFINER so it bypasses RLS and returns a number that
+ * is sequential across ALL institutions (institution B continues from where
+ * institution A left off).
  * Format: YYYYNNNNNN (e.g., 2026000001, 2026000002, ...)
+ *
+ * Throws if the database function is unavailable. We must NEVER fall back to a
+ * client-side computation here: RLS only exposes this institution's rows, so a
+ * client-side max+1 would hand out a duplicate (e.g. 2026000001 again).
+ * A BEFORE INSERT trigger (migration 0006) is the final safety net — it assigns
+ * the authoritative next number inside the database on every insert.
  */
 export async function generateGlobalRegistrationNumber(): Promise<string> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc('get_next_registration_number');
   if (error || !data) {
-    // Fallback: use client-side generation if function not available
-    return fetchAllRegistrationNumbers().then(numbers => {
-      const year = new Date().getFullYear();
-      const prefix = String(year);
-      const existingNums = numbers
-        .filter(num => num.startsWith(prefix))
-        .map(num => parseInt(num.slice(4), 10))
-        .filter(n => !isNaN(n));
-      const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
-      return `${prefix}${String(maxNum + 1).padStart(6, "0")}`;
-    });
+    throw new Error(error?.message || 'get_next_registration_number() is unavailable');
   }
   return data as string;
 }
@@ -266,4 +264,18 @@ export function useDeleteRegistration() {
     mutationFn: (id: string) => deleteRegistration(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['registrations'] }),
   });
+}
+
+/**
+ * Fetches all registration numbers for a specific institution.
+ * Used by the fallback path in generateRegistrationNumber when the RPC is unavailable.
+ */
+export async function fetchRegistrationNumbersByInstitution(institutionId: string): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('registration_number')
+    .eq('institution_id', institutionId);
+  if (error || !data) return [];
+  return data.map((row: { registration_number: string }) => row.registration_number).filter(Boolean);
 }

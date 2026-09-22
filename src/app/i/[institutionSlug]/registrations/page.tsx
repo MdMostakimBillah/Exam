@@ -163,15 +163,21 @@ export default function InstitutionRegistrationsPage() {
   if (!inst) return null;
 
   const handleCreate = async () => {
-    const [newStudentId, newRegNumber] = await Promise.all([generateStudentId(), generateRegistrationNumber()]);
-    setStep(1);
-    setStudentForm({ ...emptyStudentForm });
-    setGeneratedStudentId(newStudentId);
-    setGeneratedRegNumber(newRegNumber);
-    setSelectedExamId("");
-    setPhotoError("");
-    setShowModal(true);
-    setMenuOpenId(null);
+    try {
+      const [newStudentId, newRegNumber] = await Promise.all([generateStudentId(), generateRegistrationNumber()]);
+      setStep(1);
+      setStudentForm({ ...emptyStudentForm });
+      setGeneratedStudentId(newStudentId);
+      setGeneratedRegNumber(newRegNumber);
+      setSelectedExamId("");
+      setPhotoError("");
+      setShowModal(true);
+      setMenuOpenId(null);
+    } catch {
+      toast("error", isBn
+        ? "রেজিস্ট্রেশন নম্বর তৈরি করা যায়নি। আবার চেষ্টা করুন।"
+        : "Could not generate registration number. Please try again.");
+    }
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
