@@ -10,12 +10,13 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useStudents, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutions } from "@/lib/storage/institutions";
+import { useAllRegistrations, normalizeRegistrationStatus } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { Student } from "@/lib/types";
+import { Student, Registration } from "@/lib/types";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function StudentsPage() {
@@ -40,25 +41,46 @@ export default function StudentsPage() {
 
   const { data: students = [], isFetching } = useStudents();
   const { data: institutions = [] } = useInstitutions();
+  const { data: regs = [] } = useAllRegistrations();
   const updateStudentMutation = useUpdateStudent();
   const deleteStudentMutation = useDeleteStudent();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
   const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
   const getInstitutionName = useCallback((id: string) => institutionMap.get(id) || 'Unknown', [institutionMap]);
 
+  // Latest registration per student (used for Registration Number + status).
+  const latestReg = useMemo(() => {
+    const map = new Map<string, Registration>();
+    for (const r of regs) {
+      if (!r.studentId) continue;
+      const existing = map.get(r.studentId);
+      if (!existing || new Date(r.createdAt || 0) >= new Date(existing.createdAt || 0)) {
+        map.set(r.studentId, r);
+      }
+    }
+    return map;
+  }, [regs]);
+  const getRegNumber = (studentId: string) => latestReg.get(studentId)?.registrationNumber || '-';
+  const getRegStatus = (studentId: string) => normalizeRegistrationStatus(latestReg.get(studentId)?.status);
+
   const filtered = useMemo(() => students.filter(s => {
-    const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) || s.studentId.toLowerCase().includes(search.toLowerCase());
+    const reg = latestReg.get(s.id);
+    const regNum = reg?.registrationNumber || '';
+    const regStatus = normalizeRegistrationStatus(reg?.status);
+    const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase())
+      || s.studentId.toLowerCase().includes(search.toLowerCase())
+      || regNum.toLowerCase().includes(search.toLowerCase());
     const matchesClass = !classFilter || s.class === classFilter;
     const matchesInst = !institutionFilter || s.institutionId === institutionFilter;
-    const matchesStatus = !statusFilter || s.status === statusFilter;
+    const matchesStatus = !statusFilter || regStatus === statusFilter;
     return matchesSearch && matchesClass && matchesInst && matchesStatus;
-  }), [students, search, classFilter, institutionFilter, statusFilter, refreshKey]);
+  }), [students, latestReg, search, classFilter, institutionFilter, statusFilter, refreshKey]);
 
   const selection = useTableSelection(filtered);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'name' },
-    { header: 'ID', key: 'studentId' },
+    { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number', key: 'regNumber' },
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: 'institution' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
@@ -69,15 +91,16 @@ export default function StudentsPage() {
     .filter((s) => selection.isSelected(s.id))
     .map((s) => ({
       name: `${s.firstName} ${s.lastName}`,
-      studentId: s.studentId,
+      regNumber: latestReg.get(s.id)?.registrationNumber || '-',
       institution: getInstitutionName(s.institutionId),
       class: s.class,
       roll: s.roll,
-      status: s.status,
-    })), [filtered, selection, getInstitutionName]);
+      status: normalizeRegistrationStatus(latestReg.get(s.id)?.status) || s.status,
+    })), [filtered, selection, getInstitutionName, latestReg]);
 
-  const activeStudents = useMemo(() => students.filter(s => s.status === 'ACTIVE').length, [students]);
-  const pendingStudents = useMemo(() => students.filter(s => s.status === 'PENDING').length, [students]);
+  const approvedCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'APPROVED').length, [students, latestReg]);
+  const pendingCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'PENDING').length, [students, latestReg]);
+  const rejectedCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'REJECTED').length, [students, latestReg]);
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
@@ -145,8 +168,9 @@ export default function StudentsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
             { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length },
-            { icon: UserCheck, label: isBn ? 'সক্রিয়' : 'Active', value: activeStudents },
-            { icon: Users, label: isBn ? 'মুলতুবি' : 'Pending', value: pendingStudents },
+            { icon: UserCheck, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedCount },
+            { icon: Users, label: isBn ? 'মুলতুবি' : 'Pending', value: pendingCount },
+            { icon: Users, label: isBn ? 'প্রত্যাখ্যাত' : 'Rejected', value: rejectedCount },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -166,7 +190,7 @@ export default function StudentsPage() {
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
               <Input
-                placeholder={isBn ? "নাম বা আইডি দিয়ে অনুসন্ধান..." : "Search by name or ID..."}
+                placeholder={isBn ? "নাম বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by name or registration number..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`pl-10 ${inputCls}`}
@@ -187,8 +211,9 @@ export default function StudentsPage() {
             <Select
               options={[
                 { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
-                { label: 'ACTIVE', value: 'ACTIVE' },
+                { label: 'APPROVED', value: 'APPROVED' },
                 { label: 'PENDING', value: 'PENDING' },
+                { label: 'REJECTED', value: 'REJECTED' },
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -229,7 +254,7 @@ export default function StudentsPage() {
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>ID</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
@@ -257,11 +282,11 @@ export default function StudentsPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.studentId}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{getRegNumber(student.id)}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{getInstitutionName(student.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll}</TableCell>
-                    <TableCell><Badge status={student.status} /></TableCell>
+                    <TableCell><Badge status={getRegStatus(student.id) || student.status} /></TableCell>
                     <TableCell>
                       <TableActionMenu id={student.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
                         <TableActionItem onClick={() => handleEdit(student)} isDark={isDark}>

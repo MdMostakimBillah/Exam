@@ -12,13 +12,14 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useStudentsByInstitution, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useCurrentSession } from "@/lib/storage/sessions";
+import { useAllRegistrationsByInstitution, normalizeRegistrationStatus } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { Users, Search, UserCheck, FileDown, Trash2, Eye, Camera } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { cn } from "@/lib/utils/helpers";
-import { Student } from "@/lib/types";
+import { Student, Registration } from "@/lib/types";
 
 export default function InstitutionStudentsPage() {
   const params = useParams();
@@ -43,22 +44,43 @@ export default function InstitutionStudentsPage() {
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: regs = [] } = useAllRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const deleteStudentMutation = useDeleteStudent();
+
+  // Latest registration per student (used for Registration Number + status).
+  const latestReg = useMemo(() => {
+    const map = new Map<string, Registration>();
+    for (const r of regs) {
+      if (!r.studentId) continue;
+      const existing = map.get(r.studentId);
+      if (!existing || new Date(r.createdAt || 0) >= new Date(existing.createdAt || 0)) {
+        map.set(r.studentId, r);
+      }
+    }
+    return map;
+  }, [regs]);
+  const getRegNumber = (studentId: string) => latestReg.get(studentId)?.registrationNumber || '-';
+  const getRegStatus = (studentId: string) => normalizeRegistrationStatus(latestReg.get(studentId)?.status);
 
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
 
   const filtered = useMemo(() => students.filter(s => {
-    const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) || s.studentId.toLowerCase().includes(search.toLowerCase());
+    const reg = latestReg.get(s.id);
+    const regNum = reg?.registrationNumber || '';
+    const regStatus = normalizeRegistrationStatus(reg?.status);
+    const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase())
+      || s.studentId.toLowerCase().includes(search.toLowerCase())
+      || regNum.toLowerCase().includes(search.toLowerCase());
     const matchesClass = !classFilter || s.class === classFilter;
-    const matchesStatus = !statusFilter || s.status === statusFilter;
+    const matchesStatus = !statusFilter || regStatus === statusFilter;
     return matchesSearch && matchesClass && matchesStatus;
-  }), [students, search, classFilter, statusFilter, refreshKey]);
+  }), [students, latestReg, search, classFilter, statusFilter, refreshKey]);
 
   const selection = useTableSelection(filtered);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'name' },
-    { header: 'ID', key: 'studentId' },
+    { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number', key: 'regNumber' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
     { header: isBn ? 'স্থিতি' : 'Status', key: 'status' },
@@ -68,14 +90,15 @@ export default function InstitutionStudentsPage() {
     .filter((s) => selection.isSelected(s.id))
     .map((s) => ({
       name: `${s.firstName} ${s.lastName}`,
-      studentId: s.studentId,
+      regNumber: latestReg.get(s.id)?.registrationNumber || '-',
       class: s.class,
       roll: s.roll,
-      status: s.status,
-    })), [filtered, selection]);
+      status: normalizeRegistrationStatus(latestReg.get(s.id)?.status) || s.status,
+    })), [filtered, selection, latestReg]);
 
-  const activeStudents = useMemo(() => students.filter(s => s.status === 'ACTIVE').length, [students]);
-  const pendingStudents = useMemo(() => students.filter(s => s.status === 'PENDING').length, [students]);
+  const approvedCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'APPROVED').length, [students, latestReg]);
+  const pendingCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'PENDING').length, [students, latestReg]);
+  const rejectedCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'REJECTED').length, [students, latestReg]);
 
   const handleDelete = async () => {
     if (!deletingStudent) return;
@@ -109,11 +132,12 @@ export default function InstitutionStudentsPage() {
         </div>
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
             { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length },
-            { icon: UserCheck, label: isBn ? 'সক্রিয়' : 'Active', value: activeStudents },
-            { icon: Users, label: isBn ? 'মুলতুবি' : 'Pending', value: pendingStudents },
+            { icon: UserCheck, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedCount },
+            { icon: Users, label: isBn ? 'মুলতুবি' : 'Pending', value: pendingCount },
+            { icon: Users, label: isBn ? 'প্রত্যাখ্যাত' : 'Rejected', value: rejectedCount },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -133,7 +157,7 @@ export default function InstitutionStudentsPage() {
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
               <Input
-                placeholder={isBn ? "নাম বা আইডি দিয়ে অনুসন্ধান..." : "Search by name or ID..."}
+                placeholder={isBn ? "নাম বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by name or registration number..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`pl-10 ${inputCls}`}
@@ -148,8 +172,9 @@ export default function InstitutionStudentsPage() {
             <Select
               options={[
                 { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
-                { label: 'ACTIVE', value: 'ACTIVE' },
+                { label: 'APPROVED', value: 'APPROVED' },
                 { label: 'PENDING', value: 'PENDING' },
+                { label: 'REJECTED', value: 'REJECTED' },
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -185,7 +210,7 @@ export default function InstitutionStudentsPage() {
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>ID</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
@@ -217,10 +242,10 @@ export default function InstitutionStudentsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.studentId}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{getRegNumber(student.id)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll || '-'}</TableCell>
-                    <TableCell><Badge status={student.status} /></TableCell>
+                    <TableCell><Badge status={getRegStatus(student.id) || student.status} /></TableCell>
                     <TableCell>
                       <TableActionMenu id={student.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
                         <TableActionItem onClick={() => { setViewingStudent(student); setMenuOpenId(null); }} isDark={isDark}>
@@ -288,7 +313,7 @@ export default function InstitutionStudentsPage() {
                     </div>
                     <h3 className={`text-base font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{viewingStudent.firstName} {viewingStudent.lastName}</h3>
                     {viewingStudent.firstNameBn && <p className={`text-[12px] mt-0.5 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{viewingStudent.firstNameBn}</p>}
-                    <div className="mt-2"><Badge status={viewingStudent.status} /></div>
+                    <div className="mt-2"><Badge status={getRegStatus(viewingStudent.id) || viewingStudent.status} /></div>
                   </div>
 
                   {/* Student Info */}
@@ -296,6 +321,7 @@ export default function InstitutionStudentsPage() {
                     <h4 className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "শিক্ষার্থী তথ্য" : "Student Information"}</h4>
                     <div className="space-y-2.5">
                       {([
+                        getRegNumber(viewingStudent.id) !== '-' ? { label: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", value: getRegNumber(viewingStudent.id) } : null,
                         { label: isBn ? "শিক্ষার্থী আইডি" : "Student ID", value: viewingStudent.studentId },
                         { label: isBn ? "শ্রেণী" : "Class", value: viewingStudent.class },
                         viewingStudent.section ? { label: isBn ? "শাখা" : "Section", value: viewingStudent.section } : null,

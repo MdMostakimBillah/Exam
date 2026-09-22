@@ -83,6 +83,88 @@ export async function fetchRegistrationsByExam(examId: string, sessionId?: strin
 }
 
 /**
+ * Normalize a registration status for filtering/counting.
+ * APPROVED and VERIFIED both count as APPROVED; returns '' when unknown.
+ */
+export function normalizeRegistrationStatus(status?: string): string {
+  if (!status) return '';
+  const u = status.toUpperCase();
+  if (u === 'APPROVED' || u === 'VERIFIED') return 'APPROVED';
+  if (u === 'PENDING') return 'PENDING';
+  if (u === 'REJECTED') return 'REJECTED';
+  return u;
+}
+
+/**
+ * Fetch ALL registrations for an institution + session (pages past the 1000-row
+ * per-request cap), newest first. Used to map students to their latest
+ * registration number & status on the Students page.
+ */
+export async function fetchAllRegistrationsByInstitution(institutionId: string, sessionId?: string): Promise<Registration[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(REGISTRATION_COLUMNS)
+      .eq('session_id', sid)
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapRegistration);
+}
+
+/**
+ * Fetch ALL registrations across every institution for a session (pages past the
+ * 1000-row per-request cap), newest first. Used by the super-admin students list.
+ */
+export async function fetchAllRegistrations(sessionId?: string): Promise<Registration[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(REGISTRATION_COLUMNS)
+      .eq('session_id', sid)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapRegistration);
+}
+
+export function useAllRegistrationsByInstitution(institutionId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['registrations', 'all', 'institution', institutionId, sessionId],
+    queryFn: () => fetchAllRegistrationsByInstitution(institutionId, sessionId),
+    enabled: !!institutionId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAllRegistrations(sessionId?: string) {
+  return useQuery({
+    queryKey: ['registrations', 'all', sessionId],
+    queryFn: () => fetchAllRegistrations(sessionId),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
  * Fetches ALL application_ids globally (no institution filter, no pagination).
  * Used by generateAppId to find the next available number.
  */
