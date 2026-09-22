@@ -173,10 +173,12 @@ export default function InstitutionRegistrationsPage() {
       setPhotoError("");
       setShowModal(true);
       setMenuOpenId(null);
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('[registration-number] generation failed:', detail);
       toast("error", isBn
-        ? "রেজিস্ট্রেশন নম্বর তৈরি করা যায়নি। আবার চেষ্টা করুন।"
-        : "Could not generate registration number. Please try again.");
+        ? `রেজিস্ট্রেশন নম্বর তৈরি করা যায়নি। ${detail}`
+        : `Could not generate registration number. ${detail}`);
     }
   };
 

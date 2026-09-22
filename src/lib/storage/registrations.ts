@@ -125,7 +125,9 @@ export async function generateGlobalRegistrationNumber(): Promise<string> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc('get_next_registration_number');
   if (error || !data) {
-    throw new Error(error?.message || 'get_next_registration_number() is unavailable');
+    const message = error?.message || 'get_next_registration_number() is unavailable';
+    console.error('[registration-number] RPC get_next_registration_number failed:', message, error);
+    throw new Error(message);
   }
   return data as string;
 }
