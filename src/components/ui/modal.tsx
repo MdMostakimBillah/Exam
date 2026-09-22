@@ -59,7 +59,7 @@ function Modal({ open, onClose, title, description, children, maxWidth = 'max-w-
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 min-h-0">
+        <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {children}
         </div>
       </div>
