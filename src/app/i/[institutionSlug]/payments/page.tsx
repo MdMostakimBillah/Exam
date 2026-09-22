@@ -8,12 +8,12 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
-import { usePaymentsByInstitution, useCreatePayment, useUpdatePayment } from "@/lib/storage/payments";
-import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useAllPaymentsByInstitution, useCreatePayment, computeDue } from "@/lib/storage/payments";
+import { useAllRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Payment } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
-import { CreditCard, Search, Plus, Eye, CheckCircle, XCircle, Wallet, FileDown } from "lucide-react";
+import { CreditCard, Search, Plus, Eye, CheckCircle, Wallet, FileDown, Receipt } from "lucide-react";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
@@ -23,13 +23,11 @@ import { cn } from "@/lib/utils/helpers";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 const emptyForm = {
-  registrationId: "",
   amount: "",
   paymentMethod: "BKASH" as "CASH" | "BANK" | "BKASH" | "NAGAD",
   accountNumber: "",
   invoiceNumber: "",
   paymentDate: new Date().toISOString().split("T")[0],
-  reference: "",
   notes: "",
 };
 
@@ -37,7 +35,7 @@ export default function InstitutionPaymentsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
   const { theme } = useTheme();
-  const { lang: language, t } = useLang();
+  const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
   const { toast } = useToast();
@@ -47,17 +45,15 @@ export default function InstitutionPaymentsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<Payment | null>(null);
   const [formData, setFormData] = useState(emptyForm);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: payments = [], isFetching } = usePaymentsByInstitution(inst?.id || '', currentSession?.id);
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: payments = [], isFetching } = useAllPaymentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: registrations = [] } = useAllRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const createPaymentMutation = useCreatePayment();
-  const updatePaymentMutation = useUpdatePayment();
 
   const filtered = payments.filter(p => {
     const matchesSearch = !search ||
@@ -72,9 +68,8 @@ export default function InstitutionPaymentsPage() {
   const selection = useTableSelection(filtered);
 
   const pdfColumns: PdfColumn[] = [
-    { header: isBn ? 'রেফারেন্স' : 'Reference', key: 'reference' },
+    { header: isBn ? 'ইনভয়েস' : 'Invoice', key: 'invoice' },
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'studentName' },
-    { header: isBn ? 'পরীক্ষা' : 'Exam', key: 'examName' },
     { header: isBn ? 'পরিমাণ' : 'Amount', key: 'amount' },
     { header: isBn ? 'পদ্ধতি' : 'Method', key: 'paymentMethod' },
     { header: isBn ? 'তারিখ' : 'Date', key: 'paymentDate' },
@@ -82,19 +77,18 @@ export default function InstitutionPaymentsPage() {
   ];
 
   const pdfData = filtered.map(p => ({
-    reference: p.reference || p.transactionId,
+    invoice: p.reference || p.transactionId,
     studentName: p.studentName || '-',
-    examName: p.examName,
     amount: formatCurrency(p.amount),
     paymentMethod: p.paymentMethod,
     paymentDate: formatDate(p.paymentDate || p.date),
     status: p.status,
   }));
 
-  const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-  const confirmedAmount = payments.filter(p => p.status === 'CONFIRMED' || p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0);
-  const pendingAmount = payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0);
-  const failedAmount = payments.filter(p => p.status === 'FAILED').reduce((sum, p) => sum + p.amount, 0);
+  // Institution due = total student fees − approved (PAID) payments
+  const totalFees = registrations.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
+  const paidAmount = payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0);
+  const dueAmount = computeDue(registrations, payments);
 
   if (!mounted) return <PaymentsSkeleton isDark={isDark} />;
   if (!inst) return null;
@@ -105,50 +99,38 @@ export default function InstitutionPaymentsPage() {
   };
 
   const handleSave = async () => {
-    if (!formData.registrationId || !formData.amount || !formData.paymentMethod) {
+    if (!formData.invoiceNumber.trim() || !formData.amount || !formData.accountNumber.trim() || !formData.paymentDate) {
       toast("error", isBn ? "প্রয়োজনীয় ঘর পূরণ করুন" : "Please fill required fields");
       return;
     }
-    const reg = registrations.find(r => r.id === formData.registrationId);
-    if (!reg) {
-      toast("error", isBn ? "নিবন্ধন পাওয়া যায়নি" : "Registration not found");
+    const amount = Number(formData.amount);
+    if (amount <= 0) {
+      toast("error", isBn ? "সঠিক পরিমাণ লিখুন" : "Enter a valid amount");
       return;
     }
+    // How many pending students this payment covers (for the record)
+    const fee = registrations[0]?.paymentAmount || 0;
+    const pendingCount = registrations.filter(r => r.status !== 'APPROVED' && r.status !== 'VERIFIED' && r.status !== 'REJECTED').length;
+    const covered = fee > 0 ? Math.min(pendingCount, Math.round(amount / fee)) : 0;
+
     await createPaymentMutation.mutateAsync({
       sessionId: currentSession?.id || '',
       transactionId: `TXN-${Date.now()}`,
       institutionId: inst!.id,
       institutionName: inst!.name,
-      examId: reg.examId,
-      examName: reg.examName,
-      studentCount: 1,
-      amount: Number(formData.amount),
+      studentCount: covered,
+      amount,
       paymentMethod: formData.paymentMethod,
       status: 'PENDING',
       date: formData.paymentDate,
-      registrationId: reg.id,
-      studentId: reg.studentId,
-      studentName: reg.studentName,
-      reference: formData.invoiceNumber || formData.reference,
+      reference: formData.invoiceNumber.trim(),
       paymentDate: formData.paymentDate,
       notes: formData.notes,
-      accountNumber: formData.accountNumber,
+      accountNumber: formData.accountNumber.trim(),
+      submittedAt: new Date().toISOString(),
     });
-    toast("success", isBn ? "পেমেন্ট রেকর্ড হয়েছে" : "Payment recorded");
+    toast("success", isBn ? "পেমেন্ট জমা হয়েছে — সুপার অ্যাডমিন যাচাই করবেন" : "Payment submitted — awaiting super-admin review");
     setShowModal(false);
-    setRefreshKey(k => k + 1);
-  };
-
-  const handleMarkConfirmed = async (p: Payment) => {
-    await updatePaymentMutation.mutateAsync({ id: p.id, data: { status: 'CONFIRMED' } });
-    toast("success", isBn ? "পেমেন্ট নিশ্চিত হয়েছে" : "Payment confirmed");
-    setRefreshKey(k => k + 1);
-  };
-
-  const handleMarkFailed = async (p: Payment) => {
-    await updatePaymentMutation.mutateAsync({ id: p.id, data: { status: 'FAILED' } });
-    toast("success", isBn ? "পেমেন্ট ব্যর্থ হিসেবে চিহ্নিত" : "Payment marked as failed");
-    setRefreshKey(k => k + 1);
   };
 
   const card = isDark
@@ -170,28 +152,27 @@ export default function InstitutionPaymentsPage() {
               {isBn ? 'পেমেন্ট' : 'Payments'}
             </h1>
             <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-              {isBn ? 'শিক্ষার্থী নিবন্ধনের পেমেন্ট স্ট্যাটাস ট্র্যাক করুন' : 'Track payment status for student registrations'}
+              {isBn ? 'প্রতিষ্ঠানের বাকি ও জমাকৃত পেমেন্ট ট্র্যাক করুন' : 'Track your institution’s due and submitted payments'}
             </p>
           </div>
-          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
-            <Plus className="h-4 w-4" /> {isBn ? 'পেমেন্ট রেকর্ড করুন' : 'Record Payment'}
+          <button onClick={handleCreate} disabled={dueAmount <= 0} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", dueAmount <= 0 && "opacity-50 cursor-not-allowed")}>
+            <Plus className="h-4 w-4" /> {isBn ? 'পেমেন্ট জমা দিন' : 'Submit Payment'}
           </button>
         </div>
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {[
-            { icon: CreditCard, label: isBn ? 'মোট পরিমাণ' : 'Total Amount', value: formatCurrency(totalAmount) },
-            { icon: CheckCircle, label: isBn ? 'নিশ্চিত' : 'Confirmed', value: formatCurrency(confirmedAmount) },
-            { icon: Wallet, label: isBn ? 'পেন্ডিং' : 'Pending', value: formatCurrency(pendingAmount) },
-            { icon: XCircle, label: isBn ? 'ব্যর্থ' : 'Failed', value: formatCurrency(failedAmount) },
+            { icon: CreditCard, label: isBn ? 'মোট ফি' : 'Total Fees', value: formatCurrency(totalFees), valueCls: isDark ? "text-white" : "text-zinc-900" },
+            { icon: CheckCircle, label: isBn ? 'পরিশোধিত' : 'Paid', value: formatCurrency(paidAmount), valueCls: "text-green-400" },
+            { icon: Wallet, label: isBn ? 'বাকি' : 'Due', value: formatCurrency(dueAmount), valueCls: "text-amber-400" },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
                 <s.icon className={`h-5 w-5 ${iconColor}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
+                <p className={`text-lg font-bold tracking-tight leading-tight ${s.valueCls}`}>{s.value}</p>
                 <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
               </div>
             </div>
@@ -203,16 +184,15 @@ export default function InstitutionPaymentsPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
-              <Input placeholder={isBn ? "রেফারেন্স বা শিক্ষার্থীর নাম দিয়ে অনুসন্ধান..." : "Search by reference or student name..."} value={search} onChange={(e) => setSearch(e.target.value)} className={cn("pl-10", inputCls)} />
+              <Input placeholder={isBn ? "ইনভয়েস বা শিক্ষার্থীর নাম দিয়ে অনুসন্ধান..." : "Search by invoice or student name..."} value={search} onChange={(e) => setSearch(e.target.value)} className={cn("pl-10", inputCls)} />
             </div>
             <Select
               options={[
                 { label: isBn ? 'সব স্ট্যাটাস' : 'All Status', value: '' },
                 { label: isBn ? 'শিক্ষার্থী জমা (মুলতুবি)' : 'Student Submitted', value: 'STUDENT_SUBMITTED' },
-                { label: isBn ? 'পেন্ডিং' : 'Pending', value: 'PENDING' },
-                { label: isBn ? 'নিশ্চিত' : 'Confirmed', value: 'CONFIRMED' },
-                { label: isBn ? 'ব্যর্থ' : 'Failed', value: 'FAILED' },
-                { label: isBn ? 'ফেরত' : 'Refunded', value: 'REFUNDED' },
+                { label: 'PENDING', value: 'PENDING' },
+                { label: 'PAID', value: 'PAID' },
+                { label: 'FAILED', value: 'FAILED' },
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -236,7 +216,7 @@ export default function InstitutionPaymentsPage() {
                 <CreditCard className={`h-7 w-7 ${iconColor}`} />
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো পেমেন্ট পাওয়া যায়নি' : 'No payments found'}</p>
-              <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'নতুন পেমেন্ট রেকর্ড করুন' : 'Record a new payment to get started'}</p>
+              <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'বাকি থাকলে পেমেন্ট জমা দিন' : 'Submit a payment if you have a due'}</p>
             </div>
           ) : (
             <Table>
@@ -245,9 +225,8 @@ export default function InstitutionPaymentsPage() {
                   <TableHead className="w-10">
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেফারেন্স' : 'Reference'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ইনভয়েস' : 'Invoice'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
-                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরিমাণ' : 'Amount'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পদ্ধতি' : 'Method'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
@@ -268,32 +247,19 @@ export default function InstitutionPaymentsPage() {
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" title="Student submitted" />
                         )}
                         <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                          {payment.studentName ? payment.studentName.charAt(0) : '?'}
+                          {payment.studentName ? payment.studentName.charAt(0) : <Receipt className="h-3.5 w-3.5" />}
                         </div>
-                        <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{payment.studentName || '-'}</span>
+                        <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{payment.studentName || (isBn ? 'প্রতিষ্ঠান' : 'Institution')}</span>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{payment.examName}</TableCell>
                     <TableCell className={`text-sm font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(payment.amount)}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{payment.paymentMethod}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{formatDate(payment.paymentDate || payment.date)}</TableCell>
                     <TableCell><Badge status={payment.status} /></TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        {payment.status === 'PENDING' && (
-                          <>
-                            <button onClick={() => handleMarkConfirmed(payment)} className={`p-1.5 rounded-md transition-all ${isDark ? "text-green-400 hover:text-green-300 hover:bg-green-500/10" : "text-green-600 hover:text-green-700 hover:bg-green-50"}`} title={isBn ? 'নিশ্চিত করুন' : 'Mark Confirmed'}>
-                              <CheckCircle className="h-3.5 w-3.5" />
-                            </button>
-                            <button onClick={() => handleMarkFailed(payment)} className={`p-1.5 rounded-md transition-all ${isDark ? "text-red-400 hover:text-red-300 hover:bg-red-500/10" : "text-red-600 hover:text-red-700 hover:bg-red-50"}`} title={isBn ? 'ব্যর্থ চিহ্নিত করুন' : 'Mark Failed'}>
-                              <XCircle className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                        <button onClick={() => setShowDetailModal(payment)} className={`p-1.5 rounded-md transition-all ${isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`} title={isBn ? 'বিস্তারিত দেখুন' : 'View Details'}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <button onClick={() => setShowDetailModal(payment)} className={`p-1.5 rounded-md transition-all ${isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`} title={isBn ? 'বিস্তারিত দেখুন' : 'View Details'}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -303,17 +269,20 @@ export default function InstitutionPaymentsPage() {
         </div>
       </div>
 
-      {/* Record Payment Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? 'পেমেন্ট রেকর্ড করুন' : 'Record Payment'} maxWidth="max-w-xl">
+      {/* Submit Payment Modal */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? 'পেমেন্ট জমা দিন' : 'Submit Payment'} maxWidth="max-w-xl">
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'নিবন্ধন *' : 'Registration *'}</label>
-            <Select
-              options={registrations.map(r => ({ label: `${r.studentName} - ${r.examName}`, value: r.id }))}
-              value={formData.registrationId}
-              onChange={(e) => setFormData({ ...formData, registrationId: e.target.value })}
-              className={inputCls}
-            />
+          {/* Current due hint */}
+          <div className={`col-span-2 p-3 rounded-lg flex items-center justify-between ${isDark ? "bg-white/[0.02] border border-white/[0.06]" : "bg-zinc-50 border border-zinc-200"}`}>
+            <div className="flex items-center gap-2">
+              <Wallet className={`h-4 w-4 ${iconColor}`} />
+              <span className={`text-[11px] font-medium ${labelCls}`}>{isBn ? 'বর্তমান বাকি' : 'Current Due'}</span>
+            </div>
+            <span className={`text-sm font-bold ${isDark ? "text-amber-400" : "text-amber-600"}`}>{formatCurrency(dueAmount)}</span>
+          </div>
+          <div>
+            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইনভয়েস নম্বর *' : 'Invoice Number *'}</label>
+            <Input placeholder={isBn ? 'ইনভয়েস নম্বর' : 'Invoice number'} value={formData.invoiceNumber} onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })} className={inputCls} />
           </div>
           <div>
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পরিমাণ *' : 'Amount *'}</label>
@@ -337,12 +306,8 @@ export default function InstitutionPaymentsPage() {
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'অ্যাকাউন্ট নম্বর *' : 'Account Number *'}</label>
             <Input placeholder={isBn ? 'bKash/Nagad/ব্যাংক অ্যাকাউন্ট' : 'bKash/Nagad/Bank account'} value={formData.accountNumber} onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })} className={inputCls} />
           </div>
-          <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইনভয়েস নম্বর' : 'Invoice Number'}</label>
-            <Input placeholder={isBn ? 'ইনভয়েস নম্বর' : 'Invoice number'} value={formData.invoiceNumber} onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })} className={inputCls} />
-          </div>
-          <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট তারিখ' : 'Payment Date'}</label>
+          <div className="col-span-2">
+            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট তারিখ *' : 'Payment Date *'}</label>
             <Input type="date" value={formData.paymentDate} onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })} className={inputCls} />
           </div>
           <div className="col-span-2">
@@ -352,8 +317,10 @@ export default function InstitutionPaymentsPage() {
         </div>
         <ModalFooter>
           <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
-            {isBn ? 'রেকর্ড করুন' : 'Record'}
+          <button onClick={handleSave} disabled={createPaymentMutation.isPending} className={cn(`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`, createPaymentMutation.isPending && "opacity-50 cursor-not-allowed")}>
+            {createPaymentMutation.isPending
+              ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              : (isBn ? 'জমা দিন' : 'Submit')}
           </button>
         </ModalFooter>
       </Modal>
@@ -363,18 +330,20 @@ export default function InstitutionPaymentsPage() {
         {showDetailModal && (
           <div className="space-y-4">
             {[
-              { label: isBn ? 'রেফারেন্স' : 'Reference', value: showDetailModal.reference || showDetailModal.transactionId },
-              { label: isBn ? 'শিক্ষার্থী' : 'Student', value: showDetailModal.studentName || '-' },
-              { label: isBn ? 'পরীক্ষা' : 'Exam', value: showDetailModal.examName },
-              { label: isBn ? 'পরিমাণ' : 'Amount', value: formatCurrency(showDetailModal.amount) },
-              { label: isBn ? 'পদ্ধতি' : 'Method', value: showDetailModal.paymentMethod },
-              { label: isBn ? 'তারিখ' : 'Date', value: formatDate(showDetailModal.paymentDate || showDetailModal.date) },
-              { label: isBn ? 'স্ট্যাটাস' : 'Status', value: showDetailModal.status },
-              { label: isBn ? 'নোট' : 'Notes', value: showDetailModal.notes || '-' },
+              { label: isBn ? 'ইনভয়েস' : 'Invoice', value: showDetailModal.reference || showDetailModal.transactionId, badge: false },
+              { label: isBn ? 'শিক্ষার্থী' : 'Student', value: showDetailModal.studentName || (isBn ? 'প্রতিষ্ঠান' : 'Institution'), badge: false },
+              ...(showDetailModal.examName ? [{ label: isBn ? 'পরীক্ষা' : 'Exam', value: showDetailModal.examName, badge: false }] : []),
+              { label: isBn ? 'পরিমাণ' : 'Amount', value: formatCurrency(showDetailModal.amount), badge: false },
+              { label: isBn ? 'পদ্ধতি' : 'Method', value: showDetailModal.paymentMethod, badge: false },
+              { label: isBn ? 'অ্যাকাউন্ট নম্বর' : 'Account Number', value: showDetailModal.accountNumber || '-', badge: false },
+              { label: isBn ? 'তারিখ' : 'Date', value: formatDate(showDetailModal.paymentDate || showDetailModal.date), badge: false },
+              { label: isBn ? 'স্ট্যাটাস' : 'Status', value: showDetailModal.status, badge: true },
+              ...(showDetailModal.rejectionReason ? [{ label: isBn ? 'প্রত্যাখ্যানের কারণ' : 'Rejection Reason', value: showDetailModal.rejectionReason, badge: false }] : []),
+              { label: isBn ? 'নোট' : 'Notes', value: showDetailModal.notes || '-', badge: false },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between py-2 border-b border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
                 <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>{item.label}</span>
-                {item.label === (isBn ? 'স্ট্যাটাস' : 'Status') ? <Badge status={item.value} /> : <span className={`text-[13px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>{item.value}</span>}
+                {item.badge ? <Badge status={item.value as any} /> : <span className={`text-[13px] font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>{item.value}</span>}
               </div>
             ))}
           </div>
@@ -415,8 +384,8 @@ function PaymentsSkeleton({ isDark }: { isDark: boolean }) {
           <div className={`h-8 w-48 rounded-md ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-300'}`} />
           <div className={`h-4 w-64 rounded mt-2 ${isDark ? 'bg-white/[0.04]' : 'bg-zinc-300/80'}`} />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {[1, 2, 3].map((i) => (<div key={i} className={`${card} rounded-md h-[52px]`} />))}
         </div>
         <div className={`${card} rounded-md h-12 mb-8`} />
         <div className={`${card} rounded-md h-64`} />

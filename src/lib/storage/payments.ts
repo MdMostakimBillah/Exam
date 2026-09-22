@@ -81,6 +81,67 @@ export async function fetchPaymentById(id: string): Promise<Payment | undefined>
   return mapPayment(data);
 }
 
+/**
+ * Fetch ALL payments for a session (pages past the 1000-row per-request cap),
+ * newest first. Used by the super-admin payments page for accurate totals.
+ */
+export async function fetchAllPayments(sessionId?: string): Promise<Payment[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(PAYMENT_COLUMNS)
+      .eq('session_id', sid)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapPayment);
+}
+
+/**
+ * Fetch ALL payments for one institution in a session (pages past the
+ * 1000-row per-request cap), newest first.
+ */
+export async function fetchAllPaymentsByInstitution(institutionId: string, sessionId?: string): Promise<Payment[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(PAYMENT_COLUMNS)
+      .eq('session_id', sid)
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapPayment);
+}
+
+/**
+ * Due amount = (sum of all student registration fees) − (sum of approved
+ * PAID payments), floored at 0. Approving an 800tk payment drops Due by 800tk.
+ */
+export function computeDue(registrations: { paymentAmount: number }[], payments: Payment[]): number {
+  const totalFees = registrations.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
+  const paid = payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  return Math.max(totalFees - paid, 0);
+}
+
 export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Payment> {
   const supabase = createClient();
   const { data: result, error } = await supabase
@@ -103,6 +164,11 @@ export async function createPayment(data: Omit<Payment, 'id' | 'createdAt' | 'up
       reference: data.reference,
       payment_date: data.paymentDate,
       notes: data.notes,
+      account_number: data.accountNumber,
+      receipt_number: data.receiptNumber,
+      submitted_by_student: data.submittedByStudent,
+      submitted_at: data.submittedAt,
+      proof_image: data.proofImage,
     })
     .select(PAYMENT_COLUMNS)
     .single();
@@ -160,6 +226,21 @@ export function usePaymentsByInstitution(institutionId: string, sessionId?: stri
   return useQuery({
     queryKey: ['payments', 'institution', institutionId, sessionId, page, pageSize],
     queryFn: () => fetchPaymentsByInstitution(institutionId, sessionId, page, pageSize),
+    enabled: !!institutionId,
+    staleTime: 30 * 1000,
+  });
+}
+export function useAllPayments(sessionId?: string) {
+  return useQuery({
+    queryKey: ['payments', 'all', sessionId],
+    queryFn: () => fetchAllPayments(sessionId),
+    staleTime: 30 * 1000,
+  });
+}
+export function useAllPaymentsByInstitution(institutionId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['payments', 'all', 'institution', institutionId, sessionId],
+    queryFn: () => fetchAllPaymentsByInstitution(institutionId, sessionId),
     enabled: !!institutionId,
     staleTime: 30 * 1000,
   });

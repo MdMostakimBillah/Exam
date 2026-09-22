@@ -247,8 +247,8 @@ export interface Payment {
   transactionId: string;
   institutionId: string;
   institutionName: string;
-  examId: string;
-  examName: string;
+  examId?: string;
+  examName?: string;
   studentCount: number;
   amount: number;
   paymentMethod: string;
