@@ -170,7 +170,7 @@ export default function InstitutionPaymentsPage() {
       `${inst!.name} · ${formatCurrency(amount)} · ${isBn ? 'ইনভয়েস' : 'Invoice'} ${formData.invoiceNumber.trim()}`,
       'success',
       '/super-admin/payments'
-    ).catch(() => {});
+    ).catch((e) => console.error('[payment-notification] notify super-admins failed (run migration 0008):', e));
     toast("success", isBn ? "পেমেন্ট জমা হয়েছে — সুপার অ্যাডমিন যাচাই করবেন" : "Payment submitted — awaiting super-admin review");
     setShowModal(false);
   };

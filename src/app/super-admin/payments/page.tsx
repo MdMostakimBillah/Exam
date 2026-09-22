@@ -153,7 +153,9 @@ export default function PaymentsPage() {
         if (instRow?.admin_user_id) {
           await notifyUser(instRow.admin_user_id, title, message, type, `/i/${instRow.slug}/payments`);
         }
-      } catch { /* notification failures never block payment decisions */ }
+      } catch (e) {
+        console.error('[payment-notification] notify institution admin failed (run migration 0008):', e);
+      }
     })();
   };
 

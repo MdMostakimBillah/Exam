@@ -50,7 +50,7 @@ DECLARE
   v_count INTEGER := 0;
   v_profile RECORD;
 BEGIN
-  FOR v_profile IN SELECT id FROM profiles WHERE role = 'super_admin' LOOP
+  FOR v_profile IN SELECT id FROM profiles WHERE lower(role) = 'super_admin' LOOP
     INSERT INTO notifications (user_id, title, message, type, read, link)
     VALUES (v_profile.id, p_title, p_message, p_type, false, p_link);
     v_count := v_count + 1;

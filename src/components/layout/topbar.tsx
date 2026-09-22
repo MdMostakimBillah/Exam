@@ -49,7 +49,7 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   // ---- Notifications bell ----
-  const { data: notifList, isLoading: notifsLoading } = useNotifications(user?.id || '');
+  const { data: notifList, isLoading: notifsLoading, isError: notifsError } = useNotifications(user?.id || '');
   const unreadCount = React.useMemo(() => (notifList || []).filter(n => !n.read).length, [notifList]);
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
@@ -189,6 +189,12 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
                 <div className="flex justify-center py-6">
                   <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin text-zinc-400" />
                 </div>
+              ) : notifsError ? (
+                <p className={cn('px-3 py-6 text-center text-xs', isDark ? 'text-red-400/80' : 'text-red-500')}>
+                  {isBn
+                    ? 'বিজ্ঞপ্তি লোড করা যায়নি — 0008 মাইগ্রেশন চালান'
+                    : 'Could not load notifications — run migration 0008'}
+                </p>
               ) : !notifList || notifList.length === 0 ? (
                 <p className={cn('px-3 py-6 text-center text-xs', isDark ? 'text-zinc-500' : 'text-zinc-500')}>
                   {isBn ? 'কোন বিজ্ঞপ্তি নেই' : 'No notifications yet'}
