@@ -299,59 +299,59 @@ export default function InstitutionPaymentsPage() {
       </div>
 
       {/* Submit Payment Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? 'পেমেন্ট জমা দিন' : 'Submit Payment'} maxWidth="max-w-md">
-        <div className="space-y-5">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={isBn ? 'পেমেন্ট জমা দিন' : 'Submit Payment'} maxWidth="max-w-xl">
+        <div className="grid grid-cols-2 gap-3.5">
           {/* Current due banner */}
-          <div className={`rounded-xl border p-4 flex items-center justify-between ${isDark ? "border-[#9333ea]/30 bg-[#9333ea]/[0.08]" : "border-purple-200 bg-purple-50"}`}>
-            <div className="flex items-center gap-3">
-              <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isDark ? "bg-[#9333ea]/25" : "bg-purple-100"}`}>
-                <Wallet className={`h-4 w-4 ${isDark ? "text-purple-300" : "text-purple-600"}`} />
+          <div className={`col-span-2 rounded-lg border px-3.5 py-2.5 flex items-center justify-between ${isDark ? "border-white/[0.08] bg-white/[0.03]" : "border-zinc-200 bg-zinc-50"}`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 ${isDark ? "bg-white/[0.06]" : "bg-zinc-100"}`}>
+                <Wallet className={`h-4 w-4 ${iconColor}`} />
               </div>
               <div>
                 <p className={`text-[11px] font-medium ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>{isBn ? 'বর্তমান বাকি' : 'Current Due'}</p>
-                <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+                <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
                   {isBn ? 'ফি' : 'Fee'} ৳{feePerStudent.toLocaleString()} × {maxStudents} {isBn ? 'জন' : 'students'}
                 </p>
               </div>
             </div>
-            <span className={`text-lg font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(dueAmount)}</span>
+            <span className={`text-base font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(dueAmount)}</span>
           </div>
 
           {/* Student count stepper */}
           <div>
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী সংখ্যা *' : 'Number of Students *'}</label>
-            <div className={`flex items-center justify-between rounded-xl border px-2 py-2 ${inputCls}`}>
-              <button type="button" onClick={() => stepCount(-1)} className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors ${isDark ? "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}>
-                <Minus className="h-4 w-4" />
+            <div className={`flex items-center justify-between rounded-md border px-1.5 py-1.5 ${inputCls}`}>
+              <button type="button" onClick={() => stepCount(-1)} className={`h-7 w-7 rounded flex items-center justify-center transition-colors ${isDark ? "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}>
+                <Minus className="h-3.5 w-3.5" />
               </button>
               <input
                 inputMode="numeric"
                 value={formData.studentCount}
                 onChange={(e) => clampCount(e.target.value.replace(/\D/g, ''))}
-                className={`w-24 bg-transparent text-center text-xl font-bold outline-none ${isDark ? "text-white" : "text-zinc-900"}`}
+                className={`w-16 bg-transparent text-center text-lg font-bold outline-none ${isDark ? "text-white" : "text-zinc-900"}`}
               />
-              <button type="button" onClick={() => stepCount(1)} className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors ${isDark ? "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}>
-                <Plus className="h-4 w-4" />
+              <button type="button" onClick={() => stepCount(1)} className={`h-7 w-7 rounded flex items-center justify-center transition-colors ${isDark ? "bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}>
+                <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className={`text-[10px] mt-1.5 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-              {isBn ? 'সর্বোচ্চ' : 'Up to'} {maxStudents} {isBn ? 'জন মুলতুবি শিক্ষার্থী' : 'pending students'}
+            <p className={`text-[10px] mt-1 ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
+              {isBn ? 'সর্বোচ্চ' : 'Up to'} {maxStudents} {isBn ? 'জন' : 'students'}
             </p>
           </div>
 
           {/* Auto-calculated amount */}
-          <div className={`rounded-xl border px-4 py-3.5 flex items-center justify-between ${isDark ? "border-white/[0.08] bg-white/[0.03]" : "border-zinc-200 bg-zinc-50"}`}>
+          <div className={`rounded-md border px-3.5 py-2.5 flex items-center justify-between ${isDark ? "border-white/[0.08] bg-white/[0.03]" : "border-zinc-200 bg-zinc-50"}`}>
             <div>
               <p className={`text-[11px] font-medium ${labelCls}`}>{isBn ? 'মোট পরিমাণ' : 'Total Amount'}</p>
               <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{countNum} × ৳{feePerStudent.toLocaleString()}</p>
             </div>
-            <span className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(amountPreview)}</span>
+            <span className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(amountPreview)}</span>
           </div>
 
           {/* Payment method segmented control */}
           <div>
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট পদ্ধতি *' : 'Payment Method *'}</label>
-            <div className={`grid grid-cols-2 gap-1.5 p-1.5 rounded-xl ${isDark ? "bg-white/[0.04] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"}`}>
+            <div className={`grid grid-cols-2 gap-1 p-1 rounded-md ${isDark ? "bg-white/[0.04] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"}`}>
               {([
                 { value: "BKASH" as const, label: "bKash" },
                 { value: "CASH" as const, label: isBn ? 'নগদ' : 'Cash' },
@@ -361,13 +361,13 @@ export default function InstitutionPaymentsPage() {
                   type="button"
                   onClick={() => setFormData(f => ({ ...f, paymentMethod: o.value, accountNumber: o.value === "CASH" ? "" : f.accountNumber }))}
                   className={cn(
-                    "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all",
+                    "flex items-center justify-center gap-1.5 px-2 py-2 rounded text-[12px] font-medium transition-all",
                     formData.paymentMethod === o.value
-                      ? "bg-[#9333ea] text-white shadow-md shadow-[#9333ea]/25"
+                      ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white")
                       : isDark ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]" : "text-zinc-500 hover:text-zinc-700 hover:bg-white"
                   )}
                 >
-                  {o.value === "BKASH" ? <Wallet className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
+                  {o.value === "BKASH" ? <Wallet className="h-3.5 w-3.5" /> : <Receipt className="h-3.5 w-3.5" />}
                   {o.label}
                 </button>
               ))}
@@ -377,47 +377,47 @@ export default function InstitutionPaymentsPage() {
           {/* Invoice */}
           <div>
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইনভয়েস নম্বর *' : 'Invoice Number *'}</label>
-            <Input placeholder={isBn ? 'ইনভয়েস নম্বর' : 'Invoice number'} value={formData.invoiceNumber} onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })} className={cn(inputCls, "rounded-xl px-4 py-2.5")} />
+            <Input placeholder={isBn ? 'ইনভয়েস নম্বর' : 'Invoice number'} value={formData.invoiceNumber} onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })} className={inputCls} />
+          </div>
+
+          {/* Payment date */}
+          <div>
+            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট তারিখ *' : 'Payment Date *'}</label>
+            <div className="relative">
+              <Calendar className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              <input
+                type="date"
+                value={formData.paymentDate}
+                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                style={{ colorScheme: isDark ? 'dark' : 'light' }}
+                className={cn(inputCls, "w-full rounded-md pl-9 pr-3 py-2 text-sm outline-none")}
+              />
+            </div>
           </div>
 
           {/* bKash number (only for bKash) */}
           {formData.paymentMethod === "BKASH" && (
             <div>
               <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'bKash নম্বর *' : 'bKash Number *'}</label>
-              <Input placeholder="01XXXXXXXXX" value={formData.accountNumber} onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })} className={cn(inputCls, "rounded-xl px-4 py-2.5")} />
+              <Input placeholder="01XXXXXXXXX" value={formData.accountNumber} onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })} className={inputCls} />
             </div>
           )}
 
-          {/* Payment date */}
-          <div>
-            <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট তারিখ *' : 'Payment Date *'}</label>
-            <div className="relative">
-              <Calendar className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
-              <input
-                type="date"
-                value={formData.paymentDate}
-                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                style={{ colorScheme: isDark ? 'dark' : 'light' }}
-                className={cn(inputCls, "w-full rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none")}
-              />
-            </div>
-          </div>
-
           {/* Notes */}
-          <div>
+          <div className="col-span-2">
             <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'নোট' : 'Notes'}</label>
             <textarea
-              rows={3}
+              rows={2}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder={isBn ? 'TrxID বা অতিরিক্ত মন্তব্য...' : 'TrxID or any remark...'}
-              className={cn(inputCls, "w-full rounded-xl px-4 py-2.5 text-sm outline-none resize-none")}
+              className={cn(inputCls, "w-full rounded-md px-3 py-2 text-sm outline-none resize-none")}
             />
           </div>
         </div>
         <ModalFooter>
           <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleSave} disabled={createPaymentMutation.isPending || maxStudents < 1} className={cn(`px-5 py-2 rounded-md text-[13px] font-medium transition-all bg-[#9333ea] text-white hover:bg-[#7e22ce]`, (createPaymentMutation.isPending || maxStudents < 1) && "opacity-50 cursor-not-allowed")}>
+          <button onClick={handleSave} disabled={createPaymentMutation.isPending || maxStudents < 1} className={cn(`px-5 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`, (createPaymentMutation.isPending || maxStudents < 1) && "opacity-50 cursor-not-allowed")}>
             {createPaymentMutation.isPending
               ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               : (isBn ? 'জমা দিন' : 'Submit')}
