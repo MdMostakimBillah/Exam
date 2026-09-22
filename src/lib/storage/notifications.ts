@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const TABLE = 'notifications';
 
-const NOTIFICATION_COLUMNS = 'id,user_id,title,message,type,read,created_at';
+const NOTIFICATION_COLUMNS = 'id,user_id,title,message,type,read,created_at,link';
 
 function mapNotification(data: any): Notification {
   return {
@@ -15,6 +15,7 @@ function mapNotification(data: any): Notification {
     type: data.type,
     read: data.read,
     createdAt: data.created_at,
+    link: data.link || undefined,
   };
 }
 
@@ -42,6 +43,8 @@ export function useNotifications(userId: string) {
     queryFn: () => fetchNotifications(userId),
     enabled: !!userId,
     staleTime: 0,
+    // Keep the bell badge fresh without a manual reload
+    refetchInterval: 15000,
   });
 }
 
@@ -58,6 +61,7 @@ export function useCreateNotification() {
           message: data.message,
           type: data.type,
           read: data.read,
+          link: data.link ?? null,
         })
         .select(NOTIFICATION_COLUMNS)
         .single();
@@ -102,4 +106,46 @@ export function useMarkAllNotificationsRead() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
+}
+
+/**
+ * Create a notification for a specific user (cross-user insert via
+ * SECURITY DEFINER RPC — RLS only allows inserting your own rows).
+ */
+export async function notifyUser(
+  userId: string,
+  title: string,
+  message: string,
+  type: Notification['type'] = 'info',
+  link?: string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc('create_notification', {
+    p_user_id: userId,
+    p_title: title,
+    p_message: message,
+    p_type: type,
+    p_link: link ?? null,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Create a notification for every super-admin user.
+ * Used when an institution submits something needing review.
+ */
+export async function notifySuperAdmins(
+  title: string,
+  message: string,
+  type: Notification['type'] = 'info',
+  link?: string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc('create_notification_for_super_admins', {
+    p_title: title,
+    p_message: message,
+    p_type: type,
+    p_link: link ?? null,
+  });
+  if (error) throw error;
 }

@@ -19,6 +19,8 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { LoadingBar } from "@/components/ui/loading-bar";
+import { createClient } from "@/lib/supabase/client";
+import { notifyUser } from "@/lib/storage/notifications";
 
 const formatCurrency = (amount: number) => `৳${amount.toLocaleString()}`;
 
@@ -132,6 +134,29 @@ export default function PaymentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // Tell the institution's admin about an approve/reject decision.
+  // Fire-and-forget with internal catch — never blocks the decision.
+  const notifyInstitutionAdmin = (
+    payment: Payment,
+    type: 'success' | 'warning',
+    title: string,
+    message: string
+  ) => {
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: instRow } = await supabase
+          .from('institutions')
+          .select('admin_user_id, slug')
+          .eq('id', payment.institutionId)
+          .maybeSingle();
+        if (instRow?.admin_user_id) {
+          await notifyUser(instRow.admin_user_id, title, message, type, `/i/${instRow.slug}/payments`);
+        }
+      } catch { /* notification failures never block payment decisions */ }
+    })();
+  };
+
   const handleApprove = async (payment: Payment) => {
     setProcessing(true);
     try {
@@ -156,6 +181,13 @@ export default function PaymentsPage() {
           })
         ));
       }
+
+      notifyInstitutionAdmin(
+        payment,
+        'success',
+        isBn ? 'পেমেন্ট অনুমোদিত' : 'Payment approved',
+        `${formatCurrency(payment.amount)} · ${selectedRegs.length} ${isBn ? 'জন শিক্ষার্থী অনুমোদিত হয়েছে' : 'student(s) approved'}`
+      );
 
       toast("success", isBn
         ? `পেমেন্ট অনুমোদিত — ${selectedRegs.length} জন শিক্ষার্থী অনুমোদিত হয়েছে`
@@ -191,6 +223,13 @@ export default function PaymentsPage() {
           },
         });
       }
+
+      notifyInstitutionAdmin(
+        payment,
+        'warning',
+        isBn ? 'পেমেন্ট প্রত্যাখ্যাত' : 'Payment rejected',
+        `${formatCurrency(payment.amount)} · ${rejectReason.trim()}`
+      );
 
       toast("success", isBn ? "পেমেন্ট প্রত্যাখ্যাত হয়েছে" : "Payment rejected");
       setConfirmAction(null);

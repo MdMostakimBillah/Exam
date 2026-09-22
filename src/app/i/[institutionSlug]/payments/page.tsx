@@ -15,6 +15,7 @@ import { Payment } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
 import { CreditCard, Search, Plus, Minus, Eye, CheckCircle, Wallet, FileDown, Receipt, Calendar, Copy, Info } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { notifySuperAdmins } from "@/lib/storage/notifications";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
@@ -162,6 +163,14 @@ export default function InstitutionPaymentsPage() {
       accountNumber: formData.paymentMethod === "BKASH" ? formData.accountNumber.trim() : undefined,
       submittedAt: new Date().toISOString(),
     });
+    // Let the super-admins know a payment needs review (fire-and-forget —
+    // a notification failure must never block the submission itself)
+    notifySuperAdmins(
+      isBn ? 'নতুন পেমেন্ট জমা হয়েছে' : 'Payment submitted',
+      `${inst!.name} · ${formatCurrency(amount)} · ${isBn ? 'ইনভয়েস' : 'Invoice'} ${formData.invoiceNumber.trim()}`,
+      'success',
+      '/super-admin/payments'
+    ).catch(() => {});
     toast("success", isBn ? "পেমেন্ট জমা হয়েছে — সুপার অ্যাডমিন যাচাই করবেন" : "Payment submitted — awaiting super-admin review");
     setShowModal(false);
   };

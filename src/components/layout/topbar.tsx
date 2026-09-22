@@ -6,6 +6,9 @@ import { Avatar } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuCheckboxItem } from "../ui/dropdown-menu";
 import { useAuth, logout } from "@/lib/auth/auth";
 import { useSessions, useCurrentSession, useSetCurrentSession } from "@/lib/storage/sessions";
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/lib/storage/notifications";
+import { Notification } from "@/lib/types";
+import { formatDate } from "@/lib/storage/storage";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -44,6 +47,26 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  // ---- Notifications bell ----
+  const { data: notifList, isLoading: notifsLoading } = useNotifications(user?.id || '');
+  const unreadCount = React.useMemo(() => (notifList || []).filter(n => !n.read).length, [notifList]);
+  const markReadMutation = useMarkNotificationRead();
+  const markAllReadMutation = useMarkAllNotificationsRead();
+
+  const handleNotificationClick = (n: Notification) => {
+    if (!n.read) markReadMutation.mutate(n.id);
+    if (n.link) { router.push(n.link); return; }
+    // No link stored (old notifications): open the notifications list
+    if (isSuperAdmin) router.push('/super-admin/notifications');
+    else if (slug) router.push(`/i/${slug}/settings`);
+  };
+
+  const notifDotColor = (type: Notification['type']) =>
+    type === 'success' ? 'bg-emerald-500'
+    : type === 'warning' ? 'bg-amber-500'
+    : type === 'error' ? 'bg-red-500'
+    : 'bg-sky-500';
 
   return (
     <header className={cn(
@@ -125,15 +148,88 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
           </DropdownMenu>
         )}
 
-        <button className={cn(
-          'rounded-md p-2.5 transition-all duration-200 relative',
-          isDark 
-            ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]' 
-            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-        )}>
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
-        </button>
+        <DropdownMenu
+          align="right"
+          trigger={
+            <button
+              aria-label={isBn ? 'বিজ্ঞপ্তি' : 'Notifications'}
+              className={cn(
+                'rounded-md p-2.5 transition-all duration-200 relative',
+                isDark
+                  ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+              )}>
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          }
+        >
+          <div className="w-[320px]">
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-zinc-900')}>
+                {isBn ? 'বিজ্ঞপ্তি' : 'Notifications'}
+              </span>
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => user && markAllReadMutation.mutate(user.id)}
+                  className={cn('text-[10px] font-medium hover:underline', isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900')}
+                >
+                  {isBn ? 'সব পঠিত করুন' : 'Mark all read'}
+                </button>
+              )}
+            </div>
+            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'} />
+
+            <div className="max-h-[320px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {notifsLoading ? (
+                <div className="flex justify-center py-6">
+                  <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin text-zinc-400" />
+                </div>
+              ) : !notifList || notifList.length === 0 ? (
+                <p className={cn('px-3 py-6 text-center text-xs', isDark ? 'text-zinc-500' : 'text-zinc-500')}>
+                  {isBn ? 'কোন বিজ্ঞপ্তি নেই' : 'No notifications yet'}
+                </p>
+              ) : (
+                notifList.slice(0, 12).map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => handleNotificationClick(n)}
+                    className={cn(
+                      'w-full text-left flex gap-2.5 rounded-md px-3 py-2.5 transition-all',
+                      isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-zinc-100',
+                      !n.read && (isDark ? 'bg-white/[0.02]' : 'bg-zinc-50')
+                    )}
+                  >
+                    <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full shrink-0', n.read ? 'bg-transparent' : notifDotColor(n.type))} />
+                    <span className="min-w-0 flex-1">
+                      <span className={cn('block text-[13px] font-medium truncate', n.read ? (isDark ? 'text-zinc-400' : 'text-zinc-600') : (isDark ? 'text-white' : 'text-zinc-900'))}>
+                        {n.title}
+                      </span>
+                      <span className={cn('block text-[11px] truncate', isDark ? 'text-zinc-500' : 'text-zinc-500')}>
+                        {n.message}
+                      </span>
+                      <span className={cn('block text-[10px] mt-0.5', isDark ? 'text-zinc-600' : 'text-zinc-400')}>
+                        {formatDate(n.createdAt)}
+                      </span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'} />
+            <DropdownMenuItem
+              onClick={() => router.push(isSuperAdmin ? '/super-admin/notifications' : (slug ? `/i/${slug}/settings` : '/'))}
+              className={cn('justify-center text-xs', isDark ? 'text-zinc-400' : 'text-zinc-500')}
+            >
+              {isBn ? 'সব বিজ্ঞপ্তি দেখুন' : 'View all notifications'}
+            </DropdownMenuItem>
+          </div>
+        </DropdownMenu>
 
         {user && (
           <DropdownMenu

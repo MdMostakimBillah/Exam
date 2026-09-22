@@ -280,6 +280,8 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
   read: boolean;
   createdAt: string;
+  /** Optional route opened when the notification is clicked */
+  link?: string;
 }
 
 export interface AuditLog {
