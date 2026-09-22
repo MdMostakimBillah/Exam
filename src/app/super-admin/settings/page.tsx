@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/auth";
-import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X } from "lucide-react";
+import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X, CreditCard } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useSessions, useCreateSession, useSetCurrentSession, useUpdateSession, useDeleteSession } from "@/lib/storage/sessions";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
-type Tab = "profile" | "account" | "password" | "notifications" | "sessions";
+type Tab = "profile" | "account" | "password" | "notifications" | "sessions" | "payment";
 
 interface PlatformSettings {
   platformName: string;
@@ -85,6 +85,12 @@ export default function SuperAdminSettingsPage() {
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [newSession, setNewSession] = useState({ name: "", code: "", startDate: "", endDate: "" });
 
+  // Payment instruction fields (shown to institutions on the Payments page)
+  const [paymentBkashNumber, setPaymentBkashNumber] = useState("");
+  const [paymentBkashName, setPaymentBkashName] = useState("");
+  const [paymentCashAddress, setPaymentCashAddress] = useState("");
+  const [paymentInstructions, setPaymentInstructions] = useState("");
+
   useEffect(() => {
     setMounted(true);
     // Load settings from Supabase
@@ -93,7 +99,7 @@ export default function SuperAdminSettingsPage() {
       const { data } = await supabase
         .from('system_settings')
         .select('key, value')
-        .in('key', ['platformName', 'contactEmail', 'supportPhone', 'address', 'emailNotifications', 'registrationAlerts', 'resultAlerts', 'paymentAlerts']);
+        .in('key', ['platformName', 'contactEmail', 'supportPhone', 'address', 'emailNotifications', 'registrationAlerts', 'resultAlerts', 'paymentAlerts', 'paymentBkashNumber', 'paymentBkashName', 'paymentCashAddress', 'paymentInstructions']);
       
       if (data) {
         const settingsMap = Object.fromEntries(data.map((s: any) => [s.key, s.value]));
@@ -105,6 +111,10 @@ export default function SuperAdminSettingsPage() {
         if (settingsMap.registrationAlerts) setRegistrationAlerts(settingsMap.registrationAlerts === 'true');
         if (settingsMap.resultAlerts) setResultAlerts(settingsMap.resultAlerts === 'true');
         if (settingsMap.paymentAlerts) setPaymentAlerts(settingsMap.paymentAlerts === 'true');
+        if (settingsMap.paymentBkashNumber) setPaymentBkashNumber(settingsMap.paymentBkashNumber);
+        if (settingsMap.paymentBkashName) setPaymentBkashName(settingsMap.paymentBkashName);
+        if (settingsMap.paymentCashAddress) setPaymentCashAddress(settingsMap.paymentCashAddress);
+        if (settingsMap.paymentInstructions) setPaymentInstructions(settingsMap.paymentInstructions);
       }
     };
     loadSettings();
@@ -122,6 +132,7 @@ export default function SuperAdminSettingsPage() {
     { id: "account", label: "Account", labelBn: "অ্যাকাউন্ট", icon: <User className="h-4 w-4" /> },
     { id: "password", label: "Password", labelBn: "পাসওয়ার্ড", icon: <Lock className="h-4 w-4" /> },
     { id: "sessions", label: "Academic Sessions", labelBn: "একাডেমিক সেশন", icon: <Calendar className="h-4 w-4" /> },
+    { id: "payment", label: "Payment", labelBn: "পেমেন্ট", icon: <CreditCard className="h-4 w-4" /> },
     { id: "notifications", label: "Notifications", labelBn: "বিজ্ঞপ্তি", icon: <Bell className="h-4 w-4" /> },
   ], []);
 
@@ -197,6 +208,24 @@ export default function SuperAdminSettingsPage() {
     }
     setSaving(false);
     toast("success", isBn ? "বিজ্ঞপ্তি সেটিংস সংরক্ষিত হয়েছে!" : "Notification settings saved!");
+  };
+
+  const handleSavePayment = async () => {
+    setSaving(true);
+    const supabase = createClient();
+    const settings = [
+      { key: 'paymentBkashNumber', value: paymentBkashNumber, category: 'payment' },
+      { key: 'paymentBkashName', value: paymentBkashName, category: 'payment' },
+      { key: 'paymentCashAddress', value: paymentCashAddress, category: 'payment' },
+      { key: 'paymentInstructions', value: paymentInstructions, category: 'payment' },
+    ];
+    for (const setting of settings) {
+      await supabase
+        .from('system_settings')
+        .upsert(setting, { onConflict: 'key' });
+    }
+    setSaving(false);
+    toast("success", isBn ? "পেমেন্ট তথ্য সংরক্ষিত হয়েছে!" : "Payment details saved!");
   };
 
   if (!mounted) return <SettingsSkeleton isDark={isDark} />;
@@ -456,6 +485,52 @@ export default function SuperAdminSettingsPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Tab */}
+            {activeTab === "payment" && (
+              <div className={`${card} p-6`}>
+                <div className="mb-6">
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'পেমেন্ট নির্দেশনা' : 'Payment Instructions'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'নিবন্ধনের টাকা পাঠানোর তথ্য — প্রতিষ্ঠানগুলো পেমেন্ট পেজে এটি দেখবে' : 'Where institutions send registration money — shown on their Payments page'}</p>
+                </div>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'bKash নম্বর' : 'bKash Number'}</label>
+                      <Input value={paymentBkashNumber} onChange={(e) => setPaymentBkashNumber(e.target.value)} placeholder="01XXXXXXXXX" className={cn(inputCls, "h-10")} />
+                    </div>
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'অ্যাকাউন্টের নাম' : 'Account Name'}</label>
+                      <Input value={paymentBkashName} onChange={(e) => setPaymentBkashName(e.target.value)} placeholder={isBn ? 'অ্যাকাউন্ট হোল্ডারের নাম' : 'Account holder name'} className={cn(inputCls, "h-10")} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'নগদ পরিশোধের ঠিকানা (ঐচ্ছিক)' : 'Cash Payment Address (optional)'}</label>
+                    <Input value={paymentCashAddress} onChange={(e) => setPaymentCashAddress(e.target.value)} placeholder={isBn ? 'অফিসের ঠিকানা' : 'Office address for cash payments'} className={cn(inputCls, "h-10")} />
+                  </div>
+                  <div>
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পেমেন্ট নির্দেশনা (ঐচ্ছিক)' : 'Payment Instructions (optional)'}</label>
+                    <textarea
+                      rows={5}
+                      value={paymentInstructions}
+                      onChange={(e) => setPaymentInstructions(e.target.value)}
+                      placeholder={isBn ? 'প্রতি ধাপে পেমেন্ট করার নির্দেশনা লিখুন...' : 'Step-by-step instructions for sending the money...'}
+                      className={cn(inputCls, "w-full rounded-md px-3 py-2.5 text-sm outline-none resize-none")}
+                    />
+                    <p className={`text-[11px] mt-1.5 ${subtextCls}`}>{isBn ? 'লাইন বিরতিসহ লিখুন — প্রতিষ্ঠানের পেমেন্ট পেজে এমনিই দেখানো হবে' : 'Line breaks are preserved — shown as-is on the institution payments page'}</p>
+                  </div>
+                </div>
+                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                  <button onClick={handleSavePayment} disabled={saving}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                    )}>
+                    {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
+                  </button>
                 </div>
               </div>
             )}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -24,6 +24,10 @@ const formatCurrency = (amount: number) => `৳${amount.toLocaleString()}`;
 
 const isPendingReg = (r: Registration) => r.status !== 'APPROVED' && r.status !== 'VERIFIED' && r.status !== 'REJECTED';
 
+/** Stable empty array so `data ?? EMPTY_REGS` keeps referential identity. */
+const EMPTY_REGS: Registration[] = [];
+const EMPTY_REGS_PAYMENT: Payment[] = [];
+
 export default function PaymentsPage() {
   const { theme } = useTheme();
   const { lang: language } = useLang();
@@ -44,14 +48,18 @@ export default function PaymentsPage() {
   // Students ticked inside the approve modal
   const [selectedRegs, setSelectedRegs] = useState<string[]>([]);
 
-  const { data: paymentsData = [], isFetching: isFetchingPayments } = useAllPayments();
-  const { data: registrations = [] } = useAllRegistrations();
-  const payments = paymentsData;
+  const { data: fetchedPayments, isFetching: isFetchingPayments } = useAllPayments();
+  const { data: fetchedRegistrations } = useAllRegistrations();
+  const payments = fetchedPayments ?? EMPTY_REGS_PAYMENT;
+  const registrations = fetchedRegistrations ?? EMPTY_REGS;
   const updatePaymentMutation = useUpdatePayment();
   const updateRegistrationMutation = useUpdateRegistration();
 
-  // That institution's pending students, for the approve checklist
-  const { data: institutionRegs = [], isFetching: fetchingRegs } = useAllRegistrationsByInstitution(confirmAction?.payment.institutionId || '', confirmAction?.payment.sessionId);
+  // That institution's pending students, for the approve checklist.
+  // NOTE: stable fallback array — `data = []` destructuring would allocate a
+  // new reference every render and re-trigger the pre-tick effect forever.
+  const { data: fetchedInstitutionRegs, isFetching: fetchingRegs } = useAllRegistrationsByInstitution(confirmAction?.payment.institutionId || '', confirmAction?.payment.sessionId);
+  const institutionRegs = fetchedInstitutionRegs ?? EMPTY_REGS;
 
   const filtered = useMemo(() => payments.filter(p => {
     const q = search.toLowerCase();
@@ -71,19 +79,30 @@ export default function PaymentsPage() {
 
   const pendingInstitutionRegs = useMemo(() => institutionRegs.filter(isPendingReg), [institutionRegs]);
 
+  // Only write state when the value actually changes (prevents render loops)
+  const setSelectedRegsStable = useCallback((next: string[]) => {
+    setSelectedRegs(prev =>
+      prev.length === next.length && prev.every((id, i) => id === next[i]) ? prev : next
+    );
+  }, []);
+
+  const clearSelectedRegs = useCallback(() => {
+    setSelectedRegs(prev => (prev.length === 0 ? prev : []));
+  }, []);
+
   // Pre-tick round(amount ÷ fee) students (or the linked registration for student payments)
   useEffect(() => {
-    if (confirmAction?.type !== "approve") { setSelectedRegs([]); return; }
-    if (fetchingRegs || pendingInstitutionRegs.length === 0) { setSelectedRegs([]); return; }
+    if (confirmAction?.type !== "approve") { clearSelectedRegs(); return; }
+    if (fetchingRegs || pendingInstitutionRegs.length === 0) { clearSelectedRegs(); return; }
     const p = confirmAction.payment;
     if (p.registrationId) {
-      setSelectedRegs(pendingInstitutionRegs.some(r => r.id === p.registrationId) ? [p.registrationId] : []);
+      setSelectedRegsStable(pendingInstitutionRegs.some(r => r.id === p.registrationId) ? [p.registrationId] : []);
       return;
     }
     const fee = pendingInstitutionRegs[0]?.paymentAmount || 0;
     const count = fee > 0 ? Math.min(pendingInstitutionRegs.length, Math.round(p.amount / fee)) : 0;
-    setSelectedRegs(pendingInstitutionRegs.slice(0, count).map(r => r.id));
-  }, [confirmAction, pendingInstitutionRegs, fetchingRegs]);
+    setSelectedRegsStable(pendingInstitutionRegs.slice(0, count).map(r => r.id));
+  }, [confirmAction, pendingInstitutionRegs, fetchingRegs, clearSelectedRegs, setSelectedRegsStable]);
 
   const toggleReg = (id: string) => {
     setSelectedRegs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

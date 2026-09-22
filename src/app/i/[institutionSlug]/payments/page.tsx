@@ -13,7 +13,8 @@ import { useAllRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Payment } from "@/lib/types";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
-import { CreditCard, Search, Plus, Minus, Eye, CheckCircle, Wallet, FileDown, Receipt, Calendar } from "lucide-react";
+import { CreditCard, Search, Plus, Minus, Eye, CheckCircle, Wallet, FileDown, Receipt, Calendar, Copy, Info } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
@@ -49,7 +50,29 @@ export default function InstitutionPaymentsPage() {
   const [formData, setFormData] = useState(emptyForm);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
+  // Payment instruction info set by the super-admin (system_settings)
+  const [payInfo, setPayInfo] = useState<{ bkashNumber: string; bkashName: string; cashAddress: string; instructions: string } | null>(null);
+
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const loadPayInfo = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['paymentBkashNumber', 'paymentBkashName', 'paymentCashAddress', 'paymentInstructions']);
+      if (!data) { setPayInfo({ bkashNumber: '', bkashName: '', cashAddress: '', instructions: '' }); return; }
+      const m = Object.fromEntries(data.map((s: any) => [s.key, s.value]));
+      setPayInfo({
+        bkashNumber: m.paymentBkashNumber || '',
+        bkashName: m.paymentBkashName || '',
+        cashAddress: m.paymentCashAddress || '',
+        instructions: m.paymentInstructions || '',
+      });
+    };
+    loadPayInfo();
+  }, []);
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
@@ -162,6 +185,16 @@ export default function InstitutionPaymentsPage() {
   const countNum = parseInt(formData.studentCount, 10) || 0;
   const amountPreview = countNum * feePerStudent;
 
+  const copyBkashNumber = async () => {
+    if (!payInfo?.bkashNumber) return;
+    try {
+      await navigator.clipboard.writeText(payInfo.bkashNumber);
+      toast("success", isBn ? "bKash নম্বর কপি হয়েছে" : "bKash number copied");
+    } catch {
+      toast("error", isBn ? "কপি করা যায়নি" : "Could not copy");
+    }
+  };
+
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
@@ -207,6 +240,72 @@ export default function InstitutionPaymentsPage() {
             </div>
           ))}
         </div>
+
+        {/* Payment Instructions */}
+        {payInfo && (
+          <div className={`${card} p-5 mb-8`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Info className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+              <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'পেমেন্ট নির্দেশনা' : 'Payment Instructions'}</h3>
+              <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'নিবন্ধনের টাকা যেভাবে পাঠাবেন' : 'How to send registration payment'}</span>
+            </div>
+
+            {!payInfo.bkashNumber && !payInfo.cashAddress && !payInfo.instructions ? (
+              <p className={`text-[13px] ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+                {isBn ? 'পেমেন্টের তথ্য জানতে সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।' : 'Contact the super-admin for payment details.'}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Send-to number */}
+                {payInfo.bkashNumber && (
+                  <div className={`rounded-md border p-4 ${isDark ? "border-white/[0.08] bg-white/[0.03]" : "border-zinc-200 bg-zinc-50"}`}>
+                    <p className={`text-[11px] font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{isBn ? 'bKash এ Send Money করুন' : 'Send Money via bKash to'}</p>
+                    <div className="flex items-center justify-between gap-3 mt-2">
+                      <div className="min-w-0">
+                        <p className={`text-lg font-bold font-mono tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{payInfo.bkashNumber}</p>
+                        {payInfo.bkashName && <p className={`text-[11px] truncate ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>{payInfo.bkashName}</p>}
+                      </div>
+                      <button
+                        onClick={copyBkashNumber}
+                        className={`flex items-center gap-1.5 shrink-0 px-3 py-2 rounded-md text-[11px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.12]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}
+                      >
+                        <Copy className="h-3.5 w-3.5" /> {isBn ? 'কপি' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Steps */}
+                <div>
+                  <ol className={`text-[12px] space-y-1.5 ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                    {[
+                      isBn ? 'উপরের নম্বরে bKash Send Money করুন।' : 'Send Money via bKash to the number above.',
+                      isBn ? 'TrxID কপি করে রাখুন।' : 'Copy the TrxID from the confirmation.',
+                      isBn ? 'নিচের Submit Payment এ ইনভয়েস নম্বর ও TrxID দিন।' : 'Open Submit Payment below and enter the invoice number and TrxID.',
+                    ].map((step, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5 ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-200 text-zinc-700"}`}>{i + 1}</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {payInfo.cashAddress && (
+                    <p className={`text-[11px] mt-2.5 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+                      {isBn ? 'নগদ:' : 'Cash:'} {payInfo.cashAddress}
+                    </p>
+                  )}
+                </div>
+
+                {/* Admin-written instructions */}
+                {payInfo.instructions && (
+                  <p className={`text-[12px] whitespace-pre-line md:col-span-2 pt-1 border-t ${isDark ? "text-zinc-400 border-white/[0.06]" : "text-zinc-600 border-zinc-100"}`}>
+                    {payInfo.instructions}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div className={`${card} p-4 mb-8`}>
