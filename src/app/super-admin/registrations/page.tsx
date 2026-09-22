@@ -27,6 +27,7 @@ export default function RegistrationsPage() {
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [instFilter, setInstFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
@@ -42,10 +43,24 @@ export default function RegistrationsPage() {
   const deleteRegistrationMutation = useDeleteRegistration();
 
   const filtered = useMemo(() => registrations.filter(r => {
-    const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.registrationNumber.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = r.studentName.toLowerCase().includes(q) || r.registrationNumber.toLowerCase().includes(q);
     const matchesStatus = !statusFilter || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  }), [registrations, search, statusFilter]);
+    const matchesInstitution = !instFilter || r.institutionId === instFilter;
+    return matchesSearch && matchesStatus && matchesInstitution;
+  }), [registrations, search, statusFilter, instFilter]);
+
+  // Unique institutions present in the current registrations
+  const institutionOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    registrations.forEach(r => { if (r.institutionId && !seen.has(r.institutionId)) seen.set(r.institutionId, r.institutionName); });
+    return [
+      { label: isBn ? 'সব প্রতিষ্ঠান' : 'All Institutions', value: '' },
+      ...Array.from(seen.entries())
+        .map(([value, label]) => ({ label, value }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [registrations, isBn]);
 
   const selection = useTableSelection(filtered);
 
@@ -202,6 +217,12 @@ export default function RegistrationsPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className={`w-full sm:w-40 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
+            />
+            <Select
+              options={institutionOptions}
+              value={instFilter}
+              onChange={(e) => setInstFilter(e.target.value)}
+              className={`w-full sm:w-48 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
             />
             <button className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
               <Download className="h-3.5 w-3.5" /> {isBn ? 'এক্সপোর্ট' : 'Export'}
