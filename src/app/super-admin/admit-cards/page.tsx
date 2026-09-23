@@ -257,6 +257,7 @@ export default function AdmitCardsPage() {
       createdAt: card.createdAt,
     };
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // ── Export orchestration (staging container renders the cards first) ──
   const startExport = (
