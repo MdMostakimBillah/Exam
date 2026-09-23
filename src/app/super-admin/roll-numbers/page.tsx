@@ -11,6 +11,7 @@ import { useCurrentSession } from "@/lib/storage/sessions";
 import { useStudentsByClass } from "@/lib/storage/students";
 import { useClassRollSummaries, useGenerateExamRolls, getRollPrefix, type ClassRollSummary } from "@/lib/storage/exam-rolls";
 import { useInstitutions } from "@/lib/storage/institutions";
+import { useClasses } from "@/lib/storage/classes";
 import { useAllRegistrations } from "@/lib/storage/registrations";
 import { formatDate } from "@/lib/storage/storage";
 import { Registration } from "@/lib/types";
@@ -41,8 +42,17 @@ export default function RollNumbersPage() {
   const studentsQuery = useStudentsByClass(sessionId, selectedClass);
   const students = useMemo(() => studentsQuery.data ?? [], [studentsQuery.data]);
   const { data: institutions = [] } = useInstitutions();
+  const { data: allClasses = [] } = useClasses();
   const { data: regs = [] } = useAllRegistrations(sessionId);
   const generateMutation = useGenerateExamRolls();
+
+  // Fallback: map a class name to its classes.code (e.g. 'Five' -> 'CLS-05'
+  // or '5') so the prefix can still be derived when the name has no digits.
+  const classCodeByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of allClasses) map.set(c.name.toLowerCase().trim(), c.code);
+    return map;
+  }, [allClasses]);
 
   const institutionMap = useMemo(
     () => new Map(institutions.map(i => [i.id, i.name])),
@@ -67,7 +77,9 @@ export default function RollNumbersPage() {
   const total = summary?.total ?? students.length;
   const rolled = summary?.rolled ?? students.filter(s => s.examRoll).length;
   const pending = Math.max(total - rolled, 0);
-  const prefix = selectedClass ? getRollPrefix(selectedClass) : null;
+  const prefix = selectedClass
+    ? getRollPrefix(selectedClass, classCodeByName.get(selectedClass.toLowerCase().trim()))
+    : null;
 
   const rollRange = useMemo(() => {
     const rolls = students.map(s => s.examRoll).filter((r): r is string => !!r).sort();

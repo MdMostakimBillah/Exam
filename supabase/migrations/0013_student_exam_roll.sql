@@ -64,8 +64,51 @@ BEGIN
     RAISE EXCEPTION 'Session and class are required';
   END IF;
 
-  -- Derive the class number from the label: 'Class 5' -> 5, '5' -> 5, 'Class 10' -> 10
-  v_n := substring(p_class FROM '\d+')::INT;
+  -- Resolve the class number from the label. Class names are free-form
+  -- (classes.name is shown in dropdowns, so values like '5', 'Class 5',
+  -- 'Five', 'Fifth', 'পঞ্চম', 'শ্রেণী ৫' all exist in real data):
+  --   1) digits, including Bangla digits ('Class 5' / '5' / 'শ্রেণী ৫' -> 5)
+  --   2) English number words ('Five' / 'Class Five' / 'Fifth' -> 5)
+  --   3) Bangla number words ('পাঁচ' / 'পঞ্চম' -> 5)
+  --   4) classes table lookup by name -> digits in code ('CLS-05' -> 5)
+  v_n := substring(translate(p_class, '০১২৩৪৫৬৭৮৯', '0123456789') FROM '\d+')::INT;
+
+  IF v_n IS NULL THEN
+    v_n := CASE lower(substring(lower(p_class)
+             from '\y(one|two|three|four|five|six|seven|eight|nine|ten|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\y'))
+      WHEN 'one' THEN 1    WHEN 'first' THEN 1
+      WHEN 'two' THEN 2    WHEN 'second' THEN 2
+      WHEN 'three' THEN 3  WHEN 'third' THEN 3
+      WHEN 'four' THEN 4   WHEN 'fourth' THEN 4
+      WHEN 'five' THEN 5   WHEN 'fifth' THEN 5
+      WHEN 'six' THEN 6    WHEN 'sixth' THEN 6
+      WHEN 'seven' THEN 7  WHEN 'seventh' THEN 7
+      WHEN 'eight' THEN 8  WHEN 'eighth' THEN 8
+      WHEN 'nine' THEN 9   WHEN 'ninth' THEN 9
+      WHEN 'ten' THEN 10   WHEN 'tenth' THEN 10
+    END;
+  END IF;
+
+  IF v_n IS NULL THEN
+    v_n := CASE substring(p_class from '(এক|দুই|তিন|চার|পঞ্চম|পাঁচ|ছয়|সাত|আট|নয়|দশ)')
+      WHEN 'এক' THEN 1    WHEN 'দুই' THEN 2
+      WHEN 'তিন' THEN 3   WHEN 'চার' THEN 4
+      WHEN 'পঞ্চম' THEN 5 WHEN 'পাঁচ' THEN 5
+      WHEN 'ছয়' THEN 6   WHEN 'সাত' THEN 7
+      WHEN 'আট' THEN 8    WHEN 'নয়' THEN 9
+      WHEN 'দশ' THEN 10
+    END;
+  END IF;
+
+  IF v_n IS NULL THEN
+    SELECT substring(c.code FROM '\d+')::INT
+      INTO v_n
+      FROM classes c
+     WHERE lower(btrim(c.name)) = lower(btrim(p_class))
+       AND c.code ~ '\d'
+     LIMIT 1;
+  END IF;
+
   IF v_n IS NULL THEN
     RAISE EXCEPTION 'Cannot determine a class number from "%"', p_class;
   END IF;
