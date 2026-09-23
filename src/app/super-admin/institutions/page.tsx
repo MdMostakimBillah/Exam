@@ -16,6 +16,7 @@ import { TableActionMenu, TableActionItem, TableActionDivider } from "@/componen
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
@@ -23,6 +24,7 @@ export default function InstitutionsPage() {
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
+  const { toast } = useToast();
   const isDark = theme === "dark";
   const isBn = language === "bn";
   const [search, setSearch] = useState("");
@@ -95,9 +97,25 @@ export default function InstitutionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm(isBn ? 'আপনি কি নিশ্চিত?' : 'Are you sure?')) {
-      await deleteInstitutionMutation.mutateAsync(id);
+    const inst = institutions.find(i => i.id === id);
+    const name = inst?.name || '';
+    const confirmed = confirm(isBn
+      ? `"${name}" মুছে ফেলবেন?\n\nএর সব শিক্ষার্থী, নিবন্ধন, পেমেন্ট, ফলাফল, সার্টিফিকেট, ছবি ও লগইন অ্যাকাউন্ট সব সেশন থেকে স্থায়ীভাবে মুছে যাবে। এটি ফেরানো যাবে না।`
+      : `Delete "${name}"?\n\nALL of its students, registrations, payments, results, certificates, images and login accounts will be permanently removed from every session. This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      const result = await deleteInstitutionMutation.mutateAsync(id);
       setRefreshKey(k => k + 1);
+      toast("success", isBn
+        ? 'প্রতিষ্ঠান ও সম্পূর্ণ ডেটা (শিক্ষার্থী, পেমেন্ট, ফলাফল, ছবি, অ্যাকাউন্ট) স্থায়ীভাবে মুছে ফেলা হয়েছে'
+        : 'Institution and all its data (students, payments, results, images, accounts) deleted permanently');
+      if (result.warnings?.length) {
+        toast("warning", isBn
+          ? `কিছু আনুষ্ঠানিকতা সম্পন্ন হয়নি: ${result.warnings.join('; ')}`
+          : `Some cleanup items failed: ${result.warnings.join('; ')}`);
+      }
+    } catch (err) {
+      toast("error", `${isBn ? 'প্রতিষ্ঠান মোছা যায়নি' : 'Could not delete institution'}: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 

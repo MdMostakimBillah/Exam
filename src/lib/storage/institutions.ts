@@ -1,6 +1,7 @@
 import { Institution } from '../types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/auth/institution-actions';
 
 const SUPABASE_TABLE = 'institutions';
 
@@ -91,9 +92,17 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   return mapInstitution(result);
 }
 
-export async function deleteInstitution(id: string): Promise<boolean> {
-  const { error } = await createClient().from(SUPABASE_TABLE).delete().eq('id', id);
-  return !error;
+/**
+ * Permanently deletes an institution and EVERYTHING that belongs to it —
+ * all DB rows (students, registrations, payments, results, certificates,
+ * marks, admit cards, exam centers, user notifications, profiles), the
+ * stored images, and the login accounts. Delegates to the server action
+ * (service role + cascade RPC); throws on failure so the UI can surface it.
+ */
+export async function deleteInstitution(id: string): Promise<DeleteInstitutionResult> {
+  const result = await deleteInstitutionServer(id);
+  if (!result.success) throw new Error(result.error || 'Could not delete institution');
+  return result;
 }
 
 export function useInstitutions() { return useQuery({ queryKey: ['institutions'], queryFn: fetchInstitutions, staleTime: INSTITUTIONS_STALE_TIME }); }
@@ -120,6 +129,11 @@ export function useDeleteInstitution() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteInstitution(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['institutions'] }),
+    onSuccess: () => {
+      // The wipe spans every dataset (students, registrations, payments,
+      // results, certificates, marks, admit cards, profiles, dashboard
+      // stats) — refresh everything so no stale count survives.
+      qc.invalidateQueries();
+    },
   });
 }
