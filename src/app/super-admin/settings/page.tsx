@@ -3,15 +3,16 @@ import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/auth";
-import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X, CreditCard } from "lucide-react";
+import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X, CreditCard, Palette, Upload } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { createClient } from "@/lib/supabase/client";
 import { useSessions, useCreateSession, useSetCurrentSession, useUpdateSession, useDeleteSession } from "@/lib/storage/sessions";
+import { useBranding, useSaveBranding, uploadBrandingImage, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
-type Tab = "profile" | "account" | "password" | "notifications" | "sessions" | "payment";
+type Tab = "profile" | "branding" | "account" | "password" | "notifications" | "sessions" | "payment";
 
 interface PlatformSettings {
   platformName: string;
@@ -91,6 +92,17 @@ export default function SuperAdminSettingsPage() {
   const [paymentCashAddress, setPaymentCashAddress] = useState("");
   const [paymentInstructions, setPaymentInstructions] = useState("");
 
+  // Branding (logo, association names, landing-page copy, PDF watermark)
+  const { data: brandingData } = useBranding();
+  const saveBranding = useSaveBranding();
+  const [brandForm, setBrandForm] = useState<BrandingSettings | null>(null);
+  const [uploadKind, setUploadKind] = useState<"" | "logo" | "watermark">("");
+
+  // Seed the form once — later background refetches must not clobber edits.
+  useEffect(() => {
+    if (brandingData && !brandForm) setBrandForm({ ...brandingData });
+  }, [brandingData, brandForm]);
+
   useEffect(() => {
     setMounted(true);
     // Load settings from Supabase
@@ -129,6 +141,7 @@ export default function SuperAdminSettingsPage() {
 
   const tabs: { id: Tab; label: string; labelBn: string; icon: React.ReactNode }[] = useMemo(() => [
     { id: "profile", label: "Profile", labelBn: "প্রোফাইল", icon: <Building2 className="h-4 w-4" /> },
+    { id: "branding", label: "Branding", labelBn: "ব্র্যান্ডিং", icon: <Palette className="h-4 w-4" /> },
     { id: "account", label: "Account", labelBn: "অ্যাকাউন্ট", icon: <User className="h-4 w-4" /> },
     { id: "password", label: "Password", labelBn: "পাসওয়ার্ড", icon: <Lock className="h-4 w-4" /> },
     { id: "sessions", label: "Academic Sessions", labelBn: "একাডেমিক সেশন", icon: <Calendar className="h-4 w-4" /> },
@@ -228,6 +241,38 @@ export default function SuperAdminSettingsPage() {
     toast("success", isBn ? "পেমেন্ট তথ্য সংরক্ষিত হয়েছে!" : "Payment details saved!");
   };
 
+  const handleBrandFile = async (kind: "logo" | "watermark", file?: File | null) => {
+    if (!file || !brandForm) return;
+    if (!file.type.startsWith("image/")) {
+      toast("error", isBn ? "ছবি ফাইল নির্বাচন করুন" : "Please choose an image file");
+      return;
+    }
+    setUploadKind(kind);
+    try {
+      const url = await uploadBrandingImage(file, kind);
+      if (kind === "logo") setBrandForm({ ...brandForm, brandLogo: url });
+      else setBrandForm({ ...brandForm, brandWatermark: url });
+      toast("success", isBn ? "ইমেজ আপলোড হয়েছে — এখন সংরক্ষণ করুন" : "Image uploaded — click Save Changes to apply");
+    } catch (err: any) {
+      toast("error", err?.message || (isBn ? "আপলোড ব্যর্থ" : "Upload failed"));
+    } finally {
+      setUploadKind("");
+    }
+  };
+
+  const handleSaveBranding = async () => {
+    if (!brandForm) return;
+    setSaving(true);
+    try {
+      await saveBranding.mutateAsync(brandForm);
+      toast("success", isBn ? "ব্র্যান্ডিং সংরক্ষিত হয়েছে!" : "Branding saved!");
+    } catch (err: any) {
+      toast("error", err?.message || (isBn ? "সংরক্ষণ ব্যর্থ" : "Save failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!mounted) return <SettingsSkeleton isDark={isDark} />;
 
   const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
@@ -298,6 +343,164 @@ export default function SuperAdminSettingsPage() {
                       isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
                     )}>
                     {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Branding Tab */}
+            {activeTab === "branding" && brandForm && (
+              <div className={`${card} p-6`}>
+                <div className="mb-6">
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'ব্র্যান্ডিং ও ল্যান্ডিং পেজ' : 'Branding & Landing Page'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'লোগো, নাম, ল্যান্ডিং পেজের লেখা এবং সব পিডিএফের ওয়াটারমার্ক পরিবর্তন করুন' : 'Change the logo, names, landing-page text and the watermark shown in every PDF'}</p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* ── Logo ── */}
+                  <div>
+                    <label className={`block text-[13px] mb-2 font-medium ${labelCls}`}>{isBn ? 'লোগো' : 'Logo'}</label>
+                    <div className="flex items-center gap-4">
+                      <div className={cn("h-16 w-16 rounded-md flex items-center justify-center overflow-hidden shrink-0", isDark ? "bg-white/[0.04] border border-white/[0.08]" : "bg-zinc-50 border border-zinc-200")}>
+                        {brandForm.brandLogo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={brandForm.brandLogo} alt="Logo" className="h-full w-full object-contain p-1" />
+                        ) : (
+                          <span className={`text-xs font-bold ${labelCls}`}>{BRANDING_DEFAULTS.brandShort}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                          <label className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all cursor-pointer",
+                            isDark ? "bg-white/10 text-white hover:bg-white/20" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
+                            uploadKind === "logo" && "opacity-60 pointer-events-none")}>
+                            <Upload className="h-4 w-4" />
+                            {uploadKind === "logo" ? (isBn ? 'আপলোড হচ্ছে…' : 'Uploading…') : (isBn ? 'লোগো আপলোড' : 'Upload Logo')}
+                            <input type="file" accept="image/*" className="hidden" disabled={uploadKind === "logo"}
+                              onChange={(e) => { handleBrandFile("logo", e.target.files?.[0]); e.target.value = ""; }} />
+                          </label>
+                          {brandForm.brandLogo && (
+                            <button onClick={() => setBrandForm({ ...brandForm, brandLogo: "" })}
+                              className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", isDark ? "text-zinc-400 hover:text-red-400" : "text-zinc-500 hover:text-red-600")}>
+                              {isBn ? 'সরান' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                        <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'হেডার, ফুটার ও প্রবেশপত্রের ক্রেস্টে দেখানো হবে' : 'Shown in the landing header, footer and admit-card crest'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Identity ── */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শর্ট নাম' : 'Short Name'}</label>
+                      <Input value={brandForm.brandShort} onChange={(e) => setBrandForm({ ...brandForm, brandShort: e.target.value })} placeholder={BRANDING_DEFAULTS.brandShort} className={cn(inputCls, "h-10")} />
+                    </div>
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Association Name (English)</label>
+                      <Input value={brandForm.brandName} onChange={(e) => setBrandForm({ ...brandForm, brandName: e.target.value })} placeholder={BRANDING_DEFAULTS.brandName} className={cn(inputCls, "h-10")} />
+                    </div>
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Association Name (বাংলা)</label>
+                      <Input value={brandForm.brandNameBn} onChange={(e) => setBrandForm({ ...brandForm, brandNameBn: e.target.value })} placeholder={BRANDING_DEFAULTS.brandNameBn} className={cn(inputCls, "h-10")} />
+                    </div>
+                  </div>
+
+                  {/* ── Landing hero ── */}
+                  <div className={`pt-5 border-t ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <p className={`text-[13px] font-semibold mb-4 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'ল্যান্ডিং পেজ — হিরো' : 'Landing Page — Hero'}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Hero Title Line 1 (English)</label>
+                        <Input value={brandForm.heroTitle1} onChange={(e) => setBrandForm({ ...brandForm, heroTitle1: e.target.value })} placeholder={t("hero.title1")} className={cn(inputCls, "h-10")} />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>শিরোনাম ১লাইন (বাংলা)</label>
+                        <Input value={brandForm.heroTitle1Bn} onChange={(e) => setBrandForm({ ...brandForm, heroTitle1Bn: e.target.value })} placeholder={t("hero.title1")} className={cn(inputCls, "h-10")} />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Hero Title Line 2 (English)</label>
+                        <Input value={brandForm.heroTitle2} onChange={(e) => setBrandForm({ ...brandForm, heroTitle2: e.target.value })} placeholder={t("hero.title2")} className={cn(inputCls, "h-10")} />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>শিরোনাম ২লাইন (বাংলা)</label>
+                        <Input value={brandForm.heroTitle2Bn} onChange={(e) => setBrandForm({ ...brandForm, heroTitle2Bn: e.target.value })} placeholder={t("hero.title2")} className={cn(inputCls, "h-10")} />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Hero Subtitle (English)</label>
+                        <textarea rows={3} value={brandForm.heroSubtitle} onChange={(e) => setBrandForm({ ...brandForm, heroSubtitle: e.target.value })} placeholder={t("hero.subtitle")}
+                          className={cn(inputCls, "w-full rounded-md px-3 py-2.5 text-sm outline-none resize-none")} />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>সাবটাইটেল (বাংলা)</label>
+                        <textarea rows={3} value={brandForm.heroSubtitleBn} onChange={(e) => setBrandForm({ ...brandForm, heroSubtitleBn: e.target.value })} placeholder={t("hero.subtitle")}
+                          className={cn(inputCls, "w-full rounded-md px-3 py-2.5 text-sm outline-none resize-none")} />
+                      </div>
+                    </div>
+                    <p className={`text-[11px] mt-2 ${subtextCls}`}>{isBn ? 'খালি রাখলে ডিফল্ট লেখা দেখাবে' : 'Leave empty to keep the default text'}</p>
+                  </div>
+
+                  {/* ── Footer tagline ── */}
+                  <div className={`pt-5 border-t ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <p className={`text-[13px] font-semibold mb-4 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'ল্যান্ডিং পেজ — ফুটার' : 'Landing Page — Footer'}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Footer Tagline (English)</label>
+                        <textarea rows={3} value={brandForm.footerTagline} onChange={(e) => setBrandForm({ ...brandForm, footerTagline: e.target.value })} placeholder={t("footer.tagline")}
+                          className={cn(inputCls, "w-full rounded-md px-3 py-2.5 text-sm outline-none resize-none")} />
+                      </div>
+                      <div>
+                        <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>ফুটার ট্যাগলাইন (বাংলা)</label>
+                        <textarea rows={3} value={brandForm.footerTaglineBn} onChange={(e) => setBrandForm({ ...brandForm, footerTaglineBn: e.target.value })} placeholder={t("footer.tagline")}
+                          className={cn(inputCls, "w-full rounded-md px-3 py-2.5 text-sm outline-none resize-none")} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── PDF watermark ── */}
+                  <div className={`pt-5 border-t ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <p className={`text-[13px] font-semibold mb-4 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'সব পিডিএফের ওয়াটারমার্ক' : 'PDF Watermark (everywhere)'}</p>
+                    <div className="flex items-center gap-4">
+                      <div className={cn("h-16 w-24 rounded-md flex items-center justify-center overflow-hidden shrink-0", isDark ? "bg-white/[0.04] border border-white/[0.08]" : "bg-zinc-50 border border-zinc-200")}>
+                        {brandForm.brandWatermark ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={brandForm.brandWatermark} alt="Watermark" className="h-full w-full object-contain p-1" />
+                        ) : (
+                          <span className={`text-[10px] font-semibold ${labelCls}`}>{brandForm.brandShort || BRANDING_DEFAULTS.brandShort}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                          <label className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all cursor-pointer",
+                            isDark ? "bg-white/10 text-white hover:bg-white/20" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
+                            uploadKind === "watermark" && "opacity-60 pointer-events-none")}>
+                            <Upload className="h-4 w-4" />
+                            {uploadKind === "watermark" ? (isBn ? 'আপলোড হচ্ছে…' : 'Uploading…') : (isBn ? 'ওয়াটারমার্ক আপলোড' : 'Upload Watermark')}
+                            <input type="file" accept="image/*" className="hidden" disabled={uploadKind === "watermark"}
+                              onChange={(e) => { handleBrandFile("watermark", e.target.files?.[0]); e.target.value = ""; }} />
+                          </label>
+                          {brandForm.brandWatermark && (
+                            <button onClick={() => setBrandForm({ ...brandForm, brandWatermark: "" })}
+                              className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", isDark ? "text-zinc-400 hover:text-red-400" : "text-zinc-500 hover:text-red-600")}>
+                              {isBn ? 'সরান' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                        <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'প্রবেশপত্র ও সব পিডিএফে পেছনে দেখানো হবে — খালি রাখলে টেক্সট ওয়াটারমার্ক ব্যবহার হবে' : 'Appears behind admit cards and all PDFs — leave empty for the text watermark'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                  <button onClick={handleSaveBranding} disabled={saving || saveBranding.isPending}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      (saving || saveBranding.isPending) && "opacity-60 cursor-not-allowed"
+                    )}>
+                    {(saving || saveBranding.isPending) ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
                   </button>
                 </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
+import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import { EducationIllustration } from "@/components/ui/education-illustration";
 import { Building2, Users, FileText, Award, CreditCard, BarChart3, ArrowRight, BookOpen, ClipboardList, Sun, Moon, Globe, Check, Star } from "lucide-react";
 
@@ -32,6 +33,16 @@ export default function HomePage() {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const isDark = theme === "dark";
+
+  // Super-admin branding (logo, names, landing copy) — empty fields fall
+  // back to the built-in translations so the page never looks broken.
+  const { data: brandData } = useBranding();
+  const b = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
+  const brandName = (lang === "bn" ? b.brandNameBn : b.brandName) || t("brand");
+  const heroTitle1 = (lang === "bn" ? b.heroTitle1Bn : b.heroTitle1) || t("hero.title1");
+  const heroTitle2 = (lang === "bn" ? b.heroTitle2Bn : b.heroTitle2) || t("hero.title2");
+  const heroSubtitle = (lang === "bn" ? b.heroSubtitleBn : b.heroSubtitle) || t("hero.subtitle");
+  const footerTagline = (lang === "bn" ? b.footerTaglineBn : b.footerTagline) || t("footer.tagline");
 
   useEffect(() => {
     if (user) {
@@ -206,8 +217,17 @@ export default function HomePage() {
       <header className={`fixed top-0 left-0 right-0 z-50 ${glassBg}`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
-            <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
+            {b.brandLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={b.brandLogo}
+                alt={brandName}
+                className={`w-9 h-9 rounded-md object-contain bg-white/90 ring-1 ${isDark ? "ring-white/15" : "ring-zinc-200"}`}
+              />
+            ) : (
+              <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
+            )}
+            <span className={`text-sm font-semibold ${text}`}>{brandName}</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className={`text-sm transition-colors ${textNav}`}>{t("nav.features")}</a>
@@ -247,11 +267,11 @@ export default function HomePage() {
               </div>
 
               <h1 className={`text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] ${text}`}>
-                {t("hero.title1")}{" "}
-                <span className={textSec}>{t("hero.title2")}</span>
+                {heroTitle1}{" "}
+                <span className={textSec}>{heroTitle2}</span>
               </h1>
 
-              <p className={`text-base sm:text-lg max-w-lg leading-relaxed ${textSec}`}>{t("hero.subtitle")}</p>
+              <p className={`text-base sm:text-lg max-w-lg leading-relaxed ${textSec}`}>{heroSubtitle}</p>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <Link href="/register" className={`inline-flex items-center gap-2 px-8 py-4 rounded-md text-sm font-medium transition-all hover:scale-105 ${btnPrimary}`}>
@@ -488,10 +508,19 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-5">
-                <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
-                <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
+                {b.brandLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={b.brandLogo}
+                    alt={brandName}
+                    className={`w-8 h-8 rounded-md object-contain bg-white/90 ring-1 ${isDark ? "ring-white/15" : "ring-zinc-200"}`}
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
+                )}
+                <span className={`text-sm font-semibold ${text}`}>{brandName}</span>
               </div>
-              <p className={`text-xs leading-relaxed ${textSec}`}>{t("footer.tagline")}</p>
+              <p className={`text-xs leading-relaxed ${textSec}`}>{footerTagline}</p>
             </div>
             <div>
               <h4 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${textSec}`}>{t("footer.product")}</h4>
@@ -519,7 +548,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className={`pt-8 border-t text-center ${border}`}>
-            <p className={`text-xs ${textSec}`}>© 2026 {t("brand")}. All rights reserved.</p>
+            <p className={`text-xs ${textSec}`}>© 2026 {brandName}. All rights reserved.</p>
           </div>
         </div>
       </footer>

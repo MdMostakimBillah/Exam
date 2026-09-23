@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { formatDate } from "@/lib/storage/storage";
+import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
 
 /**
  * National University–style admit card — one fixed A4 page (210mm × 297mm).
@@ -82,8 +83,36 @@ const rootStyle: React.CSSProperties = {
   isolation: "isolate",
 };
 
-/** Big faded BMA crest behind the whole card — the official watermark. */
-function Watermark() {
+/** Big faded association watermark behind the whole card — the official
+ *  watermark. Uses the super-admin's uploaded image when set, otherwise the
+ *  classic text crest built from the short/association names. */
+function Watermark({ brand }: { brand: BrandingSettings }) {
+  if (brand.brandWatermark) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%) rotate(-30deg)",
+          zIndex: -1,
+          opacity: 0.07,
+          pointerEvents: "none",
+          userSelect: "none",
+          lineHeight: 0,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={brand.brandWatermark}
+          alt=""
+          crossOrigin="anonymous"
+          style={{ width: "150mm", height: "auto", display: "block" }}
+        />
+      </div>
+    );
+  }
   return (
     <div
       aria-hidden
@@ -110,13 +139,13 @@ function Watermark() {
           padding: "14px 26px 10px",
         }}
       >
-        BMA
+        {brand.brandShort || "BMA"}
       </div>
       <div style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "3px", marginTop: "10px" }}>
-        BANGLADESH MADRASAH ASSOCIATION
+        {(brand.brandName || "Bangladesh Madrasah Association").toUpperCase()}
       </div>
       <div style={{ fontSize: "18px", letterSpacing: "2px", marginTop: "4px" }}>
-        বাংলাদেশ মাদ্রাসা এসোসিয়েশন
+        {brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন"}
       </div>
     </div>
   );
@@ -263,6 +292,13 @@ function formatCardDate(iso: string, bn: boolean): string {
 export function AdmitCardTemplate({ view }: { view: CardView }) {
   const bn = view.lang === "bn";
 
+  // Association branding — same source as the landing page.
+  const { data: brandData } = useBranding();
+  const brand: BrandingSettings = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
+  const assocEn = brand.brandName || "Bangladesh Madrasah Association";
+  const assocBn = brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন";
+  const brandShort = brand.brandShort || "BMA";
+
   /** Chrome strings follow the active language. */
   const L = (en: string, b: string) => (bn ? b : en);
 
@@ -303,7 +339,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
 
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
-      <Watermark />
+      <Watermark brand={brand} />
       {/* ── Header: photo | crest | titles | QR — rule underneath ── */}
       <div
         style={{
@@ -350,6 +386,21 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             crossOrigin="anonymous"
             style={{ width: "20mm", height: "20mm", objectFit: "contain", flexShrink: 0 }}
           />
+        ) : brand.brandLogo ? (
+          // Association logo from branding settings
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brand.brandLogo}
+            alt={brandShort}
+            crossOrigin="anonymous"
+            style={{
+              width: "18mm",
+              height: "18mm",
+              objectFit: "contain",
+              flexShrink: 0,
+              background: "#ffffff",
+            }}
+          />
         ) : (
           <div
             style={{
@@ -366,7 +417,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               flexShrink: 0,
             }}
           >
-            BMA
+            {brandShort}
           </div>
         )}
 
@@ -383,7 +434,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             {view.institutionName}
           </div>
           <div style={{ fontSize: "11px", marginTop: "1px", color: "#222222" }}>
-            {L("Bangladesh Madrasah Association", "বাংলাদেশ মাদ্রাসা এসোসিয়েশন")}
+            {L(assocEn, assocBn)}
           </div>
           <div
             style={{
@@ -666,7 +717,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             {L("Controller of Examinations", "পরীক্ষা নিয়ন্ত্রক")}
           </div>
           <div style={{ fontSize: "9px", color: "#333333", lineHeight: 1.3 }}>
-            {L("Secretary, BMA Association", "সাধারণ সম্পাদক, বাংলাদেশ মাদ্রাসা এসোসিয়েশন")}
+            {L(`Secretary, ${brandShort} Association`, `সাধারণ সম্পাদক, ${assocBn}`)}
           </div>
         </div>
       </div>
