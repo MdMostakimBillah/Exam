@@ -92,6 +92,8 @@ export interface Student {
   phone: string;
   address: string;
   photo?: string;
+  /** Class-wise exam roll (6 digits, e.g. 110001) — set by the super admin's Generate Roll. */
+  examRoll?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED';
   createdAt: string;
   updatedAt: string;

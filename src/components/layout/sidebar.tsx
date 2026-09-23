@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Building2, Users, FileText, Award,
   CreditCard, BarChart3, Bell, Settings,
   ClipboardList, FileCheck, School, BookOpen,
-  GraduationCap, LogOut, ChevronRight, BookMarked
+  GraduationCap, LogOut, ChevronRight, BookMarked, Hash
 } from "lucide-react";
 import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
@@ -31,6 +31,7 @@ const superAdminNav: NavItem[] = [
   { label: 'Classes', labelBn: 'শ্রেণী', icon: BookMarked, href: '/super-admin/classes' },
   { label: 'Exams', labelBn: 'পরীক্ষা', icon: FileText, href: '/super-admin/exams' },
   { label: 'Registrations', labelBn: 'নিবন্ধন', icon: ClipboardList, href: '/super-admin/registrations' },
+  { label: 'Roll Numbers', labelBn: 'রোল নম্বর', icon: Hash, href: '/super-admin/roll-numbers' },
   { label: 'Exam Centers', labelBn: 'পরীক্ষা কেন্দ্র', icon: School, href: '/super-admin/exam-centers' },
   { label: 'Admit Cards', labelBn: 'প্রবেশপত্র', icon: FileCheck, href: '/super-admin/admit-cards' },
   { label: 'Marks', labelBn: 'নম্বর', icon: BookOpen, href: '/super-admin/marks' },

@@ -29,6 +29,7 @@ function mapStudent(data: any): Student {
     phone: data.phone,
     address: data.address,
     photo: data.photo_url,
+    examRoll: data.exam_roll,
     status: data.status,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
@@ -236,6 +237,37 @@ export function useStudents(sessionId?: string, page?: number, pageSize?: number
     queryKey: ['students', sessionId, page, pageSize],
     queryFn: () => fetchStudents(sessionId, page, pageSize),
     staleTime: 60 * 1000,
+  });
+}
+
+// Own column list including exam_roll — kept separate from STUDENT_COLUMNS
+// so every other students page keeps working before migration 0013 is run.
+const CLASS_ROLL_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,status,created_at,updated_at';
+
+/**
+ * All students of one class in a session (across every institution),
+ * including their exam roll. Used by the super-admin Roll Numbers page.
+ * Throws on error so the page can surface "run migration 0013".
+ */
+export async function fetchStudentsByClass(sessionId?: string, className?: string): Promise<Student[]> {
+  const supabase = createClient();
+  if (!sessionId || !className) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(CLASS_ROLL_COLUMNS)
+    .eq('session_id', sessionId)
+    .eq('class', className)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(mapStudent);
+}
+
+export function useStudentsByClass(sessionId?: string, className?: string) {
+  return useQuery({
+    queryKey: ['students', 'by-class', sessionId, className],
+    queryFn: () => fetchStudentsByClass(sessionId, className),
+    enabled: !!sessionId && !!className,
+    staleTime: 30 * 1000,
   });
 }
 
