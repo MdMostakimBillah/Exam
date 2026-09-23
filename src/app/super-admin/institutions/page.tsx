@@ -9,6 +9,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useInstitutions, useCreateInstitution, useUpdateInstitution, useDeleteInstitution } from "@/lib/storage/institutions";
 import { useInstitutionStudentCounts } from "@/lib/storage/students";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Institution } from "@/lib/types";
 import { Building2, Search, Users, Mail, Phone, Trash2, Eye, Check, X, Ban, Plus, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem, TableActionDivider } from "@/components/ui/table-action-menu";
@@ -40,10 +41,13 @@ export default function InstitutionsPage() {
   const createInstitutionMutation = useCreateInstitution();
   const updateInstitutionMutation = useUpdateInstitution();
   const deleteInstitutionMutation = useDeleteInstitution();
-  // Live student counts per institution (falls back to the stored
-  // counter only while the counts query is still loading)
-  const { data: studentCounts } = useInstitutionStudentCounts();
-  const liveStudentCount = (i: Institution) => studentCounts?.[i.id] ?? i.totalStudents;
+  // Live student counts per institution, scoped to the session being viewed
+  // (a new empty session shows 0 everywhere). The stored lifetime counter
+  // is only used while the counts query is still loading.
+  const { data: currentSession } = useCurrentSession();
+  const { data: studentCounts, isSuccess: countsLoaded } = useInstitutionStudentCounts(currentSession?.id);
+  const liveStudentCount = (i: Institution) =>
+    countsLoaded ? (studentCounts?.[i.id] ?? 0) : i.totalStudents;
   const filtered = useMemo(() => institutions.filter(i => {
     const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || i.status === statusFilter;
@@ -70,7 +74,7 @@ export default function InstitutionsPage() {
       phone: i.phone,
       totalStudents: liveStudentCount(i),
       status: i.status,
-    })), [filtered, selection, studentCounts]);
+    })), [filtered, selection, studentCounts, countsLoaded]);
 
   const activeCount = useMemo(() => institutions.filter(i => i.status === 'ACTIVE').length, [institutions]);
   const pendingCount = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);

@@ -30,16 +30,24 @@ function mapStats(d: any): DashboardStats {
   };
 }
 
-/** Aggregate dashboard numbers — refetches every 30s and on window focus. */
-export function useDashboardStats() {
+/**
+ * Aggregate dashboard numbers — scoped to the given session (a new empty
+ * session shows all zeros) and refetched every 30s / on window focus.
+ * Disabled until a session id is known so it never falls back to
+ * counting every session.
+ */
+export function useDashboardStats(sessionId?: string) {
   return useQuery<DashboardStats>({
-    queryKey: ['dashboard', 'stats'],
+    queryKey: ['dashboard', 'stats', sessionId],
     queryFn: async () => {
       const supabase = createClient();
-      const { data, error } = await supabase.rpc('get_dashboard_stats');
+      const { data, error } = await supabase.rpc('get_dashboard_stats', {
+        p_session_id: sessionId!,
+      });
       if (error) throw error;
       return mapStats(data);
     },
+    enabled: !!sessionId,
     refetchInterval: STATS_REFRESH_MS,
     refetchOnWindowFocus: true,
     staleTime: 10 * 1000,
@@ -62,20 +70,22 @@ export function useDashboardInstitutions() {
   });
 }
 
-export function useDashboardRegistrations() {
+export function useDashboardRegistrations(sessionId?: string) {
   return useQuery({
-    queryKey: ['registrations', 'all', undefined],
-    queryFn: () => fetchAllRegistrations(),
+    queryKey: ['registrations', 'all', sessionId],
+    queryFn: () => fetchAllRegistrations(sessionId),
+    enabled: !!sessionId,
     refetchInterval: LISTS_REFRESH_MS,
     refetchOnWindowFocus: true,
     staleTime: 30 * 1000,
   });
 }
 
-export function useDashboardPayments() {
+export function useDashboardPayments(sessionId?: string) {
   return useQuery({
-    queryKey: ['payments', 'all', undefined],
-    queryFn: () => fetchAllPayments(),
+    queryKey: ['payments', 'all', sessionId],
+    queryFn: () => fetchAllPayments(sessionId),
+    enabled: !!sessionId,
     refetchInterval: LISTS_REFRESH_MS,
     refetchOnWindowFocus: true,
     staleTime: 30 * 1000,

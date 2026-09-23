@@ -68,18 +68,27 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
   const isBn = language === "bn";
 
   // ---- Live data (auto-refresh: stats every 30s, lists every 60s + on focus) ----
-  const { data: currentSession } = useCurrentSession();
-  const statsQuery = useDashboardStats();
+  const sessionQuery = useCurrentSession();
+  const currentSession = sessionQuery.data;
+  const sessionId = currentSession?.id;
+  const statsQuery = useDashboardStats(sessionId);
   const institutionsQuery = useDashboardInstitutions();
-  const registrationsQuery = useDashboardRegistrations();
-  const paymentsQuery = useDashboardPayments();
+  const registrationsQuery = useDashboardRegistrations(sessionId);
+  const paymentsQuery = useDashboardPayments(sessionId);
 
   const stats = statsQuery.data ?? ZERO_STATS;
   const institutions = useMemo(() => institutionsQuery.data ?? [], [institutionsQuery.data]);
   const registrations = useMemo(() => registrationsQuery.data ?? [], [registrationsQuery.data]);
   const payments = useMemo(() => paymentsQuery.data ?? [], [paymentsQuery.data]);
 
-  const showSkeleton = statsQuery.isPending || institutionsQuery.isPending;
+  // Disabled queries (no session yet) sit in isPending forever — only treat
+  // them as loading while a session actually exists.
+  const regsLoading = !!sessionId && registrationsQuery.isPending;
+  const paysLoading = !!sessionId && paymentsQuery.isPending;
+  const showSkeleton =
+    sessionQuery.isPending
+    || institutionsQuery.isPending
+    || (!!sessionId && statsQuery.isPending);
 
   // ---- Actionable queues ----
   const pendingRegs = useMemo(() =>
@@ -172,8 +181,8 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
           <div className={`mb-6 flex items-center gap-2.5 px-4 py-3 rounded-md border text-[13px] ${isDark ? "border-red-500/30 bg-red-500/10 text-red-400" : "border-red-200 bg-red-50 text-red-600"}`}>
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {isBn
-              ? 'পরিসংখ্যান আনা যায়নি — Supabase SQL Editor এ 0001 ও 0009 মাইগ্রেশন চালান'
-              : 'Stats unavailable — run migrations 0001 and 0009 in the Supabase SQL Editor'}
+              ? 'পরিসংখ্যান আনা যায়নি — Supabase SQL Editor এ 0001, 0009 ও 0011 মাইগ্রেশন চালান'
+              : 'Stats unavailable — run migrations 0001, 0009 and 0011 in the Supabase SQL Editor'}
           </div>
         )}
 
@@ -246,7 +255,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                   </Link>
                 </div>
                 <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
-                  {registrationsQuery.isPending ? widgetRowsSkeleton
+                  {regsLoading ? widgetRowsSkeleton
                     : pendingRegs.length === 0 ? (
                       <p className={`px-5 py-8 text-center text-[13px] ${subtext}`}>
                         {isBn ? 'কোনো নিবন্ধন অনুমোদনের অপেক্ষায় নেই' : 'No registrations awaiting approval'}
@@ -292,7 +301,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                   </Link>
                 </div>
                 <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
-                  {paymentsQuery.isPending ? widgetRowsSkeleton
+                  {paysLoading ? widgetRowsSkeleton
                     : pendingPayments.length === 0 ? (
                       <p className={`px-5 py-8 text-center text-[13px] ${subtext}`}>
                         {isBn ? 'কোনো পেমেন্ট যাচাইয়ের অপেক্ষায় নেই' : 'No payments awaiting review'}

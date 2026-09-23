@@ -30,7 +30,8 @@ export async function fetchSessions(): Promise<AcademicSession[]> {
   return data.map(mapSession);
 }
 
-export async function fetchCurrentSession(): Promise<AcademicSession | undefined> {
+/** The DB-level current session (is_current = true) — ignores any local view override. */
+export async function fetchGlobalCurrentSession(): Promise<AcademicSession | undefined> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
@@ -42,6 +43,97 @@ export async function fetchCurrentSession(): Promise<AcademicSession | undefined
     return sessions.find(s => s.isCurrent);
   }
   return mapSession(data);
+}
+
+// ---------------------------------------------------------------
+// Per-user "view session" override (institution browsing past sessions)
+//
+// - Super-admin switching sessions sets the GLOBAL is_current flag.
+// - Any other role switching only records a local override in
+//   localStorage — it never touches the global flag, so it only
+//   affects this browser.
+// - The override stores the global session it was created under
+//   (baseSessionId). When the super-admin later changes the global
+//   current session, the base no longer matches and the override
+//   auto-expires — everyone lands on the new session's data.
+// ---------------------------------------------------------------
+
+const viewSessionKey = (userId: string) => `bma_view_session_${userId}`;
+
+export interface ViewSessionOverride {
+  sessionId: string;
+  baseSessionId: string;
+}
+
+export function getViewSessionOverride(userId: string): ViewSessionOverride | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(viewSessionKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.sessionId === 'string' && typeof parsed.baseSessionId === 'string') {
+      return parsed as ViewSessionOverride;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setViewSessionOverride(userId: string, sessionId: string): Promise<void> {
+  const base = await fetchGlobalCurrentSession();
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(
+    viewSessionKey(userId),
+    JSON.stringify({ sessionId, baseSessionId: base?.id ?? '' })
+  );
+}
+
+export function clearViewSessionOverride(userId: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(viewSessionKey(userId));
+}
+
+/** Resolves the local view override, clearing it when it has expired. */
+async function resolveViewSessionOverride(
+  globalCurrent: AcademicSession
+): Promise<AcademicSession | undefined> {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return undefined;
+    const stored = getViewSessionOverride(userId);
+    if (!stored) return undefined;
+    // Auto-expiry: the super-admin switched the global session since
+    // this override was set — drop it and follow the new session.
+    if (stored.baseSessionId !== globalCurrent.id) {
+      clearViewSessionOverride(userId);
+      return undefined;
+    }
+    if (stored.sessionId === globalCurrent.id) return undefined;
+    const sessions = await fetchSessions();
+    const found = sessions.find(s => s.id === stored.sessionId);
+    if (!found) {
+      clearViewSessionOverride(userId);
+      return undefined;
+    }
+    return found;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The session this user is currently viewing: the local view override
+ * if valid, otherwise the global current session.
+ */
+export async function fetchCurrentSession(): Promise<AcademicSession | undefined> {
+  const globalCurrent = await fetchGlobalCurrentSession();
+  if (!globalCurrent) return undefined;
+  const override = await resolveViewSessionOverride(globalCurrent);
+  return override ?? globalCurrent;
 }
 
 export const getCurrentSession = fetchCurrentSession;
@@ -57,6 +149,11 @@ export function useCurrentSession() {
   return useQuery({
     queryKey: ['academic_sessions', 'current'],
     queryFn: fetchCurrentSession,
+    // Live: lets other users notice when the super-admin changes the
+    // global session (override auto-expiry is resolved inside queryFn).
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 5_000,
   });
 }
 
@@ -119,6 +216,17 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: async (id: string) => {
       const supabase = createClient();
+      // Historical records are FK-linked with ON DELETE CASCADE — deleting
+      // a session that still holds data would wipe it permanently.
+      // Refuse so previous sessions stay stored safely.
+      const tables = ['students', 'registrations', 'payments', 'results', 'exams', 'marks'];
+      const counts = await Promise.all(
+        tables.map((table) =>
+          supabase.from(table).select('id', { count: 'exact', head: true }).eq('session_id', id)
+        )
+      );
+      const total = counts.reduce((sum, c) => sum + (c.count || 0), 0);
+      if (total > 0) throw new Error(`SESSION_HAS_DATA:${total}`);
       const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
       if (error) throw error;
     },
@@ -147,7 +255,9 @@ export function useSetCurrentSession() {
       return mapSession(result);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
+      // The global current session changed — refresh every cached dataset
+      // so all pages show the new session's (initially empty) data at once.
+      queryClient.invalidateQueries();
     },
   });
 }

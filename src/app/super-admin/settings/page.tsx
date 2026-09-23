@@ -478,7 +478,19 @@ export default function SuperAdminSettingsPage() {
                           )}>
                           {session.isActive ? (isBn ? 'নিষ্ক্রিয়' : 'Deactivate') : (isBn ? 'সক্রিয়' : 'Activate')}
                         </button>
-                        <button onClick={() => { if (confirm(`Delete "${session.name}"?`)) deleteSession.mutate(session.id); }}
+                        <button onClick={() => { if (confirm(`Delete "${session.name}"?`)) deleteSession.mutate(session.id, {
+                          onError: (err) => {
+                            const msg = String((err as Error)?.message || '');
+                            if (msg.startsWith('SESSION_HAS_DATA')) {
+                              const count = msg.split(':')[1] || '0';
+                              toast("error", isBn
+                                ? `এই সেশনে ${count} টি রেকর্ড আছে — মুছে ফেললে পুরোনো ডেটা স্থায়ীভাবে নষ্ট হবে`
+                                : `This session still has ${count} records — deleting it would permanently wipe the data`);
+                            } else {
+                              toast("error", isBn ? 'সেশন মোছা যায়নি' : 'Could not delete session');
+                            }
+                          },
+                        }); }}
                           className="p-1.5 rounded-md text-red-500 hover:bg-red-500/10 transition-all">
                           <Trash2 className="h-4 w-4" />
                         </button>

@@ -5,8 +5,9 @@ import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut,
 import { Avatar } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuCheckboxItem } from "../ui/dropdown-menu";
 import { useAuth, logout } from "@/lib/auth/auth";
-import { useSessions, useCurrentSession, useSetCurrentSession } from "@/lib/storage/sessions";
+import { useSessions, useCurrentSession, useSetCurrentSession, getViewSessionOverride, setViewSessionOverride, clearViewSessionOverride } from "@/lib/storage/sessions";
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/lib/storage/notifications";
+import { useQueryClient } from "@tanstack/react-query";
 import { Notification } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useRouter, usePathname } from "next/navigation";
@@ -41,12 +42,49 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   };
 
   const handleSessionSwitch = async (sessionId: string) => {
-    if (sessionId !== currentSession?.id) {
+    if (sessionId === currentSession?.id) return;
+    if (isSuperAdmin) {
+      // Super-admin: sets the GLOBAL current session — everyone follows.
       await setCurrentSession.mutateAsync(sessionId);
+    } else if (user) {
+      // Any other role: a local "view session" override that only affects
+      // this browser — never touches the global session flag.
+      await setViewSessionOverride(user.id, sessionId);
+      await queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
     }
   };
 
+  const handleBackToCurrentSession = async () => {
+    if (!user) return;
+    clearViewSessionOverride(user.id);
+    await queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
+  };
+
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const viewOverride = user ? getViewSessionOverride(user.id) : null;
+  const isViewingPastSession = !!viewOverride
+    && !!currentSession
+    && viewOverride.sessionId === currentSession.id
+    && viewOverride.sessionId !== viewOverride.baseSessionId;
+
+  // ---- Session-change watcher ----
+  // When the session being viewed changes (super-admin's global switch,
+  // a local view override, or an override auto-expiring), drop every
+  // cached dataset so no page keeps showing the previous session's data.
+  const queryClient = useQueryClient();
+  const prevSessionIdRef = React.useRef<string | undefined>(undefined);
+  React.useEffect(() => {
+    const sid = currentSession?.id;
+    if (!sid) return; // not loaded yet
+    if (prevSessionIdRef.current === undefined) {
+      prevSessionIdRef.current = sid; // first observation — not a change
+      return;
+    }
+    if (prevSessionIdRef.current !== sid) {
+      prevSessionIdRef.current = sid;
+      queryClient.invalidateQueries();
+    }
+  }, [currentSession?.id, queryClient]);
 
   // ---- Notifications bell ----
   const { data: notifList, isLoading: notifsLoading, isError: notifsError } = useNotifications(user?.id || '');
@@ -111,14 +149,24 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
               )}>
                 <Calendar className="h-3.5 w-3.5" />
                 <span>{currentSession.name}</span>
-                {isSuperAdmin && sessions.length > 1 && (
+                {isViewingPastSession && (
+                  <span className={cn(
+                    'text-[9px] px-1 py-0.5 rounded uppercase tracking-wide font-semibold',
+                    isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-100 text-amber-700'
+                  )}>
+                    {isBn ? 'দেখছেন' : 'Viewing'}
+                  </span>
+                )}
+                {sessions.length > 1 && (
                   <ChevronDown className="h-3 w-3 ml-0.5" />
                 )}
               </button>
             }
           >
             <DropdownMenuLabel className={isDark ? 'text-zinc-400' : 'text-gray-600'}>
-              {isBn ? 'একাডেমিক সেশন' : 'Academic Session'}
+              {isSuperAdmin
+                ? (isBn ? 'সেশন সেটকরুন — সবার জন্য প্রযোজ্য' : 'Set session — applies to everyone')
+                : (isBn ? 'সেশন দেখুন — শুধু আপনার জন্য' : 'View session — only for you')}
             </DropdownMenuLabel>
             <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
             {sessions.map((session) => (
@@ -145,6 +193,18 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
                 )}
               </DropdownMenuItem>
             ))}
+            {isViewingPastSession && (
+              <>
+                <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
+                <DropdownMenuItem
+                  onClick={handleBackToCurrentSession}
+                  className="flex items-center gap-2 text-amber-500"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  {isBn ? 'বর্তমান সেশনে ফিরুন' : 'Back to current session'}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenu>
         )}
 
