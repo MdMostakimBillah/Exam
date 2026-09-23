@@ -77,7 +77,50 @@ const rootStyle: React.CSSProperties = {
   flexDirection: "column",
   boxSizing: "border-box",
   position: "relative",
+  // Stacking context so the negative-z watermark paints above the white
+  // background but behind all card content (and survives html2canvas).
+  isolation: "isolate",
 };
+
+/** Big faded BMA crest behind the whole card — the official watermark. */
+function Watermark() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%) rotate(-30deg)",
+        zIndex: -1,
+        opacity: 0.07,
+        textAlign: "center",
+        pointerEvents: "none",
+        whiteSpace: "nowrap",
+        userSelect: "none",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "120px",
+          fontWeight: 700,
+          letterSpacing: "12px",
+          lineHeight: 1,
+          border: "6px solid #000000",
+          padding: "14px 26px 10px",
+        }}
+      >
+        BMA
+      </div>
+      <div style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "3px", marginTop: "10px" }}>
+        BANGLADESH MADRASAH ASSOCIATION
+      </div>
+      <div style={{ fontSize: "18px", letterSpacing: "2px", marginTop: "4px" }}>
+        বাংলাদেশ মাদ্রাসা এসোসিয়েশন
+      </div>
+    </div>
+  );
+}
 
 /** label-cell + value-cell pair (two <td>s) inside a fields-table row. */
 function FieldRow({
@@ -98,6 +141,7 @@ function FieldRow({
           width: "37mm",
           background: "#ffffff",
           verticalAlign: "middle",
+          textAlign: "center",
         }}
       >
         {label}
@@ -109,6 +153,7 @@ function FieldRow({
           fontSize: "11.5px",
           verticalAlign: "middle",
           wordBreak: "break-word",
+          textAlign: "center",
         }}
       >
         {value}
@@ -145,9 +190,10 @@ function SubjectCell({
         padding: "4.5px 7px",
         fontSize: "11px",
         verticalAlign: "middle",
+        textAlign: "center",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: "8px", textAlign: "center" }}>
         <span>
           <strong>{subject.code} — </strong>
           {subject.name}
@@ -217,6 +263,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
 
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
+      <Watermark />
       {/* ── Header: photo | crest | titles | QR — rule underneath ── */}
       <div
         style={{
@@ -454,6 +501,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                   textTransform: "uppercase",
                   letterSpacing: "0.4px",
                   background: "#ffffff",
+                  textAlign: "center",
                 }}
               >
                 {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
