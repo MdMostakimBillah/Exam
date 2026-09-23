@@ -135,7 +135,7 @@ function FieldRow({
       <td
         style={{
           border: BORDER,
-          padding: "4px 7px",
+          padding: 0,
           fontWeight: 700,
           fontSize: "10.5px",
           width: "37mm",
@@ -144,19 +144,44 @@ function FieldRow({
           textAlign: "center",
         }}
       >
-        {label}
+        {/* Data lives in its own flex-centered div → renderer-proof centering */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            minHeight: "6.5mm",
+            padding: "2px 7px",
+            wordBreak: "break-word",
+          }}
+        >
+          {label}
+        </div>
       </td>
       <td
         style={{
           border: BORDER,
-          padding: "4px 7px",
+          padding: 0,
           fontSize: "11.5px",
+          background: "#ffffff",
           verticalAlign: "middle",
-          wordBreak: "break-word",
           textAlign: "center",
         }}
       >
-        {value}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            minHeight: "6.5mm",
+            padding: "2px 7px",
+            wordBreak: "break-word",
+          }}
+        >
+          {value}
+        </div>
       </td>
     </>
   );
@@ -170,7 +195,11 @@ function SubjectCell({
   bn: boolean;
 }) {
   if (!subject) {
-    return <td style={{ border: BORDER, padding: "4.5px 7px" }} />;
+    return (
+      <td style={{ border: BORDER, padding: 0 }}>
+        <div style={{ minHeight: "6.5mm" }} />
+      </td>
+    );
   }
   const time =
     subject.startTime && subject.endTime
@@ -187,13 +216,24 @@ function SubjectCell({
     <td
       style={{
         border: BORDER,
-        padding: "4.5px 7px",
+        padding: 0,
         fontSize: "11px",
         verticalAlign: "middle",
         textAlign: "center",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "center", gap: "8px", textAlign: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexWrap: "wrap",
+          gap: "4px 8px",
+          textAlign: "center",
+          minHeight: "6.5mm",
+          padding: "2px 7px",
+        }}
+      >
         <span>
           <strong>{subject.code} — </strong>
           {subject.name}
@@ -473,14 +513,28 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               colSpan={4}
               style={{
                 border: BORDER,
-                padding: "5px 6px",
-                textAlign: "center",
+                padding: 0,
                 fontSize: "11.5px",
                 background: "#ffffff",
+                verticalAlign: "middle",
+                textAlign: "center",
               }}
             >
-              <strong>{L("Center Code & Name", "কেন্দ্রের কোড ও নাম")}: </strong>
-              {centerText}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  minHeight: "7mm",
+                  padding: "2px 6px",
+                }}
+              >
+                <span>
+                  <strong>{L("Center Code & Name", "কেন্দ্রের কোড ও নাম")}: </strong>
+                  {centerText}
+                </span>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -495,16 +549,28 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 colSpan={2}
                 style={{
                   border: BORDER,
-                  padding: "4px 7px",
+                  padding: 0,
                   fontWeight: 700,
                   fontSize: "11px",
                   textTransform: "uppercase",
                   letterSpacing: "0.4px",
                   background: "#ffffff",
+                  verticalAlign: "middle",
                   textAlign: "center",
                 }}
               >
-                {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    minHeight: "7mm",
+                    padding: "2px 7px",
+                  }}
+                >
+                  {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
+                </div>
               </td>
             </tr>
             {view.subjects.length === 0 ? (
@@ -513,13 +579,28 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                   colSpan={2}
                   style={{
                     border: BORDER,
-                    padding: "10px 7px",
-                    textAlign: "center",
+                    padding: 0,
                     fontSize: "10.5px",
                     color: "#666666",
+                    verticalAlign: "middle",
+                    textAlign: "center",
                   }}
                 >
-                  {L("No subjects scheduled for this class.", "এই শ্রেণির জন্য কোনো বিষয় নির্ধারিত হয়নি।")}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textAlign: "center",
+                      minHeight: "12mm",
+                      padding: "4px 7px",
+                    }}
+                  >
+                    {L(
+                      "No subjects scheduled for this class.",
+                      "এই শ্রেণির জন্য কোনো বিষয় নির্ধারিত হয়নি।"
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -683,7 +764,14 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           <div style={{ fontSize: "13px", fontWeight: 700 }}>
             {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
           </div>
-          <div style={{ fontSize: "8.5px", color: "#444444", marginTop: "1mm" }}>
+          <div
+            style={{
+              fontSize: "8.5px",
+              color: "#444444",
+              marginTop: "1mm",
+              textAlign: "justify",
+            }}
+          >
             {L("Note:", "নোট:")}{" "}
             {L(
               "This document is system generated. Verify by scanning the QR code or visiting the result page.",
