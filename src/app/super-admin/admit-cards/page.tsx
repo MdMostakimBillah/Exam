@@ -68,8 +68,6 @@ export default function AdmitCardsPage() {
   const [className, setClassName] = useState("");
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState<CardView | null>(null);
-  /** Card chrome language — baked into each view when built. */
-  const lang = isBn ? "bn" : "en";
   const lang = isBn ? "bn" : "en";
   const [staging, setStaging] = useState<Staging | null>(null);
   const stagingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
