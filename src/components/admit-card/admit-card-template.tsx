@@ -92,11 +92,11 @@ function FieldRow({
       <td
         style={{
           border: BORDER,
-          padding: "3.5px 6px",
+          padding: "4px 7px",
           fontWeight: 700,
           fontSize: "10.5px",
           width: "37mm",
-          background: "#f5f5f5",
+          background: "#ffffff",
           verticalAlign: "middle",
         }}
       >
@@ -105,7 +105,7 @@ function FieldRow({
       <td
         style={{
           border: BORDER,
-          padding: "3.5px 6px",
+          padding: "4px 7px",
           fontSize: "11.5px",
           verticalAlign: "middle",
           wordBreak: "break-word",
@@ -263,14 +263,32 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             crossOrigin="anonymous"
             style={{ width: "20mm", height: "20mm", objectFit: "contain", flexShrink: 0 }}
           />
-        ) : null}
+        ) : (
+          <div
+            style={{
+              width: "18mm",
+              height: "18mm",
+              background: "#000000",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+              fontSize: "13px",
+              letterSpacing: "1px",
+              flexShrink: 0,
+            }}
+          >
+            BMA
+          </div>
+        )}
 
         <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
           <div
             style={{
-              fontSize: "17px",
+              fontSize: "18px",
               fontWeight: 700,
-              letterSpacing: "0.4px",
+              letterSpacing: "0.5px",
               textTransform: "uppercase",
               lineHeight: 1.2,
             }}
@@ -282,10 +300,11 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           </div>
           <div
             style={{
-              fontSize: "12.5px",
+              fontSize: "13px",
               fontWeight: 700,
               marginTop: "3px",
               textTransform: "uppercase",
+              letterSpacing: "0.3px",
               lineHeight: 1.25,
             }}
           >
@@ -331,11 +350,11 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           style={{
             display: "inline-block",
             border: "1.5px solid #000000",
-            borderRadius: "3mm",
-            padding: "2px 14px",
-            fontSize: "12.5px",
+            borderRadius: "4mm",
+            padding: "3px 20px",
+            fontSize: "13px",
             fontWeight: 700,
-            letterSpacing: "0.6px",
+            letterSpacing: "1px",
             textTransform: "uppercase",
             background: "#ffffff",
           }}
@@ -400,10 +419,10 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               colSpan={4}
               style={{
                 border: BORDER,
-                padding: "4px 6px",
+                padding: "5px 6px",
                 textAlign: "center",
                 fontSize: "11.5px",
-                background: "#f5f5f5",
+                background: "#ffffff",
               }}
             >
               <strong>{L("Center Code & Name", "কেন্দ্রের কোড ও নাম")}: </strong>
@@ -427,7 +446,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                   fontSize: "11px",
                   textTransform: "uppercase",
                   letterSpacing: "0.4px",
-                  background: "#f5f5f5",
+                  background: "#ffffff",
                 }}
               >
                 {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
@@ -468,43 +487,64 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         ) : null}
       </div>
 
-      {/* ── Signature box: two halves ─────────────────────────────── */}
+      {/* ── Signature box: two equal halves, captions inside ──────── */}
       <div style={{ marginTop: "3.5mm", border: BORDER, display: "flex" }}>
         <div
           style={{
             flex: 1,
-            padding: "4mm 6px 3px",
+            padding: "3mm 6px 2.5mm",
             textAlign: "center",
             borderRight: BORDER,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
           }}
         >
-          <div style={{ height: "13mm" }} />
-          <div style={{ fontSize: "10.5px", fontWeight: 700 }}>
+          <div style={{ height: "9mm" }} />
+          <div style={{ width: "45mm", borderBottom: "1px dotted #000000", margin: "0 auto 4px" }} />
+          <div style={{ fontSize: "10.5px", fontWeight: 700, lineHeight: 1.3 }}>
             {L("Seal & Signature of Head of Institution", "প্রতিষ্ঠান প্রধানের সিল ও স্বাক্ষর")}
           </div>
         </div>
-        <div style={{ flex: 1, padding: "4mm 6px 3px", textAlign: "center" }}>
+        <div
+          style={{
+            flex: 1,
+            padding: "3mm 6px 2.5mm",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+          }}
+        >
           <div
             style={{
-              height: "13mm",
+              height: "9mm",
               display: "flex",
               alignItems: "flex-end",
               justifyContent: "center",
             }}
           >
-            <div style={{ width: "40mm", borderBottom: "1px dotted #000000", height: "6mm" }} />
+            <div style={{ width: "45mm", borderBottom: "1px dotted #000000" }} />
           </div>
-          <div style={{ fontSize: "10.5px", fontWeight: 700 }}>
+          <div style={{ fontSize: "10.5px", fontWeight: 700, lineHeight: 1.3, marginTop: "4px" }}>
             {L("Controller of Examinations", "পরীক্ষা নিয়ন্ত্রক")}
           </div>
-          <div style={{ fontSize: "9px", color: "#333333" }}>
+          <div style={{ fontSize: "9px", color: "#333333", lineHeight: 1.3 }}>
             {L("Secretary, BMA Association", "সাধারণ সম্পাদক, বাংলাদেশ মাদ্রাসা এসোসিয়েশন")}
           </div>
         </div>
       </div>
 
       {/* ── Instructions (left) + controller block (right) ────────── */}
-      <div style={{ display: "flex", gap: "5mm", marginTop: "3.5mm", flex: 1, minHeight: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "5mm",
+          marginTop: "3.5mm",
+          border: BORDER,
+          padding: "3mm 4mm",
+        }}
+      >
         <div style={{ flex: "1 1 70%", minWidth: 0 }}>
           <div
             style={{
@@ -542,10 +582,14 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
 
         <div
           style={{
-            flex: "0 0 34mm",
+            flex: "0 0 30mm",
             textAlign: "center",
             borderLeft: BORDER,
             paddingLeft: "4mm",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {view.qrDataUrl ? (
@@ -554,13 +598,13 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               src={view.qrDataUrl}
               alt="QR"
               crossOrigin="anonymous"
-              style={{ width: "24mm", height: "24mm", display: "block", margin: "0 auto" }}
+              style={{ width: "22mm", height: "22mm", display: "block" }}
             />
           ) : null}
-          <div style={{ fontSize: "8.5px", fontWeight: 700, marginTop: "2mm", lineHeight: 1.25 }}>
+          <div style={{ fontSize: "8.5px", fontWeight: 700, marginTop: "2mm", lineHeight: 1.3 }}>
             {L("CONTROLLER OF EXAMINATIONS", "পরীক্ষা নিয়ন্ত্রক")}
           </div>
-          <div style={{ fontSize: "8.5px", color: "#444444", marginTop: "1mm" }}>
+          <div style={{ fontSize: "8.5px", color: "#444444", marginTop: "1mm", lineHeight: 1.3 }}>
             {L("Generated:", "তৈরি:")}{" "}
             {isValidDate
               ? created.toLocaleString(bn ? "bn-BD" : "en-GB", dateOpts)
@@ -570,18 +614,29 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
-      <div style={{ marginTop: "2mm", paddingTop: "2mm", borderTop: BORDER }}>
-        <div style={{ fontSize: "13px", fontWeight: 700 }}>
-          {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
+      <div
+        style={{
+          marginTop: "auto",
+          paddingTop: "2.5mm",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          gap: "8mm",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "13px", fontWeight: 700 }}>
+            {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
+          </div>
+          <div style={{ fontSize: "8.5px", color: "#444444", marginTop: "1mm" }}>
+            {L("Note:", "নোট:")}{" "}
+            {L(
+              "This document is system generated. Verify by scanning the QR code or visiting the result page.",
+              "এই নথিটি সিস্টেম দ্বারা তৈরি। QR স্ক্যান করে বা ফলাফল পৃষ্ঠায় গিয়ে যাচাই করুন।"
+            )}
+          </div>
         </div>
-        <div style={{ fontSize: "8.5px", color: "#444444", marginTop: "1mm" }}>
-          {L("Note:", "নোট:")}{" "}
-          {L(
-            "This document is system generated. Verify by scanning the QR code or visiting the result page.",
-            "এই নথিটি সিস্টেম দ্বারা তৈরি। QR স্ক্যান করে বা ফলাফল পৃষ্ঠায় গিয়ে যাচাই করুন।"
-          )}
-        </div>
-        <div style={{ fontSize: "8px", color: "#666666", marginTop: "0.5mm" }}>
+        <div style={{ fontSize: "8.5px", color: "#666666", textAlign: "right", flexShrink: 0 }}>
           {L("Generated On:", "তৈরির সময়:")}{" "}
           {isValidDate
             ? created.toLocaleDateString(bn ? "bn-BD" : "en-GB", {
