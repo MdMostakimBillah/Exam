@@ -14,6 +14,7 @@ import { useExams } from "@/lib/storage/exams";
 import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
 import { useCurrentSession } from "@/lib/storage/sessions";
+import { notifySuperAdmins } from "@/lib/storage/notifications";
 import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -267,6 +268,15 @@ export default function InstitutionRegistrationsPage() {
         studentPaymentStatus: "NOT_SUBMITTED",
         paymentAmount: exam.registrationFee,
       });
+
+      // Super-admins get a notification to review the new application
+      // (fire-and-forget — never blocks the submission)
+      notifySuperAdmins(
+        isBn ? 'নতুন নিবন্ধন আবেদন' : 'New registration application',
+        `${newStudent.firstName} ${newStudent.lastName} · ${exam.name} · ${inst!.name}`,
+        'warning',
+        '/super-admin/registrations'
+      ).catch((e) => console.error('[registration-notification] failed (run migration 0008):', e));
 
       toast("success", isBn ? "শিক্ষার্থী ও নিবন্ধন তৈরি হয়েছে" : "Student and registration created");
       setShowModal(false);

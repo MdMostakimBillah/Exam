@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getStudentSession, type StudentSession } from "@/lib/auth/student-auth";
+import { notifySuperAdmins } from "@/lib/storage/notifications";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -191,6 +192,15 @@ export default function PaymentSubmitPage() {
       setSubmitting(false);
       return;
     }
+
+    // Super-admins get a notification to review the student's payment
+    // (fire-and-forget — never blocks the submission)
+    notifySuperAdmins(
+      isBn ? 'শিক্ষার্থীর পেমেন্ট জমা' : 'Student payment submitted',
+      `${student.firstName} ${student.lastName} · ৳${Number(amount).toLocaleString()} · ${student.institutionName}`,
+      'success',
+      '/super-admin/payments'
+    ).catch((e) => console.error('[payment-notification] failed (run migration 0008):', e));
 
     // Update registration student_payment_status
     await supabase

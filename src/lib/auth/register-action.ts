@@ -84,6 +84,26 @@ export async function registerInstitution(data: {
       .update({ admin_user_id: authData.user.id })
       .eq("id", institution.id);
 
+    // 5. Notify super-admins that a new institution awaits approval.
+    //    Service role bypasses RLS; fire-and-forget so a notification
+    //    failure never blocks the registration itself.
+    try {
+      const { data: admins } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("role", "super_admin");
+      if (admins && admins.length > 0) {
+        await supabaseAdmin.from("notifications").insert(admins.map((a) => ({
+          user_id: a.id,
+          title: "New institution registered",
+          message: `${data.name} (${data.code}) is awaiting approval`,
+          type: "warning",
+          read: false,
+          link: "/super-admin/institutions",
+        })));
+      }
+    } catch { /* notification failures never block registration */ }
+
     return { success: true, institutionId: institution.id, userId: authData.user.id };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
