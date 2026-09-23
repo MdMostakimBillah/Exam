@@ -65,8 +65,12 @@ export function openPrintWindow(): Window | null {
 /** Write the card clones into the pre-opened window, then print (A4, no margin). */
 export async function printAdmitCards(win: Window, elements: HTMLElement[]): Promise<void> {
   const body = elements.map((el) => el.outerHTML).join("");
+  // Match the main document: same lang attr + font stack so preview/print/PDF
+  // all resolve fonts identically (Courier New for Latin, Tiro Bangla for Bangla).
+  const cardEl = elements[0]?.querySelector(".admit-card-page");
+  const lang = cardEl?.getAttribute("lang") || "en";
   win.document.write(
-    '<!DOCTYPE html><html><head><meta charset="utf-8" />' +
+    '<!DOCTYPE html><html lang="' + lang + '"><head><meta charset="utf-8" />' +
       "<title>Admit Card</title>" +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiro+Bangla&display=swap" />' +
       "<style>" +
@@ -74,6 +78,7 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
       "html, body { margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }" +
       ".admit-card-page { page-break-after: always; break-after: page; }" +
       ".admit-card-page:last-child { page-break-after: auto; break-after: auto; }" +
+      ".admit-card-page, .admit-card-page * { font-family: 'Courier New', Courier, 'Tiro Bangla', monospace !important; }" +
       "</style></head><body>" + body + "</body></html>"
   );
   win.document.close();

@@ -68,6 +68,9 @@ export default function AdmitCardsPage() {
   const [className, setClassName] = useState("");
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState<CardView | null>(null);
+  /** Card chrome language — baked into each view when built. */
+  const lang = isBn ? "bn" : "en";
+  const lang = isBn ? "bn" : "en";
   const [staging, setStaging] = useState<Staging | null>(null);
   const stagingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const generateMutation = useGenerateAdmitCards();
@@ -206,12 +209,33 @@ export default function AdmitCardsPage() {
       qrDataUrl = "";
     }
 
+    // Exam period for the card's "Exam Period" field (start – end, or single date)
+    const periodParts = [
+      cardExam?.examStartDate,
+      cardExam?.examEndDate,
+    ].filter(Boolean) as string[];
+    const examPeriod =
+      periodParts.length > 0
+        ? periodParts
+            .map((d) => {
+              try {
+                return formatDate(d);
+              } catch {
+                return d;
+              }
+            })
+            .join(" – ")
+        : formatDate(card.examDate);
+
     return {
       key: card.id,
+      lang,
       institutionName: card.institutionName,
       institutionCode: inst?.code || "",
       institutionLogo: inst?.logo,
       examName: card.examName,
+      examCode: cardExam?.code || "",
+      examPeriod,
       academicYear: cardExam?.academicYear,
       sessionName: currentSession?.name || "",
       studentName: student
@@ -232,6 +256,7 @@ export default function AdmitCardsPage() {
       subjects,
       qrDataUrl,
       instructions: card.instructions || DEFAULT_INSTRUCTIONS,
+      createdAt: card.createdAt,
     };
   };
 

@@ -78,6 +78,15 @@ body.lang-bn button {
   font-weight: 400;
 }
 
+/* Admit card keeps its typewriter font (Courier New for Latin) in BOTH languages.
+   Must beat `html.lang-bn *` (specificity 0,1,1+) so preview/PDF/print all match. */
+html.lang-bn body .admit-card-page,
+html.lang-bn body .admit-card-page *,
+html body .admit-card-page,
+html body .admit-card-page * {
+  font-family: 'Courier New', Courier, 'Tiro Bangla', monospace !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
