@@ -8,6 +8,7 @@ import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useInstitutions, useCreateInstitution, useUpdateInstitution, useDeleteInstitution } from "@/lib/storage/institutions";
+import { useInstitutionStudentCounts } from "@/lib/storage/students";
 import { Institution } from "@/lib/types";
 import { Building2, Search, Users, Mail, Phone, Trash2, Eye, Check, X, Ban, Plus, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem, TableActionDivider } from "@/components/ui/table-action-menu";
@@ -39,6 +40,10 @@ export default function InstitutionsPage() {
   const createInstitutionMutation = useCreateInstitution();
   const updateInstitutionMutation = useUpdateInstitution();
   const deleteInstitutionMutation = useDeleteInstitution();
+  // Live student counts per institution (falls back to the stored
+  // counter only while the counts query is still loading)
+  const { data: studentCounts } = useInstitutionStudentCounts();
+  const liveStudentCount = (i: Institution) => studentCounts?.[i.id] ?? i.totalStudents;
   const filtered = useMemo(() => institutions.filter(i => {
     const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || i.status === statusFilter;
@@ -63,9 +68,9 @@ export default function InstitutionsPage() {
       code: i.code,
       email: i.email,
       phone: i.phone,
-      totalStudents: i.totalStudents,
+      totalStudents: liveStudentCount(i),
       status: i.status,
-    })), [filtered, selection]);
+    })), [filtered, selection, studentCounts]);
 
   const activeCount = useMemo(() => institutions.filter(i => i.status === 'ACTIVE').length, [institutions]);
   const pendingCount = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
@@ -245,7 +250,7 @@ export default function InstitutionsPage() {
                     </TableCell>
                     <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                       <span className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5" /> {inst.totalStudents}
+                        <Users className="h-3.5 w-3.5" /> {liveStudentCount(inst)}
                       </span>
                     </TableCell>
                     <TableCell><Badge status={inst.status} /></TableCell>

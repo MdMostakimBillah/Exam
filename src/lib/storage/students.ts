@@ -197,6 +197,36 @@ export async function deleteStudent(id: string): Promise<boolean> {
   return !error;
 }
 
+/**
+ * Live per-institution student counts (institution_id -> count),
+ * computed directly from the students table instead of the stale
+ * institutions.total_students counter (which the app never updated).
+ * Refetches every 30s and on window focus so the Institutions table
+ * "Students" column stays dynamic without a page reload.
+ */
+export function useInstitutionStudentCounts() {
+  return useQuery<Record<string, number>>({
+    queryKey: ['students', 'counts', 'by-institution'],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from(SUPABASE_TABLE)
+        .select('institution_id');
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data || []) {
+        if (row.institution_id) {
+          counts[row.institution_id] = (counts[row.institution_id] || 0) + 1;
+        }
+      }
+      return counts;
+    },
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
+  });
+}
+
 export function useStudents(sessionId?: string, page?: number, pageSize?: number) {
   return useQuery({
     queryKey: ['students', sessionId, page, pageSize],
