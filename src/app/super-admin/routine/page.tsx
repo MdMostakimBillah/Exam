@@ -11,7 +11,7 @@ import { useExams, useUpdateExam } from "@/lib/storage/exams";
 import { useClasses } from "@/lib/storage/classes";
 import { formatDate } from "@/lib/storage/storage";
 import { ExamRoutineSlot } from "@/lib/types";
-import { CalendarDays, Save, Sparkles, AlertTriangle, FileText, Clock } from "lucide-react";
+import { CalendarDays, Save, Sparkles, AlertTriangle, FileText, Clock, Copy, ClipboardPaste } from "lucide-react";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 type SlotDraft = { date: string; startTime: string; endTime: string };
@@ -52,8 +52,11 @@ export default function RoutinePage() {
   const [mounted, setMounted] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState("");
   const [slots, setSlots] = useState<Record<string, SlotDraft>>({});
+  // Copy/paste between classes: source class + its positional slot sequence.
+  const [copiedRoutine, setCopiedRoutine] = useState<{ fromId: string; fromName: string; slots: SlotDraft[] } | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setCopiedRoutine(null); }, [selectedExamId]);
 
   const { data: currentSession } = useCurrentSession();
   const { data: exams = [], isFetching } = useExams(currentSession?.id, 1, 100);
@@ -128,6 +131,40 @@ export default function RoutinePage() {
     });
   };
 
+  /** Copy one class's schedule (positional: subject 1st, 2nd, ...) to paste onto another class. */
+  const copyClassRoutine = (sec: (typeof classSections)[0]) => {
+    const seq: SlotDraft[] = sec.subjects.map(s => {
+      const v = slots[slotKey(sec.classId, s.id)];
+      return v ? { ...v } : { date: '', startTime: '', endTime: '' };
+    });
+    setCopiedRoutine({ fromId: sec.classId, fromName: sec.name, slots: seq });
+    const count = seq.filter(x => x.date).length;
+    toast('success', isBn
+      ? `"${sec.name}" এর রুটিন কপি হয়েছে (${count} টি স্লট)`
+      : `Routine of "${sec.name}" copied (${count} slot(s))`);
+  };
+
+  /** Paste the copied schedule onto this class, subject-by-position (overwrites, extra subjects cleared). */
+  const pasteClassRoutine = (sec: (typeof classSections)[0]) => {
+    if (!copiedRoutine) return;
+    setSlots(prev => {
+      const next = { ...prev };
+      sec.subjects.forEach((s, i) => {
+        next[slotKey(sec.classId, s.id)] = { ...(copiedRoutine.slots[i] || { date: '', startTime: '', endTime: '' }) };
+      });
+      return next;
+    });
+    const pasted = Math.min(copiedRoutine.slots.length, sec.subjects.length);
+    toast('success', isBn
+      ? `"${copiedRoutine.fromName}" → "${sec.name}": ${pasted} টি স্লট পেস্ট হয়েছে — প্রয়োগ করতে "রুটিন সংরক্ষণ" চাপুন`
+      : `Pasted ${pasted} slot(s) "${copiedRoutine.fromName}" → "${sec.name}" — click "Save Routine" to apply`);
+    if (sec.subjects.length > copiedRoutine.slots.length) {
+      toast('warning', isBn
+        ? `${sec.subjects.length - copiedRoutine.slots.length} টি বিষয়ের জন্য সোর্সে স্লট ছিল না — খালি রাখা হয়েছে`
+        : `${sec.subjects.length - copiedRoutine.slots.length} subject(s) had no slot in the source — left unscheduled`);
+    }
+  };
+
   /** Spread each class's subjects across the window from day 1 (keeps existing times). */
   const autoSchedule = () => {
     if (!exam || days.length === 0) return;
@@ -194,7 +231,10 @@ export default function RoutinePage() {
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
   const iconColor = isDark ? "text-white" : "text-zinc-900";
-  const inputCls = cn("h-9 text-[12px]", isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200");
+  const inputCls = cn(
+    "h-9 text-[12px] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100",
+    isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200"
+  );
   const hasWindow = !!exam && days.length > 0;
   const hasSubjects = !!exam && exam.subjects.length > 0;
   const saving = updateExamMutation.isPending;
@@ -329,12 +369,39 @@ export default function RoutinePage() {
                     <CalendarDays className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
                     <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{sec.name}</h3>
                   </div>
-                  <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium",
-                    sec.scheduled === sec.subjects.length && sec.subjects.length > 0
-                      ? "bg-green-500/10 text-green-500"
-                      : isDark ? "bg-white/[0.06] text-zinc-400" : "bg-zinc-100 text-zinc-500")}>
-                    {sec.scheduled}/{sec.subjects.length} {isBn ? 'নির্ধারিত' : 'scheduled'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => copyClassRoutine(sec)}
+                      disabled={sec.scheduled === 0}
+                      title={isBn ? 'এই শ্রেণীর রুটিন কপি করুন' : "Copy this class's routine"}
+                      className={cn(
+                        "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                        copiedRoutine?.fromId === sec.classId
+                          ? isDark ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-green-50 text-green-700 border border-green-200"
+                          : isDark ? "bg-white/[0.08] text-zinc-300 hover:bg-white/[0.12] border border-transparent" : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
+                      )}
+                    >
+                      <Copy className="h-3 w-3" /> {isBn ? 'কপি' : 'Copy'}
+                    </button>
+                    {copiedRoutine && copiedRoutine.fromId !== sec.classId && (
+                      <button
+                        onClick={() => pasteClassRoutine(sec)}
+                        title={isBn ? `"${copiedRoutine.fromName}" থেকে পেস্ট করুন` : `Paste from "${copiedRoutine.fromName}"`}
+                        className={cn(
+                          "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors",
+                          isDark ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30" : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                        )}
+                      >
+                        <ClipboardPaste className="h-3 w-3" /> {isBn ? `পেস্ট (${copiedRoutine.fromName})` : `Paste (${copiedRoutine.fromName})`}
+                      </button>
+                    )}
+                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium",
+                      sec.scheduled === sec.subjects.length && sec.subjects.length > 0
+                        ? "bg-green-500/10 text-green-500"
+                        : isDark ? "bg-white/[0.06] text-zinc-400" : "bg-zinc-100 text-zinc-500")}>
+                      {sec.scheduled}/{sec.subjects.length} {isBn ? 'নির্ধারিত' : 'scheduled'}
+                    </span>
+                  </div>
                 </div>
                 {sec.subjects.length === 0 ? (
                   <div className={`px-5 py-4 text-center text-[11px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
@@ -342,7 +409,7 @@ export default function RoutinePage() {
                   </div>
                 ) : (
                   <div className="p-4">
-                    <div className="grid grid-cols-[1fr_170px_90px_90px] gap-2 mb-2 px-1">
+                    <div className="grid grid-cols-[1fr_170px_110px_110px] gap-2 mb-2 px-1">
                       <span className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'বিষয়' : 'Subject'}</span>
                       <span className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'তারিখ' : 'Date'}</span>
                       <span className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'শুরু' : 'Start'}</span>
@@ -356,7 +423,7 @@ export default function RoutinePage() {
                         const dateOptions = days.map(d => ({ label: dayLabel(d), value: d }));
                         if (outsideWindow) dateOptions.unshift({ label: `${v.date} ⚠`, value: v.date });
                         return (
-                          <div key={s.id} className="grid grid-cols-[1fr_170px_90px_90px] gap-2 items-center">
+                          <div key={s.id} className="grid grid-cols-[1fr_170px_110px_110px] gap-2 items-center">
                             <div className="min-w-0">
                               <p className={`text-[12px] font-medium truncate ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>{s.name}</p>
                               <p className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>{s.fullMarks} {isBn ? 'নম্বর' : 'marks'}</p>
@@ -370,8 +437,10 @@ export default function RoutinePage() {
                                 outsideWindow ? "border-amber-500/50" : "",
                                 isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200")}
                             />
-                            <Input type="time" value={v.startTime} onChange={(e) => setSlot(key, { startTime: e.target.value })} className={inputCls} />
-                            <Input type="time" value={v.endTime} onChange={(e) => setSlot(key, { endTime: e.target.value })} className={inputCls} />
+                            <Input type="time" value={v.startTime} onChange={(e) => setSlot(key, { startTime: e.target.value })}
+                              className={inputCls} style={{ colorScheme: isDark ? 'dark' : 'light' }} />
+                            <Input type="time" value={v.endTime} onChange={(e) => setSlot(key, { endTime: e.target.value })}
+                              className={inputCls} style={{ colorScheme: isDark ? 'dark' : 'light' }} />
                           </div>
                         );
                       })}

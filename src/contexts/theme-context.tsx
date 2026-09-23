@@ -16,6 +16,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
+  // Native form controls (date/time pickers) follow `color-scheme`, NOT the
+  // .dark class — without this, dark mode draws black picker icons on dark inputs.
+  root.style.colorScheme = theme;
   if (theme === "light") {
     root.classList.remove("dark");
     root.classList.add("light");
