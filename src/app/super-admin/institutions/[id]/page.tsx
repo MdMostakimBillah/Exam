@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { usePaymentsByInstitution } from "@/lib/storage/payments";
 import { useResultsByInstitution } from "@/lib/storage/results";
 import { useCertificatesByInstitution } from "@/lib/storage/certificates";
+import { Student, Registration } from "@/lib/types";
 import { Building2, Users, CreditCard, Award, ArrowLeft, Mail, Phone, MapPin, Calendar } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -27,10 +28,36 @@ export default function InstitutionDetailPage() {
 
   const { data: inst } = useInstitutionById(params.id as string);
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '');
-  const { data: regs = [] } = useRegistrationsByInstitution(inst?.id || '');
+  // Fetch enough registrations (newest first) to derive each student's
+  // actual status from their latest application
+  const { data: regs = [] } = useRegistrationsByInstitution(inst?.id || '', undefined, 1, 200);
   const { data: payments = [] } = usePaymentsByInstitution(inst?.id || '');
   const { data: results = [] } = useResultsByInstitution(inst?.id || '');
   const { data: certs = [] } = useCertificatesByInstitution(inst?.id || '');
+
+  // studentId -> their newest registration
+  const regByStudent = useMemo(() => {
+    const map = new Map<string, Registration>();
+    for (const r of regs) {
+      const cur = map.get(r.studentId);
+      if (!cur || new Date(r.createdAt) >= new Date(cur.createdAt)) {
+        map.set(r.studentId, r);
+      }
+    }
+    return map;
+  }, [regs]);
+
+  /**
+   * The student's ACTUAL status on this page:
+   *  - SUSPENDED/INACTIVE student → stays suspended regardless of applications
+   *  - otherwise the latest application decides: APPROVED/VERIFIED (green),
+   *    PENDING/PAYMENT_PENDING (amber), REJECTED (red)
+   *  - no application yet → the student's own status (ACTIVE/PENDING)
+   */
+  const deriveStudentStatus = (s: Student): string => {
+    if (s.status === 'SUSPENDED' || s.status === 'INACTIVE') return s.status;
+    return regByStudent.get(s.id)?.status ?? s.status;
+  };
 
   if (!mounted) return <InstitutionSkeleton isDark={isDark} />;
   if (!inst) return <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a0b]' : 'bg-zinc-50'}`}><p className={isDark ? 'text-zinc-400' : 'text-zinc-500'}>Institution not found</p></div>;
@@ -128,7 +155,7 @@ export default function InstitutionDetailPage() {
                                 <TableCell className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{s.firstName} {s.lastName}</TableCell>
                                 <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{s.studentId}</TableCell>
                                 <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{s.class}</TableCell>
-                                <TableCell><Badge status={s.status} /></TableCell>
+                                <TableCell><Badge status={deriveStudentStatus(s)} /></TableCell>
                               </TableRow>
                             ))
                           )}
