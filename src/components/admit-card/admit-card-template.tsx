@@ -66,7 +66,7 @@ export interface CardView {
 const rootStyle: React.CSSProperties = {
   width: "210mm",
   height: "297mm",
-  padding: "6mm 7mm 5mm",
+  padding: "5mm 7mm 5mm",
   background: "#ffffff",
   color: "#000000",
   fontFamily: FONT,
@@ -364,7 +364,14 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Bordered fields table ─────────────────────────────────── */}
-      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          tableLayout: "fixed",
+          marginTop: "0.5mm",
+        }}
+      >
         <tbody>
           <tr>
             <FieldRow label={L("Examination Code", "পরীক্ষার কোড")} value={view.examCode || "—"} />
