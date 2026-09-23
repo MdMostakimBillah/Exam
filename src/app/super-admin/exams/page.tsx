@@ -9,7 +9,7 @@ import { useExams, useCreateExam, useUpdateExam, useDeleteExam, useExamRegistrat
 import { useClasses, useActiveClasses } from "@/lib/storage/classes";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Exam } from "@/lib/types";
-import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X, Copy, ClipboardPaste } from "lucide-react";
+import { FileText, Search, Plus, Edit, Trash2, Calendar, Users, CreditCard, FileDown, ArrowLeft, ArrowRight, X, Copy, ClipboardPaste, RefreshCw } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -34,6 +34,22 @@ function examDateRange(exam: Exam): string {
     : s;
 }
 
+/** Bilingual labels for every allowed exams.status value (DB CHECK constraint). */
+const STATUS_LABELS: Record<string, { en: string; bn: string }> = {
+  DRAFT: { en: 'Draft', bn: 'খসড়া' },
+  OPEN: { en: 'Active (Open)', bn: 'চালু (Active)' },
+  CLOSED: { en: 'Closed', bn: 'বন্ধ' },
+  EXAM_COMPLETED: { en: 'Exam Completed', bn: 'পরীক্ষা সম্পন্ন' },
+  RESULT_PROCESSING: { en: 'Result Processing', bn: 'ফল প্রক্রিয়াকরণ' },
+  PUBLISHED: { en: 'Published', bn: 'প্রকাশিত' },
+  ARCHIVED: { en: 'Archived', bn: 'সংরক্ষিত' },
+};
+
+function statusLabel(status: string, isBn: boolean): string {
+  const l = STATUS_LABELS[status];
+  return l ? (isBn ? l.bn : l.en) : status;
+}
+
 export default function ExamsPage() {
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
@@ -47,6 +63,8 @@ export default function ExamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [statusExam, setStatusExam] = useState<Exam | null>(null);
+  const [newStatus, setNewStatus] = useState('');
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [examStep, setExamStep] = useState(1);
   const [copiedSubjects, setCopiedSubjects] = useState<{ name: string; fullMarks: number; passMarks: number; duration: number; negativeMarks: number }[] | null>(null);
@@ -184,6 +202,34 @@ export default function ExamsPage() {
       toast('success', isBn ? 'পরীক্ষা মুছে ফেলা হয়েছে' : 'Exam deleted');
     }
     setMenuOpenId(null);
+  };
+
+  const openStatusModal = (exam: Exam) => {
+    // Sensible default: DRAFT -> activate (OPEN); OPEN -> CLOSE; CLOSED -> reopen.
+    const next = exam.status === 'DRAFT' ? 'OPEN'
+      : exam.status === 'OPEN' ? 'CLOSED'
+      : exam.status === 'CLOSED' ? 'OPEN'
+      : exam.status;
+    setStatusExam(exam);
+    setNewStatus(next);
+    setMenuOpenId(null);
+  };
+
+  const handleStatusSave = async () => {
+    if (!statusExam || !newStatus) return;
+    if (newStatus === statusExam.status) {
+      setStatusExam(null);
+      return;
+    }
+    try {
+      await updateExamMutation.mutateAsync({ id: statusExam.id, data: { status: newStatus as Exam['status'] } });
+      toast('success', isBn
+        ? `স্ট্যাটাস পরিবর্তন: ${statusLabel(statusExam.status, true)} → ${statusLabel(newStatus, true)}`
+        : `Status changed: ${statusLabel(statusExam.status, false)} → ${statusLabel(newStatus, false)}`);
+      setStatusExam(null);
+    } catch (err: any) {
+      toast('error', isBn ? 'স্ট্যাটাস পরিবর্তন করা যায়নি' : (err?.message || 'Failed to change status'));
+    }
   };
 
   const toggleClass = (classId: string) => {
@@ -407,6 +453,9 @@ export default function ExamsPage() {
                         <TableActionMenu id={exam.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
                           <TableActionItem onClick={() => handleEdit(exam)} isDark={isDark}>
                             <Edit className="h-3.5 w-3.5" /> {isBn ? 'সম্পাদনা' : 'Edit'}
+                          </TableActionItem>
+                          <TableActionItem onClick={() => openStatusModal(exam)} isDark={isDark}>
+                            <RefreshCw className="h-3.5 w-3.5" /> {isBn ? 'স্ট্যাটাস পরিবর্তন' : 'Change Status'}
                           </TableActionItem>
                           <TableActionItem onClick={() => handleDelete(exam)} isDark={isDark} variant="danger">
                             <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
@@ -706,6 +755,56 @@ export default function ExamsPage() {
             </div>
           </div>
         </div>
+        </div>
+      )}
+
+      {/* Change Status Modal */}
+      {statusExam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setStatusExam(null)} />
+          <div className={`${isDark ? 'bg-[#141416] border border-white/[0.06]' : 'bg-white border-zinc-200'} rounded-lg shadow-2xl max-w-sm w-full relative z-50 overflow-hidden animate-scaleIn`}>
+            <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+              <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                {isBn ? 'স্ট্যাটাস পরিবর্তন' : 'Change Status'}
+              </h3>
+              <button onClick={() => setStatusExam(null)} className={`rounded-md p-1.5 transition-all ${isDark ? "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05]" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"}`}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-4 py-4 space-y-3">
+              <div className={`rounded-md border px-3 py-2.5 ${isDark ? 'bg-white/[0.02] border-white/[0.06]' : 'bg-zinc-50 border-zinc-200'}`}>
+                <p className={`text-[13px] font-medium ${isDark ? 'text-white' : 'text-zinc-900'}`}>{statusExam.name}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{isBn ? 'বর্তমান' : 'Current'}:</span>
+                  <Badge status={statusExam.status} />
+                </div>
+              </div>
+              <div>
+                <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'নতুন স্ট্যাটাস' : 'New Status'}</label>
+                <Select
+                  options={Object.entries(STATUS_LABELS).map(([value, l]) => ({ label: isBn ? l.bn : l.en, value }))}
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")}
+                />
+                <p className={`text-[10px] mt-1.5 ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                  {isBn ? '"Active (Open)" নির্বাচন করলে পরীক্ষাটি চালু হবে।' : 'Pick "Active (Open)" to activate the exam.'}
+                </p>
+              </div>
+            </div>
+            <div className={`px-4 py-3 border-t flex items-center justify-end gap-2 ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
+              <button onClick={() => setStatusExam(null)} className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900"}`}>
+                {isBn ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleStatusSave}
+                disabled={updateExamMutation.isPending}
+                className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+              >
+                {updateExamMutation.isPending ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (isBn ? 'সংরক্ষণ' : 'Save')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -116,9 +116,25 @@ export interface Exam {
   lateFee: number;
   classes: string[];
   subjects: ExamSubject[];
+  /** Day-by-day schedule built on the Routine page — dates fall inside examStartDate..examEndDate. */
+  routine?: ExamRoutineSlot[];
   status: ExamStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One scheduled slot of an exam routine: a class's subject on a day inside the exam window. */
+export interface ExamRoutineSlot {
+  id: string;
+  classId: string;
+  subjectId: string;
+  subjectName: string;
+  /** YYYY-MM-DD, inside examStartDate..examEndDate */
+  date: string;
+  /** HH:MM */
+  startTime?: string;
+  /** HH:MM */
+  endTime?: string;
 }
 
 export interface ExamSubject {

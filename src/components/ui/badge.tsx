@@ -9,7 +9,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 function Badge({ className, status, variant = 'default', children, ...props }: BadgeProps) {
   const getStatusClasses = (status: string) => {
     const s = status.toUpperCase();
-    if (s === 'ACTIVE' || s === 'APPROVED' || s === 'PAID' || s === 'CONFIRMED' || s === 'PUBLISHED' || s === 'VERIFIED' || s === 'GENERATED' || s === 'ELIGIBLE') {
+    if (s === 'ACTIVE' || s === 'OPEN' || s === 'APPROVED' || s === 'PAID' || s === 'CONFIRMED' || s === 'PUBLISHED' || s === 'VERIFIED' || s === 'GENERATED' || s === 'ELIGIBLE') {
       return 'bg-green-500/10 text-green-500 border-green-500/20';
     }
     if (s === 'PENDING' || s === 'PAYMENT_PENDING' || s === 'DRAFT' || s === 'REVIEW') {
