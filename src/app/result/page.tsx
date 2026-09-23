@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { fetchResults } from "@/lib/storage/results";
@@ -23,6 +23,12 @@ export default function ResultPage() {
   const [dob, setDob] = useState("");
   const [roll, setRoll] = useState("");
   const [searched, setSearched] = useState(false);
+
+  // Admit-card QR codes open /result?reg=REGNO — prefill the registration field.
+  useEffect(() => {
+    const reg = new URLSearchParams(window.location.search).get("reg");
+    if (reg) setRegNumber(reg);
+  }, []);
 
   const {
     data: results = [],

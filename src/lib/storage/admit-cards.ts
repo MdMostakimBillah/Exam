@@ -1,4 +1,4 @@
-import { AdmitCard } from '../types';
+import { AdmitCard, Registration, Student, ExamCenter } from '../types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentSession } from './sessions';
@@ -111,5 +111,167 @@ export function useDeleteAdmitCard() {
   return useMutation({
     mutationFn: (id: string) => deleteAdmitCard(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admit_cards'] }),
+  });
+}
+
+/** Default bilingual directions printed in the card's footer box. */
+export const DEFAULT_INSTRUCTIONS = [
+  '1. The examinee must bring the Registration Card along with the Admit Card in the exam hall.',
+  '2. The examinee must sign the attendance sheet for each subject in the exam hall.',
+  '১. পরীক্ষার্থীকে নিবন্ধন কার্ডসহ প্রবেশপত্র পরীক্ষাকক্ষে আনতে হবে।',
+  '২. প্রতিটি বিষয়ের পরীক্ষায় উপস্থিতি শীটে স্বাক্ষর করতে হবে।',
+].join('\n');
+
+/** Every registration_id that already has a card in this session (paged past the 1000-row cap). */
+async function fetchExistingRegistrationIds(sessionId: string): Promise<Set<string>> {
+  const supabase = createClient();
+  const ids = new Set<string>();
+  const PAGE = 1000;
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from('admit_cards')
+      .select('registration_id')
+      .eq('session_id', sessionId)
+      .range(from, from + PAGE - 1);
+    if (error) break;
+    data?.forEach((r: { registration_id: string }) => ids.add(r.registration_id));
+    if (!data || data.length < PAGE) break;
+  }
+  return ids;
+}
+
+export interface GenerateAdmitCardsInput {
+  sessionId: string;
+  examName: string;
+  /** YYYY-MM-DD — exam.examStartDate || exam.examDate (exam_date is NOT NULL) */
+  examDate: string;
+  className: string;
+  /** APPROVED registrations for this exam + class (filtered by the page) */
+  regs: Registration[];
+  /** Students of the class — must include exam_roll */
+  students: Student[];
+  /** Session exam centers */
+  centers: ExamCenter[];
+}
+
+export interface GenerateAdmitCardsResult {
+  /** New cards inserted */
+  created: number;
+  /** Registrations that already had a card (skipped — re-run safe) */
+  existing: number;
+  /** Registrations skipped because the student has no exam roll yet */
+  noRoll: number;
+  /** No exam centers configured — center text stored as "TBD" */
+  noCenters: boolean;
+  /** Centers whose allocated will exceed their capacity after this run */
+  overCapacity: string[];
+  /** Registrations routed to the first center because no center had a free seat */
+  fallbackToFirst: number;
+}
+
+/**
+ * Generate admit cards for one exam + class. Re-run safe:
+ * - existing registration_ids are skipped (unique index is the backstop),
+ * - students without an exam roll are skipped (roll is NOT NULL),
+ * - center = the one linked to the student's institution
+ *          -> else first center with a free seat (capacity 0 = unlimited)
+ *          -> else the first center at all (+ warning),
+ * - seat accounting (allocated) only runs for newly created rows.
+ */
+export async function generateAdmitCards(input: GenerateAdmitCardsInput): Promise<GenerateAdmitCardsResult> {
+  const supabase = createClient();
+  const existing = await fetchExistingRegistrationIds(input.sessionId);
+  const studentById = new Map(input.students.map(s => [s.id, s]));
+  // Oldest first so "(001)" codes and fallback picks stay stable.
+  const sortedCenters = [...input.centers].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const allocDelta = new Map<string, number>();
+  const rows: Record<string, unknown>[] = [];
+  let existingCount = 0;
+  let noRoll = 0;
+  let fallbackToFirst = 0;
+
+  for (const reg of input.regs) {
+    if (existing.has(reg.id)) { existingCount++; continue; }
+    const student = studentById.get(reg.studentId);
+    if (!student?.examRoll) { noRoll++; continue; }
+
+    let center = sortedCenters.find(c => c.institutionId && c.institutionId === reg.institutionId);
+    if (!center) {
+      center = sortedCenters.find(c =>
+        (c.capacity || 0) <= 0 || (c.allocated || 0) + (allocDelta.get(c.id) || 0) < c.capacity
+      );
+      if (!center && sortedCenters.length > 0) {
+        center = sortedCenters[0];
+        fallbackToFirst++;
+      }
+    }
+
+    const centerText = center
+      ? (center.address ? `${center.name} – ${center.address}` : center.name)
+      : 'TBD';
+    if (center) allocDelta.set(center.id, (allocDelta.get(center.id) || 0) + 1);
+
+    rows.push({
+      session_id: input.sessionId,
+      registration_id: reg.id,
+      student_id: reg.studentId,
+      student_name: reg.studentName,
+      institution_name: reg.institutionName,
+      exam_name: input.examName,
+      class_name: input.className,
+      roll: student.examRoll,
+      registration_number: reg.registrationNumber,
+      exam_date: input.examDate,
+      exam_center: centerText,
+      qr_code: `/result?reg=${reg.registrationNumber}`,
+      instructions: DEFAULT_INSTRUCTIONS,
+    });
+  }
+
+  // Bulk insert; on a race (unique violation) fall back to row-by-row.
+  let created = 0;
+  if (rows.length > 0) {
+    const { error } = await supabase.from('admit_cards').insert(rows);
+    if (!error) created = rows.length;
+    else if (error.code === '23505') {
+      for (const row of rows) {
+        const { error: rowError } = await supabase.from('admit_cards').insert(row);
+        if (!rowError) created++;
+      }
+    } else throw error;
+  }
+
+  // Seat accounting for the centers we handed out this run.
+  const overCapacity: string[] = [];
+  for (const [centerId, delta] of allocDelta) {
+    const center = sortedCenters.find(c => c.id === centerId);
+    if (!center) continue;
+    const next = (center.allocated || 0) + delta;
+    if ((center.capacity || 0) > 0 && next > center.capacity) overCapacity.push(center.name);
+    await supabase
+      .from('exam_centers')
+      .update({ allocated: next, updated_at: new Date().toISOString() })
+      .eq('id', centerId);
+  }
+
+  return {
+    created,
+    existing: existingCount,
+    noRoll,
+    noCenters: rows.length > 0 && sortedCenters.length === 0,
+    overCapacity,
+    fallbackToFirst,
+  };
+}
+
+export function useGenerateAdmitCards() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: generateAdmitCards,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admit_cards'] });
+      qc.invalidateQueries({ queryKey: ['exam_centers'] });
+    },
   });
 }
