@@ -109,6 +109,9 @@ export interface Exam {
   registrationStartDate: string;
   registrationEndDate: string;
   examDate: string;
+  /** Exam window (routine is built inside these dates). examDate stays synced to examStartDate for legacy readers. */
+  examStartDate?: string;
+  examEndDate?: string;
   registrationFee: number;
   lateFee: number;
   classes: string[];

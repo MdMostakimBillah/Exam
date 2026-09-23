@@ -5,7 +5,7 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'exams';
 
-const EXAM_LIST_COLUMNS = 'id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at';
+const EXAM_LIST_COLUMNS = 'id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,exam_start_date,exam_end_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -20,6 +20,8 @@ function mapExam(data: any): Exam {
     registrationStartDate: data.registration_start_date,
     registrationEndDate: data.registration_end_date,
     examDate: data.exam_date,
+    examStartDate: data.exam_start_date,
+    examEndDate: data.exam_end_date,
     registrationFee: data.registration_fee,
     lateFee: data.late_fee,
     classes: data.classes || [],
@@ -52,7 +54,7 @@ export async function fetchExamsFull(sessionId?: string): Promise<Exam[]> {
   if (!sid) return [];
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at')
+    .select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,exam_start_date,exam_end_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at')
     .eq('session_id', sid)
     .order('created_at', { ascending: false });
   if (error || !data) return [];
@@ -60,7 +62,7 @@ export async function fetchExamsFull(sessionId?: string): Promise<Exam[]> {
 }
 
 export async function fetchExamById(id: string): Promise<Exam | undefined> {
-  const { data, error } = await createClient().from(SUPABASE_TABLE).select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at').eq('id', id).single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,exam_start_date,exam_end_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at').eq('id', id).single();
   if (error || !data) return undefined;
   return mapExam(data);
 }
@@ -77,14 +79,16 @@ export async function createExam(data: Omit<Exam, 'id' | 'createdAt' | 'updatedA
       description: data.description,
       registration_start_date: data.registrationStartDate,
       registration_end_date: data.registrationEndDate,
-      exam_date: data.examDate,
+      exam_date: data.examDate || null,
+      exam_start_date: data.examStartDate || null,
+      exam_end_date: data.examEndDate || null,
       registration_fee: data.registrationFee,
       late_fee: data.lateFee,
       classes: data.classes,
       subjects: data.subjects,
       status: data.status,
     })
-    .select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at')
+    .select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,exam_start_date,exam_end_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at')
     .single();
   if (error) throw error;
   return mapExam(result);
@@ -100,13 +104,15 @@ export async function updateExam(id: string, data: Partial<Exam>): Promise<Exam 
   if (data.description !== undefined) u.description = data.description;
   if (data.registrationStartDate !== undefined) u.registration_start_date = data.registrationStartDate;
   if (data.registrationEndDate !== undefined) u.registration_end_date = data.registrationEndDate;
-  if (data.examDate !== undefined) u.exam_date = data.examDate;
+  if (data.examDate !== undefined) u.exam_date = data.examDate || null;
+  if (data.examStartDate !== undefined) u.exam_start_date = data.examStartDate || null;
+  if (data.examEndDate !== undefined) u.exam_end_date = data.examEndDate || null;
   if (data.registrationFee !== undefined) u.registration_fee = data.registrationFee;
   if (data.lateFee !== undefined) u.late_fee = data.lateFee;
   if (data.classes !== undefined) u.classes = data.classes;
   if (data.subjects !== undefined) u.subjects = data.subjects;
   if (data.status !== undefined) u.status = data.status;
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at').single();
+  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,exam_start_date,exam_end_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at').single();
   if (error) throw error; // surface real write failures instead of faking success
   return mapExam(result);
 }

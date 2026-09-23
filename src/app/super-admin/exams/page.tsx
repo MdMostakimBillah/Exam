@@ -20,6 +20,20 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { cn } from "@/lib/utils/helpers";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
+/**
+ * Exam window for list/PDF display: "Dec 31" when single-day,
+ * "Dec 31 – Jan 2" when the exam spans days. Falls back to the
+ * legacy exam_date when start/end were never set.
+ */
+function examDateRange(exam: Exam): string {
+  const start = exam.examStartDate || exam.examDate;
+  if (!start) return '-';
+  const s = formatDate(start).split(',')[0];
+  return exam.examEndDate && exam.examEndDate !== start
+    ? `${s} – ${formatDate(exam.examEndDate).split(',')[0]}`
+    : s;
+}
+
 export default function ExamsPage() {
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
@@ -38,7 +52,7 @@ export default function ExamsPage() {
   const [copiedSubjects, setCopiedSubjects] = useState<{ name: string; fullMarks: number; passMarks: number; duration: number; negativeMarks: number }[] | null>(null);
   const [formData, setFormData] = useState({
     name: "", code: "", academicYear: "", description: "",
-    registrationStartDate: "", registrationEndDate: "", examDate: "",
+    registrationStartDate: "", registrationEndDate: "", examStartDate: "", examEndDate: "",
     registrationFee: 0, lateFee: 0, classes: [] as string[],
     subjects: [] as { id: string; classId: string; name: string; fullMarks: number; passMarks: number; duration: number; negativeMarks: number }[]
   });
@@ -81,7 +95,7 @@ export default function ExamsPage() {
     { key: "name", header: isBn ? "নাম" : "Name" },
     { key: "code", header: isBn ? "কোড" : "Code" },
     { key: "academicYear", header: isBn ? "শিক্ষাবর্ষ" : "Academic Year" },
-    { key: "examDate", header: isBn ? "পরীক্ষার তারিখ" : "Exam Date" },
+    { key: "examDate", header: isBn ? "পরীক্ষার সময়কাল" : "Exam Period" },
     { key: "registrationFee", header: isBn ? "নিবন্ধন ফি" : "Fee" },
     { key: "status", header: isBn ? "স্ট্যাটাস" : "Status" },
   ], [isBn]);
@@ -90,7 +104,7 @@ export default function ExamsPage() {
     name: exam.name,
     code: exam.code,
     academicYear: exam.academicYear,
-    examDate: formatDate(exam.examDate).split(",")[0],
+    examDate: examDateRange(exam),
     registrationFee: `৳${exam.registrationFee}`,
     status: exam.status,
   })), [filtered]);
@@ -108,7 +122,7 @@ export default function ExamsPage() {
     setEditingExam(null);
     setFormData({
       name: "", code: "", academicYear: "", description: "",
-      registrationStartDate: "", registrationEndDate: "", examDate: "",
+      registrationStartDate: "", registrationEndDate: "", examStartDate: "", examEndDate: "",
       registrationFee: 0, lateFee: 0, classes: [],
       subjects: []
     });
@@ -122,7 +136,8 @@ export default function ExamsPage() {
     setFormData({
       name: exam.name, code: exam.code, academicYear: exam.academicYear, description: exam.description,
       registrationStartDate: exam.registrationStartDate, registrationEndDate: exam.registrationEndDate,
-      examDate: exam.examDate, registrationFee: exam.registrationFee, lateFee: exam.lateFee,
+      examStartDate: exam.examStartDate || "", examEndDate: exam.examEndDate || "",
+      registrationFee: exam.registrationFee, lateFee: exam.lateFee,
       classes: exam.classes, subjects: exam.subjects.map(s => ({ ...s, classId: (s as any).classId || exam.classes[0] || '' }))
     });
     setExamStep(1);
@@ -136,16 +151,25 @@ export default function ExamsPage() {
       toast('error', isBn ? 'নাম এবং কোড আবশ্যক' : 'Name and code are required');
       return;
     }
+    if (formData.examStartDate && formData.examEndDate && formData.examEndDate < formData.examStartDate) {
+      toast('error', isBn ? 'পরীক্ষার শেষ তারিখ শুরুর তারিখের পরে বা সমান হতে হবে' : 'Exam end date must be on or after the start date');
+      return;
+    }
     if (!currentSession?.id && !editingExam) {
       toast('error', isBn ? 'কোনো সক্রিয় সেশন পাওয়া যায়নি' : 'No active session found');
       return;
     }
     try {
+      const payload = {
+        ...formData,
+        // Legacy exam_date stays synced to the start date — admit cards & lists read it.
+        examDate: formData.examStartDate || editingExam?.examDate || "",
+      };
       if (editingExam) {
-        await updateExamMutation.mutateAsync({ id: editingExam.id, data: formData });
+        await updateExamMutation.mutateAsync({ id: editingExam.id, data: payload });
         toast('success', isBn ? 'পরীক্ষা আপডেট হয়েছে' : 'Exam updated');
       } else {
-        await createExamMutation.mutateAsync({ ...formData, sessionId: currentSession!.id, status: 'DRAFT' });
+        await createExamMutation.mutateAsync({ ...payload, sessionId: currentSession!.id, status: 'DRAFT' });
         toast('success', isBn ? 'পরীক্ষা তৈরি হয়েছে' : 'Exam created');
       }
       setShowModal(false);
@@ -349,7 +373,7 @@ export default function ExamsPage() {
                       <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {formatDate(exam.examDate).split(',')[0]}
+                          {examDateRange(exam)}
                         </div>
                       </TableCell>
                       <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
@@ -460,13 +484,21 @@ export default function ExamsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শিক্ষাবর্ষ' : 'Academic Year'}</label>
-                    <Input value={formData.academicYear} onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })} placeholder="2024-2025"
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষা শুরু' : 'Exam Start Date'}</label>
+                    <Input type="date" value={formData.examStartDate} onChange={(e) => setFormData({ ...formData, examStartDate: e.target.value })}
                       className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
                   </div>
                   <div>
-                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষার তারিখ' : 'Exam Date'}</label>
-                    <Input type="date" value={formData.examDate} onChange={(e) => setFormData({ ...formData, examDate: e.target.value })}
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষা শেষ' : 'Exam End Date'}</label>
+                    <Input type="date" value={formData.examEndDate} onChange={(e) => setFormData({ ...formData, examEndDate: e.target.value })}
+                      min={formData.examStartDate || undefined}
+                      className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[12px] mb-1.5 font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শিক্ষাবর্ষ' : 'Academic Year'}</label>
+                    <Input value={formData.academicYear} onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })} placeholder="2024-2025"
                       className={cn("h-10", isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200")} />
                   </div>
                 </div>
@@ -645,6 +677,10 @@ export default function ExamsPage() {
                 <button onClick={() => {
                   if (examStep === 1 && (!formData.name || !formData.code)) {
                     toast('error', isBn ? 'নাম এবং কোড আবশ্যক' : 'Name and code are required');
+                    return;
+                  }
+                  if (examStep === 1 && formData.examStartDate && formData.examEndDate && formData.examEndDate < formData.examStartDate) {
+                    toast('error', isBn ? 'পরীক্ষার শেষ তারিখ শুরুর তারিখের পরে বা সমান হতে হবে' : 'Exam end date must be on or after the start date');
                     return;
                   }
                   if (examStep === 2 && formData.classes.length === 0) {

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 const SUPABASE_TABLE = 'exams';
 
-const EXAM_COLUMNS = 'id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at';
+const EXAM_COLUMNS = 'id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,exam_start_date,exam_end_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at';
 
 function mapExam(data: any): Exam {
   return {
@@ -16,6 +16,8 @@ function mapExam(data: any): Exam {
     registrationStartDate: data.registration_start_date,
     registrationEndDate: data.registration_end_date,
     examDate: data.exam_date,
+    examStartDate: data.exam_start_date,
+    examEndDate: data.exam_end_date,
     registrationFee: data.registration_fee,
     lateFee: data.late_fee,
     classes: data.classes || [],
