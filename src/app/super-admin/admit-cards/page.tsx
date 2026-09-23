@@ -69,6 +69,9 @@ export default function AdmitCardsPage() {
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState<CardView | null>(null);
   const lang = isBn ? "bn" : "en";
+  /** Preview modal: fit the WHOLE A4 card into the visible body (no scrolling). */
+  const previewBodyRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(0.6);
   const [staging, setStaging] = useState<Staging | null>(null);
   const stagingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const generateMutation = useGenerateAdmitCards();
@@ -317,6 +320,30 @@ export default function AdmitCardsPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staging, toast]);
+
+  // Keep the preview card fully visible: scale = min(fit-width, fit-height).
+  useEffect(() => {
+    if (!preview) return;
+    const el = previewBodyRef.current;
+    if (!el) return;
+    const CARD_W = 793.7; // 210mm in CSS px
+    const CARD_H = 1122.5; // 297mm in CSS px
+    const compute = () => {
+      const availW = el.clientWidth - 32;
+      const availH = el.clientHeight - 32;
+      if (availW <= 0 || availH <= 0) return;
+      const s = Math.min(availW / CARD_W, availH / CARD_H);
+      setPreviewScale(Math.max(0.15, Math.min(1, s)));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    window.addEventListener("resize", compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", compute);
+    };
+  }, [preview]);
 
   // ── Row actions ──────────────────────────────────────────────────────
   const withView = async (card: AdmitCard, fn: (view: CardView) => void) => {
@@ -766,18 +793,24 @@ export default function AdmitCardsPage() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-auto bg-zinc-200 p-4 flex justify-center">
+              <div
+                ref={previewBodyRef}
+                className="flex-1 overflow-hidden bg-zinc-200 p-4 flex items-center justify-center"
+              >
                 <div
                   style={{
-                    width: "calc(210mm * 0.72)",
-                    height: "calc(297mm * 0.72)",
+                    width: `calc(210mm * ${previewScale})`,
+                    height: `calc(297mm * ${previewScale})`,
                     overflow: "hidden",
                     boxShadow: "0 6px 30px rgba(0,0,0,.35)",
                     background: "#fff",
+                    flexShrink: 0,
                   }}
                 >
-                  <div style={{ transform: "scale(0.72)", transformOrigin: "top left" }}>
-                    <AdmitCardTemplate view={preview} />
+                  <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
+                    {/* lang override → card chrome follows the live language, even
+                        if the view was built before the user switched it */}
+                    <AdmitCardTemplate view={{ ...preview, lang }} />
                   </div>
                 </div>
               </div>
@@ -832,7 +865,7 @@ export default function AdmitCardsPage() {
                   else stagingRefs.current.delete(v.key);
                 }}
               >
-                <AdmitCardTemplate view={v} />
+                <AdmitCardTemplate view={{ ...v, lang }} />
               </div>
             ))}
           </div>
