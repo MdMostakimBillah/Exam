@@ -5,7 +5,7 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'exams';
 
-const EXAM_LIST_COLUMNS = 'id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,status,created_at,updated_at';
+const EXAM_LIST_COLUMNS = 'id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -107,7 +107,7 @@ export async function updateExam(id: string, data: Partial<Exam>): Promise<Exam 
   if (data.subjects !== undefined) u.subjects = data.subjects;
   if (data.status !== undefined) u.status = data.status;
   const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select('id,session_id,name,code,academic_year,description,registration_start_date,registration_end_date,exam_date,registration_fee,late_fee,classes,subjects,status,created_at,updated_at').single();
-  if (error) return undefined;
+  if (error) throw error; // surface real write failures instead of faking success
   return mapExam(result);
 }
 

@@ -120,6 +120,8 @@ export interface Exam {
 
 export interface ExamSubject {
   id: string;
+  /** Class this subject belongs to (classes.id) — subjects are stored per class on the exam. */
+  classId?: string;
   name: string;
   fullMarks: number;
   passMarks: number;

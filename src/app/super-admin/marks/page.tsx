@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useExams } from "@/lib/storage/exams";
+import { useClasses } from "@/lib/storage/classes";
 import { useRegistrations } from "@/lib/storage/registrations";
 import { useMarks, useCreateMark, useUpdateMark } from "@/lib/storage/marks";
 import { useCurrentSession } from "@/lib/storage/sessions";
@@ -22,15 +23,35 @@ export default function MarksPage() {
   const isBn = language === "bn";
   const { toast } = useToast();
   const [selectedExam, setSelectedExam] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [marksData, setMarksData] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   const { data: exams = [] } = useExams();
+  const { data: allClasses = [] } = useClasses();
   const selectedExamData = useMemo(() => exams.find(e => e.id === selectedExam), [exams, selectedExam]);
+  const classMap = useMemo(() => {
+    const map = new Map<string, typeof allClasses[0]>();
+    allClasses.forEach(c => map.set(c.id, c));
+    return map;
+  }, [allClasses]);
+  // Subjects are stored PER CLASS on the exam -> entry must be class-scoped.
+  const classOptions = useMemo(
+    () => (selectedExamData?.classes || [])
+      .map(id => classMap.get(id))
+      .filter((c): c is NonNullable<typeof c> => !!c)
+      .map(c => ({ label: c.name, value: c.id })),
+    [selectedExamData, classMap]
+  );
+  const selectedClassName = selectedClass ? classMap.get(selectedClass)?.name ?? "" : "";
   const { data: allRegistrations = [] } = useRegistrations();
   const approvedRegs = useMemo(() => allRegistrations.filter(r => r.examId === selectedExam && r.status === 'APPROVED'), [selectedExam, allRegistrations]);
+  const regs = useMemo(
+    () => approvedRegs.filter(r => !selectedClassName || r.className === selectedClassName),
+    [approvedRegs, selectedClassName]
+  );
   const { data: allMarks = [] } = useMarks();
   const existingMarks = useMemo(() => allMarks.filter(m => m.examId === selectedExam && m.subjectId === selectedSubject), [selectedExam, selectedSubject, allMarks]);
   const createMarkMutation = useCreateMark();
@@ -38,13 +59,13 @@ export default function MarksPage() {
 
   const filtered = useMemo(() => {
     const existingMarkMap = new Map(existingMarks.map(m => [m.registrationId, m]));
-    return approvedRegs.map(reg => {
+    return regs.map(reg => {
       const existing = existingMarkMap.get(reg.id);
       const entered = marksData[reg.id];
       const currentMarks = entered !== undefined ? entered : existing?.marks;
       return { ...reg, currentMarks };
     });
-  }, [approvedRegs, existingMarks, marksData]);
+  }, [regs, existingMarks, marksData]);
 
   const selection = useTableSelection(filtered);
 
@@ -63,7 +84,12 @@ export default function MarksPage() {
   })), [filtered]);
 
   const examOptions = useMemo(() => exams.map(e => ({ label: e.name, value: e.id })), [exams]);
-  const subjectOptions = useMemo(() => selectedExamData?.subjects.map(s => ({ label: `${s.name} (${s.fullMarks})`, value: s.id })) ?? [], [selectedExamData]);
+  const subjectOptions = useMemo(
+    () => selectedExamData?.subjects
+      .filter(s => s.classId === selectedClass || !s.classId)
+      .map(s => ({ label: `${s.name} (${s.fullMarks})`, value: s.id })) ?? [],
+    [selectedExamData, selectedClass]
+  );
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -76,7 +102,7 @@ export default function MarksPage() {
   };
 
   const handleSaveAll = async () => {
-    for (const reg of approvedRegs) {
+    for (const reg of regs) {
       const marks = marksData[reg.id];
       if (marks !== undefined) {
         const existing = existingMarks.find(m => m.registrationId === reg.id);
@@ -116,7 +142,7 @@ export default function MarksPage() {
           {[
             { label: isBn ? 'মোট পরীক্ষা' : 'Total Exams', value: exams.length },
             { label: isBn ? 'নম্বর প্রবেশ' : 'Marks Entered', value: existingMarks.length },
-            { label: isBn ? 'অপেক্ষমান' : 'Pending', value: approvedRegs.length - existingMarks.length },
+            { label: isBn ? 'অপেক্ষমান' : 'Pending', value: Math.max(regs.length - existingMarks.length, 0) },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -135,11 +161,19 @@ export default function MarksPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</label>
-              <Select value={selectedExam} onChange={(e) => { setSelectedExam(e.target.value); setSelectedSubject(""); setMarksData({}); }}
+              <Select value={selectedExam} onChange={(e) => { setSelectedExam(e.target.value); setSelectedClass(""); setSelectedSubject(""); setMarksData({}); }}
                 options={examOptions} placeholder={isBn ? 'পরীক্ষা নির্বাচন করুন' : 'Select exam'}
                 className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
             </div>
-            {selectedExamData && (
+            {selectedExam && classOptions.length > 0 && (
+              <div className="flex-1">
+                <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শ্রেণী' : 'Class'}</label>
+                <Select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSubject(""); setMarksData({}); }}
+                  options={classOptions} placeholder={isBn ? 'শ্রেণী নির্বাচন করুন' : 'Select class'}
+                  className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"} />
+              </div>
+            )}
+            {selectedClass && (
               <div className="flex-1">
                 <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'বিষয়' : 'Subject'}</label>
                 <Select value={selectedSubject} onChange={(e) => { setSelectedSubject(e.target.value); setMarksData({}); }}
@@ -167,7 +201,7 @@ export default function MarksPage() {
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
                   {isBn ? 'নম্বর প্রবেশ' : 'Marks Entry'}
                 </h3>
-                <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({approvedRegs.length})</span>
+                <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({regs.length})</span>
               </div>
             </div>
             <Table>
@@ -184,7 +218,7 @@ export default function MarksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {approvedRegs.map(reg => {
+                {regs.map(reg => {
                   const existing = existingMarks.find(m => m.registrationId === reg.id);
                   const entered = marksData[reg.id];
                   const currentMarks = entered !== undefined ? entered : existing?.marks;
@@ -223,7 +257,15 @@ export default function MarksPage() {
             <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
               <BookOpen className={`h-7 w-7 ${iconColor}`} />
             </div>
-            <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'পরীক্ষা ও বিষয় নির্বাচন করুন' : 'Select exam and subject to enter marks'}</p>
+            <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'পরীক্ষা, শ্রেণী ও বিষয় নির্বাচন করুন' : 'Select exam, class and subject to enter marks'}</p>
+          </div>
+        )}
+        {selectedExam && selectedClass && selectedSubject && regs.length === 0 && (
+          <div className={`${card} flex flex-col items-center justify-center py-16`}>
+            <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+              <BookOpen className={`h-7 w-7 ${iconColor}`} />
+            </div>
+            <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'এই শ্রেণীতে অনুমোদিত নিবন্ধন পাওয়া যায়নি' : 'No approved registrations for this class'}</p>
           </div>
         )}
       </div>

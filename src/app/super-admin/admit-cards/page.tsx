@@ -5,6 +5,8 @@ import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useAdmitCards } from "@/lib/storage/admit-cards";
+import { useExams } from "@/lib/storage/exams";
+import { useClasses } from "@/lib/storage/classes";
 import { FileCheck, Download, Printer, Eye, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -18,8 +20,26 @@ export default function AdmitCardsPage() {
   const [showPdfModal, setShowPdfModal] = useState(false);
 
   const { data: cards = [] } = useAdmitCards();
+  const { data: exams = [] } = useExams();
+  const { data: allClasses = [] } = useClasses();
 
   const selection = useTableSelection(cards);
+
+  // Subjects for a card = the exam's subjects stored for that card's class.
+  const classIdByName = useMemo(() => {
+    const map = new Map<string, string>();
+    allClasses.forEach(c => map.set(c.name, c.id));
+    return map;
+  }, [allClasses]);
+  const getSubjectNames = useMemo(() => (examName: string, className: string): string => {
+    const exam = exams.find(e => e.name === examName);
+    if (!exam || exam.subjects.length === 0) return '';
+    const classId = classIdByName.get(className);
+    const subs = classId
+      ? exam.subjects.filter(s => !s.classId || s.classId === classId)
+      : exam.subjects;
+    return subs.map(s => s.name).filter(Boolean).join(', ');
+  }, [exams, classIdByName]);
 
   const pdfColumns = useMemo<PdfColumn[]>(() => [
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: "studentName" },
@@ -27,6 +47,7 @@ export default function AdmitCardsPage() {
     { header: isBn ? 'রেজি নং' : 'Reg No', key: "registrationNumber" },
     { header: isBn ? 'পরীক্ষা' : 'Exam', key: "examName" },
     { header: isBn ? 'শ্রেণী' : 'Class', key: "className" },
+    { header: isBn ? 'বিষয়' : 'Subjects', key: "subjects" },
     { header: isBn ? 'রোল' : 'Roll', key: "roll" },
     { header: isBn ? 'কেন্দ্র' : 'Center', key: "examCenter" },
     { header: isBn ? 'তারিখ' : 'Date', key: "examDate" },
@@ -38,10 +59,11 @@ export default function AdmitCardsPage() {
     registrationNumber: c.registrationNumber,
     examName: c.examName,
     className: c.className,
+    subjects: getSubjectNames(c.examName, c.className),
     roll: c.roll,
     examCenter: c.examCenter,
     examDate: new Date(c.examDate).toLocaleDateString(),
-  })), [cards]);
+  })), [cards, getSubjectNames]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -106,6 +128,7 @@ export default function AdmitCardsPage() {
                 <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজি নং' : 'Reg No'}</TableHead>
                 <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
                 <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
+                <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'বিষয়' : 'Subjects'}</TableHead>
                 <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
                 <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কেন্দ্র' : 'Center'}</TableHead>
                 <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
@@ -132,6 +155,9 @@ export default function AdmitCardsPage() {
                   <TableCell className={`text-[11px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{c.registrationNumber}</TableCell>
                   <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.examName}</TableCell>
                   <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.className}</TableCell>
+                  <TableCell className={`text-[11px] hidden lg:table-cell max-w-[220px] truncate ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`} title={getSubjectNames(c.examName, c.className)}>
+                    {getSubjectNames(c.examName, c.className) || '-'}
+                  </TableCell>
                   <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.roll}</TableCell>
                   <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{c.examCenter}</TableCell>
                   <TableCell className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{new Date(c.examDate).toLocaleDateString()}</TableCell>
