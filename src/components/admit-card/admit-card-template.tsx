@@ -9,8 +9,10 @@ import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/
  *
  * Everything is styled INLINE on purpose: html2canvas rasterises it for the
  * bulk PDF and the print window receives a plain outerHTML clone with no
- * Tailwind sheet, so the design must be self-contained (real <table>s with
- * borders — the most reliable structure for both paths).
+ * Tailwind sheet, so the design must be self-contained. The bordered tables
+ * are built from flex DIVs — one div per column, no <table>/<td> markup —
+ * which rasterise identically in preview, PDF and print. Every cell centers
+ * its data BOTH ways: vertically (align-items) and horizontally (text-align).
  *
  * Language: ALL card chrome (labels, pill, headings, instructions, captions)
  * follows `view.lang`. The root carries `lang="bn|en"` so font fallback
@@ -21,6 +23,22 @@ import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/
 
 const FONT = "'Courier New', Courier, 'Tiro Bangla', monospace";
 const BORDER = "1px solid #000000";
+
+/** Shared cell chrome — every grid column is a <div> whose content is
+ *  centered both vertically (align-items) and horizontally (text-align).
+ *  boxSizing is explicit because the print window clones this markup WITHOUT
+ *  the globals.css reset, so the browser default (content-box) would apply. */
+const cellStyle: React.CSSProperties = {
+  boxSizing: "border-box",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  minHeight: "6.5mm",
+  padding: "2px 7px",
+  background: "#ffffff",
+  wordBreak: "break-word",
+};
 
 export interface CardSubject {
   code: string; // "101", "102"… auto-numbered per class in routine order
@@ -151,84 +169,21 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
   );
 }
 
-/** label-cell + value-cell pair (two <td>s) inside a fields-table row. */
-function FieldRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <>
-      <td
-        style={{
-          border: BORDER,
-          padding: 0,
-          fontWeight: 700,
-          fontSize: "10.5px",
-          width: "37mm",
-          background: "#ffffff",
-          verticalAlign: "middle",
-          textAlign: "center",
-        }}
-      >
-        {/* Data lives in its own flex-centered div → renderer-proof centering */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            minHeight: "6.5mm",
-            padding: "2px 7px",
-            wordBreak: "break-word",
-          }}
-        >
-          {label}
-        </div>
-      </td>
-      <td
-        style={{
-          border: BORDER,
-          padding: 0,
-          fontSize: "11.5px",
-          background: "#ffffff",
-          verticalAlign: "middle",
-          textAlign: "center",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            minHeight: "6.5mm",
-            padding: "2px 7px",
-            wordBreak: "break-word",
-          }}
-        >
-          {value}
-        </div>
-      </td>
-    </>
-  );
-}
+/** Subject box: bordered header + 2-column div grid — see SubjectCell. */
 
 function SubjectCell({
   subject,
   bn,
+  divide,
 }: {
   subject?: CardSubject;
   bn: boolean;
+  /** true for the left column — draws the vertical divider. */
+  divide?: boolean;
 }) {
+  const divider = divide ? { borderRight: BORDER } : undefined;
   if (!subject) {
-    return (
-      <td style={{ border: BORDER, padding: 0 }}>
-        <div style={{ minHeight: "6.5mm" }} />
-      </td>
-    );
+    return <div style={{ ...cellStyle, flex: 1, minWidth: 0, ...divider }} />;
   }
   const time =
     subject.startTime && subject.endTime
@@ -242,38 +197,27 @@ function SubjectCell({
     .join(" · ");
 
   return (
-    <td
+    <div
       style={{
-        border: BORDER,
-        padding: 0,
+        ...cellStyle,
+        flex: 1,
+        minWidth: 0,
         fontSize: "11px",
-        verticalAlign: "middle",
-        textAlign: "center",
+        flexWrap: "wrap",
+        gap: "4px 8px",
+        ...divider,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexWrap: "wrap",
-          gap: "4px 8px",
-          textAlign: "center",
-          minHeight: "6.5mm",
-          padding: "2px 7px",
-        }}
-      >
-        <span>
-          <strong>{subject.code} — </strong>
-          {subject.name}
+      <span>
+        <strong>{subject.code} — </strong>
+        {subject.name}
+      </span>
+      {when ? (
+        <span style={{ fontSize: "9.5px", whiteSpace: "nowrap", color: "#333333" }}>
+          {when}
         </span>
-        {when ? (
-          <span style={{ fontSize: "9.5px", whiteSpace: "nowrap", color: "#333333" }}>
-            {when}
-          </span>
-        ) : null}
-      </div>
-    </td>
+      ) : null}
+    </div>
   );
 }
 
@@ -336,6 +280,50 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
     hour: "2-digit",
     minute: "2-digit",
   };
+
+  // Bordered fields grid — pairs of {label, value} columns per flex row.
+  const dob = (() => {
+    if (!view.dob || view.dob === "—") return "—";
+    try {
+      return formatDate(view.dob);
+    } catch {
+      return view.dob;
+    }
+  })();
+  const fieldRows: Array<Array<{ label: string; value: React.ReactNode }>> = [
+    [
+      { label: L("Examination Code", "পরীক্ষার কোড"), value: view.examCode || "—" },
+      { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
+    ],
+    [
+      { label: L("Name of Examinee", "পরীক্ষার্থীর নাম"), value: view.studentName || "—" },
+      { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
+    ],
+    [
+      { label: L("Father's Name", "পিতার নাম"), value: view.fatherName || "—" },
+      { label: L("Session", "সেশন"), value: view.sessionName || "—" },
+    ],
+    [
+      { label: L("Mother's Name", "মাতার নাম"), value: view.motherName || "—" },
+      {
+        label: L("Class / Section", "শ্রেণি / শাখা"),
+        value: `${view.className}${view.section && view.section !== "—" ? ` / ${view.section}` : ""}`,
+      },
+    ],
+    [
+      {
+        label: L("Institution Code & Name", "প্রতিষ্ঠানের কোড ও নাম"),
+        value: view.institutionCode
+          ? `(${view.institutionCode}) ${view.institutionName}`
+          : view.institutionName,
+      },
+      { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
+    ],
+    [
+      { label: L("Date of Birth", "জন্মতারিখ"), value: dob },
+      { label: L("Exam Period", "পরীক্ষার সময়"), value: view.examPeriod || "—" },
+    ],
+  ];
 
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
@@ -501,169 +489,96 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         </span>
       </div>
 
-      {/* ── Bordered fields table ─────────────────────────────────── */}
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          tableLayout: "fixed",
-          marginTop: "0.5mm",
-        }}
-      >
-        <tbody>
-          <tr>
-            <FieldRow label={L("Examination Code", "পরীক্ষার কোড")} value={view.examCode || "—"} />
-            <FieldRow label={L("Roll No.", "রোল নম্বর")} value={view.examRoll || "—"} />
-          </tr>
-          <tr>
-            <FieldRow label={L("Name of Examinee", "পরীক্ষার্থীর নাম")} value={view.studentName || "—"} />
-            <FieldRow label={L("Registration No.", "নিবন্ধন নম্বর")} value={view.registrationNumber || "—"} />
-          </tr>
-          <tr>
-            <FieldRow label={L("Father's Name", "পিতার নাম")} value={view.fatherName || "—"} />
-            <FieldRow label={L("Session", "সেশন")} value={view.sessionName || "—"} />
-          </tr>
-          <tr>
-            <FieldRow label={L("Mother's Name", "মাতার নাম")} value={view.motherName || "—"} />
-            <FieldRow
-              label={L("Class / Section", "শ্রেণি / শাখা")}
-              value={`${view.className}${view.section && view.section !== "—" ? ` / ${view.section}` : ""}`}
-            />
-          </tr>
-          <tr>
-            <FieldRow
-              label={L("Institution Code & Name", "প্রতিষ্ঠানের কোড ও নাম")}
-              value={
-                view.institutionCode
-                  ? `(${view.institutionCode}) ${view.institutionName}`
-                  : view.institutionName
-              }
-            />
-            <FieldRow label={L("Class Roll", "ক্লাস রোল")} value={view.classRoll || "—"} />
-          </tr>
-          <tr>
-            <FieldRow
-              label={L("Date of Birth", "জন্মতারিখ")}
-              value={
-                view.dob && view.dob !== "—"
-                  ? (() => {
-                      try {
-                        return formatDate(view.dob);
-                      } catch {
-                        return view.dob;
-                      }
-                    })()
-                  : "—"
-              }
-            />
-            <FieldRow label={L("Exam Period", "পরীক্ষার সময়")} value={view.examPeriod || "—"} />
-          </tr>
-          {/* Full-width centered center row (NU style) */}
-          <tr>
-            <td
-              colSpan={4}
-              style={{
-                border: BORDER,
-                padding: 0,
-                fontSize: "11.5px",
-                background: "#ffffff",
-                verticalAlign: "middle",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  minHeight: "7mm",
-                  padding: "2px 6px",
-                }}
-              >
-                <span>
-                  <strong>{L("Center Code & Name", "কেন্দ্রের কোড ও নাম")}: </strong>
-                  {centerText}
-                </span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* ── Subject box: bordered header + 2-column grid ──────────── */}
-      <div style={{ marginTop: "3.5mm" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <tbody>
-            <tr>
-              <td
-                colSpan={2}
-                style={{
-                  border: BORDER,
-                  padding: 0,
-                  fontWeight: 700,
-                  fontSize: "11px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.4px",
-                  background: "#ffffff",
-                  verticalAlign: "middle",
-                  textAlign: "center",
-                }}
-              >
+      {/* ── Bordered fields grid — one div per column, centered data ── */}
+      <div style={{ border: BORDER, marginTop: "0.5mm", background: "#ffffff" }}>
+        {fieldRows.map((pairs, r) => (
+          <div
+            key={r}
+            style={{
+              display: "flex",
+              boxSizing: "border-box",
+              borderBottom: r < fieldRows.length - 1 ? BORDER : undefined,
+            }}
+          >
+            {pairs.map((p, c) => (
+              <React.Fragment key={c}>
+                {/* label column — fixed width like the old table-layout */}
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                    minHeight: "7mm",
-                    padding: "2px 7px",
-                  }}
-                >
-                  {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
-                </div>
-              </td>
-            </tr>
-            {view.subjects.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={2}
-                  style={{
-                    border: BORDER,
-                    padding: 0,
+                    ...cellStyle,
+                    flex: "0 0 37mm",
                     fontSize: "10.5px",
-                    color: "#666666",
-                    verticalAlign: "middle",
-                    textAlign: "center",
+                    fontWeight: 700,
+                    borderRight: BORDER,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      minHeight: "12mm",
-                      padding: "4px 7px",
-                    }}
-                  >
-                    {L(
-                      "No subjects scheduled for this class.",
-                      "এই শ্রেণির জন্য কোনো বিষয় নির্ধারিত হয়নি।"
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              subjectRows.map(([a, b], i) => (
-                <tr key={i}>
-                  <SubjectCell subject={a} bn={bn} />
-                  <SubjectCell subject={b} bn={bn} />
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  {p.label}
+                </div>
+                {/* data column */}
+                <div
+                  style={{
+                    ...cellStyle,
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: "11.5px",
+                    borderRight: c < pairs.length - 1 ? BORDER : undefined,
+                  }}
+                >
+                  {p.value}
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        ))}
+        {/* Full-width centered center row (NU style) */}
+        <div style={{ ...cellStyle, minHeight: "7mm", fontSize: "11.5px", borderTop: BORDER }}>
+          <span>
+            <strong>{L("Center Code & Name", "কেন্দ্রের কোড ও নাম")}: </strong>
+            {centerText}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Subject box: bordered header + 2-column div grid ──────── */}
+      <div style={{ marginTop: "3.5mm" }}>
+        <div style={{ border: BORDER, background: "#ffffff" }}>
+          <div
+            style={{
+              ...cellStyle,
+              minHeight: "7mm",
+              fontWeight: 700,
+              fontSize: "11px",
+              textTransform: "uppercase",
+              letterSpacing: "0.4px",
+            }}
+          >
+            {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
+          </div>
+          {view.subjects.length === 0 ? (
+            <div
+              style={{
+                ...cellStyle,
+                borderTop: BORDER,
+                minHeight: "12mm",
+                fontSize: "10.5px",
+                color: "#666666",
+                padding: "4px 7px",
+              }}
+            >
+              {L(
+                "No subjects scheduled for this class.",
+                "এই শ্রেণির জন্য কোনো বিষয় নির্ধারিত হয়নি।"
+              )}
+            </div>
+          ) : (
+            subjectRows.map(([a, b], i) => (
+              <div key={i} style={{ display: "flex", boxSizing: "border-box", borderTop: BORDER }}>
+                <SubjectCell subject={a} bn={bn} divide />
+                <SubjectCell subject={b} bn={bn} />
+              </div>
+            ))
+          )}
+        </div>
         {!hasRoutine && view.subjects.length > 0 ? (
           <div style={{ fontSize: "9px", color: "#555555", marginTop: "1.5mm" }}>
             {L(
