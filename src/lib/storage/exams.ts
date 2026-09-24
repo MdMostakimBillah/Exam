@@ -1,6 +1,7 @@
 import { Exam } from '../types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'exams';
@@ -131,6 +132,9 @@ export function useExams(sessionId?: string, page?: number, pageSize?: number) {
     queryKey: ['exams', sessionId, page, pageSize],
     queryFn: () => fetchExams(sessionId, page, pageSize),
     staleTime: 60 * 1000,
+    // Exam status changes made by the super admin must show up when the
+    // user returns to the tab — the global default disables focus refetch.
+    refetchOnWindowFocus: true,
   });
 }
 export function useExamById(id: string) {
@@ -138,7 +142,38 @@ export function useExamById(id: string) {
     queryKey: ['exams', id],
     queryFn: () => fetchExamById(id),
     enabled: !!id,
+    refetchOnWindowFocus: true,
   });
+}
+
+/**
+ * Live exam sync across users (mounted once app-wide, see providers.tsx).
+ *
+ * When ANY user — e.g. the super admin changing an exam STATUS — writes to
+ * `exams`, every connected client invalidates its cached exam queries, so all
+ * institutions see the new status without reloading. Requires `exams` in the
+ * `supabase_realtime` publication (migration 0020); if realtime is unavailable
+ * the focus-refetch on `useExams` still keeps status eventually consistent.
+ */
+export function useExamsRealtimeSync(enabled = true) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!enabled) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('exams-live-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'exams' },
+        () => {
+          qc.invalidateQueries({ queryKey: ['exams'] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc, enabled]);
 }
 
 export function useCreateExam() {
