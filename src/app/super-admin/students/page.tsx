@@ -19,6 +19,14 @@ import { useLang } from "@/contexts/language-context";
 import { Student, Registration } from "@/lib/types";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
+/** Bilingual gender label (module-level so memos can depend on it safely). */
+function genderLabel(g: Student["gender"] | undefined, isBn: boolean): string {
+  if (g === "MALE") return isBn ? "পুরুষ" : "Male";
+  if (g === "FEMALE") return isBn ? "মহিলা" : "Female";
+  if (g === "OTHER") return isBn ? "অন্যান্য" : "Other";
+  return "-";
+}
+
 export default function StudentsPage() {
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
@@ -29,6 +37,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [institutionFilter, setInstitutionFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -69,34 +78,49 @@ export default function StudentsPage() {
     const regStatus = normalizeRegistrationStatus(reg?.status);
     const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase())
       || s.studentId.toLowerCase().includes(search.toLowerCase())
-      || regNum.toLowerCase().includes(search.toLowerCase());
+      || regNum.toLowerCase().includes(search.toLowerCase())
+      || (s.fatherName || '').toLowerCase().includes(search.toLowerCase())
+      || (s.motherName || '').toLowerCase().includes(search.toLowerCase())
+      || (s.phone || '').toLowerCase().includes(search.toLowerCase());
     const matchesClass = !classFilter || s.class === classFilter;
     const matchesInst = !institutionFilter || s.institutionId === institutionFilter;
+    const matchesGender = !genderFilter || s.gender === genderFilter;
     const matchesStatus = !statusFilter || regStatus === statusFilter;
-    return matchesSearch && matchesClass && matchesInst && matchesStatus;
-  }), [students, latestReg, search, classFilter, institutionFilter, statusFilter, refreshKey]);
+    return matchesSearch && matchesClass && matchesInst && matchesGender && matchesStatus;
+  }), [students, latestReg, search, classFilter, institutionFilter, genderFilter, statusFilter, refreshKey]);
 
   const selection = useTableSelection(filtered);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
+    { header: isBn ? 'ক্রমিক' : 'SN', key: 'sn' },
     { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'name' },
     { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number', key: 'regNumber' },
     { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: 'institution' },
+    { header: isBn ? 'পিতার নাম' : 'Father', key: 'father' },
+    { header: isBn ? 'মাতার নাম' : 'Mother', key: 'mother' },
+    { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
+    { header: isBn ? 'লিঙ্গ' : 'Gender', key: 'gender' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
     { header: isBn ? 'স্থিতি' : 'Status', key: 'status' },
   ], [isBn]);
 
   const pdfData = useMemo(() => filtered
-    .filter((s) => selection.isSelected(s.id))
-    .map((s) => ({
+    .map((s, i) => ({ s, sn: i + 1 }))
+    .filter(({ s }) => selection.isSelected(s.id))
+    .map(({ s, sn }) => ({
+      sn: String(sn),
       name: `${s.firstName} ${s.lastName}`,
       regNumber: latestReg.get(s.id)?.registrationNumber || '-',
       institution: getInstitutionName(s.institutionId),
+      father: s.fatherName || '-',
+      mother: s.motherName || '-',
+      phone: s.phone || '-',
+      gender: genderLabel(s.gender, isBn),
       class: s.class,
       roll: s.roll,
       status: normalizeRegistrationStatus(latestReg.get(s.id)?.status) || s.status,
-    })), [filtered, selection, getInstitutionName, latestReg]);
+    })), [filtered, selection, getInstitutionName, latestReg, isBn]);
 
   const approvedCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'APPROVED').length, [students, latestReg]);
   const pendingCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'PENDING').length, [students, latestReg]);
@@ -190,7 +214,7 @@ export default function StudentsPage() {
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
               <Input
-                placeholder={isBn ? "নাম বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by name or registration number..."}
+                placeholder={isBn ? "নাম, অভিভাবক, ফোন বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by name, parent, phone or reg number..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`pl-10 ${inputCls}`}
@@ -207,6 +231,17 @@ export default function StudentsPage() {
               value={institutionFilter}
               onChange={(e) => setInstitutionFilter(e.target.value)}
               className={`w-full sm:w-48 ${inputCls}`}
+            />
+            <Select
+              options={[
+                { label: isBn ? 'সব লিঙ্গ' : 'All Gender', value: '' },
+                { label: isBn ? 'পুরুষ' : 'Male', value: 'MALE' },
+                { label: isBn ? 'মহিলা' : 'Female', value: 'FEMALE' },
+                { label: isBn ? 'অন্যান্য' : 'Other', value: 'OTHER' },
+              ]}
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
+              className={`w-full sm:w-32 ${inputCls}`}
             />
             <Select
               options={[
@@ -253,9 +288,14 @@ export default function StudentsPage() {
                   <TableHead className="w-10">
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
+                  <TableHead className={`w-12 text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ক্রমিক' : 'SN'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পিতার নাম' : 'Father'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'মাতার নাম' : 'Mother'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ফোন' : 'Phone'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'লিঙ্গ' : 'Gender'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
@@ -263,11 +303,12 @@ export default function StudentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(0, 20).map(student => (
+                {filtered.slice(0, 20).map((student, idx) => (
                   <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(student.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(student.id)} onChange={() => selection.toggle(student.id)} />
                     </TableCell>
+                    <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{idx + 1}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         {student.photo ? (
@@ -284,6 +325,10 @@ export default function StudentsPage() {
                     </TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{getRegNumber(student.id)}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{getInstitutionName(student.institutionId)}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.fatherName || '-'}</TableCell>
+                    <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.motherName || '-'}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.phone || '-'}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{genderLabel(student.gender, isBn)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll}</TableCell>
                     <TableCell><Badge status={getRegStatus(student.id) || student.status} /></TableCell>
