@@ -49,6 +49,10 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
     : (isBn ? brand.brandNameBn : brand.brandName) || brand.brandName;
   const orgLogo = (slug ? inst?.logo : undefined) || brand.brandLogo;
   const orgShort = slug && inst?.name ? getInitials(orgName) : brand.brandShort;
+  // Trigger name: institution pages show the INSTITUTION name (logo + name
+  // pair, updates live after Settings → Profile saves); super-admin keeps
+  // the signed-in person's name.
+  const displayName = slug && inst?.name ? orgName : user?.name ?? '';
 
   const handleLogout = async () => {
     await logout();
@@ -337,13 +341,13 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
                     )}
                   />
                 ) : (
-                  <Avatar name={user.name} size="sm" />
+                  <Avatar name={displayName} size="sm" />
                 )}
                 <div className="flex flex-col items-start">
                   <span className={cn(
                     'text-sm font-medium',
                     isDark ? 'text-white' : 'text-gray-900'
-                  )}>{user.name}</span>
+                  )}>{displayName}</span>
                   <span className={cn(
                     'text-xs',
                     isDark ? 'text-zinc-500' : 'text-gray-500'

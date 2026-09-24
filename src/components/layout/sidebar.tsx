@@ -70,6 +70,13 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
   // super-admin has no institution → keeps the initials circle).
   const { data: inst } = useInstitutionBySlug(slug);
 
+  // Bottom-block name: institution pages show the INSTITUTION name (pairs
+  // with the institution logo above it and updates after Settings → Profile
+  // saves); super-admin keeps the signed-in person's name.
+  const bottomName = inst?.name
+    ? (isBn ? inst.name : (inst.nameEn || inst.name))
+    : (user?.name ?? '');
+
   const institutionNav: NavItem[] = React.useMemo(() => [
     { label: 'Dashboard', labelBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, href: `/i/${slug}` },
     { label: 'Registrations', labelBn: 'নিবন্ধন', icon: ClipboardList, href: `/i/${slug}/registrations` },
@@ -202,14 +209,14 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
                 'h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold',
                 'bg-brand-accent text-brand-accent-fg'
               )}>
-                {user.name.split(' ').map(n => n[0]).join('')}
+                {bottomName.split(' ').map(n => n[0]).join('')}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <p className={cn(
                 'text-sm font-medium truncate',
                 isDark ? 'text-white' : 'text-gray-900'
-              )}>{user.name}</p>
+              )}>{bottomName}</p>
               <p className={cn(
                 'text-[10px] truncate',
                 isDark ? 'text-zinc-500' : 'text-gray-500'
