@@ -19,6 +19,15 @@ import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/
  * resolves identically in preview, PDF and print. The typewriter font is
  * protected from the global `html.lang-bn *` override by a scoped rule in
  * globals.css: Latin/numerals → Courier New, Bangla glyphs → Tiro Bangla.
+ *
+ * Layout follows the reference card design where it doesn't conflict with
+ * the explicit specs above: zebra-tinted subject rows, an emphasized
+ * examinee-name field, a dashed perforation above the stub, and a light
+ * bottom notice strip (photo-ID validity + verify note). Reference-only
+ * elements that break the PDF path are deliberately not ported: Tailwind
+ * classes (the print window clones bare HTML), the `print:hidden` security
+ * strip/notches (excluded from print by design), and the navy logo header
+ * (superseded by the photo | association-title | QR header spec).
  */
 
 const FONT = "'Courier New', Courier, 'Tiro Bangla', monospace";
@@ -175,15 +184,19 @@ function SubjectCell({
   subject,
   bn,
   divide,
+  tint,
 }: {
   subject?: CardSubject;
   bn: boolean;
   /** true for the left column — draws the vertical divider. */
   divide?: boolean;
+  /** true for odd rows — light zebra tint (reference design). */
+  tint?: boolean;
 }) {
   const divider = divide ? { borderRight: BORDER } : undefined;
+  const bg = tint ? "#f8fafc" : "#ffffff";
   if (!subject) {
-    return <div style={{ ...cellStyle, flex: 1, minWidth: 0, ...divider }} />;
+    return <div style={{ ...cellStyle, flex: 1, minWidth: 0, background: bg, ...divider }} />;
   }
   const time =
     subject.startTime && subject.endTime
@@ -205,6 +218,7 @@ function SubjectCell({
         fontSize: "11px",
         flexWrap: "wrap",
         gap: "4px 8px",
+        background: bg,
         ...divider,
       }}
     >
@@ -294,6 +308,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
   };
 
   // Bordered fields grid — pairs of {label, value} columns per flex row.
+  // `emphasis` renders the value larger/bolder (the examinee's name, the
+  // reference design's hero field).
   const dob = (() => {
     if (!view.dob || view.dob === "—") return "—";
     try {
@@ -302,13 +318,13 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       return view.dob;
     }
   })();
-  const fieldRows: Array<Array<{ label: string; value: React.ReactNode }>> = [
+  const fieldRows: Array<Array<{ label: string; value: React.ReactNode; emphasis?: boolean }>> = [
     [
       { label: L("Examination Code", "পরীক্ষার কোড"), value: view.examCode || "—" },
       { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
     ],
     [
-      { label: L("Name of Examinee", "পরীক্ষার্থীর নাম"), value: view.studentName || "—" },
+      { label: L("Name of Examinee", "পরীক্ষার্থীর নাম"), value: view.studentName || "—", emphasis: true },
       { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
     ],
     [
@@ -498,7 +514,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 >
                   {p.label}
                 </div>
-                {/* data column */}
+                {/* data column — emphasized fields (name) render larger */}
                 <div
                   style={{
                     ...cellStyle,
@@ -506,6 +522,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                     minWidth: 0,
                     fontSize: "11.5px",
                     borderRight: c < pairs.length - 1 ? BORDER : undefined,
+                    ...(p.emphasis ? { fontSize: "13px", fontWeight: 700 } : null),
                   }}
                 >
                   {p.value}
@@ -557,8 +574,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           ) : (
             subjectRows.map(([a, b], i) => (
               <div key={i} style={{ display: "flex", boxSizing: "border-box", borderTop: BORDER }}>
-                <SubjectCell subject={a} bn={bn} divide />
-                <SubjectCell subject={b} bn={bn} />
+                <SubjectCell subject={a} bn={bn} divide tint={i % 2 === 1} />
+                <SubjectCell subject={b} bn={bn} tint={i % 2 === 1} />
               </div>
             ))
           )}
@@ -699,11 +716,13 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         </div>
       </div>
 
-      {/* ── Footer ────────────────────────────────────────────────── */}
+      {/* ── Perforation — tear-off stub below (reference design) ─── */}
+      <div style={{ marginTop: "auto", borderTop: "1px dashed #cbd5e1" }} />
+
+      {/* ── Footer: card ID (left) · generation stamp (right) ────── */}
       <div
         style={{
-          marginTop: "auto",
-          paddingTop: "2.5mm",
+          paddingTop: "2mm",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-end",
@@ -713,20 +732,6 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: "13px", fontWeight: 700 }}>
             {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
-          </div>
-          <div
-            style={{
-              fontSize: "8.5px",
-              color: "#444444",
-              marginTop: "1mm",
-              textAlign: "justify",
-            }}
-          >
-            {L("Note:", "নোট:")}{" "}
-            {L(
-              "This document is system generated. Verify by scanning the QR code or visiting the result page.",
-              "এই নথিটি সিস্টেম দ্বারা তৈরি। QR স্ক্যান করে বা ফলাফল পৃষ্ঠায় গিয়ে যাচাই করুন।"
-            )}
           </div>
         </div>
         <div style={{ fontSize: "8.5px", color: "#666666", textAlign: "right", flexShrink: 0 }}>
@@ -740,6 +745,25 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               })
             : ""}
         </div>
+      </div>
+
+      {/* ── Bottom notice strip — photo-ID validity + verify note ── */}
+      <div
+        style={{
+          marginTop: "2mm",
+          background: "#f4f4f5",
+          padding: "1.8mm 3mm",
+          textAlign: "center",
+          fontSize: "8.5px",
+          lineHeight: 1.4,
+          color: "#555555",
+          boxSizing: "border-box",
+        }}
+      >
+        {L(
+          "Valid only with a matching photo ID — report to the center 30 minutes before the exam starts. System generated; verify by scanning the QR code.",
+          "সংশ্লিষ্ট পরিচয়পত্রসহ কার্যকর — পরীক্ষা শুরুর ৩০ মিনিট আগে কেন্দ্রে উপস্থিত হন। এটি সিস্টেম-উৎপন্ন নথি; QR স্ক্যান করে যাচাই করুন।"
+        )}
       </div>
     </div>
   );
