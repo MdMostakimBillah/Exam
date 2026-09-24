@@ -35,7 +35,8 @@ export default function RollNumbersPage() {
   useEffect(() => { setPage(1); }, [selectedClass, search]);
 
   // ---- Data ----
-  const { data: currentSession } = useCurrentSession();
+  const sessionQuery = useCurrentSession();
+  const currentSession = sessionQuery.data;
   const sessionId = currentSession?.id;
   const summariesQuery = useClassRollSummaries(sessionId);
   const summaries = useMemo(() => summariesQuery.data ?? [], [summariesQuery.data]);
@@ -136,7 +137,18 @@ export default function RollNumbersPage() {
 
   // ---- Generate ----
   const handleGenerate = async () => {
-    if (!sessionId || !selectedClass) return;
+    // Never bail out silently — a click must always explain itself,
+    // otherwise the button looks broken ("Roll Generation is not working").
+    if (!sessionId) {
+      toast("error", isBn
+        ? 'বর্তমান একাডেমিক সেশন পাওয়া যায়নি — পেজ রিফ্রেশ করুন'
+        : 'No academic session loaded — refresh the page');
+      return;
+    }
+    if (!selectedClass) {
+      toast("warning", isBn ? 'আগে একটি শ্রেণী নির্বাচন করুন' : 'Select a class first');
+      return;
+    }
     if (!summary || summary.total === 0) {
       toast("error", isBn ? 'এই শ্রেণীতে কোনো শিক্ষার্থী নেই' : 'No students in this class');
       return;
@@ -202,7 +214,16 @@ export default function RollNumbersPage() {
           </p>
         </div>
 
-        {/* Migration hint */}
+        {/* Session / migration problem */}
+        {sessionQuery.isError || (!sessionQuery.isPending && !currentSession) ? (
+          <div className={`mb-6 flex items-center gap-2.5 px-4 py-3 rounded-md border text-[13px] ${isDark ? "border-red-500/30 bg-red-500/10 text-red-400" : "border-red-200 bg-red-50 text-red-600"}`}>
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {isBn
+              ? 'বর্তমান একাডেমিক সেশন পাওয়া যায়নি — পেজ রিফ্রেশ করুন অথবা Sessions থেকে একটি সেশন সেট করুন'
+              : 'Current academic session not found — refresh the page or set one from Sessions'}
+          </div>
+        ) : null}
+
         {queryError && (
           <div className={`mb-6 flex items-center gap-2.5 px-4 py-3 rounded-md border text-[13px] ${isDark ? "border-red-500/30 bg-red-500/10 text-red-400" : "border-red-200 bg-red-50 text-red-600"}`}>
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -246,10 +267,18 @@ export default function RollNumbersPage() {
                 onChange={(e) => setSelectedClass(e.target.value)}
                 className={inputCls}
               />
+              {/* Explains an empty dropdown instead of leaving a dead control */}
+              {!summariesQuery.isPending && classOptions.length === 0 && !queryError && !!currentSession && (
+                <p className={`text-[11px] mt-1.5 ${isDark ? "text-amber-400" : "text-amber-600"}`}>
+                  {isBn
+                    ? `এই সেশনে (${currentSession.name}) কোনো শিক্ষার্থী নেই — রোল তৈরি করা যাবে না`
+                    : `No students in session ${currentSession.name} — there is nothing to generate`}
+                </p>
+              )}
             </div>
             <button
               onClick={handleGenerate}
-              disabled={!selectedClass || generateMutation.isPending || pending === 0}
+              disabled={generateMutation.isPending}
               className={cn(
                 "flex items-center gap-2 px-5 h-10 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
                 "bg-brand-accent text-brand-accent-fg hover:opacity-90"
@@ -270,6 +299,14 @@ export default function RollNumbersPage() {
                 : (isBn
                   ? `"${selectedClass}" থেকে শ্রেণী নম্বর বোঝা যায়নি — রোল তৈরি করা যাবে না`
                   : `Cannot determine a class number from "${selectedClass}" — rolls cannot be generated`)}
+            </p>
+          )}
+          {/* Confirms "nothing to do" instead of a button that just sits there */}
+          {selectedClass && pending === 0 && total > 0 && (
+            <p className={`text-[11px] mt-1 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+              {isBn
+                ? `এই শ্রেণীর সব ${total} জন শিক্ষার্থীর রোল নম্বর আছে`
+                : `All ${total} students in this class already have a roll number`}
             </p>
           )}
         </div>
