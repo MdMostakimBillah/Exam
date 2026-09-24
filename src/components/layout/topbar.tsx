@@ -326,7 +326,19 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
                   ? 'hover:bg-white/[0.05]' 
                   : 'hover:bg-gray-100'
               )}>
-                <Avatar name={user.name} size="sm" />
+                {orgLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={orgLogo}
+                    alt={orgName}
+                    className={cn(
+                      'h-8 w-8 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1',
+                      isDark ? 'ring-white/15' : 'ring-black/10'
+                    )}
+                  />
+                ) : (
+                  <Avatar name={user.name} size="sm" />
+                )}
                 <div className="flex flex-col items-start">
                   <span className={cn(
                     'text-sm font-medium',

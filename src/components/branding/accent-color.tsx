@@ -22,17 +22,10 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
-/** Pick black or white text for maximum contrast on the given color
- *  (WCAG relative luminance; crossover vs black/white is L ≈ 0.179). */
+/** Text color for anything drawn ON the accent fill. By design the text
+ *  inside the branding color is always white — no black-on-bright auto-pick. */
 export function accentFg(hex: string): string {
-  if (!HEX_RE.test(hex)) return "#000000";
-  const [r, g, b] = hexToRgb(hex);
-  const lin = (c: number) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  };
-  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  return L > 0.179 ? "#000000" : "#ffffff";
+  return "#ffffff";
 }
 
 /** Accent at a given alpha — used for soft chips / icon backgrounds. */
