@@ -250,9 +250,18 @@ export default function InstitutionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                          {inst.name.charAt(0)}
-                        </div>
+                        {inst.logo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={inst.logo}
+                            alt={inst.name}
+                            className={`h-8 w-8 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1 ${isDark ? 'ring-white/15' : 'ring-black/10'}`}
+                          />
+                        ) : (
+                          <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                            {inst.name.charAt(0)}
+                          </div>
+                        )}
                         <div>
                           <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{inst.name}</p>
                           <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{inst.address}</p>
