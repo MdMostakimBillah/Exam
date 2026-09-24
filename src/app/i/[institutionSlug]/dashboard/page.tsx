@@ -182,7 +182,7 @@ export default function InstitutionDashboardPage() {
                           <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{exam.code} · {exam.academicYear}</p>
                         </div>
                       </div>
-                      <Badge status={exam.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'} />
+                      <Badge status={exam.status} />
                     </div>
                   ))}
                 </div>
