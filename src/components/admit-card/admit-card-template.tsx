@@ -243,6 +243,15 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
   const assocBn = brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন";
   const brandShort = brand.brandShort || "BMA";
 
+  /** Literal accent hex for the themed pill — resolved here (never
+   *  var(--brand-accent)) so the fill survives html2canvas AND the print
+   *  window, which receives a bare outerHTML clone with no globals.css.
+   *  Empty/invalid accent → near-black (the light-theme default; white
+   *  would vanish on paper). */
+  const accentHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test((brand.accentColor || "").trim())
+    ? brand.accentColor.trim()
+    : "#18181b";
+
   /** Chrome strings follow the active language. */
   const L = (en: string, b: string) => (bn ? b : en);
 
@@ -444,19 +453,20 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         </div>
       </div>
 
-      {/* ── Outlined "Admit Card" pill (NU style) ─────────────────── */}
+      {/* ── Themed "Admit Card" pill — accent fill, centered ──────── */}
       <div style={{ textAlign: "center", margin: "3mm 0" }}>
         <span
           style={{
             display: "inline-block",
-            border: "1.5px solid #000000",
+            border: `1.5px solid ${accentHex}`,
             borderRadius: "4mm",
             padding: "3px 20px",
             fontSize: "13px",
             fontWeight: 700,
             letterSpacing: "1px",
             textTransform: "uppercase",
-            background: "#ffffff",
+            background: accentHex,
+            color: "#ffffff",
           }}
         >
           {L("Admit Card", "প্রবেশপত্র")}
