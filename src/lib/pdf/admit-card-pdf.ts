@@ -4,10 +4,12 @@ import { jsPDF } from "jspdf";
 /**
  * Admit-card export helpers.
  *
- * The card is a fixed 210mm × 297mm DOM node (AdmitCardTemplate), so each
- * captured element maps to EXACTLY ONE A4 page — batch downloads simply stack
- * them. html2canvas is used (instead of drawing with jsPDF primitives) so the
- * design, photos and Bangla text rasterise identically to what's on screen.
+ * The card is a fixed 210mm-wide DOM node (AdmitCardTemplate) with
+ * CONTENT-DRIVEN height (the reference design), so each capture is measured
+ * and drawn at true size at the top of its own A4 page — exactly what the
+ * print window does with page breaks. html2canvas is used (instead of
+ * drawing with jsPDF primitives) so the design, photos and Bangla text
+ * rasterise identically to what's on screen.
  */
 
 /** Wait until every <img> in the given roots has loaded (or errored), max 15s. */
@@ -38,12 +40,19 @@ function timestamp(): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
-/** Capture each element as one A4 page and download a single multi-page PDF. */
+/** Capture each element and download a single multi-page PDF — one card per
+ *  A4 page, drawn at its measured (content) height from the top of the page. */
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const PX_TO_MM = 25.4 / 96;
   for (let i = 0; i < elements.length; i++) {
-    const canvas = await html2canvas(elements[i], {
+    const el = elements[i];
+    // Content-height card: measure (offsetHeight ignores any CSS transform)
+    // and cap at A4 so a too-tall card still lands inside the page.
+    const heightPx = el.offsetHeight || el.getBoundingClientRect().height;
+    const heightMm = Math.min(heightPx * PX_TO_MM, 297);
+    const canvas = await html2canvas(el, {
       scale: 2,
       useCORS: true,
       allowTaint: false,
@@ -51,8 +60,8 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
     });
     const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
     if (i > 0) pdf.addPage();
-    // Card is exactly 210 × 297 mm → one card = one full A4 page.
-    pdf.addImage(dataUrl, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    // Card is 210mm wide → draw at true size, top-left of the A4 page.
+    pdf.addImage(dataUrl, "JPEG", 0, 0, 210, heightMm, undefined, "FAST");
   }
   pdf.save(filename || `admit-cards-${timestamp()}.pdf`);
 }

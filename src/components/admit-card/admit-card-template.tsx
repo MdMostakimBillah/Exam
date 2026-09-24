@@ -1,53 +1,42 @@
 "use client";
 
 import * as React from "react";
-import { formatDate } from "@/lib/storage/storage";
 import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
 
 /**
- * National University–style admit card — one fixed A4 page (210mm × 297mm).
+ * Admit card — reference redesign (Delta Science College mock).
  *
- * Everything is styled INLINE on purpose: html2canvas rasterises it for the
- * bulk PDF and the print window receives a plain outerHTML clone with no
- * Tailwind sheet, so the design must be self-contained. The bordered tables
- * are built from flex DIVs — one div per column, no <table>/<td> markup —
- * which rasterise identically in preview, PDF and print. Every cell centers
- * its data BOTH ways: vertically (align-items) and horizontally (text-align).
+ * Layout mirrors the reference component: theme-colored full-bleed header
+ * (logo circle + institution + code·session | gold exam code + exam title),
+ * light "Admit Card" ribbon, photo + class badge beside a big examinee name
+ * over a 2-column label/value grid, bordered zebra subjects table, dashed
+ * perforation, QR verify stub with controller block, light bottom notice
+ * strip, and a gold security strip overlaying the right edge.
  *
- * Language: ALL card chrome (labels, pill, headings, instructions, captions)
- * follows `view.lang`. The root carries `lang="bn|en"` so font fallback
- * resolves identically in preview, PDF and print. The typewriter font is
- * protected from the global `html.lang-bn *` override by a scoped rule in
- * globals.css: Latin/numerals → Courier New, Bangla glyphs → Tiro Bangla.
+ * Everything is styled INLINE on purpose: html2canvas rasterises the card
+ * for the bulk PDF and the print window receives a plain outerHTML clone
+ * with no stylesheet — the reference's Tailwind classes would render
+ * unstyled there. Every color is a literal hex (accent resolved from
+ * branding at render time), so preview, PDF and print match pixel-wise.
  *
- * Layout follows the reference card design where it doesn't conflict with
- * the explicit specs above: zebra-tinted subject rows, an emphasized
- * examinee-name field, a dashed perforation above the stub, and a light
- * bottom notice strip (photo-ID validity + verify note). Reference-only
- * elements that break the PDF path are deliberately not ported: Tailwind
- * classes (the print window clones bare HTML), the `print:hidden` security
- * strip/notches (excluded from print by design), and the navy logo header
- * (superseded by the photo | association-title | QR header spec).
+ * The card is 210mm wide with CONTENT-DRIVEN height (like the reference);
+ * the exporter measures each card and draws it at true size at the top of
+ * its A4 page.
+ *
+ * Language: all chrome follows `view.lang`; the root carries `lang="bn|en"`
+ * so font fallback (Courier New Latin / Tiro Bangla) resolves identically in
+ * preview, PDF and print. The institution name stays English (see
+ * buildCardView); association branding lives in the watermark.
  */
 
 const FONT = "'Courier New', Courier, 'Tiro Bangla', monospace";
-const BORDER = "1px solid #000000";
-
-/** Shared cell chrome — every grid column is a <div> whose content is
- *  centered both vertically (align-items) and horizontally (text-align).
- *  boxSizing is explicit because the print window clones this markup WITHOUT
- *  the globals.css reset, so the browser default (content-box) would apply. */
-const cellStyle: React.CSSProperties = {
-  boxSizing: "border-box",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  textAlign: "center",
-  minHeight: "6.5mm",
-  padding: "2px 7px",
-  background: "#ffffff",
-  wordBreak: "break-word",
-};
+/** Reference palette — light slate borders/grays (literal, PDF-safe). */
+const BORDER = "1px solid #e2e8f0";
+const SLATE_400 = "#94a3b8";
+const SLATE_500 = "#64748b";
+const SLATE_700 = "#334155";
+/** Mock's gold security-strip / exam-code accent. */
+const GOLD = "#d4af37";
 
 export interface CardSubject {
   code: string; // "101", "102"… auto-numbered per class in routine order
@@ -65,7 +54,7 @@ export interface CardView {
   institutionCode?: string;
   institutionLogo?: string | null;
   examName: string;
-  /** Exam code, e.g. "SE-26" (NU's Examination Code position). */
+  /** Exam code, e.g. "SE-26" — shown in gold in the header (reference). */
   examCode?: string;
   /** Exam start – end date, e.g. "Dec 31, 2026 – Jan 02, 2027". */
   examPeriod?: string;
@@ -87,14 +76,12 @@ export interface CardView {
   qrDataUrl: string;
   /** Bilingual blob — EN lines + BN lines; filtered by lang at render. */
   instructions?: string;
-  /** admit_cards.created_at — printed as Generated On. */
+  /** admit_cards.created_at — kept for provenance. */
   createdAt: string;
 }
 
 const rootStyle: React.CSSProperties = {
   width: "210mm",
-  height: "297mm",
-  padding: "5mm 7mm 5mm",
   background: "#ffffff",
   color: "#000000",
   fontFamily: FONT,
@@ -110,7 +97,7 @@ const rootStyle: React.CSSProperties = {
   isolation: "isolate",
 };
 
-/** Big faded association watermark behind the whole card — the official
+/** Big faded association watermark behind the card — the official
  *  watermark. Uses the super-admin's uploaded image when set, otherwise the
  *  classic text crest built from the short/association names. */
 function Watermark({ brand }: { brand: BrandingSettings }) {
@@ -178,63 +165,6 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
   );
 }
 
-/** Subject box: bordered header + 2-column div grid — see SubjectCell. */
-
-function SubjectCell({
-  subject,
-  bn,
-  divide,
-  tint,
-}: {
-  subject?: CardSubject;
-  bn: boolean;
-  /** true for the left column — draws the vertical divider. */
-  divide?: boolean;
-  /** true for odd rows — light zebra tint (reference design). */
-  tint?: boolean;
-}) {
-  const divider = divide ? { borderRight: BORDER } : undefined;
-  const bg = tint ? "#f8fafc" : "#ffffff";
-  if (!subject) {
-    return <div style={{ ...cellStyle, flex: 1, minWidth: 0, background: bg, ...divider }} />;
-  }
-  const time =
-    subject.startTime && subject.endTime
-      ? `${subject.startTime}–${subject.endTime}`
-      : subject.startTime || subject.endTime || "";
-  const when = [
-    subject.date ? formatCardDate(subject.date, bn) : "",
-    time,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <div
-      style={{
-        ...cellStyle,
-        flex: 1,
-        minWidth: 0,
-        fontSize: "11px",
-        flexWrap: "wrap",
-        gap: "4px 8px",
-        background: bg,
-        ...divider,
-      }}
-    >
-      <span>
-        <strong>{subject.code} — </strong>
-        {subject.name}
-      </span>
-      {when ? (
-        <span style={{ fontSize: "9.5px", whiteSpace: "nowrap", color: "#333333" }}>
-          {when}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
 /** "Dec 31" (en) / "৩১ ডিসে" (bn) beside each subject. */
 function formatCardDate(iso: string, bn: boolean): string {
   try {
@@ -247,21 +177,98 @@ function formatCardDate(iso: string, bn: boolean): string {
   }
 }
 
+/** One half of a subject row: fixed code column + fluid name column
+ *  (reference look — left-aligned, light borders, no table markup). */
+function SubjectHalf({
+  subject,
+  bn,
+  divider,
+}: {
+  subject?: CardSubject;
+  bn: boolean;
+  /** true for the 2nd half of the row — draws the vertical divider. */
+  divider?: boolean;
+}) {
+  if (!subject) {
+    return (
+      <>
+        <div
+          style={{
+            width: "86px",
+            flexShrink: 0,
+            boxSizing: "border-box",
+            borderLeft: divider ? BORDER : undefined,
+          }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }} />
+      </>
+    );
+  }
+  const time =
+    subject.startTime && subject.endTime
+      ? `${subject.startTime}–${subject.endTime}`
+      : subject.startTime || subject.endTime || "";
+  const when = [subject.date ? formatCardDate(subject.date, bn) : "", time]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <>
+      <div
+        style={{
+          width: "86px",
+          flexShrink: 0,
+          boxSizing: "border-box",
+          padding: "8px 14px",
+          fontSize: "12px",
+          color: SLATE_500,
+          borderLeft: divider ? BORDER : undefined,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        {subject.code}
+      </div>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          boxSizing: "border-box",
+          padding: "8px 14px",
+          fontSize: "13.5px",
+          color: SLATE_700,
+          wordBreak: "break-word",
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "2px 8px",
+        }}
+      >
+        <span>{subject.name}</span>
+        {when ? (
+          <span style={{ fontSize: "10px", color: SLATE_500, whiteSpace: "nowrap" }}>
+            {when}
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
 export function AdmitCardTemplate({ view }: { view: CardView }) {
   const bn = view.lang === "bn";
 
   // Association branding — same source as the landing page.
   const { data: brandData } = useBranding();
   const brand: BrandingSettings = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
-  const assocEn = brand.brandName || "Bangladesh Madrasah Association";
   const assocBn = brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন";
   const brandShort = brand.brandShort || "BMA";
 
-  /** Literal accent hex for the themed pill — resolved here (never
-   *  var(--brand-accent)) so the fill survives html2canvas AND the print
-   *  window, which receives a bare outerHTML clone with no globals.css.
-   *  Empty/invalid accent → near-black (the light-theme default; white
-   *  would vanish on paper). */
+  /** Literal accent hex for the header / name / ribbon — resolved here
+   *  (never var(--brand-accent)) so the fill survives html2canvas AND the
+   *  print window, which receives a bare outerHTML clone with no
+   *  globals.css. Empty/invalid accent → near-black (light-theme default;
+   *  white would vanish on paper). */
   const accentHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test((brand.accentColor || "").trim())
     ? brand.accentColor.trim()
     : "#18181b";
@@ -269,19 +276,20 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
   /** Chrome strings follow the active language. */
   const L = (en: string, b: string) => (bn ? b : en);
 
-  // Stored instructions mix EN + BN lines — show only the current language's set.
-  const allLines = (view.instructions || "").split("\n").filter(Boolean);
-  const instructionLines = allLines.filter((line) => {
-    const isBangla = /[\u0980-\u09FF]/.test(line);
-    return bn ? isBangla : !isBangla;
-  });
-  const nums = bn
-    ? ["১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "১০"]
-    : ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+  // Header meta line — "Institution Code X · Session Y" (reference layout).
+  const sessionLabel = view.sessionName || view.academicYear;
+  const headerMeta = [
+    view.institutionCode
+      ? `${L("Institution Code", "প্রতিষ্ঠানের কোড")} ${view.institutionCode}`
+      : "",
+    sessionLabel ? `${L("Session", "সেশন")} ${sessionLabel}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const hasRoutine = view.subjects.some((s) => s.date || s.startTime || s.endTime);
 
-  // Pair subjects up for the 2-column grid; pad the last row when odd (NU look).
+  // Pair subjects up for the 2-column table; pad the last row when odd.
   const subjectRows: Array<[CardSubject | undefined, CardSubject | undefined]> = [];
   for (let i = 0; i < view.subjects.length; i += 2) {
     subjectRows.push([view.subjects[i], view.subjects[i + 1]]);
@@ -294,276 +302,301 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
     .filter(Boolean)
     .join(" ");
 
-  // Header line 3 — exam name with its session (academic year as fallback).
-  const sessionLabel = view.sessionName || view.academicYear;
+  const classNameFull = `${view.className}${
+    view.section && view.section !== "—" ? ` / ${view.section}` : ""
+  }`;
 
-  const created = view.createdAt ? new Date(view.createdAt) : new Date();
-  const isValidDate = !Number.isNaN(created.getTime());
-  const dateOpts: Intl.DateTimeFormatOptions = {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  };
-
-  // Bordered fields grid — pairs of {label, value} columns per flex row.
-  // `emphasis` renders the value larger/bolder (the examinee's name, the
-  // reference design's hero field).
-  const dob = (() => {
-    if (!view.dob || view.dob === "—") return "—";
-    try {
-      return formatDate(view.dob);
-    } catch {
-      return view.dob;
-    }
-  })();
-  const fieldRows: Array<Array<{ label: string; value: React.ReactNode; emphasis?: boolean }>> = [
-    [
-      { label: L("Examination Code", "পরীক্ষার কোড"), value: view.examCode || "—" },
-      { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
-    ],
-    [
-      { label: L("Name of Examinee", "পরীক্ষার্থীর নাম"), value: view.studentName || "—", emphasis: true },
-      { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
-    ],
-    [
-      { label: L("Father's Name", "পিতার নাম"), value: view.fatherName || "—" },
-      { label: L("Session", "সেশন"), value: view.sessionName || "—" },
-    ],
-    [
-      { label: L("Mother's Name", "মাতার নাম"), value: view.motherName || "—" },
-      {
-        label: L("Class / Section", "শ্রেণি / শাখা"),
-        value: `${view.className}${view.section && view.section !== "—" ? ` / ${view.section}` : ""}`,
-      },
-    ],
-    [
-      {
-        label: L("Institution Code & Name", "প্রতিষ্ঠানের কোড ও নাম"),
-        value: view.institutionCode
-          ? `(${view.institutionCode}) ${view.institutionName}`
-          : view.institutionName,
-      },
-      { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
-    ],
-    [
-      { label: L("Date of Birth", "জন্মতারিখ"), value: dob },
-      { label: L("Exam Period", "পরীক্ষার সময়"), value: view.examPeriod || "—" },
-    ],
+  // 2-column label/value grid — the reference's field set, plus class info.
+  const fields: Array<{ label: string; value: string }> = [
+    { label: L("Father's Name", "পিতার নাম"), value: view.fatherName || "—" },
+    { label: L("Mother's Name", "মাতার নাম"), value: view.motherName || "—" },
+    { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
+    { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
+    { label: L("Exam Center", "পরীক্ষার কেন্দ্র"), value: centerText },
+    { label: L("Date & Time", "তারিখ ও সময়"), value: view.examPeriod || "—" },
+    { label: L("Class / Section", "শ্রেণি / শাখা"), value: classNameFull || "—" },
+    { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
   ];
 
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
       <Watermark brand={brand} />
-      {/* ── Header: photo | titles | QR — rule underneath ── */}
+
+      {/* ── Header: theme-color full-bleed bar ───────────────────── */}
       <div
         style={{
+          background: accentHex,
+          color: "#ffffff",
           display: "flex",
           alignItems: "center",
-          gap: "4mm",
-          paddingBottom: "3mm",
-          borderBottom: "2px solid #000000",
+          justifyContent: "space-between",
+          gap: "18px",
+          padding: "20px 34px 18px 32px",
         }}
       >
+        {/* Left: logo circle + institution + code·session */}
         <div
           style={{
-            width: "20mm",
-            height: "20mm",
-            border: BORDER,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            flexShrink: 0,
-            background: "#fafafa",
+            gap: "14px",
+            minWidth: 0,
+            maxWidth: "56%",
           }}
         >
-          {view.photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={view.photo}
-              alt={L("Photo", "ছবি")}
-              crossOrigin="anonymous"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <span style={{ fontSize: "8.5px", color: "#999999" }}>
-              {L("PHOTO", "ছবি")}
-            </span>
-          )}
+          <div
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "50%",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              boxSizing: "border-box",
+              background: view.institutionLogo ? "#ffffff" : "rgba(255,255,255,0.12)",
+              border: view.institutionLogo
+                ? undefined
+                : "1px solid rgba(255,255,255,0.35)",
+            }}
+          >
+            {view.institutionLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={view.institutionLogo}
+                alt=""
+                crossOrigin="anonymous"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  padding: "4px",
+                  boxSizing: "border-box",
+                }}
+              />
+            ) : (
+              <span
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                {(view.institutionName || "?").trim().charAt(0)}
+              </span>
+            )}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: "17px",
+                fontWeight: 700,
+                lineHeight: 1.2,
+                wordBreak: "break-word",
+              }}
+            >
+              {view.institutionName}
+            </div>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#cbd5e1",
+                marginTop: "3px",
+                wordBreak: "break-word",
+              }}
+            >
+              {headerMeta}
+            </div>
+          </div>
         </div>
 
-        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
-          {/* 1. Main title — association name */}
+        {/* Right: exam code (gold) + exam title */}
+        <div style={{ textAlign: "right", maxWidth: "42%", minWidth: 0 }}>
+          {view.examCode ? (
+            <div
+              style={{
+                fontSize: "10.5px",
+                fontWeight: 700,
+                letterSpacing: "0.6px",
+                color: GOLD,
+              }}
+            >
+              {view.examCode}
+            </div>
+          ) : null}
           <div
             style={{
-              fontSize: "19px",
-              fontWeight: 700,
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
-              lineHeight: 1.2,
-            }}
-          >
-            {L(assocEn, assocBn)}
-          </div>
-          {/* 2. Institution name — always English (see buildCardView) */}
-          <div
-            style={{
-              fontSize: "13px",
-              fontWeight: 700,
+              fontSize: "13.5px",
+              fontWeight: 500,
               marginTop: "2px",
-              textTransform: "uppercase",
-              letterSpacing: "0.3px",
               lineHeight: 1.25,
-              color: "#111111",
-            }}
-          >
-            {view.institutionName}
-          </div>
-          {/* 3. Exam name with session */}
-          <div
-            style={{
-              fontSize: "11.5px",
-              fontWeight: 700,
-              marginTop: "2px",
-              textTransform: "uppercase",
-              letterSpacing: "0.3px",
-              lineHeight: 1.25,
-              color: "#222222",
+              wordBreak: "break-word",
             }}
           >
             {view.examName}
-            {sessionLabel ? ` - ${sessionLabel}` : ""}
-          </div>
-        </div>
-
-        <div style={{ width: "20mm", flexShrink: 0, textAlign: "center" }}>
-          {view.qrDataUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={view.qrDataUrl}
-              alt="QR"
-              crossOrigin="anonymous"
-              style={{ width: "20mm", height: "20mm", display: "block" }}
-            />
-          ) : (
-            <div
-              style={{
-                width: "20mm",
-                height: "20mm",
-                border: BORDER,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "7.5px",
-                color: "#999999",
-              }}
-            >
-              QR
-            </div>
-          )}
-          <div style={{ fontSize: "7.5px", marginTop: "1.5mm", lineHeight: 1.2 }}>
-            {L("Scan to check result", "ফলাফল দেখতে স্ক্যান")}
           </div>
         </div>
       </div>
 
-      {/* ── Themed "Admit Card" pill — accent fill, centered ──────── */}
-      <div style={{ textAlign: "center", margin: "3mm 0" }}>
-        <span
+      {/* ── Ribbon: "Admit Card", light band, accent text ────────── */}
+      <div
+        style={{
+          background: "#f8fafc",
+          borderBottom: BORDER,
+          textAlign: "center",
+          padding: "8px 0",
+          fontSize: "14px",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          color: accentHex,
+        }}
+      >
+        {L("Admit Card", "প্রবেশপত্র")}
+      </div>
+
+      {/* ── Body: photo + badge | big name + 2-col fields ────────── */}
+      <div style={{ display: "flex", gap: "26px", padding: "22px 32px 0" }}>
+        <div
           style={{
-            display: "inline-block",
-            border: `1.5px solid ${accentHex}`,
-            borderRadius: "4mm",
-            padding: "3px 20px",
-            fontSize: "13px",
-            fontWeight: 700,
-            letterSpacing: "1px",
-            textTransform: "uppercase",
-            background: accentHex,
-            color: "#ffffff",
+            width: "120px",
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
-          {L("Admit Card", "প্রবেশপত্র")}
-        </span>
-      </div>
-
-      {/* ── Bordered fields grid — one div per column, centered data ── */}
-      <div style={{ border: BORDER, marginTop: "0.5mm", background: "#ffffff" }}>
-        {fieldRows.map((pairs, r) => (
           <div
-            key={r}
             style={{
+              width: "112px",
+              height: "140px",
+              borderRadius: "6px",
+              border: BORDER,
+              background: "#f1f5f9",
               display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
               boxSizing: "border-box",
-              borderBottom: r < fieldRows.length - 1 ? BORDER : undefined,
             }}
           >
-            {pairs.map((p, c) => (
-              <React.Fragment key={c}>
-                {/* label column — fixed width like the old table-layout */}
+            {view.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={view.photo}
+                alt={L("Photo", "ছবি")}
+                crossOrigin="anonymous"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <span style={{ fontSize: "12px", color: SLATE_400 }}>
+                {L("Photo", "ছবি")}
+              </span>
+            )}
+          </div>
+          {/* Candidate badge — reference shows student type; we show class */}
+          {view.className ? (
+            <div
+              style={{
+                borderRadius: "999px",
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                color: "#047857",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                padding: "2px 9px",
+                boxSizing: "border-box",
+              }}
+            >
+              {view.className}
+            </div>
+          ) : null}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: "21px",
+              fontWeight: 700,
+              color: accentHex,
+              lineHeight: 1.2,
+              marginBottom: "14px",
+              wordBreak: "break-word",
+            }}
+          >
+            {view.studentName || "—"}
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              columnGap: "26px",
+              rowGap: "14px",
+            }}
+          >
+            {fields.map((f) => (
+              <div key={f.label} style={{ minWidth: 0 }}>
                 <div
                   style={{
-                    ...cellStyle,
-                    flex: "0 0 37mm",
                     fontSize: "10.5px",
                     fontWeight: 700,
-                    borderRight: BORDER,
+                    letterSpacing: "0.6px",
+                    textTransform: "uppercase",
+                    color: SLATE_400,
+                    marginBottom: "3px",
                   }}
                 >
-                  {p.label}
+                  {f.label}
                 </div>
-                {/* data column — emphasized fields (name) render larger */}
                 <div
                   style={{
-                    ...cellStyle,
-                    flex: 1,
-                    minWidth: 0,
-                    fontSize: "11.5px",
-                    borderRight: c < pairs.length - 1 ? BORDER : undefined,
-                    ...(p.emphasis ? { fontSize: "13px", fontWeight: 700 } : null),
+                    fontSize: "13px",
+                    color: SLATE_700,
+                    lineHeight: 1.35,
+                    wordBreak: "break-word",
                   }}
                 >
-                  {p.value}
+                  {f.value}
                 </div>
-              </React.Fragment>
+              </div>
             ))}
           </div>
-        ))}
-        {/* Full-width centered center row (NU style) */}
-        <div style={{ ...cellStyle, minHeight: "7mm", fontSize: "11.5px", borderTop: BORDER }}>
-          <span>
-            <strong>{L("Center Code & Name", "কেন্দ্রের কোড ও নাম")}: </strong>
-            {centerText}
-          </span>
         </div>
       </div>
 
-      {/* ── Subject box: bordered header + 2-column div grid ──────── */}
-      <div style={{ marginTop: "3.5mm" }}>
-        <div style={{ border: BORDER, background: "#ffffff" }}>
-          <div
-            style={{
-              ...cellStyle,
-              minHeight: "7mm",
-              fontWeight: 700,
-              fontSize: "11px",
-              textTransform: "uppercase",
-              letterSpacing: "0.4px",
-            }}
-          >
-            {L("Subject Code & Name", "কোড ও বিষয়ের নাম")}
-          </div>
+      {/* ── Subjects: label + bordered zebra table ───────────────── */}
+      <div style={{ padding: "18px 32px 0" }}>
+        <div
+          style={{
+            fontSize: "12px",
+            fontWeight: 700,
+            letterSpacing: "0.6px",
+            textTransform: "uppercase",
+            color: SLATE_500,
+            marginBottom: "8px",
+          }}
+        >
+          {L("Subjects", "বিষয়সমূহ")}
+        </div>
+        <div
+          style={{
+            border: BORDER,
+            borderRadius: "8px",
+            overflow: "hidden",
+            background: "#ffffff",
+            boxSizing: "border-box",
+          }}
+        >
           {view.subjects.length === 0 ? (
             <div
               style={{
-                ...cellStyle,
-                borderTop: BORDER,
-                minHeight: "12mm",
-                fontSize: "10.5px",
-                color: "#666666",
-                padding: "4px 7px",
+                padding: "14px",
+                textAlign: "center",
+                fontSize: "13px",
+                color: SLATE_500,
               }}
             >
               {L(
@@ -573,15 +606,24 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             </div>
           ) : (
             subjectRows.map(([a, b], i) => (
-              <div key={i} style={{ display: "flex", boxSizing: "border-box", borderTop: BORDER }}>
-                <SubjectCell subject={a} bn={bn} divide tint={i % 2 === 1} />
-                <SubjectCell subject={b} bn={bn} tint={i % 2 === 1} />
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  boxSizing: "border-box",
+                  minHeight: "34px",
+                  background: i % 2 === 1 ? "#f8fafc" : "#ffffff",
+                  borderTop: i > 0 ? BORDER : undefined,
+                }}
+              >
+                <SubjectHalf subject={a} bn={bn} />
+                <SubjectHalf subject={b} bn={bn} divider />
               </div>
             ))
           )}
         </div>
         {!hasRoutine && view.subjects.length > 0 ? (
-          <div style={{ fontSize: "9px", color: "#555555", marginTop: "1.5mm" }}>
+          <div style={{ fontSize: "10px", color: SLATE_500, marginTop: "6px" }}>
             {L(
               "Date / time of subjects will appear once the exam routine is published.",
               "রুটিন প্রকাশের পর বিষয়ের তারিখ / সময় দেখাবে।"
@@ -590,181 +632,118 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         ) : null}
       </div>
 
-      {/* ── Signature box: two equal halves, captions inside ──────── */}
-      <div style={{ marginTop: "3.5mm", border: BORDER, display: "flex" }}>
-        <div
-          style={{
-            flex: 1,
-            padding: "3mm 6px 2.5mm",
-            textAlign: "center",
-            borderRight: BORDER,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-          }}
-        >
-          <div style={{ height: "9mm" }} />
-          <div style={{ width: "45mm", borderBottom: "1px dotted #000000", margin: "0 auto 4px" }} />
-          <div style={{ fontSize: "10.5px", fontWeight: 700, lineHeight: 1.3 }}>
-            {L("Seal & Signature of Head of Institution", "প্রতিষ্ঠান প্রধানের সিল ও স্বাক্ষর")}
-          </div>
-        </div>
-        <div
-          style={{
-            flex: 1,
-            padding: "3mm 6px 2.5mm",
-            textAlign: "center",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-          }}
-        >
+      {/* ── Perforation (notches are print-hidden in the reference) ─ */}
+      <div style={{ margin: "22px 32px 0", borderTop: "1px dashed #cbd5e1" }} />
+
+      {/* ── Footer stub: QR + scan/ID | controller ────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          gap: "20px",
+          padding: "16px 32px 14px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "14px", minWidth: 0 }}>
           <div
             style={{
-              height: "9mm",
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "center",
+              border: "1px solid #cbd5e1",
+              borderRadius: "4px",
+              padding: "3px",
+              background: "#ffffff",
+              boxSizing: "border-box",
+              flexShrink: 0,
             }}
           >
-            <div style={{ width: "45mm", borderBottom: "1px dotted #000000" }} />
+            {view.qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={view.qrDataUrl}
+                alt="QR"
+                crossOrigin="anonymous"
+                style={{ width: "64px", height: "64px", display: "block" }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "11px",
+                  color: SLATE_400,
+                }}
+              >
+                QR
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: "10.5px", fontWeight: 700, lineHeight: 1.3, marginTop: "4px" }}>
+          <div style={{ fontSize: "11px", color: SLATE_500, lineHeight: 1.5, minWidth: 0 }}>
+            <div>{L("Scan to verify candidate", "যাচাই করতে স্ক্যান করুন")}</div>
+            <div>
+              {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: "center", flexShrink: 0 }}>
+          <div
+            style={{
+              fontSize: "17px",
+              fontStyle: "italic",
+              fontWeight: 700,
+              color: accentHex,
+              lineHeight: 1.15,
+            }}
+          >
             {L("Controller of Examinations", "পরীক্ষা নিয়ন্ত্রক")}
           </div>
-          <div style={{ fontSize: "9px", color: "#333333", lineHeight: 1.3 }}>
+          <div
+            style={{
+              width: "165px",
+              borderTop: `1px solid ${SLATE_400}`,
+              margin: "8px auto 4px",
+            }}
+          />
+          <div style={{ fontSize: "11px", color: SLATE_500 }}>
             {L(`Secretary, ${brandShort} Association`, `সাধারণ সম্পাদক, ${assocBn}`)}
           </div>
         </div>
       </div>
 
-      {/* ── Instructions (left) + controller block (right) ────────── */}
+      {/* ── Bottom notice strip ───────────────────────────────────── */}
       <div
         style={{
-          display: "flex",
-          gap: "5mm",
-          marginTop: "3.5mm",
-          border: BORDER,
-          padding: "3mm 4mm",
-        }}
-      >
-        <div style={{ flex: "1 1 70%", minWidth: 0 }}>
-          <div
-            style={{
-              textAlign: "center",
-              fontWeight: 700,
-              fontSize: "11.5px",
-              marginBottom: "2mm",
-              textDecoration: "underline",
-            }}
-          >
-            {L("Instructions for the Examinee", "পরীক্ষার্থীদের জন্য নির্দেশনা")}
-          </div>
-          {instructionLines.length > 0 ? (
-            <ol style={{ margin: 0, paddingLeft: "5mm" }}>
-              {instructionLines.map((line, i) => (
-                <li
-                  key={i}
-                  style={{ fontSize: "9.8px", lineHeight: 1.45, marginBottom: "1.5mm", textAlign: "justify" }}
-                >
-                  <strong>{nums[i] || `${i + 1}`}.</strong>{" "}
-                  {/* Stored lines already carry "1. " / "১. " — strip it when present. */}
-                  {line.replace(/^[0-9০-৯]+[.)]?\s*/, "")}
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div style={{ fontSize: "9.8px", color: "#666666" }}>
-              {L(
-                "Bring your registration card and arrive at the center 30 minutes before the exam.",
-                "নিবন্ধন কার্ড নিয়ে পরীক্ষার ৩০ মিনিট আগে কেন্দ্রে উপস্থিত হন।"
-              )}
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            flex: "0 0 30mm",
-            textAlign: "center",
-            borderLeft: BORDER,
-            paddingLeft: "4mm",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {view.qrDataUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={view.qrDataUrl}
-              alt="QR"
-              crossOrigin="anonymous"
-              style={{ width: "22mm", height: "22mm", display: "block" }}
-            />
-          ) : null}
-          <div style={{ fontSize: "8.5px", fontWeight: 700, marginTop: "2mm", lineHeight: 1.3 }}>
-            {L("CONTROLLER OF EXAMINATIONS", "পরীক্ষা নিয়ন্ত্রক")}
-          </div>
-          <div style={{ fontSize: "8.5px", color: "#444444", marginTop: "1mm", lineHeight: 1.3 }}>
-            {L("Generated:", "তৈরি:")}{" "}
-            {isValidDate
-              ? created.toLocaleString(bn ? "bn-BD" : "en-GB", dateOpts)
-              : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Perforation — tear-off stub below (reference design) ─── */}
-      <div style={{ marginTop: "auto", borderTop: "1px dashed #cbd5e1" }} />
-
-      {/* ── Footer: card ID (left) · generation stamp (right) ────── */}
-      <div
-        style={{
-          paddingTop: "2mm",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          gap: "8mm",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "13px", fontWeight: 700 }}>
-            {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
-          </div>
-        </div>
-        <div style={{ fontSize: "8.5px", color: "#666666", textAlign: "right", flexShrink: 0 }}>
-          {L("Generated On:", "তৈরির সময়:")}{" "}
-          {isValidDate
-            ? created.toLocaleDateString(bn ? "bn-BD" : "en-GB", {
-                weekday: "long",
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })
-            : ""}
-        </div>
-      </div>
-
-      {/* ── Bottom notice strip — photo-ID validity + verify note ── */}
-      <div
-        style={{
-          marginTop: "2mm",
-          background: "#f4f4f5",
-          padding: "1.8mm 3mm",
+          background: "#f8fafc",
+          borderTop: BORDER,
           textAlign: "center",
-          fontSize: "8.5px",
-          lineHeight: 1.4,
-          color: "#555555",
+          fontSize: "10px",
+          color: SLATE_400,
+          padding: "8px 32px",
           boxSizing: "border-box",
         }}
       >
         {L(
-          "Valid only with a matching photo ID — report to the center 30 minutes before the exam starts. System generated; verify by scanning the QR code.",
-          "সংশ্লিষ্ট পরিচয়পত্রসহ কার্যকর — পরীক্ষা শুরুর ৩০ মিনিট আগে কেন্দ্রে উপস্থিত হন। এটি সিস্টেম-উৎপন্ন নথি; QR স্ক্যান করে যাচাই করুন।"
+          "This admit card is valid only with a matching photo ID. Report to the center 30 minutes before start time.",
+          "এই প্রবেশপত্রটি সংশ্লিষ্ট পরিচয়পত্রসহ কার্যকর। পরীক্ষা শুরুর ৩০ মিনিট আগে কেন্দ্রে উপস্থিত হন।"
         )}
       </div>
+
+      {/* ── Gold security strip — overlays the right edge ────────── */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: "8px",
+          background:
+            "linear-gradient(to bottom, #d4af37 0%, #b8860b 55%, #8a6508 100%)",
+          zIndex: 3,
+        }}
+      />
     </div>
   );
 }
