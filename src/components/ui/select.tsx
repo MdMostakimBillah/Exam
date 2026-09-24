@@ -22,9 +22,9 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       ref={ref}
       {...props}
     >
-      {placeholder && <option value="">{placeholder}</option>}
+      {placeholder && <option value="" className="bg-white text-gray-900 dark:bg-[#0D0D0D] dark:text-white">{placeholder}</option>}
       {options.map(opt => (
-        <option key={opt.value} value={opt.value} className="bg-white text-gray-900 dark:bg-[#0D0D0D]">{opt.label}</option>
+        <option key={opt.value} value={opt.value} className="bg-white text-gray-900 dark:bg-[#0D0D0D] dark:text-white">{opt.label}</option>
       ))}
     </select>
   )

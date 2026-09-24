@@ -20,15 +20,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Theme classes */
+/* Theme classes — color-scheme tells the browser to render NATIVE widgets
+   (select dropdown popups, date pickers, scrollbars, form controls) in the
+   active theme, otherwise the popup stays light-on-light in dark mode. */
 html.dark, body.dark {
   background-color: #090909;
   color: #E4E4E7;
+  color-scheme: dark;
 }
 
 html.light, body.light {
   background-color: #F4F4F5;
   color: #18181B;
+  color-scheme: light;
 }
 
 /* Dashboard accent color — super-admin Settings → Branding → Accent color.

@@ -364,9 +364,9 @@ export default function InstitutionsPage() {
             <div className="col-span-2 sm:col-span-1">
               <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Institution["status"] })} className={`w-full h-9 rounded-md border px-3 text-[11px] transition-colors ${isDark ? "bg-white/[0.04] border-white/[0.06] text-zinc-300" : "bg-zinc-50 border-zinc-200 text-zinc-700"}`}>
-                <option value="PENDING">{isBn ? 'বিচারাধীন' : 'Pending'}</option>
-                <option value="ACTIVE">{isBn ? 'সক্রিয়' : 'Active'}</option>
-                <option value="SUSPENDED">{isBn ? 'স্থগিত' : 'Suspended'}</option>
+                <option value="PENDING" className="bg-white text-gray-900 dark:bg-[#0D0D0D] dark:text-white">{isBn ? 'বিচারাধীন' : 'Pending'}</option>
+                <option value="ACTIVE" className="bg-white text-gray-900 dark:bg-[#0D0D0D] dark:text-white">{isBn ? 'সক্রিয়' : 'Active'}</option>
+                <option value="SUSPENDED" className="bg-white text-gray-900 dark:bg-[#0D0D0D] dark:text-white">{isBn ? 'স্থগিত' : 'Suspended'}</option>
               </select>
             </div>
             <div className="col-span-2 sm:col-span-1">
