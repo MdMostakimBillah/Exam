@@ -45,10 +45,10 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   const { data: inst } = useInstitutionBySlug(slug);
   const brand = React.useMemo(() => ({ ...BRANDING_DEFAULTS, ...(brandData ?? {}) }), [brandData]);
   const orgName = slug && inst?.name
-    ? inst.name
+    ? (isBn ? inst.name : (inst.nameEn || inst.name))
     : (isBn ? brand.brandNameBn : brand.brandName) || brand.brandName;
   const orgLogo = (slug ? inst?.logo : undefined) || brand.brandLogo;
-  const orgShort = slug && inst?.name ? getInitials(inst.name) : brand.brandShort;
+  const orgShort = slug && inst?.name ? getInitials(orgName) : brand.brandShort;
 
   const handleLogout = async () => {
     await logout();

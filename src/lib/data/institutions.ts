@@ -3,12 +3,13 @@ import { createClient } from '@/lib/supabase/server';
 
 const SUPABASE_TABLE = 'institutions';
 
-const INSTITUTION_COLUMNS = 'id,name,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,total_students,total_applications,created_at,updated_at';
+const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,total_students,total_applications,created_at,updated_at';
 
 function mapInstitution(data: any): Institution {
   return {
     id: data.id,
     name: data.name,
+    nameEn: data.name_en ?? '',
     code: data.code,
     slug: data.slug,
     email: data.email,

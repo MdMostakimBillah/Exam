@@ -5,7 +5,7 @@ import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/aut
 
 const SUPABASE_TABLE = 'institutions';
 
-const INSTITUTION_COLUMNS = 'id,name,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,total_students,total_applications,created_at,updated_at';
+const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,total_students,total_applications,created_at,updated_at';
 
 const INSTITUTIONS_STALE_TIME = 5 * 60 * 1000;
 
@@ -13,6 +13,7 @@ function mapInstitution(data: any): Institution {
   return {
     id: data.id,
     name: data.name,
+    nameEn: data.name_en ?? '',
     code: data.code,
     slug: data.slug,
     email: data.email,
@@ -54,6 +55,7 @@ export async function createInstitution(data: Omit<Institution, 'id' | 'createdA
   const supabase = createClient();
   const { data: result, error } = await supabase.from(SUPABASE_TABLE).insert({
     name: data.name,
+    name_en: data.nameEn ?? null,
     code: data.code,
     slug: data.slug,
     email: data.email,
@@ -75,6 +77,7 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   const supabase = createClient();
   const u: any = { updated_at: new Date().toISOString() };
   if (data.name !== undefined) u.name = data.name;
+  if (data.nameEn !== undefined) u.name_en = data.nameEn;
   if (data.code !== undefined) u.code = data.code;
   if (data.slug !== undefined) u.slug = data.slug;
   if (data.email !== undefined) u.email = data.email;

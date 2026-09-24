@@ -1,15 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug, useUpdateInstitution } from "@/lib/storage/institutions";
+import { uploadLogo } from "@/lib/auth/register-action";
 import { updateUser } from "@/lib/storage/users";
 import { getCurrentUser } from "@/lib/auth/auth";
-import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Upload } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn } from "@/lib/utils/helpers";
+import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 type Tab = "profile" | "account" | "password" | "notifications";
@@ -31,12 +32,17 @@ export default function InstitutionSettingsPage() {
 
   // Profile fields
   const [instName, setInstName] = useState("");
+  const [instNameEn, setInstNameEn] = useState("");
   const [instEmail, setInstEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [address, setAddress] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [city, setCity] = useState("");
   const [district, setDistrict] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [logoError, setLogoError] = useState("");
 
   // Account fields
   const [adminName, setAdminName] = useState("");
@@ -60,12 +66,17 @@ export default function InstitutionSettingsPage() {
     setMounted(true);
     if (inst) {
       setInstName(inst.name);
+      setInstNameEn(inst.nameEn || "");
       setInstEmail(inst.email);
       setPhone(inst.phone);
+      setWhatsapp(inst.contactPersonPhone || "");
       setAddress(inst.address);
       setContactPerson(inst.contactPerson);
       setCity(inst.city);
       setDistrict(inst.district);
+      setLogoPreview(inst.logo || "");
+      setLogoFile(null);
+      setLogoError("");
     }
     const currentUser = getCurrentUser();
     if (currentUser) {
@@ -74,21 +85,55 @@ export default function InstitutionSettingsPage() {
     }
   }, [slug, inst]);
 
+  const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError("");
+    if (file.size > MAX_IMAGE_SIZE) {
+      setLogoError(
+        isBn
+          ? `লোগো ৩৫০KB এর কম হতে হবে। বর্তমান: ${(file.size / 1024).toFixed(0)}KB`
+          : `Logo must be under 350KB. Current: ${(file.size / 1024).toFixed(0)}KB`
+      );
+      e.target.value = "";
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     if (inst) {
+      // Upload a newly chosen logo first; on failure keep the existing one.
+      let logoUrl = inst.logo || "";
+      if (logoFile) {
+        try {
+          const buffer = await logoFile.arrayBuffer();
+          const ext = (logoFile.name.split(".").pop() || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+          logoUrl = await uploadLogo(inst.slug, buffer, ext);
+        } catch {
+          logoUrl = inst.logo || "";
+        }
+      }
       await updateInstitutionMutation.mutateAsync({
         id: inst.id,
         data: {
           name: instName,
+          nameEn: instNameEn,
           email: instEmail,
           phone,
           address,
           contactPerson,
+          contactPersonPhone: whatsapp,
           city,
           district,
+          logo: logoUrl || inst.logo,
         },
       });
+      setLogoFile(null);
     }
     await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
@@ -216,16 +261,69 @@ export default function InstitutionSettingsPage() {
                 </div>
 
                 <div className="space-y-5">
-                  <div>
-                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
-                      {isBn ? 'প্রতিষ্ঠানের নাম' : 'Institution Name'}
-                    </label>
-                    <Input
-                      value={instName}
-                      onChange={(e) => setInstName(e.target.value)}
-                      placeholder={isBn ? 'প্রতিষ্ঠানের নাম লিখুন' : 'Enter institution name'}
-                      className={cn(inputCls, "h-10")}
-                    />
+                  {/* Institution logo — same logo collected at registration */}
+                  <div className={`flex items-center gap-4 pb-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <div className="shrink-0">
+                      {logoPreview ? (
+                        <div className={`h-16 w-16 rounded-md overflow-hidden ${isDark ? "border-2 border-white/10" : "border-2 border-zinc-200"}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={logoPreview}
+                            alt={isBn ? "প্রতিষ্ঠানের লোগো" : "Institution logo"}
+                            className="h-full w-full object-cover bg-white"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`h-16 w-16 rounded-md flex items-center justify-center ${isDark ? "bg-white/[0.04] border border-white/[0.06]" : "bg-zinc-100 border border-zinc-200"}`}>
+                          <Building2 className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-[13px] font-medium ${labelCls}`}>
+                        {isBn ? 'প্রতিষ্ঠানের লোগো' : 'Institution Logo'}
+                      </p>
+                      <p className={`text-xs mb-2 ${subtextCls}`}>
+                        {isBn ? 'সর্বোচ্চ ৩৫০KB — টপ প্যানেল ও সাইডবারে দেখানো হবে' : 'Max 350KB — shown in the top panel and sidebar'}
+                      </p>
+                      <label className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-all",
+                        isDark ? "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
+                      )}>
+                        <Upload className="h-3.5 w-3.5" />
+                        {isBn ? 'লোগো পরিবর্তন করুন' : 'Change logo'}
+                        <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                      </label>
+                      {logoError && (
+                        <p className="text-xs text-red-500 mt-1.5">{logoError}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bangla + English names — both collected at registration */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                        {isBn ? 'নাম (বাংলা)' : 'Name (Bangla)'}
+                      </label>
+                      <Input
+                        value={instName}
+                        onChange={(e) => setInstName(e.target.value)}
+                        placeholder={isBn ? 'মাদ্রাসার নাম' : 'বাংলা নাম'}
+                        className={cn(inputCls, "h-10")}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                        {isBn ? 'নাম (ইংরেজি)' : 'Name (English)'}
+                      </label>
+                      <Input
+                        value={instNameEn}
+                        onChange={(e) => setInstNameEn(e.target.value)}
+                        placeholder={isBn ? 'ইংরেজিতে নাম' : 'Institution Name'}
+                        className={cn(inputCls, "h-10")}
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -252,6 +350,18 @@ export default function InstitutionSettingsPage() {
                         className={cn(inputCls, "h-10")}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>
+                      {isBn ? 'হোয়াটসঅ্যাপ নম্বর' : 'WhatsApp Number'}
+                    </label>
+                    <Input
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="+880 1XXX XXXXXX"
+                      className={cn(inputCls, "h-10")}
+                    />
                   </div>
 
                   <div>

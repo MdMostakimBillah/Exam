@@ -3,6 +3,8 @@ import { useState, useCallback, useMemo } from "react";
 import { X, FileDown, Eye, LayoutTemplate, RotateCcw, Check } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { useBranding } from "@/lib/storage/branding";
+import { accentPalette } from "@/lib/utils/generate-pdf";
 
 export interface PdfColumn {
   header: string;
@@ -18,6 +20,10 @@ interface PdfExportModalProps {
   data: Record<string, string | number>[];
   companyName?: string;
   companySubtitle?: string;
+  /** Row-data key holding a photo — enables the "include photos" option. */
+  imageKey?: string;
+  /** Header label for the photo column in the exported PDF. */
+  imageHeader?: string;
 }
 
 export function PdfExportModal({
@@ -28,17 +34,28 @@ export function PdfExportModal({
   data,
   companyName,
   companySubtitle,
+  imageKey,
+  imageHeader,
 }: PdfExportModalProps) {
   const { theme } = useTheme();
   const { lang } = useLang();
   const isDark = theme === "dark";
   const isBn = lang === "bn";
+  const { data: branding } = useBranding();
+  const pal = accentPalette((branding?.accentColor || "").trim());
 
   const [title, setTitle] = useState(defaultTitle);
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
+  const [withPhotos, setWithPhotos] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(
     () => new Set(allColumns.filter((c) => c.visible !== false).map((c) => c.key))
   );
+
+  // Photo option only makes sense when at least one row actually has an image.
+  const photosAvailable = useMemo(() => {
+    if (!imageKey) return false;
+    return data.some((row) => String(row[imageKey] ?? "").trim());
+  }, [data, imageKey]);
 
   const toggleKey = useCallback((key: string) => {
     setSelectedKeys((prev) => {
@@ -72,9 +89,13 @@ export function PdfExportModal({
       orientation,
       companyName,
       companySubtitle,
+      accent: pal.hex,
+      imageKey: withPhotos && photosAvailable ? imageKey : undefined,
+      imageHeader: imageHeader || (isBn ? 'ছবি' : 'Photo'),
     });
     onClose();
-  }, [title, activeColumns, data, orientation, companyName, companySubtitle, onClose]);
+  }, [title, activeColumns, data, orientation, companyName, companySubtitle, onClose,
+      pal.hex, withPhotos, photosAvailable, imageKey, imageHeader, isBn]);
 
   if (!open) return null;
 
@@ -103,7 +124,7 @@ export function PdfExportModal({
             <button
               onClick={handleDownload}
               disabled={activeColumns.length === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Eye className="h-3.5 w-3.5" /> {isBn ? 'প্রিভিউ' : 'Preview'}
             </button>
@@ -129,7 +150,7 @@ export function PdfExportModal({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className={`w-full mt-2 px-3 py-2 rounded-md text-xs border ${inputBg} ${text} focus:outline-none focus:ring-1 focus:ring-[#9333ea]/50`}
+                className={`w-full mt-2 px-3 py-2 rounded-md text-xs border ${inputBg} ${text} focus:outline-none focus:ring-1 focus:ring-[color:var(--brand-accent)] focus:border-[color:var(--brand-accent)]`}
               />
             </div>
 
@@ -145,8 +166,8 @@ export function PdfExportModal({
                     onClick={() => setOrientation(o)}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-[11px] font-medium border transition-all ${
                       orientation === o
-                        ? "border-[#9333ea] bg-[#9333ea]/10 text-[#9333ea]"
-                        : `${border} ${textMuted} hover:border-[#9333ea]/30`
+                        ? "border-brand-accent bg-brand-accent-soft text-brand-accent"
+                        : `${border} ${textMuted} hover:border-brand-accent`
                     }`}
                   >
                     <LayoutTemplate className="h-3.5 w-3.5" />
@@ -157,7 +178,7 @@ export function PdfExportModal({
             </div>
 
             {/* 3. Select Columns */}
-            <div>
+            <div className="mb-5">
               <div className="flex items-center justify-between mb-2">
                 <label className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>
                   ③ {isBn ? 'ডেটা কলাম নির্বাচন' : 'SELECT DATA COLUMNS'}
@@ -167,10 +188,10 @@ export function PdfExportModal({
                 </span>
               </div>
               <div className="flex gap-2 mb-3">
-                <button onClick={selectAll} className={`px-3 py-1 rounded-md text-[10px] font-medium border ${border} ${textMuted} hover:border-[#9333ea]/30`}>
+                <button onClick={selectAll} className={`px-3 py-1 rounded-md text-[10px] font-medium border ${border} ${textMuted} hover:border-brand-accent`}>
                   {isBn ? 'সব' : 'All'}
                 </button>
-                <button onClick={clearAll} className={`px-3 py-1 rounded-md text-[10px] font-medium border ${border} ${textMuted} hover:border-[#9333ea]/30`}>
+                <button onClick={clearAll} className={`px-3 py-1 rounded-md text-[10px] font-medium border ${border} ${textMuted} hover:border-brand-accent`}>
                   {isBn ? 'পরিষ্কার' : 'Clear'}
                 </button>
               </div>
@@ -183,14 +204,14 @@ export function PdfExportModal({
                       onClick={() => toggleKey(col.key)}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-medium border transition-all text-left ${
                         active
-                          ? "border-[#9333ea] bg-[#9333ea]/10 text-[#9333ea]"
+                          ? "border-brand-accent bg-brand-accent-soft text-brand-accent"
                           : `${border} ${textMuted}`
                       }`}
                     >
                       <div className={`h-3.5 w-3.5 rounded-sm border flex items-center justify-center shrink-0 ${
-                        active ? "bg-[#9333ea] border-[#9333ea]" : "border-zinc-400"
+                        active ? "bg-brand-accent border-brand-accent" : "border-zinc-400"
                       }`}>
-                        {active && <Check className="h-2.5 w-2.5 text-white" />}
+                        {active && <Check className="h-2.5 w-2.5 text-brand-accent-fg" />}
                       </div>
                       <span className="truncate">{col.header}</span>
                     </button>
@@ -198,6 +219,30 @@ export function PdfExportModal({
                 })}
               </div>
             </div>
+
+            {/* 4. Photos */}
+            {photosAvailable && (
+              <div>
+                <label className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} block mb-2`}>
+                  ④ {isBn ? 'ছবি সহ ডাউনলোড' : 'INCLUDE PHOTOS'}
+                </label>
+                <button
+                  onClick={() => setWithPhotos((v) => !v)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-medium border transition-all text-left ${
+                    withPhotos
+                      ? "border-brand-accent bg-brand-accent-soft text-brand-accent"
+                      : `${border} ${textMuted}`
+                  }`}
+                >
+                  <div className={`h-3.5 w-3.5 rounded-sm border flex items-center justify-center shrink-0 ${
+                    withPhotos ? "bg-brand-accent border-brand-accent" : "border-zinc-400"
+                  }`}>
+                    {withPhotos && <Check className="h-2.5 w-2.5 text-brand-accent-fg" />}
+                  </div>
+                  <span>{isBn ? 'শিক্ষার্থীর ছবি অন্তর্ভুক্ত করুন' : 'Include student photos'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right: Preview */}
@@ -218,6 +263,9 @@ export function PdfExportModal({
                 orientation={orientation}
                 companyName={companyName}
                 companySubtitle={companySubtitle}
+                pal={pal}
+                imageKey={withPhotos && photosAvailable ? imageKey : undefined}
+                imageHeader={imageHeader || (isBn ? 'ছবি' : 'Photo')}
               />
             </div>
           </div>
@@ -227,14 +275,14 @@ export function PdfExportModal({
         <div className={`flex items-center justify-between px-6 py-3 border-t ${border}`}>
           <button
             onClick={clearAll}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-[11px] font-medium border ${border} ${textMuted} hover:border-[#9333ea]/30`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-[11px] font-medium border ${border} ${textMuted} hover:border-brand-accent`}
           >
             <RotateCcw className="h-3 w-3" /> {isBn ? 'রিসেট' : 'Reset'}
           </button>
           <button
             onClick={handleDownload}
             disabled={activeColumns.length === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
           </button>
@@ -251,6 +299,9 @@ function PdfPreview({
   orientation,
   companyName,
   companySubtitle,
+  pal,
+  imageKey,
+  imageHeader,
 }: {
   title: string;
   columns: PdfColumn[];
@@ -258,6 +309,9 @@ function PdfPreview({
   orientation: "portrait" | "landscape";
   companyName?: string;
   companySubtitle?: string;
+  pal: ReturnType<typeof accentPalette>;
+  imageKey?: string;
+  imageHeader?: string;
 }) {
   const company = companyName || "Bangladesh Madrasah Association";
   const companySub = companySubtitle || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন";
@@ -267,7 +321,7 @@ function PdfPreview({
   return (
     <div className="text-[8px] select-none">
       {/* Header */}
-      <div className="bg-[#9333ea] text-white px-3 py-2 rounded-t-sm flex justify-between items-start">
+      <div className="text-white px-3 py-2 rounded-t-sm flex justify-between items-start" style={{ backgroundColor: pal.hex }}>
         <div>
           <div className="text-[10px] font-bold">{company}</div>
           <div className="text-[7px] opacity-80">{companySub}</div>
@@ -280,17 +334,22 @@ function PdfPreview({
       </div>
 
       {/* Title */}
-      <div className="text-center py-2 border-b-2 border-[#9333ea]">
+      <div className="text-center py-2 border-b-2" style={{ borderColor: pal.hex }}>
         <div className="text-[10px] font-bold text-gray-800">{title.toUpperCase()}</div>
       </div>
 
       {/* Table */}
       <table className="w-full border-collapse mt-2 text-[7px]">
         <thead>
-          <tr className="bg-[#9333ea] text-white">
-            <th className="px-2 py-1.5 text-center font-bold border border-[#7e22ce]">#</th>
+          <tr className="text-white" style={{ backgroundColor: pal.hex }}>
+            <th className="px-2 py-1.5 text-center font-bold border" style={{ borderColor: pal.dark }}>#</th>
+            {imageKey && (
+              <th className="px-2 py-1.5 text-center font-bold border" style={{ borderColor: pal.dark }}>
+                {(imageHeader || "Photo").toUpperCase()}
+              </th>
+            )}
             {columns.map((col) => (
-              <th key={col.key} className="px-2 py-1.5 text-left font-bold border border-[#7e22ce]">
+              <th key={col.key} className="px-2 py-1.5 text-left font-bold border" style={{ borderColor: pal.dark }}>
                 {col.header.toUpperCase()}
               </th>
             ))}
@@ -298,10 +357,22 @@ function PdfPreview({
         </thead>
         <tbody>
           {data.slice(0, 8).map((row, idx) => (
-            <tr key={idx} className={idx % 2 === 0 ? "bg-purple-50" : "bg-white"}>
-              <td className="px-2 py-1.5 text-center border border-purple-100">{idx + 1}</td>
+            <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? pal.tint : "#ffffff" }}>
+              <td className="px-2 py-1.5 text-center border" style={{ borderColor: pal.light }}>{idx + 1}</td>
+              {imageKey && (
+                <td className="px-1 py-1 text-center border" style={{ borderColor: pal.light }}>
+                  {String(row[imageKey] ?? "") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={String(row[imageKey])}
+                      alt=""
+                      className="h-6 w-6 object-cover rounded-sm mx-auto"
+                    />
+                  ) : null}
+                </td>
+              )}
               {columns.map((col) => (
-                <td key={col.key} className="px-2 py-1.5 border border-purple-100 text-gray-700">
+                <td key={col.key} className="px-2 py-1.5 border text-gray-700" style={{ borderColor: pal.light }}>
                   {String(row[col.key] ?? "")}
                 </td>
               ))}

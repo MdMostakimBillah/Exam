@@ -112,6 +112,7 @@ export default function StudentsPage() {
       sn: String(sn),
       name: `${s.firstName} ${s.lastName}`,
       regNumber: latestReg.get(s.id)?.registrationNumber || '-',
+      photo: s.photo || '',
       institution: getInstitutionName(s.institutionId),
       father: s.fatherName || '-',
       mother: s.motherName || '-',
@@ -373,6 +374,8 @@ export default function StudentsPage() {
           title={isBn ? 'শিক্ষার্থী তালিকা' : 'Student List'}
           columns={pdfColumns}
           data={pdfData}
+          imageKey="photo"
+          imageHeader={isBn ? 'ছবি' : 'Photo'}
         />
 
         {/* Edit Student Modal */}

@@ -32,6 +32,7 @@ export async function registerInstitution(data: {
       .from("institutions")
       .insert({
         name: data.name,
+        name_en: data.nameEnglish || null,
         code: data.code,
         slug: data.slug,
         email: data.email,

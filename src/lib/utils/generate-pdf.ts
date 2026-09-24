@@ -11,6 +11,101 @@ interface GeneratePdfOptions {
   orientation?: "portrait" | "landscape";
   companyName?: string;
   companySubtitle?: string;
+  /** Brand accent color (#hex) from Settings → Branding. Defaults to classic purple. */
+  accent?: string;
+  /** Row-data key holding an image (data URL or URL) — rendered as a photo column. */
+  imageKey?: string;
+  /** Header label for the photo column. */
+  imageHeader?: string;
+}
+
+const DEFAULT_ACCENT = "#9333ea";
+const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+type Rgb = [number, number, number];
+
+function hexToRgb(hex: string): Rgb {
+  let h = hex.slice(1);
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+const rgbStr = (c: Rgb) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+
+export interface AccentPalette {
+  hex: string;
+  rgb: Rgb;
+  /** Darkened accent — header cell borders. */
+  dark: string;
+  darkRgb: Rgb;
+  /** Accent mixed with white (35%) — body cell borders. */
+  light: string;
+  lightRgb: Rgb;
+  /** Accent mixed with white (10%) — alternate row fill. */
+  tint: string;
+  tintRgb: Rgb;
+  /** Text drawn ON the accent fill (dark text only for very light accents). */
+  onHex: string;
+  onRgb: Rgb;
+}
+
+/** Accent palette shared by the PDF generator and the in-app preview so they match. */
+export function accentPalette(accent?: string): AccentPalette {
+  const hex = accent && HEX_RE.test(accent.trim()) ? accent.trim() : DEFAULT_ACCENT;
+  const [r, g, b] = hexToRgb(hex);
+  const mix = (v: number, amount: number) => Math.round(v * amount + 255 * (1 - amount));
+  const darkRgb: Rgb = [Math.round(r * 0.72), Math.round(g * 0.72), Math.round(b * 0.72)];
+  const lightRgb: Rgb = [mix(r, 0.35), mix(g, 0.35), mix(b, 0.35)];
+  const tintRgb: Rgb = [mix(r, 0.1), mix(g, 0.1), mix(b, 0.1)];
+  // Perceived luminance — near-white accents need dark text on top.
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const onRgb: Rgb = lum > 0.8 ? [30, 30, 30] : [255, 255, 255];
+  return {
+    hex,
+    rgb: [r, g, b],
+    dark: rgbStr(darkRgb),
+    darkRgb,
+    light: rgbStr(lightRgb),
+    lightRgb,
+    tint: rgbStr(tintRgb),
+    tintRgb,
+    onHex: rgbStr(onRgb),
+    onRgb,
+  };
+}
+
+/** Load any image (data URL or remote URL), center-crop to a square PNG thumbnail. */
+async function imageToPng(src: string): Promise<string | null> {
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("image load failed"));
+      img.src = src;
+    });
+    const S = 160;
+    const canvas = document.createElement("canvas");
+    canvas.width = S;
+    canvas.height = S;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const min = Math.min(img.naturalWidth, img.naturalHeight);
+    ctx.drawImage(
+      img,
+      (img.naturalWidth - min) / 2,
+      (img.naturalHeight - min) / 2,
+      min,
+      min,
+      0,
+      0,
+      S,
+      S
+    );
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null; // a broken photo never breaks the export
+  }
 }
 
 let fontLoaded = false;
@@ -44,6 +139,9 @@ export async function generatePdf(options: GeneratePdfOptions) {
     orientation = "portrait",
     companyName = "Bangladesh Madrasah Association",
     companySubtitle = "বাংলাদেশ মাদ্রাসা এসোসিয়েশন",
+    accent,
+    imageKey,
+    imageHeader = "Photo",
   } = options;
 
   const doc = new jsPDF({ orientation, unit: "mm", format: "a4" });
@@ -54,15 +152,15 @@ export async function generatePdf(options: GeneratePdfOptions) {
 
   const FONT = "NotoSans";
 
-  const primary: [number, number, number] = [147, 51, 234];
-  const primaryLight: [number, number, number] = [243, 232, 255];
-  const textDark: [number, number, number] = [30, 30, 30];
-  const textMuted: [number, number, number] = [120, 120, 120];
+  const pal = accentPalette(accent);
+  const primary = pal.rgb;
+  const textDark: Rgb = [30, 30, 30];
+  const textMuted: Rgb = [120, 120, 120];
 
   doc.setFillColor(...primary);
   doc.rect(0, 0, pageWidth, 18, "F");
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...pal.onRgb);
   doc.setFont(FONT, "bold");
   doc.setFontSize(14);
   doc.text(companyName, 14, 10);
@@ -99,14 +197,40 @@ export async function generatePdf(options: GeneratePdfOptions) {
   doc.line(14, yPos, pageWidth - 14, yPos);
   yPos += 6;
 
+  // Photo column — only when at least one row actually has an image.
+  const withImage = Boolean(imageKey && data.some((row) => String(row[imageKey] ?? "").trim()));
+  const imgSrcs = new Map<number, string>();
+  if (withImage && imageKey) {
+    const cache = new Map<string, string | null>();
+    for (let i = 0; i < data.length; i++) {
+      const raw = String(data[i][imageKey] ?? "").trim();
+      if (!raw) continue;
+      let png = cache.get(raw);
+      if (png === undefined) {
+        png = await imageToPng(raw);
+        cache.set(raw, png);
+      }
+      if (png) imgSrcs.set(i, png);
+    }
+  }
+
   const tableHeaders = columns.map((c) => c.header.toUpperCase());
   const tableData = data.map((row, idx) => {
-    return [String(idx + 1), ...columns.map((c) => String(row[c.key] ?? ""))];
+    return [
+      String(idx + 1),
+      ...(withImage ? [""] : []),
+      ...columns.map((c) => String(row[c.key] ?? "")),
+    ];
   });
+
+  const columnStyles: any = {
+    0: { halign: "center", cellWidth: 10 },
+  };
+  if (withImage) columnStyles[1] = { halign: "center", cellWidth: 16 };
 
   autoTable(doc, {
     startY: yPos,
-    head: [["#", ...tableHeaders]],
+    head: [["#", ...(withImage ? [imageHeader.toUpperCase()] : []), ...tableHeaders]],
     body: tableData,
     theme: "grid",
     styles: {
@@ -114,24 +238,53 @@ export async function generatePdf(options: GeneratePdfOptions) {
       fontSize: 8,
       cellPadding: 3,
       textColor: textDark,
-      lineColor: [220, 220, 220],
+      lineColor: pal.lightRgb,
       lineWidth: 0.2,
     },
     headStyles: {
       fillColor: primary,
-      textColor: [255, 255, 255],
+      textColor: pal.onRgb,
       fontStyle: "bold",
       fontSize: 7,
       halign: "center",
       valign: "middle",
     },
     alternateRowStyles: {
-      fillColor: primaryLight,
+      fillColor: pal.tintRgb,
     },
-    columnStyles: {
-      0: { halign: "center", cellWidth: 10 },
-    },
+    columnStyles,
+    ...(withImage ? { bodyStyles: { minCellHeight: 16 } } : {}),
     margin: { left: 14, right: 14 },
+    ...(withImage
+      ? {
+          didDrawCell: (data: any) => {
+            if (data.section !== "body" || data.column.index !== 1) return;
+            const png = imgSrcs.get(data.row.index);
+            if (!png) return;
+            try {
+              const props = doc.getImageProperties(png);
+              const maxW = data.cell.width - 4;
+              const maxH = data.cell.height - 4;
+              let w = maxW;
+              let h = (maxW * props.height) / props.width;
+              if (h > maxH) {
+                h = maxH;
+                w = (maxH * props.width) / props.height;
+              }
+              doc.addImage(
+                png,
+                "PNG",
+                data.cell.x + (data.cell.width - w) / 2,
+                data.cell.y + (data.cell.height - h) / 2,
+                w,
+                h
+              );
+            } catch {
+              // skip broken image
+            }
+          },
+        }
+      : {}),
     didDrawPage: (data) => {
       const footerY = pageHeight - 10;
       doc.setDrawColor(200, 200, 200);

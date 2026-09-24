@@ -55,6 +55,8 @@ export interface Profile {
 export interface Institution {
   id: string;
   name: string;
+  /** English name from registration ("Name (English)") — empty for legacy rows. */
+  nameEn?: string;
   code: string;
   slug: string;
   email: string;

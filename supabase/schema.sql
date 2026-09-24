@@ -44,6 +44,7 @@ CREATE TRIGGER trigger_single_current_session
 CREATE TABLE IF NOT EXISTS institutions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
+  name_en TEXT,
   code TEXT UNIQUE NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   email TEXT,

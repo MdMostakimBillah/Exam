@@ -12,6 +12,7 @@ import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -64,6 +65,10 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
     const match = pathname.match(/^\/i\/([^/]+)/);
     return match ? match[1] : '';
   }, [pathname]);
+
+  // Institution logo for the bottom user block (institution pages only;
+  // super-admin has no institution → keeps the initials circle).
+  const { data: inst } = useInstitutionBySlug(slug);
 
   const institutionNav: NavItem[] = React.useMemo(() => [
     { label: 'Dashboard', labelBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, href: `/i/${slug}` },
@@ -182,12 +187,24 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
             'flex items-center gap-3 px-3 py-2.5 rounded-md',
             isDark ? 'bg-white/[0.04]' : 'bg-gray-50'
           )}>
-            <div className={cn(
-              'h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold',
-              'bg-brand-accent text-brand-accent-fg'
-            )}>
-              {user.name.split(' ').map(n => n[0]).join('')}
-            </div>
+            {inst?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={inst.logo}
+                alt={inst.name}
+                className={cn(
+                  'h-8 w-8 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1',
+                  isDark ? 'ring-white/15' : 'ring-black/10'
+                )}
+              />
+            ) : (
+              <div className={cn(
+                'h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold',
+                'bg-brand-accent text-brand-accent-fg'
+              )}>
+                {user.name.split(' ').map(n => n[0]).join('')}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className={cn(
                 'text-sm font-medium truncate',
