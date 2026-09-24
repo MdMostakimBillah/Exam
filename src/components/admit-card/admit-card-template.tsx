@@ -413,20 +413,20 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           </div>
         </div>
 
-        <div style={{ width: "24mm", flexShrink: 0, textAlign: "center" }}>
+        <div style={{ width: "20mm", flexShrink: 0, textAlign: "center" }}>
           {view.qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={view.qrDataUrl}
               alt="QR"
               crossOrigin="anonymous"
-              style={{ width: "24mm", height: "24mm", display: "block" }}
+              style={{ width: "20mm", height: "20mm", display: "block" }}
             />
           ) : (
             <div
               style={{
-                width: "24mm",
-                height: "24mm",
+                width: "20mm",
+                height: "20mm",
                 border: BORDER,
                 display: "flex",
                 alignItems: "center",
