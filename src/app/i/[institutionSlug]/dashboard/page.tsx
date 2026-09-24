@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -61,6 +62,9 @@ export default function InstitutionDashboardPage() {
   const pdfColumns: PdfColumn[] = [
     { header: isBn ? 'নাম' : 'Name', key: 'name' },
     { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number', key: 'regNumber' },
+    { header: isBn ? 'পিতার নাম' : 'Father', key: 'father' },
+    { header: isBn ? 'মাতার নাম' : 'Mother', key: 'mother' },
+    { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
   ];
@@ -70,8 +74,12 @@ export default function InstitutionDashboardPage() {
     .map((s) => ({
       name: `${s.firstName} ${s.lastName}`,
       regNumber: latestReg.get(s.id)?.registrationNumber || '-',
+      father: s.fatherName || '-',
+      mother: s.motherName || '-',
+      phone: s.phone || '-',
       class: s.class,
       status: getRegStatus(s.id) || s.status,
+      photo: s.photo || '',
     }));
 
   if (!mounted) return <DashboardSkeleton isDark={isDark} />;
@@ -240,7 +248,7 @@ export default function InstitutionDashboardPage() {
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো শিক্ষার্থী নেই' : 'No students yet'}</p>
             </div>
           ) : (
-            <Table>
+            <Table className="min-w-[950px] whitespace-nowrap">
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
                   <TableHead className="w-10">
@@ -248,6 +256,9 @@ export default function InstitutionDashboardPage() {
                   </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পিতার নাম' : 'Father'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'মাতার নাম' : 'Mother'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ফোন' : 'Phone'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্থিতি' : 'Status'}</TableHead>
                 </TableRow>
@@ -258,8 +269,22 @@ export default function InstitutionDashboardPage() {
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(s.id)} onChange={() => selection.toggle(s.id)} />
                     </TableCell>
-                    <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{s.firstName} {s.lastName}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        {s.photo ? (
+                          <Image src={s.photo} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
+                        ) : (
+                          <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                            {s.firstName.charAt(0)}
+                          </div>
+                        )}
+                        <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{s.firstName} {s.lastName}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{getRegNumber(s.id)}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{s.fatherName || '-'}</TableCell>
+                    <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{s.motherName || '-'}</TableCell>
+                    <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{s.phone || '-'}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{s.class}</TableCell>
                     <TableCell><Badge status={getRegStatus(s.id) || s.status} /></TableCell>
                   </TableRow>
@@ -275,7 +300,7 @@ export default function InstitutionDashboardPage() {
               <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
                 {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
               </span>
-              <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors">
+              <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors">
                 <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
               </button>
             </div>
@@ -288,6 +313,8 @@ export default function InstitutionDashboardPage() {
           title={isBn ? 'শিক্ষার্থী তালিকা' : 'Student List'}
           columns={pdfColumns}
           data={pdfData}
+          imageKey="photo"
+          imageHeader={isBn ? 'ছবি' : 'Photo'}
         />
       </div>
     </div>
