@@ -58,8 +58,9 @@ export default function AdmitCardsPage() {
   const { toast } = useToast();
   const isDark = theme === "dark";
   const isBn = language === "bn";
-  /** Single-language copy helper — matches every other page's isBn ? বাংলা : English. */
-  const bi = (en: string, bn: string) => (isBn ? bn : en);
+  /** Single-language copy helper — every call site on this page passes
+   *  (বাংলা, English); show the first in bn mode, the second in en mode. */
+  const bi = (bn: string, en: string) => (isBn ? bn : en);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
