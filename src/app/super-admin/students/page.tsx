@@ -282,7 +282,7 @@ export default function StudentsPage() {
               <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'অনুসন্ধান বা ফিল্টার পরিবর্তন করুন' : 'Try adjusting your search or filters'}</p>
             </div>
           ) : (
-            <Table>
+            <Table className="min-w-[1300px] whitespace-nowrap">
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
                   <TableHead className="w-10">
