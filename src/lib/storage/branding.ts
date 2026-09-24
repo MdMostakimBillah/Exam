@@ -90,6 +90,13 @@ export function useSaveBranding() {
   return useMutation({
     mutationFn: async (values: BrandingSettings) => {
       const supabase = createClient();
+      // Snapshot the CURRENT image URLs first — cleanup must only happen
+      // after the save succeeds (aborting a save must leave the live
+      // branding, and its files, untouched).
+      const { data: prevRows } = await supabase
+        .from("system_settings")
+        .select("key,value")
+        .in("key", ["brandLogo", "brandWatermark"]);
       const rows = BRANDING_KEYS.map((k) => ({
         key: k,
         value: values[k] ?? "",
@@ -99,6 +106,12 @@ export function useSaveBranding() {
         .from("system_settings")
         .upsert(rows, { onConflict: "key" });
       if (error) throw error;
+      const prev: Record<string, string> = Object.fromEntries(
+        (prevRows || []).map((r: { key: string; value: string }) => [r.key, r.value])
+      );
+      // Best-effort: drop old storage objects that were replaced or removed.
+      await removeBrandingObject(prev.brandLogo, values.brandLogo);
+      await removeBrandingObject(prev.brandWatermark, values.brandWatermark);
       return values;
     },
     onSuccess: () => {
@@ -106,6 +119,31 @@ export function useSaveBranding() {
       queryClient.invalidateQueries({ queryKey: ["branding"] });
     },
   });
+}
+
+/**
+ * Best-effort delete of a previously stored branding object once it has
+ * been replaced or removed. Only ever touches files we own
+ * (`<bucket>/branding/…`) — never any other storage path.
+ */
+async function removeBrandingObject(oldUrl?: string, newUrl?: string): Promise<void> {
+  if (!oldUrl || oldUrl === newUrl) return;
+  try {
+    const clean = oldUrl.split("?")[0];
+    const marker = "/storage/v1/object/public/";
+    const idx = clean.indexOf(marker);
+    if (idx === -1) return; // not a public-object URL we recognize
+    const rest = decodeURIComponent(clean.slice(idx + marker.length)); // "<bucket>/<path>"
+    const slash = rest.indexOf("/");
+    if (slash === -1) return;
+    const bucket = rest.slice(0, slash);
+    const path = rest.slice(slash + 1);
+    if (!path.startsWith("branding/")) return;
+    const supabase = createClient();
+    await supabase.storage.from(bucket).remove([path]);
+  } catch {
+    // A leftover file never breaks the app — ignore cleanup failures.
+  }
 }
 
 /** Upload a branding image (logo / watermark) to the public bucket. */

@@ -11,6 +11,7 @@ import {
 import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -54,6 +55,11 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
   const isDark = theme === 'dark';
   const isBn = language === 'bn';
 
+  // Association branding (super-admin editable in Settings → Branding)
+  const { data: brandData } = useBranding();
+  const brand = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
+  const brandName = (isBn ? brand.brandNameBn : brand.brandName) || brand.brandName;
+
   const slug = React.useMemo(() => {
     const match = pathname.match(/^\/i\/([^/]+)/);
     return match ? match[1] : '';
@@ -93,22 +99,34 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
           collapsed ? 'h-16 px-4 justify-center w-full' : 'h-16 px-5'
         )}>
           <div className="flex items-center gap-3">
-            <div className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-md font-bold text-[10px] transition-transform duration-300',
-              isDark ? 'bg-white text-black' : 'bg-black text-white'
-            )}>
-              BMA
-            </div>
+            {brand.brandLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.brandLogo}
+                alt={brand.brandShort}
+                className={cn(
+                  'h-9 w-9 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1',
+                  isDark ? 'ring-white/15' : 'ring-black/10'
+                )}
+              />
+            ) : (
+              <div className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-bold text-[10px] transition-transform duration-300',
+                isDark ? 'bg-white text-black' : 'bg-black text-white'
+              )}>
+                {brand.brandShort}
+              </div>
+            )}
             {!collapsed && (
-              <div>
+              <div className="min-w-0">
                 <span className={cn(
-                  'text-sm font-semibold tracking-tight',
+                  'block truncate text-sm font-semibold tracking-tight',
                   isDark ? 'text-white' : 'text-gray-900'
-                )}>BMA</span>
-                <p className={cn(
-                  'text-[10px]',
-                  isDark ? 'text-zinc-500' : 'text-gray-500'
-                )}>Association</p>
+                )}>{brand.brandShort}</span>
+                <p
+                  className={cn('truncate text-[10px]', isDark ? 'text-zinc-500' : 'text-gray-500')}
+                  title={brandName}
+                >{brandName}</p>
               </div>
             )}
           </div>

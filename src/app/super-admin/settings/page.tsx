@@ -243,8 +243,16 @@ export default function SuperAdminSettingsPage() {
 
   const handleBrandFile = async (kind: "logo" | "watermark", file?: File | null) => {
     if (!file || !brandForm) return;
-    if (!file.type.startsWith("image/")) {
-      toast("error", isBn ? "ছবি ফাইল নির্বাচন করুন" : "Please choose an image file");
+    // Raster only — SVGs can silently fail to rasterise in html2canvas (PDF).
+    const allowed = ["image/png", "image/jpeg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      toast("error", isBn ? "শুধু PNG, JPG বা WEBP ছবি আপলোড করুন" : "Only PNG, JPG or WEBP images are allowed");
+      return;
+    }
+    const MAX_BRAND_SIZE = 2 * 1024 * 1024;
+    if (file.size > MAX_BRAND_SIZE) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      toast("error", isBn ? `ছবির সর্বোচ্চ আকার 2MB — এটি ${sizeMB}MB` : `Maximum image size is 2MB — this one is ${sizeMB}MB`);
       return;
     }
     setUploadKind(kind);
@@ -349,6 +357,16 @@ export default function SuperAdminSettingsPage() {
               </div>
             )}
 
+            {/* Branding Tab — loading state while the form seeds */}
+            {activeTab === "branding" && !brandForm && (
+              <div className={`${card} p-6`}>
+                <div className={`h-5 w-56 rounded-md ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`} />
+                <div className={`h-4 w-80 rounded mt-2 ${isDark ? "bg-white/[0.04]" : "bg-zinc-200/80"}`} />
+                <div className={`h-20 w-full rounded-md mt-6 ${isDark ? "bg-white/[0.04]" : "bg-zinc-100"}`} />
+                <div className={`h-32 w-full rounded-md mt-4 ${isDark ? "bg-white/[0.04]" : "bg-zinc-100"}`} />
+              </div>
+            )}
+
             {/* Branding Tab */}
             {activeTab === "branding" && brandForm && (
               <div className={`${card} p-6`}>
@@ -377,7 +395,7 @@ export default function SuperAdminSettingsPage() {
                             uploadKind === "logo" && "opacity-60 pointer-events-none")}>
                             <Upload className="h-4 w-4" />
                             {uploadKind === "logo" ? (isBn ? 'আপলোড হচ্ছে…' : 'Uploading…') : (isBn ? 'লোগো আপলোড' : 'Upload Logo')}
-                            <input type="file" accept="image/*" className="hidden" disabled={uploadKind === "logo"}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadKind === "logo"}
                               onChange={(e) => { handleBrandFile("logo", e.target.files?.[0]); e.target.value = ""; }} />
                           </label>
                           {brandForm.brandLogo && (
@@ -478,7 +496,7 @@ export default function SuperAdminSettingsPage() {
                             uploadKind === "watermark" && "opacity-60 pointer-events-none")}>
                             <Upload className="h-4 w-4" />
                             {uploadKind === "watermark" ? (isBn ? 'আপলোড হচ্ছে…' : 'Uploading…') : (isBn ? 'ওয়াটারমার্ক আপলোড' : 'Upload Watermark')}
-                            <input type="file" accept="image/*" className="hidden" disabled={uploadKind === "watermark"}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadKind === "watermark"}
                               onChange={(e) => { handleBrandFile("watermark", e.target.files?.[0]); e.target.value = ""; }} />
                           </label>
                           {brandForm.brandWatermark && (
