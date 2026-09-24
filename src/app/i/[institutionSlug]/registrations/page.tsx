@@ -527,7 +527,7 @@ export default function InstitutionRegistrationsPage() {
         maxWidth="max-w-xl"
       >
         {/* Step Indicator */}
-        <div className="flex items-center gap-2 mb-4 px-2">
+        <div className="flex items-center gap-2 mb-4">
           {stepLabels.map((label, i) => {
             const num = (i + 1) as Step;
             const isActive = step === num;
@@ -551,7 +551,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 1: Student Basic Info */}
         {step === 1 && (
-          <div className="px-2 py-3">
+          <div className="py-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'English Name *'}</label>
@@ -597,7 +597,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 2: Guardian Info */}
         {step === 2 && (
-          <div className="px-2 py-3">
+          <div className="py-3 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
@@ -621,7 +621,7 @@ export default function InstitutionRegistrationsPage() {
 
         {/* Step 3: Photo & Exam */}
         {step === 3 && (
-          <div className="px-2 py-3 space-y-4">
+          <div className="py-3 space-y-4">
             {/* Profile Picture */}
             <div>
               <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 350KB)</span></label>
@@ -682,7 +682,7 @@ export default function InstitutionRegistrationsPage() {
         )}
 
         {/* Footer */}
-        <div className={`px-2 py-3 border-t flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+        <div className={`py-3 mt-2 border-t flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
           <div>
             {step > 1 && (
               <button onClick={handleBack} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
