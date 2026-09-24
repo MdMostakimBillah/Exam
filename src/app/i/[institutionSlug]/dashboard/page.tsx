@@ -265,7 +265,7 @@ export default function InstitutionDashboardPage() {
               </TableHeader>
               <TableBody>
                 {students.slice(0, 5).map(s => (
-                  <TableRow key={s.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(s.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                  <TableRow key={s.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(s.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(s.id)} onChange={() => selection.toggle(s.id)} />
                     </TableCell>

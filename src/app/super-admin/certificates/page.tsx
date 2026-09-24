@@ -146,7 +146,7 @@ export default function CertificatesPage() {
               </TableHeader>
               <TableBody>
                 {filtered.slice(0, 20).map(cert => (
-                  <TableRow key={cert.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(cert.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                  <TableRow key={cert.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(cert.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(cert.id)} onChange={() => selection.toggle(cert.id)} />
                     </TableCell>
@@ -178,7 +178,7 @@ export default function CertificatesPage() {
             <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
               {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
             </span>
-            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors">
+            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors">
               <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
             </button>
           </div>

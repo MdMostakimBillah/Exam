@@ -400,7 +400,7 @@ export default function ExamsPage() {
                   const examRegCount = registrationCountMap.get(exam.id) || 0;
                   const examClasses = exam.classes.map(id => classMap.get(id)).filter(Boolean) as typeof allClasses;
                   return (
-                    <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(exam.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                    <TableRow key={exam.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(exam.id) ? ('bg-brand-accent-soft') : ''}`}>
                       <TableCell className="w-10">
                         <TableCheckbox checked={selection.isSelected(exam.id)} onChange={() => selection.toggle(exam.id)} />
                       </TableCell>

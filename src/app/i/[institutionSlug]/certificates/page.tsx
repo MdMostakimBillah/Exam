@@ -287,7 +287,7 @@ export default function InstitutionCertificatesPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(cert => (
-                  <TableRow key={cert.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(cert.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                  <TableRow key={cert.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(cert.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(cert.id)} onChange={() => selection.toggle(cert.id)} />
                     </TableCell>
@@ -423,7 +423,7 @@ export default function InstitutionCertificatesPage() {
       {filtered.length > 0 && (
         <button
           onClick={() => setShowPdfModal(true)}
-          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all ${isDark ? "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/20" : "bg-[#9333ea] text-white hover:bg-[#7e22ce] shadow-[#9333ea]/30"}`}
+          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all bg-brand-accent text-brand-accent-fg hover:opacity-90`}
         >
           <FileDown className="h-4 w-4" />
           <span className="text-[13px] font-medium">{isBn ? 'পিডিএফ ডাউনলোড' : 'Download PDF'}</span>

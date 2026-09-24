@@ -764,7 +764,7 @@ export default function AdmitCardsPage() {
               </span>
               <button
                 onClick={handleBulkDownload}
-                className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors"
               >
                 <FileDown className="h-3.5 w-3.5" /> {bi("পিডিএফ ডাউনলোড", "Download PDF")}
               </button>

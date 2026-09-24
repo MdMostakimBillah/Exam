@@ -334,7 +334,7 @@ export default function PaymentsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(payment => (
-                  <TableRow key={payment.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(payment.id) ? (isDark ? 'bg-[#9333ea]/10' : 'bg-purple-50') : ''}`}>
+                  <TableRow key={payment.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(payment.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(payment.id)} onChange={() => selection.toggle(payment.id)} />
                     </TableCell>
@@ -479,7 +479,7 @@ export default function PaymentsPage() {
                             type="checkbox"
                             checked={selectedRegs.includes(r.id)}
                             onChange={() => toggleReg(r.id)}
-                            className="h-4 w-4 accent-[#9333ea] shrink-0"
+                            className="h-4 w-4 accent-[var(--brand-accent)] shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <p className={`text-[12px] font-medium truncate ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{r.studentName}</p>
@@ -539,7 +539,7 @@ export default function PaymentsPage() {
             <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
               {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
             </span>
-            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-[#9333ea] text-white hover:bg-[#7e22ce] transition-colors">
+            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors">
               <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
             </button>
           </div>

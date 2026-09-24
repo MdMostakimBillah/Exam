@@ -64,6 +64,9 @@ html.light {
 .bg-brand-accent-soft { background-color: var(--brand-accent-soft); }
 .bg-brand-accent-strong { background-color: var(--brand-accent-strong); }
 .border-brand-accent { border-color: var(--brand-accent); }
+/* hover: variant — Tailwind can't generate it (brand colors aren't in the
+   config), and it's used by table checkboxes and the PDF-modal ghost buttons. */
+.hover\:border-brand-accent:hover { border-color: var(--brand-accent); }
 
 /* Bengali language support */
 html.lang-bn,
