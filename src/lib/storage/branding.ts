@@ -32,6 +32,9 @@ export interface BrandingSettings {
   /** Landing footer tagline (under the logo). */
   footerTagline: string;
   footerTaglineBn: string;
+  /** Dashboard accent color (hex, e.g. "#e11d48"). Empty → default
+   *  monochrome chrome (white accent in dark, near-black in light). */
+  accentColor: string;
 }
 
 export const BRANDING_DEFAULTS: BrandingSettings = {
@@ -48,6 +51,7 @@ export const BRANDING_DEFAULTS: BrandingSettings = {
   heroSubtitleBn: "",
   footerTagline: "",
   footerTaglineBn: "",
+  accentColor: "",
 };
 
 const BRANDING_KEYS = Object.keys(BRANDING_DEFAULTS) as Array<keyof BrandingSettings>;

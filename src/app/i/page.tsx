@@ -143,7 +143,7 @@ export default function InstitutionRootPage() {
               onClick={retry}
               className={cn(
                 "inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-all",
-                isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                "bg-brand-accent text-brand-accent-fg hover:opacity-90"
               )}
             >
               <RotateCw className="h-4 w-4" />

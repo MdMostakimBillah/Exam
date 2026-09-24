@@ -193,8 +193,8 @@ export default function InstitutionCertificatesPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
   const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
 
@@ -216,7 +216,7 @@ export default function InstitutionCertificatesPage() {
             <button onClick={() => { setShowBatchModal(true); setSelectedExam(""); }} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
               <Layers className="h-4 w-4" /> {isBn ? 'ব্যাচ তৈরি' : 'Batch Generate'}
             </button>
-            <button onClick={() => { setShowGenerateModal(true); setSelectedResult(""); }} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
+            <button onClick={() => { setShowGenerateModal(true); setSelectedResult(""); }} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", "bg-brand-accent text-brand-accent-fg hover:opacity-90")}>
               <Plus className="h-4 w-4" /> {isBn ? 'সার্টিফিকেট তৈরি' : 'Generate Certificate'}
             </button>
           </div>
@@ -351,7 +351,7 @@ export default function InstitutionCertificatesPage() {
         </div>
         <ModalFooter>
           <button onClick={() => setShowGenerateModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleGenerate} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+          <button onClick={handleGenerate} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
             {isBn ? 'তৈরি করুন' : 'Generate'}
           </button>
         </ModalFooter>
@@ -386,7 +386,7 @@ export default function InstitutionCertificatesPage() {
         </div>
         <ModalFooter>
           <button onClick={() => setShowBatchModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleBatchGenerate} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+          <button onClick={handleBatchGenerate} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
             {isBn ? 'ব্যাচ তৈরি করুন' : 'Generate Batch'}
           </button>
         </ModalFooter>

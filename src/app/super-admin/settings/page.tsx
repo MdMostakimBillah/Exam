@@ -6,10 +6,11 @@ import { useAuth } from "@/lib/auth/auth";
 import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X, CreditCard, Palette, Upload } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn } from "@/lib/utils/helpers";
+import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 import { createClient } from "@/lib/supabase/client";
 import { useSessions, useCreateSession, useSetCurrentSession, useUpdateSession, useDeleteSession } from "@/lib/storage/sessions";
 import { useBranding, useSaveBranding, uploadBrandingImage, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
+import { accentFg } from "@/components/branding/accent-color";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 type Tab = "profile" | "branding" | "account" | "password" | "notifications" | "sessions" | "payment";
@@ -37,6 +38,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
 };
 
 const SETTINGS_KEY = "platform_settings";
+
+/** Preset swatches for the dashboard accent color picker. */
+const ACCENT_PRESETS = ["#e11d48", "#f59e0b", "#16a34a", "#2563eb", "#7c3aed", "#0891b1", "#18181b", "#ffffff"];
 
 export default function SuperAdminSettingsPage() {
   const { toast } = useToast();
@@ -270,10 +274,10 @@ export default function SuperAdminSettingsPage() {
       toast("error", isBn ? "শুধু PNG, JPG বা WEBP ছবি আপলোড করুন" : "Only PNG, JPG or WEBP images are allowed");
       return;
     }
-    const MAX_BRAND_SIZE = 2 * 1024 * 1024;
+    const MAX_BRAND_SIZE = MAX_IMAGE_SIZE;
     if (file.size > MAX_BRAND_SIZE) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      toast("error", isBn ? `ছবির সর্বোচ্চ আকার 2MB — এটি ${sizeMB}MB` : `Maximum image size is 2MB — this one is ${sizeMB}MB`);
+      const sizeKB = Math.round(file.size / 1024);
+      toast("error", isBn ? `ছবির সর্বোচ্চ আকার 350KB — এটি ${sizeKB}KB` : `Maximum image size is 350KB — this one is ${sizeKB}KB`);
       return;
     }
     setUploadKind(kind);
@@ -291,9 +295,14 @@ export default function SuperAdminSettingsPage() {
 
   const handleSaveBranding = async () => {
     if (!brandForm) return;
+    const accent = (brandForm.accentColor || "").trim();
+    if (accent && !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(accent)) {
+      toast("error", isBn ? "একসেন্ট রঙটি ভ্যালিড হেক্স কোড হতে হবে — যেমন #e11d48" : "Accent color must be a valid hex code — e.g. #e11d48");
+      return;
+    }
     setSaving(true);
     try {
-      await saveBranding.mutateAsync(brandForm);
+      await saveBranding.mutateAsync({ ...brandForm, accentColor: accent });
       toast("success", isBn ? "ব্র্যান্ডিং সংরক্ষিত হয়েছে!" : "Branding saved!");
     } catch (err: any) {
       settingsErrorToast(err);
@@ -328,7 +337,7 @@ export default function SuperAdminSettingsPage() {
               {tabs.map((tab) => (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                   className={cn("flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm transition-all duration-200",
-                    activeTab === tab.id ? isDark ? "bg-white text-black font-medium" : "bg-zinc-900 text-white font-medium"
+                    activeTab === tab.id ? "bg-brand-accent text-brand-accent-fg font-medium"
                       : isDark ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                   )}>
                   {tab.icon}
@@ -369,7 +378,7 @@ export default function SuperAdminSettingsPage() {
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSaveProfile} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
                     )}>
                     {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
@@ -445,6 +454,52 @@ export default function SuperAdminSettingsPage() {
                       <label className={`block text-[13px] mb-1.5 font-medium ${labelCls}`}>Association Name (বাংলা)</label>
                       <Input value={brandForm.brandNameBn} onChange={(e) => setBrandForm({ ...brandForm, brandNameBn: e.target.value })} placeholder={BRANDING_DEFAULTS.brandNameBn} className={cn(inputCls, "h-10")} />
                     </div>
+                  </div>
+
+                  {/* ── Dashboard accent color ── */}
+                  <div className={`pt-5 border-t ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <p className={`text-[13px] font-semibold mb-1 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'ড্যাশবোর্ড একসেন্ট রঙ' : 'Dashboard Accent Color'}</p>
+                    <p className={`text-[11px] mb-4 ${subtextCls}`}>{isBn ? 'সাইডবারের সক্রিয় মেনু, বাটন, ট্যাব ও কার্ডের আইকনে ব্যবহৃত হবে — প্রবেশপত্র ও পিডিএফে প্রভাব ফেলবে না' : 'Used on the sidebar active menu, buttons, tabs and dashboard cards — never on admit cards or PDFs'}</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className={cn("relative h-10 w-10 rounded-md overflow-hidden shrink-0 cursor-pointer border", isDark ? "border-white/[0.12]" : "border-zinc-300")}>
+                        <span className="absolute inset-0" style={{ backgroundColor: /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(brandForm.accentColor) ? brandForm.accentColor : (isDark ? "#ffffff" : "#18181b") }} />
+                        <input type="color" value={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(brandForm.accentColor) ? brandForm.accentColor : (isDark ? "#ffffff" : "#18181b")}
+                          onChange={(e) => setBrandForm({ ...brandForm, accentColor: e.target.value })}
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Accent color" />
+                      </label>
+                      <Input value={brandForm.accentColor} onChange={(e) => setBrandForm({ ...brandForm, accentColor: e.target.value })}
+                        placeholder="#e11d48" className={cn(inputCls, "h-10 w-32 font-mono")} />
+                      <div className="flex items-center gap-1.5">
+                        {ACCENT_PRESETS.map((c) => (
+                          <button key={c} type="button" onClick={() => setBrandForm({ ...brandForm, accentColor: c })}
+                            title={c}
+                            className={cn("h-7 w-7 rounded-full transition-transform hover:scale-110 ring-offset-2",
+                              isDark ? "ring-offset-[#0f0f11]" : "ring-offset-white",
+                              brandForm.accentColor.toLowerCase() === c.toLowerCase() ? "ring-2" : "ring-1 ring-black/10")}
+                            style={{ backgroundColor: c, "--tw-ring-color": c } as React.CSSProperties} />
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => setBrandForm({ ...brandForm, accentColor: "" })}
+                        className={cn("px-3 py-2 rounded-md text-[12px] font-medium transition-all", isDark ? "bg-white/[0.06] text-zinc-400 hover:bg-white/[0.1] hover:text-white" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900")}>
+                        {isBn ? 'ডিফল্ট' : 'Default'}
+                      </button>
+                      {/* Live preview — mirrors the saved-state look */}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="px-3 py-1.5 rounded-md text-[12px] font-medium bg-brand-accent text-brand-accent-fg"
+                          style={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(brandForm.accentColor)
+                            ? { backgroundColor: brandForm.accentColor, color: accentFg(brandForm.accentColor) }
+                            : undefined}>
+                          {isBn ? 'সক্রিয় মেনু' : 'Active menu'}
+                        </span>
+                        <span className="h-7 w-7 rounded-md flex items-center justify-center text-[11px] font-bold bg-brand-accent text-brand-accent-fg"
+                          style={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(brandForm.accentColor)
+                            ? { backgroundColor: brandForm.accentColor, color: accentFg(brandForm.accentColor) }
+                            : undefined}>
+                          {BRANDING_DEFAULTS.brandShort.slice(0, 1)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className={`text-[11px] mt-2 ${subtextCls}`}>{isBn ? 'হেক্স কোড (যেমন #e11d48) বা রঙ বাছুন — সংরক্ষণের পর সাথে সাথেই প্রয়োগ হবে' : 'Pick a color or type a hex code (e.g. #e11d48) — applied right after you save'}</p>
                   </div>
 
                   {/* ── Landing hero ── */}
@@ -536,7 +591,7 @@ export default function SuperAdminSettingsPage() {
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSaveBranding} disabled={saving || saveBranding.isPending}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                       (saving || saveBranding.isPending) && "opacity-60 cursor-not-allowed"
                     )}>
                     {(saving || saveBranding.isPending) ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
@@ -566,7 +621,7 @@ export default function SuperAdminSettingsPage() {
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSaveAccount} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
                     )}>
                     {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
@@ -614,7 +669,7 @@ export default function SuperAdminSettingsPage() {
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleChangePassword} disabled={saving || !currentPassword || !newPassword || !confirmPassword}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                       (saving || !currentPassword || !newPassword || !confirmPassword) && "opacity-40 cursor-not-allowed"
                     )}>
                     {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Lock className="h-4 w-4" />}
@@ -634,7 +689,7 @@ export default function SuperAdminSettingsPage() {
                   </div>
                   <button onClick={() => setShowCreateSession(true)}
                     className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90"
                     )}>
                     <Plus className="h-4 w-4" /> {isBn ? 'নতুন সেশন' : 'New Session'}
                   </button>
@@ -675,7 +730,7 @@ export default function SuperAdminSettingsPage() {
                         } catch (err: any) { toast("error", err.message || "Failed"); }
                       }} disabled={!newSession.name || !newSession.code}
                         className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all",
-                          isDark ? "bg-white text-black" : "bg-zinc-900 text-white", (!newSession.name || !newSession.code) && "opacity-40 cursor-not-allowed"
+                          "bg-brand-accent text-brand-accent-fg", (!newSession.name || !newSession.code) && "opacity-40 cursor-not-allowed"
                         )}>
                         <Check className="h-4 w-4" /> {isBn ? 'তৈরি করুন' : 'Create'}
                       </button>
@@ -780,7 +835,7 @@ export default function SuperAdminSettingsPage() {
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSavePayment} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
                     )}>
                     {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
@@ -821,7 +876,7 @@ export default function SuperAdminSettingsPage() {
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSaveNotifications} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", saving && "opacity-60 cursor-not-allowed"
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
                     )}>
                     {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
                     {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}

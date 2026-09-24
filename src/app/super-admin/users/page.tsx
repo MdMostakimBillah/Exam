@@ -189,8 +189,8 @@ export default function UsersPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200";
   const labelCls = isDark ? "text-zinc-500" : "text-zinc-500";
 
@@ -211,7 +211,7 @@ export default function UsersPage() {
           <button
             onClick={handleAdd}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
-              isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
+              "bg-brand-accent text-brand-accent-fg hover:opacity-90"
             }`}
           >
             <Plus className="h-3.5 w-3.5" /> {isBn ? "ব্যবহারকারী যোগ" : "Add User"}
@@ -475,7 +475,7 @@ export default function UsersPage() {
           <button
             onClick={handleSaveAdd}
             className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
-              isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
+              "bg-brand-accent text-brand-accent-fg hover:opacity-90"
             }`}
           >
             {isBn ? "তৈরি" : "Create"}
@@ -549,7 +549,7 @@ export default function UsersPage() {
           <button
             onClick={handleSaveEdit}
             className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${
-              isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
+              "bg-brand-accent text-brand-accent-fg hover:opacity-90"
             }`}
           >
             {isBn ? "আপডেট" : "Update"}

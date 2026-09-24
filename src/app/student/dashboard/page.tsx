@@ -47,8 +47,8 @@ export default function StudentDashboardPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-xl"
     : "bg-white border border-zinc-200 rounded-xl shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
 
   const totalDue = registrations
     .filter((r) => r.paymentStatus !== "PAID" && r.studentPaymentStatus !== "VERIFIED")

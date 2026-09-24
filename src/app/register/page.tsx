@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
+import { MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 
 interface PasswordRule {
   label: string;
@@ -39,7 +40,7 @@ const PASSWORD_RULES: PasswordRule[] = [
   { label: "One special character (!@#$%^&*)", test: (p) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(p) },
 ];
 
-const MAX_LOGO_SIZE = 500 * 1024;
+const MAX_LOGO_SIZE = MAX_IMAGE_SIZE;
 
 export default function RegisterPage() {
   const { t } = useLang();
@@ -88,7 +89,7 @@ export default function RegisterPage() {
     if (!file) return;
     setLogoError("");
     if (file.size > MAX_LOGO_SIZE) {
-      setLogoError(`Logo must be under 500KB. Current: ${(file.size / 1024).toFixed(0)}KB`);
+      setLogoError(`Logo must be under 350KB. Current: ${(file.size / 1024).toFixed(0)}KB`);
       e.target.value = "";
       return;
     }
@@ -318,7 +319,7 @@ export default function RegisterPage() {
                           Institution Logo
                         </p>
                         <p className={`text-xs ${textSec} mb-2`}>
-                          Upload your institution logo (max 500KB)
+                          Upload your institution logo (max 350KB)
                         </p>
                         <label
                           className={`inline-flex items-center gap-2 text-sm cursor-pointer transition-colors ${linkBlue}`}

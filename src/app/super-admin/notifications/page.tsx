@@ -84,8 +84,8 @@ export default function NotificationsPage() {
   if (!mounted) return <NotificationsSkeleton isDark={isDark} />;
 
   const card = isDark ? "bg-[#141416] border border-white/[0.06] rounded-md" : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
 
   const handleMarkAsRead = (id: string) => {
     markReadMutation.mutate(id);

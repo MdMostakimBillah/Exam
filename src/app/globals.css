@@ -31,6 +31,36 @@ html.light, body.light {
   color: #18181B;
 }
 
+/* Dashboard accent color — super-admin Settings → Branding → Accent color.
+   Defaults reproduce the original monochrome chrome (near-black accent in
+   light, white accent in dark). A saved accent overrides these via inline
+   vars set on <html> by the AccentColor sync component (inline beats every
+   stylesheet rule, so the custom color applies in BOTH themes). Note: vars
+   live only on html/:root — never on body, so body children inherit the
+   inline override instead of shadowing it with a class rule. */
+:root {
+  --brand-accent: #ffffff;
+  --brand-accent-fg: #000000;
+  --brand-accent-soft: rgba(255, 255, 255, 0.10);
+  --brand-accent-strong: rgba(255, 255, 255, 0.14);
+}
+
+html.light {
+  --brand-accent: #18181b;
+  --brand-accent-fg: #ffffff;
+  --brand-accent-soft: rgba(24, 24, 27, 0.06);
+  --brand-accent-strong: rgba(24, 24, 27, 0.12);
+}
+
+/* Accent utilities (plain CSS — explicit, theme-class independent, and
+   always present regardless of Tailwind's arbitrary-value type inference). */
+.bg-brand-accent { background-color: var(--brand-accent); }
+.text-brand-accent { color: var(--brand-accent); }
+.text-brand-accent-fg { color: var(--brand-accent-fg); }
+.bg-brand-accent-soft { background-color: var(--brand-accent-soft); }
+.bg-brand-accent-strong { background-color: var(--brand-accent-strong); }
+.border-brand-accent { border-color: var(--brand-accent); }
+
 /* Bengali language support */
 html.lang-bn,
 body.lang-bn {

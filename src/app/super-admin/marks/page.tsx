@@ -121,8 +121,8 @@ export default function MarksPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -185,7 +185,7 @@ export default function MarksPage() {
               <button className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
                 <Download className="h-3.5 w-3.5" /> {isBn ? 'ইমপোর্ট' : 'Import'}
               </button>
-              <button onClick={handleSaveAll} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+              <button onClick={handleSaveAll} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
                 <Save className="h-3.5 w-3.5" /> {isBn ? 'সংরক্ষণ' : 'Save All'}
               </button>
             </div>

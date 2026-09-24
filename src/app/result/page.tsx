@@ -81,7 +81,7 @@ export default function ResultPage() {
       <header className={`border-b backdrop-blur-xl ${isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"}`}>
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
             <span className={`text-sm font-semibold ${isDark ? "text-zinc-100" : "text-gray-900"}`}>{t("brand")}</span>
           </Link>
           <div className="flex items-center gap-4">
@@ -102,13 +102,13 @@ export default function ResultPage() {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setSearchType('dob')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${searchType === 'dob' ? 'bg-white text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${searchType === 'dob' ? 'bg-brand-accent text-brand-accent-fg' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
                 Registration + Date of Birth
               </button>
               <button
                 onClick={() => setSearchType('roll')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${searchType === 'roll' ? 'bg-white text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${searchType === 'roll' ? 'bg-brand-accent text-brand-accent-fg' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
                 Registration + Roll
               </button>

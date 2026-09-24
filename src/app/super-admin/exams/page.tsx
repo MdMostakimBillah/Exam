@@ -294,8 +294,8 @@ export default function ExamsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -354,7 +354,7 @@ export default function ExamsPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className={`w-full sm:w-40 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
             />
-            <button onClick={handleCreate} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+            <button onClick={handleCreate} className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
               <Plus className="h-3.5 w-3.5" /> {isBn ? 'নতুন পরীক্ষা' : 'Add Exam'}
             </button>
           </div>
@@ -498,7 +498,7 @@ export default function ExamsPage() {
                   <div className={cn(
                     "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors",
                     examStep > step.num ? "bg-green-500 text-white"
-                      : examStep === step.num ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white")
+                      : examStep === step.num ? ("bg-brand-accent text-brand-accent-fg")
                       : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
                   )}>
                     {examStep > step.num ? "✓" : step.num}
@@ -599,7 +599,7 @@ export default function ExamsPage() {
                           className={cn(
                             "px-3 py-2.5 rounded-md text-[12px] font-medium transition-all border",
                             formData.classes.includes(cls.id)
-                              ? isDark ? 'bg-white text-black border-white' : 'bg-zinc-900 text-white border-zinc-900'
+                              ? 'bg-brand-accent text-brand-accent-fg border-brand-accent'
                               : isDark ? 'bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:bg-white/[0.08] hover:border-white/[0.12]' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100 hover:border-zinc-300'
                           )}
                         >
@@ -737,14 +737,14 @@ export default function ExamsPage() {
                     return;
                   }
                   setExamStep(s => s + 1);
-                }} className={`flex items-center gap-1 px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                }} className={`flex items-center gap-1 px-4 py-2 rounded-md text-[12px] font-medium transition-colors ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
                   {isBn ? 'পরবর্তী' : 'Next'} <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
                 <button
                   onClick={handleSave}
                   disabled={createExamMutation.isPending || updateExamMutation.isPending}
-                  className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+                  className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}
                 >
                   {(createExamMutation.isPending || updateExamMutation.isPending)
                     ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
@@ -799,7 +799,7 @@ export default function ExamsPage() {
               <button
                 onClick={handleStatusSave}
                 disabled={updateExamMutation.isPending}
-                className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+                className={`px-4 py-2 rounded-md text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}
               >
                 {updateExamMutation.isPending ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (isBn ? 'সংরক্ষণ' : 'Save')}
               </button>
@@ -812,7 +812,7 @@ export default function ExamsPage() {
       <button
         onClick={() => setShowPdfModal(true)}
         className={`fixed bottom-6 right-6 h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-colors ${
-          isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
+          "bg-brand-accent text-brand-accent-fg hover:opacity-90"
         }`}
       >
         <FileDown className="h-5 w-5" />

@@ -61,9 +61,7 @@ export default function HomePage() {
   const textSec = isDark ? "text-zinc-400" : "text-zinc-500";
   const textNav = isDark ? "text-zinc-400 hover:text-zinc-200" : "text-zinc-500 hover:text-zinc-900";
   const border = isDark ? "border-white/[0.06]" : "border-zinc-200";
-  const btnPrimary = isDark 
-    ? "bg-white text-zinc-900 hover:bg-zinc-200 shadow-lg shadow-white/10" 
-    : "bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-black/10";
+  const btnPrimary = `bg-brand-accent text-brand-accent-fg hover:opacity-90 ${isDark ? "shadow-lg shadow-white/10" : "shadow-lg shadow-black/10"}`;
   const btnSecondary = isDark 
     ? "border border-white/10 text-zinc-300 hover:bg-white/5 hover:border-white/20" 
     : "border border-zinc-300 text-zinc-700 hover:bg-zinc-100";
@@ -225,7 +223,7 @@ export default function HomePage() {
                 className={`w-9 h-9 rounded-md object-contain bg-white/90 ring-1 ${isDark ? "ring-white/15" : "ring-zinc-200"}`}
               />
             ) : (
-              <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
+              <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
             )}
             <span className={`text-sm font-semibold ${text}`}>{brandName}</span>
           </Link>
@@ -516,7 +514,7 @@ export default function HomePage() {
                     className={`w-8 h-8 rounded-md object-contain bg-white/90 ring-1 ${isDark ? "ring-white/15" : "ring-zinc-200"}`}
                   />
                 ) : (
-                  <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${isDark ? "bg-white text-zinc-900" : "bg-zinc-900 text-white"}`}>B</div>
+                  <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
                 )}
                 <span className={`text-sm font-semibold ${text}`}>{brandName}</span>
               </div>

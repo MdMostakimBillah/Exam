@@ -59,7 +59,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             <Link href="/student/dashboard" className="flex items-center gap-2.5">
               <div className={cn(
                 "h-8 w-8 rounded-lg flex items-center justify-center font-bold text-[10px]",
-                isDark ? "bg-white text-black" : "bg-black text-white"
+                "bg-brand-accent text-brand-accent-fg"
               )}>
                 B
               </div>
@@ -111,9 +111,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                   className={cn(
                     "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2",
                     active
-                      ? isDark
-                        ? "border-white text-white"
-                        : "border-zinc-900 text-zinc-900"
+                      ? "border-brand-accent text-brand-accent"
                       : isDark
                         ? "border-transparent text-zinc-500 hover:text-zinc-300"
                         : "border-transparent text-zinc-500 hover:text-zinc-700"

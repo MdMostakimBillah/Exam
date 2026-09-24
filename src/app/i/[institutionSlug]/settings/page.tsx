@@ -188,9 +188,7 @@ export default function InstitutionSettingsPage() {
                   className={cn(
                     "flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm transition-all duration-200",
                     activeTab === tab.id
-                      ? isDark
-                        ? "bg-white text-black font-medium"
-                        : "bg-zinc-900 text-white font-medium"
+                      ? "bg-brand-accent text-brand-accent-fg font-medium"
                       : isDark
                         ? "text-zinc-500 hover:text-white hover:bg-white/[0.05]"
                         : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
@@ -312,9 +310,7 @@ export default function InstitutionSettingsPage() {
                     disabled={saving}
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                       saving && "opacity-60 cursor-not-allowed"
                     )}
                   >
@@ -373,9 +369,7 @@ export default function InstitutionSettingsPage() {
                     disabled={saving}
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                       saving && "opacity-60 cursor-not-allowed"
                     )}
                   >
@@ -492,9 +486,7 @@ export default function InstitutionSettingsPage() {
                     disabled={saving || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                       (saving || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6) && "opacity-40 cursor-not-allowed"
                     )}
                   >
@@ -570,9 +562,7 @@ export default function InstitutionSettingsPage() {
                     disabled={saving}
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-zinc-900 text-white hover:bg-zinc-800",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                       saving && "opacity-60 cursor-not-allowed"
                     )}
                   >

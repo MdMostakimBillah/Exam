@@ -207,8 +207,8 @@ export default function InstitutionPaymentsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
   const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
 
@@ -226,7 +226,7 @@ export default function InstitutionPaymentsPage() {
               {isBn ? 'প্রতিষ্ঠানের বাকি ও জমাকৃত পেমেন্ট ট্র্যাক করুন' : 'Track your institution’s due and submitted payments'}
             </p>
           </div>
-          <button onClick={handleCreate} disabled={dueAmount <= 0} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800", dueAmount <= 0 && "opacity-50 cursor-not-allowed")}>
+          <button onClick={handleCreate} disabled={dueAmount <= 0} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", "bg-brand-accent text-brand-accent-fg hover:opacity-90", dueAmount <= 0 && "opacity-50 cursor-not-allowed")}>
             <Plus className="h-4 w-4" /> {isBn ? 'পেমেন্ট জমা দিন' : 'Submit Payment'}
           </button>
         </div>
@@ -471,7 +471,7 @@ export default function InstitutionPaymentsPage() {
                   className={cn(
                     "flex items-center justify-center gap-1.5 px-2 py-2 rounded text-[12px] font-medium transition-all",
                     formData.paymentMethod === o.value
-                      ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white")
+                      ? ("bg-brand-accent text-brand-accent-fg")
                       : isDark ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]" : "text-zinc-500 hover:text-zinc-700 hover:bg-white"
                   )}
                 >
@@ -525,7 +525,7 @@ export default function InstitutionPaymentsPage() {
         </div>
         <ModalFooter>
           <button onClick={() => setShowModal(false)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-          <button onClick={handleSave} disabled={createPaymentMutation.isPending || maxStudents < 1} className={cn(`px-5 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`, (createPaymentMutation.isPending || maxStudents < 1) && "opacity-50 cursor-not-allowed")}>
+          <button onClick={handleSave} disabled={createPaymentMutation.isPending || maxStudents < 1} className={cn(`px-5 py-2 rounded-md text-[13px] font-medium transition-all ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`, (createPaymentMutation.isPending || maxStudents < 1) && "opacity-50 cursor-not-allowed")}>
             {createPaymentMutation.isPending
               ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               : (isBn ? 'জমা দিন' : 'Submit')}

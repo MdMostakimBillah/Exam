@@ -7,9 +7,13 @@ interface DropdownMenuProps {
   trigger: React.ReactNode;
   children: React.ReactNode;
   align?: 'left' | 'right';
+  /** Extra classes for the floating panel (width, radius, spacing…). */
+  panelClassName?: string;
+  /** Panel padding — pass '' / 'p-0' when the content manages its own padding (card style). */
+  panelPad?: string;
 }
 
-function DropdownMenu({ trigger, children, align = 'right' }: DropdownMenuProps) {
+function DropdownMenu({ trigger, children, align = 'right', panelClassName, panelPad = 'p-1.5' }: DropdownMenuProps) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
@@ -33,7 +37,9 @@ function DropdownMenu({ trigger, children, align = 'right' }: DropdownMenuProps)
             isDark
               ? 'border-white/[0.06] bg-[#0D0D0D]'
               : 'border-zinc-200 bg-white',
-            align === 'right' ? 'right-0' : 'left-0'
+            align === 'right' ? 'right-0' : 'left-0',
+            panelPad,
+            panelClassName
           )}
           onClick={() => setOpen(false)}
         >

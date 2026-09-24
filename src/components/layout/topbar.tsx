@@ -1,9 +1,9 @@
 "use client";
 import * as React from "react";
-import { cn } from "@/lib/utils/helpers";
-import { Search, Bell, ChevronDown, Command, Sun, Moon, Globe, Settings, LogOut, Calendar, Check } from "lucide-react";
+import { cn, getInitials } from "@/lib/utils/helpers";
+import { Search, Bell, ChevronDown, Command, Sun, Moon, Settings, LogOut, Calendar, Check } from "lucide-react";
 import { Avatar } from "../ui/avatar";
-import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuCheckboxItem } from "../ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "../ui/dropdown-menu";
 import { useAuth, logout } from "@/lib/auth/auth";
 import { useSessions, useCurrentSession, useSetCurrentSession, getViewSessionOverride, setViewSessionOverride, clearViewSessionOverride } from "@/lib/storage/sessions";
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/lib/storage/notifications";
@@ -13,6 +13,8 @@ import { formatDate } from "@/lib/storage/storage";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
+import { useInstitutionBySlug } from "@/lib/storage/institutions";
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
@@ -21,7 +23,7 @@ interface TopbarProps {
 const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { lang: language, setLang } = useLang();
   const { user } = useAuth();
   const { data: currentSession } = useCurrentSession();
@@ -35,6 +37,18 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
     const match = pathname.match(/^\/i\/([^/]+)/);
     return match ? match[1] : '';
   }, [pathname]);
+
+  // ---- Organization identity for the user-menu card header ----
+  // Institution pages → that institution's logo/name; super-admin (no slug)
+  // → association branding (Settings → Branding), same fallback as sidebar.
+  const { data: brandData } = useBranding();
+  const { data: inst } = useInstitutionBySlug(slug);
+  const brand = React.useMemo(() => ({ ...BRANDING_DEFAULTS, ...(brandData ?? {}) }), [brandData]);
+  const orgName = slug && inst?.name
+    ? inst.name
+    : (isBn ? brand.brandNameBn : brand.brandName) || brand.brandName;
+  const orgLogo = (slug ? inst?.logo : undefined) || brand.brandLogo;
+  const orgShort = slug && inst?.name ? getInitials(inst.name) : brand.brandShort;
 
   const handleLogout = async () => {
     await logout();
@@ -300,6 +314,11 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
         {user && (
           <DropdownMenu
             align="right"
+            panelPad="p-2.5"
+            panelClassName={cn(
+              'w-[280px] space-y-1.5 rounded-xl',
+              isDark ? 'bg-[#0D0D0D]' : 'bg-white'
+            )}
             trigger={
               <button className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 transition-all duration-200',
@@ -322,65 +341,104 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
               </button>
             }
           >
-            <DropdownMenuLabel className={isDark ? 'text-zinc-400' : 'text-gray-600'}>
-              {isBn ? 'সেটিংস' : 'Settings'}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
-            
-            <DropdownMenuLabel className={cn(
-              'text-xs font-normal py-0',
-              isDark ? 'text-zinc-500' : 'text-gray-400'
+            {/* Card header — institution/association identity + signed-in user */}
+            <div className={cn(
+              'flex items-center gap-3 rounded-lg p-3',
+              isDark ? 'bg-white/[0.05]' : 'bg-zinc-100'
             )}>
-              {isBn ? 'থিম' : 'Theme'}
-            </DropdownMenuLabel>
-            <DropdownMenuCheckboxItem 
-              checked={theme === 'dark'} 
-              onCheckedChange={() => theme !== 'dark' && toggleTheme()}
-              className={isDark ? 'text-white' : 'text-gray-700'}
-            >
-              <Moon className="h-4 w-4 mr-2" /> {isBn ? 'ডার্ক' : 'Dark'}
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem 
-              checked={theme === 'light'} 
-              onCheckedChange={() => theme !== 'light' && toggleTheme()}
-              className={isDark ? 'text-white' : 'text-gray-700'}
-            >
-              <Sun className="h-4 w-4 mr-2" /> {isBn ? 'লাইট' : 'Light'}
-            </DropdownMenuCheckboxItem>
-            
-            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
-            
-            <DropdownMenuLabel className={cn(
-              'text-xs font-normal py-0',
-              isDark ? 'text-zinc-500' : 'text-gray-400'
-            )}>
-              {isBn ? 'ভাষা' : 'Language'}
-            </DropdownMenuLabel>
-            <DropdownMenuCheckboxItem 
-              checked={language === 'en'} 
-              onCheckedChange={() => setLang('en')}
-              className={isDark ? 'text-white' : 'text-gray-700'}
-            >
-              <Globe className="h-4 w-4 mr-2" /> English
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem 
-              checked={language === 'bn'} 
-              onCheckedChange={() => setLang('bn')}
-              className={isDark ? 'text-white' : 'text-gray-700'}
-            >
-              <Globe className="h-4 w-4 mr-2" /> বাংলা
-            </DropdownMenuCheckboxItem>
+              {orgLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={orgLogo}
+                  alt={orgName}
+                  className={cn(
+                    'h-10 w-10 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1',
+                    isDark ? 'ring-white/15' : 'ring-black/10'
+                  )}
+                />
+              ) : (
+                <div className={cn(
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-[11px] font-bold',
+                  'bg-brand-accent text-brand-accent-fg'
+                )}>
+                  {orgShort}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn('truncate text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}
+                  title={orgName}
+                >
+                  {orgName}
+                </p>
+                <p className={cn('truncate text-xs', isDark ? 'text-zinc-400' : 'text-gray-600')}>
+                  {user.name}
+                </p>
+                <p className={cn(
+                  'truncate text-[10px] font-medium uppercase tracking-wide',
+                  isDark ? 'text-zinc-500' : 'text-gray-400'
+                )}>
+                  {user.role.replace('_', ' ')}
+                </p>
+              </div>
+            </div>
 
-            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.04]' : 'bg-gray-200/50'} />
-            
-            <DropdownMenuItem 
+            {/* Language — segmented toggle */}
+            <div className={cn('flex gap-1 rounded-lg p-1', isDark ? 'bg-white/[0.05]' : 'bg-zinc-100')}>
+              {([
+                { value: 'en', label: 'English' },
+                { value: 'bn', label: 'বাংলা' },
+              ] as const).map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={(e) => { e.stopPropagation(); setLang(value); }}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-all duration-150 cursor-pointer',
+                    language === value
+                      ? 'bg-brand-accent text-brand-accent-fg shadow-sm'
+                      : isDark
+                        ? 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
+                        : 'text-zinc-600 hover:bg-white hover:text-zinc-900'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Theme — segmented toggle */}
+            <div className={cn('flex gap-1 rounded-lg p-1', isDark ? 'bg-white/[0.05]' : 'bg-zinc-100')}>
+              {([
+                { value: 'light', Icon: Sun, label: isBn ? 'লাইট' : 'Light' },
+                { value: 'dark', Icon: Moon, label: isBn ? 'ডার্ক' : 'Dark' },
+              ] as const).map(({ value, Icon, label }) => (
+                <button
+                  key={value}
+                  onClick={(e) => { e.stopPropagation(); setTheme(value); }}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-all duration-150 cursor-pointer',
+                    theme === value
+                      ? 'bg-brand-accent text-brand-accent-fg shadow-sm'
+                      : isDark
+                        ? 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
+                        : 'text-zinc-600 hover:bg-white hover:text-zinc-900'
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+
+            <DropdownMenuSeparator className={isDark ? 'bg-white/[0.06]' : 'bg-zinc-200'} />
+
+            <DropdownMenuItem
               onClick={() => router.push(user.role === 'SUPER_ADMIN' ? '/super-admin/settings' : `/i/${slug}/settings`)}
               className={isDark ? 'text-zinc-300' : 'text-gray-700'}
             >
-              <Settings className="h-4 w-4 mr-2" /> {isBn ? 'সেটিংস' : 'Settings'}
+              <Settings className="h-4 w-4" /> {isBn ? 'সেটিংস' : 'Settings'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout} destructive>
-              <LogOut className="h-4 w-4 mr-2" /> {isBn ? 'প্রস্থান' : 'Sign out'}
+              <LogOut className="h-4 w-4" /> {isBn ? 'প্রস্থান' : 'Sign out'}
             </DropdownMenuItem>
           </DropdownMenu>
         )}

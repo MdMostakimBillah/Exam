@@ -117,8 +117,8 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
   const cardHover = isDark
     ? "hover:border-white/[0.1] transition-colors"
     : "hover:border-zinc-300 transition-colors";
-  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const subtext = isDark ? "text-zinc-500" : "text-zinc-400";
   const shimmer = isDark ? "bg-white/[0.04]" : "bg-zinc-100";
 
@@ -378,7 +378,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                       {monthlyInstitutions.map((h, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center gap-1">
                           <div
-                            className={`w-full rounded-t-md transition-all ${isDark ? "bg-white/[0.12]" : "bg-zinc-200"}`}
+                            className={`w-full rounded-t-md transition-all bg-brand-accent-strong`}
                             style={{ height: `${(h / maxMonthly) * 100}%` }}
                           />
                         </div>

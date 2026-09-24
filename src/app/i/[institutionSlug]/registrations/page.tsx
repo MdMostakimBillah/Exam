@@ -19,7 +19,7 @@ import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn } from "@/lib/utils/helpers";
+import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2, Edit, Loader2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -27,7 +27,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
-const MAX_PHOTO_SIZE = 500 * 1024;
+const MAX_PHOTO_SIZE = MAX_IMAGE_SIZE;
 
 type Step = 1 | 2 | 3;
 
@@ -189,7 +189,7 @@ export default function InstitutionRegistrationsPage() {
     setPhotoError("");
     if (file.size > MAX_PHOTO_SIZE) {
       const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 500KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 500KB allowed.`);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 350KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 350KB allowed.`);
       return;
     }
     const reader = new FileReader();
@@ -370,7 +370,7 @@ export default function InstitutionRegistrationsPage() {
     setPhotoError("");
     if (file.size > MAX_PHOTO_SIZE) {
       const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 500KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 500KB allowed.`);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 350KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 350KB allowed.`);
       return;
     }
     const reader = new FileReader();
@@ -383,8 +383,8 @@ export default function InstitutionRegistrationsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const inputCls = isDark ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
   const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
 
@@ -407,7 +407,7 @@ export default function InstitutionRegistrationsPage() {
               {isBn ? "বৃত্তি পরীক্ষার জন্য শিক্ষার্থী নিবন্ধন পরিচালনা করুন" : "Manage student registrations for scholarship exams"}
             </p>
           </div>
-          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800")}>
+          <button onClick={handleCreate} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium transition-all", "bg-brand-accent text-brand-accent-fg hover:opacity-90")}>
             <Plus className="h-4 w-4" /> {isBn ? "নতুন নিবন্ধন" : "New Registration"}
           </button>
         </div>
@@ -536,7 +536,7 @@ export default function InstitutionRegistrationsPage() {
               <div key={i} className="flex items-center gap-2 flex-1">
                 <div className={cn(
                   "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors",
-                  isDone ? "bg-green-500 text-white" : isActive ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white") : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
+                  isDone ? "bg-green-500 text-white" : isActive ? ("bg-brand-accent text-brand-accent-fg") : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
                 )}>
                   {isDone ? "✓" : num}
                 </div>
@@ -624,7 +624,7 @@ export default function InstitutionRegistrationsPage() {
           <div className="px-2 py-3 space-y-4">
             {/* Profile Picture */}
             <div>
-              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 500KB)</span></label>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 350KB)</span></label>
               <div className="flex items-start gap-4">
                 <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", studentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
                   {studentForm.photo ? (
@@ -650,7 +650,7 @@ export default function InstitutionRegistrationsPage() {
                     </p>
                   )}
                   <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                    {isBn ? 'JPG, PNG। সর্বোচ্চ 500KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 500KB file size allowed.'}
+                    {isBn ? 'JPG, PNG। সর্বোচ্চ 350KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 350KB file size allowed.'}
                   </p>
                 </div>
               </div>
@@ -695,11 +695,11 @@ export default function InstitutionRegistrationsPage() {
               {isBn ? 'বাতিল' : 'Cancel'}
             </button>
             {step < 3 ? (
-              <button onClick={handleNext} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+              <button onClick={handleNext} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
                 {isBn ? 'পরবর্তী' : 'Next'}
               </button>
             ) : (
-              <button onClick={handleSave} disabled={!canSubmitStep3 || submitting} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all flex items-center gap-2", canSubmitStep3 && !submitting ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+              <button onClick={handleSave} disabled={!canSubmitStep3 || submitting} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all flex items-center gap-2", canSubmitStep3 && !submitting ? ("bg-brand-accent text-brand-accent-fg hover:opacity-90") : "opacity-50 cursor-not-allowed")}>
                 {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {isBn ? 'নিবন্ধন করুন' : 'Register'}
               </button>
@@ -849,7 +849,7 @@ export default function InstitutionRegistrationsPage() {
                   <div key={i} className="flex items-center gap-2 flex-1">
                     <div className={cn(
                       "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors",
-                      isDone ? "bg-green-500 text-white" : isActive ? (isDark ? "bg-white text-black" : "bg-zinc-900 text-white") : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
+                      isDone ? "bg-green-500 text-white" : isActive ? ("bg-brand-accent text-brand-accent-fg") : (isDark ? "bg-white/[0.08] text-zinc-500" : "bg-zinc-100 text-zinc-400")
                     )}>
                       {isDone ? "✓" : num}
                     </div>
@@ -936,7 +936,7 @@ export default function InstitutionRegistrationsPage() {
             {editStep === 3 && (
               <div className="py-2 space-y-4">
                 <div>
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 500KB)</span></label>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 350KB)</span></label>
                   <div className="flex items-start gap-4">
                     <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", editStudentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
                       {editStudentForm.photo ? (
@@ -962,7 +962,7 @@ export default function InstitutionRegistrationsPage() {
                         </p>
                       )}
                       <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                        {isBn ? 'JPG, PNG। সর্বোচ্চ 500KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 500KB file size allowed.'}
+                        {isBn ? 'JPG, PNG। সর্বোচ্চ 350KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 350KB file size allowed.'}
                       </p>
                     </div>
                   </div>
@@ -984,11 +984,11 @@ export default function InstitutionRegistrationsPage() {
                   {isBn ? 'বাতিল' : 'Cancel'}
                 </button>
                 {editStep < 3 ? (
-                  <button onClick={() => setEditStep(s => (s + 1) as Step)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}>
+                  <button onClick={() => setEditStep(s => (s + 1) as Step)} className={`px-4 py-2 rounded-md text-[13px] font-medium transition-all ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}>
                     {isBn ? 'পরবর্তী' : 'Next'}
                   </button>
                 ) : (
-                  <button onClick={handleSaveEdit} disabled={submitting} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all flex items-center gap-2", !submitting ? (isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800") : "opacity-50 cursor-not-allowed")}>
+                  <button onClick={handleSaveEdit} disabled={submitting} className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all flex items-center gap-2", !submitting ? ("bg-brand-accent text-brand-accent-fg hover:opacity-90") : "opacity-50 cursor-not-allowed")}>
                     {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {isBn ? 'সংরক্ষণ' : 'Save'}
                   </button>

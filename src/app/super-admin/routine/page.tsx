@@ -229,8 +229,8 @@ export default function RoutinePage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const inputCls = cn(
     "h-9 text-[12px] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 hover:[&::-webkit-calendar-picker-indicator]:opacity-100",
     isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200"
@@ -303,7 +303,7 @@ export default function RoutinePage() {
                 disabled={!hasWindow || saving}
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2 rounded-md text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-                  isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                  "bg-brand-accent text-brand-accent-fg hover:opacity-90"
                 )}
               >
                 <Save className="h-3.5 w-3.5" /> {saving ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (isBn ? 'রুটিন সংরক্ষণ' : 'Save Routine')}

@@ -45,7 +45,7 @@ export default function VerifyCertificatePage() {
       <header className={`border-b backdrop-blur-xl ${isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"}`}>
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>B</div>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
             <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
           </Link>
           <div className="flex items-center gap-4">

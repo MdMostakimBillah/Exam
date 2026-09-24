@@ -7,7 +7,7 @@ import { getStudentSession, type StudentSession } from "@/lib/auth/student-auth"
 import { notifySuperAdmins } from "@/lib/storage/notifications";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn } from "@/lib/utils/helpers";
+import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 import {
   ArrowLeft,
   CreditCard,
@@ -119,8 +119,8 @@ export default function PaymentSubmitPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError(isBn ? "ছবির আকার 5MB এর বেশি হতে পারে না" : "Image must be under 5MB");
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError(isBn ? "ছবির আকার 350KB এর বেশি হতে পারে না" : "Image must be under 350KB");
       return;
     }
     setProofImageFile(file);
@@ -241,7 +241,7 @@ export default function PaymentSubmitPage() {
             href="/student/dashboard"
             className={cn(
               "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-              isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"
+              "bg-brand-accent text-brand-accent-fg hover:opacity-90"
             )}
           >
             <ArrowLeft className="h-4 w-4" /> {isBn ? "ড্যাশবোর্ডে ফিরুন" : "Back to Dashboard"}
@@ -306,9 +306,7 @@ export default function PaymentSubmitPage() {
                       className={cn(
                         "px-3 py-2 rounded-lg text-[11px] font-medium transition-all border",
                         paymentMethod === method
-                          ? isDark
-                            ? "bg-white text-black border-white"
-                            : "bg-zinc-900 text-white border-zinc-900"
+                          ? "bg-brand-accent text-brand-accent-fg border-brand-accent"
                           : isDark
                             ? "bg-white/[0.04] text-zinc-400 border-white/[0.08] hover:bg-white/[0.08]"
                             : "bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100"
@@ -401,7 +399,7 @@ export default function PaymentSubmitPage() {
                       </button>
                     )}
                     <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                      {isBn ? "JPG, PNG। সর্বোচ্চ 5MB।" : "JPG, PNG. Max 5MB."}
+                      {isBn ? "JPG, PNG। সর্বোচ্চ 350KB।" : "JPG, PNG. Max 350KB."}
                     </p>
                   </div>
                 </div>
@@ -433,7 +431,7 @@ export default function PaymentSubmitPage() {
                 disabled={submitting}
                 className={cn(
                   "w-full h-11 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2",
-                  isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800",
+                  "bg-brand-accent text-brand-accent-fg hover:opacity-90",
                   submitting && "opacity-60 cursor-not-allowed"
                 )}
               >

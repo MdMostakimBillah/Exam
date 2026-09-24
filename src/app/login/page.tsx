@@ -132,7 +132,7 @@ export default function LoginPage() {
 
         <div className="w-full max-w-[400px] relative z-10">
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center h-14 w-14 rounded-md bg-white text-black font-bold text-xl mb-4">B</div>
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-md bg-brand-accent text-brand-accent-fg font-bold text-xl mb-4">B</div>
           </div>
 
           <div className="animate-fadeInUp">
@@ -225,9 +225,7 @@ export default function LoginPage() {
                 disabled={loading || locked}
                 className={cn(
                   "w-full h-11 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2",
-                  isDark
-                    ? "bg-white text-black hover:bg-white/90 active:scale-[0.98]"
-                    : "bg-zinc-900 text-white hover:bg-zinc-800 active:scale-[0.98]",
+                  "bg-brand-accent text-brand-accent-fg hover:opacity-90 active:scale-[0.98]",
                   (loading || locked) && "opacity-60 cursor-not-allowed"
                 )}
               >

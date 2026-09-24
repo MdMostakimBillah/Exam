@@ -138,8 +138,8 @@ export default function InstitutionsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.08]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-zinc-300" : "text-zinc-600";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -157,7 +157,7 @@ export default function InstitutionsPage() {
           </div>
           <button
             onClick={() => { resetForm(); setShowCreateModal(true); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors shrink-0 ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors shrink-0 ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}
           >
             <Plus className="h-3.5 w-3.5" /> {isBn ? 'প্রতিষ্ঠান যোগ করুন' : 'Add Institution'}
           </button>
@@ -400,7 +400,7 @@ export default function InstitutionsPage() {
           </div>
           <ModalFooter>
             <button onClick={() => setShowCreateModal(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-            <button onClick={handleCreate} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
+            <button onClick={handleCreate} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${'bg-brand-accent text-brand-accent-fg hover:opacity-90'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
           </ModalFooter>
         </Modal>
       </div>

@@ -73,8 +73,8 @@ export default function ExamCentersPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -113,7 +113,7 @@ export default function ExamCentersPage() {
         <div className="flex justify-end mb-6">
           <button
             onClick={() => { setForm({ name: '', address: '', capacity: '' }); setEditId(null); setModalOpen(true); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-800"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${"bg-brand-accent text-brand-accent-fg hover:opacity-90"}`}
           >
             <Plus className="h-3.5 w-3.5" /> {isBn ? 'কেন্দ্র যোগ করুন' : 'Add Center'}
           </button>
@@ -213,7 +213,7 @@ export default function ExamCentersPage() {
           </div>
           <ModalFooter>
             <button onClick={() => setModalOpen(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-            <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>{editId ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি' : 'Create')}</button>
+            <button onClick={handleSave} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${'bg-brand-accent text-brand-accent-fg hover:opacity-90'}`}>{editId ? (isBn ? 'আপডেট' : 'Update') : (isBn ? 'তৈরি' : 'Create')}</button>
           </ModalFooter>
         </Modal>
       </div>

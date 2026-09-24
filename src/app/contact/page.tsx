@@ -17,7 +17,7 @@ export default function ContactPage() {
       <header className="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#080808]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-black font-bold text-sm">S</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-accent text-brand-accent-fg font-bold text-sm">S</div>
             <span className="text-sm font-semibold text-zinc-100">ScholarX</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8">
@@ -28,7 +28,7 @@ export default function ContactPage() {
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors px-3 py-1.5">Sign in</Link>
-            <Link href="/register" className="text-sm bg-white text-black hover:bg-white/90 px-4 py-1.5 rounded-md font-medium transition-colors">Register</Link>
+            <Link href="/register" className="text-sm bg-brand-accent text-brand-accent-fg hover:opacity-90 px-4 py-1.5 rounded-md font-medium transition-colors">Register</Link>
           </div>
         </div>
       </header>
@@ -86,7 +86,7 @@ export default function ContactPage() {
                     <label className="block text-xs text-zinc-500 mb-1">Message</label>
                     <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} required rows={5} className="w-full rounded-md border border-white/[0.06] bg-[#0D0D0D] px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-1 focus:ring-zinc-500 resize-none" placeholder="Tell us more..." />
                   </div>
-                  <button type="submit" className="inline-flex items-center gap-2 bg-white text-black hover:bg-white/90 px-5 py-2.5 rounded-md text-sm font-medium transition-colors">
+                  <button type="submit" className="inline-flex items-center gap-2 bg-brand-accent text-brand-accent-fg hover:opacity-90 px-5 py-2.5 rounded-md text-sm font-medium transition-colors">
                     <Send className="h-4 w-4" /> Send Message
                   </button>
                 </form>
@@ -99,7 +99,7 @@ export default function ContactPage() {
       <footer className="border-t border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-black font-bold text-xs">S</div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-accent text-brand-accent-fg font-bold text-xs">S</div>
             <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
           </div>
           <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>

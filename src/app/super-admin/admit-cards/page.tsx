@@ -445,8 +445,8 @@ export default function AdmitCardsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = isDark ? "bg-white/[0.06]" : "bg-zinc-100";
-  const iconColor = isDark ? "text-white" : "text-zinc-900";
+  const iconBg = "bg-brand-accent-soft";
+  const iconColor = "text-brand-accent";
   const labelCls = isDark ? "text-zinc-400" : "text-zinc-600";
   const inputCls = isDark
     ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600"
@@ -596,9 +596,7 @@ export default function AdmitCardsPage() {
               disabled={!exam || !className || generateMutation.isPending}
               className={cn(
                 "flex items-center justify-center gap-2 px-5 h-10 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0",
-                isDark
-                  ? "bg-white text-black hover:bg-zinc-200"
-                  : "bg-black text-white hover:bg-zinc-800"
+                "bg-brand-accent text-brand-accent-fg hover:opacity-90"
               )}
             >
               {generateMutation.isPending ? (
@@ -817,7 +815,7 @@ export default function AdmitCardsPage() {
 
               <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-zinc-200 bg-white">
                 <button
-                  className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md text-sm font-medium bg-black text-white hover:bg-zinc-800 transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md text-sm font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors"
                   onClick={() =>
                     startExport(
                       "pdf",

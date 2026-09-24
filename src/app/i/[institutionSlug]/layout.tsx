@@ -105,7 +105,7 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
               onClick={() => router.push('/login')}
               className={cn(
                 "px-6 py-2.5 rounded-md text-sm font-medium transition-all",
-                isDark ? "bg-white text-black hover:bg-white/90" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                "bg-brand-accent text-brand-accent-fg hover:opacity-90"
               )}
             >
               {isBn ? "লগআউট" : "Logout"}

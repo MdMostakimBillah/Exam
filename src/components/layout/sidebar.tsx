@@ -112,7 +112,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
             ) : (
               <div className={cn(
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-bold text-[10px] transition-transform duration-300',
-                isDark ? 'bg-white text-black' : 'bg-black text-white'
+                'bg-brand-accent text-brand-accent-fg'
               )}>
                 {brand.brandShort}
               </div>
@@ -152,9 +152,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
               className={cn(
                 'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200',
                 isActive
-                  ? isDark
-                    ? 'bg-white text-black font-medium'
-                    : 'bg-black text-white font-medium'
+                  ? 'bg-brand-accent text-brand-accent-fg font-medium'
                   : isDark
                     ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
@@ -166,8 +164,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
               )}
               {isActive && !collapsed && (
                 <ChevronRight className={cn(
-                  'h-3.5 w-3.5',
-                  isDark ? 'text-black/50' : 'text-white/60'
+                  'h-3.5 w-3.5 text-brand-accent-fg opacity-50'
                 )} />
               )}
             </button>
@@ -187,7 +184,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
           )}>
             <div className={cn(
               'h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold',
-              isDark ? 'bg-white text-black' : 'bg-black text-white'
+              'bg-brand-accent text-brand-accent-fg'
             )}>
               {user.name.split(' ').map(n => n[0]).join('')}
             </div>
