@@ -271,6 +271,9 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
     .filter(Boolean)
     .join(" ");
 
+  // Header line 3 — exam name with its session (academic year as fallback).
+  const sessionLabel = view.sessionName || view.academicYear;
+
   const created = view.createdAt ? new Date(view.createdAt) : new Date();
   const isValidDate = !Number.isNaN(created.getTime());
   const dateOpts: Intl.DateTimeFormatOptions = {
@@ -328,7 +331,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
       <Watermark brand={brand} />
-      {/* ── Header: photo | crest | titles | QR — rule underneath ── */}
+      {/* ── Header: photo | titles | QR — rule underneath ── */}
       <div
         style={{
           display: "flex",
@@ -366,76 +369,47 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           )}
         </div>
 
-        {view.institutionLogo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={view.institutionLogo}
-            alt={L("Logo", "লোগো")}
-            crossOrigin="anonymous"
-            style={{ width: "20mm", height: "20mm", objectFit: "contain", flexShrink: 0 }}
-          />
-        ) : brand.brandLogo ? (
-          // Association logo from branding settings
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={brand.brandLogo}
-            alt={brandShort}
-            crossOrigin="anonymous"
-            style={{
-              width: "18mm",
-              height: "18mm",
-              objectFit: "contain",
-              flexShrink: 0,
-              background: "#ffffff",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "18mm",
-              height: "18mm",
-              background: "#000000",
-              color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              fontSize: "13px",
-              letterSpacing: "1px",
-              flexShrink: 0,
-            }}
-          >
-            {brandShort}
-          </div>
-        )}
-
         <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+          {/* 1. Main title — association name */}
           <div
             style={{
-              fontSize: "18px",
+              fontSize: "19px",
               fontWeight: 700,
               letterSpacing: "0.5px",
               textTransform: "uppercase",
               lineHeight: 1.2,
             }}
           >
-            {view.institutionName}
-          </div>
-          <div style={{ fontSize: "11px", marginTop: "1px", color: "#222222" }}>
             {L(assocEn, assocBn)}
           </div>
+          {/* 2. Institution name — always English (see buildCardView) */}
           <div
             style={{
               fontSize: "13px",
               fontWeight: 700,
-              marginTop: "3px",
+              marginTop: "2px",
               textTransform: "uppercase",
               letterSpacing: "0.3px",
               lineHeight: 1.25,
+              color: "#111111",
+            }}
+          >
+            {view.institutionName}
+          </div>
+          {/* 3. Exam name with session */}
+          <div
+            style={{
+              fontSize: "11.5px",
+              fontWeight: 700,
+              marginTop: "2px",
+              textTransform: "uppercase",
+              letterSpacing: "0.3px",
+              lineHeight: 1.25,
+              color: "#222222",
             }}
           >
             {view.examName}
-            {view.academicYear ? ` - ${view.academicYear}` : ""}
+            {sessionLabel ? ` - ${sessionLabel}` : ""}
           </div>
         </div>
 

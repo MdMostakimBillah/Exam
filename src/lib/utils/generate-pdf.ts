@@ -108,23 +108,30 @@ async function imageToPng(src: string): Promise<string | null> {
   }
 }
 
-let fontLoaded = false;
+// Kalpurush (Bangla) — base64 fetched once, but jsPDF's VFS/font state is PER
+// DOCUMENT: every generated doc must re-register the font itself. The old
+// module-level "loaded" flag left the 2nd+ PDF with no font at all, which came
+// out as garbage (¬¾¼…) after download.
+let fontBase64: string | null = null;
 
 async function loadFont(doc: any) {
-  if (fontLoaded) return;
+  if (!fontBase64) {
+    const response = await fetch("/fonts/kalpurush.ttf");
+    const buffer = await response.arrayBuffer();
 
-  const response = await fetch("/fonts/NotoSansBengali-Regular.ttf");
-  const buffer = await response.arrayBuffer();
-
-  const fontBytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < fontBytes.length; i++) {
-    binary += String.fromCharCode(fontBytes[i]);
+    const fontBytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < fontBytes.length; i++) {
+      binary += String.fromCharCode(fontBytes[i]);
+    }
+    fontBase64 = btoa(binary);
   }
 
-  doc.addFileToVFS("NotoSansBengali-Regular.ttf", btoa(binary));
-  doc.addFont("NotoSansBengali-Regular.ttf", "NotoSans", "normal");
-  fontLoaded = true;
+  doc.addFileToVFS("kalpurush.ttf", fontBase64);
+  doc.addFont("kalpurush.ttf", "Kalpurush", "normal");
+  // Titles and autotable headers request bold — register it too, otherwise
+  // jsPDF silently falls back to Helvetica, which has no Bengali glyphs.
+  doc.addFont("kalpurush.ttf", "Kalpurush", "bold");
 }
 
 export async function generatePdf(options: GeneratePdfOptions) {
@@ -150,7 +157,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
 
   await loadFont(doc);
 
-  const FONT = "NotoSans";
+  const FONT = "Kalpurush";
 
   const pal = accentPalette(accent);
   const primary = pal.rgb;

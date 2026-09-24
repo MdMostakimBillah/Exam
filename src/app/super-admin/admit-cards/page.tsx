@@ -232,7 +232,9 @@ export default function AdmitCardsPage() {
     return {
       key: card.id,
       lang,
-      institutionName: card.institutionName,
+      // Card always shows the institution's ENGLISH name — falls back to the
+      // stored primary name when name_en is empty.
+      institutionName: inst?.nameEn || card.institutionName,
       institutionCode: inst?.code || "",
       institutionLogo: inst?.logo,
       examName: card.examName,

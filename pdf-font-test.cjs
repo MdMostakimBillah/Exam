@@ -1,18 +1,26 @@
 const { jsPDF } = require('jspdf');
+const mod = require('jspdf-autotable');
+const autoTable = mod.default || mod;
 const fs = require('fs');
-const b64 = fs.readFileSync('./public/fonts/NotoSansBengali-Regular.ttf').toString('base64');
-
-function build(registerDoc, out) {
+const b64 = fs.readFileSync('./public/fonts/kalpurush.ttf').toString('base64');
+function build(out) {
   const doc = new jsPDF();
-  if (registerDoc) { doc.addFileToVFS('n.ttf', b64); doc.addFont('n.ttf', 'NotoSans', 'normal'); }
-  doc.setFont('NotoSans', 'normal');
-  doc.setFontSize(18);
-  const lines = ['বাংলা স্বাগতম', 'ক্ষমতা নিয়ে কাজ করি', 'কিছু ছাত্রীর নাম', 'রূপালী ব্যাংক পরীক্ষা'];
-  lines.forEach((s, i) => doc.text(s, 10, 25 + i * 22));
-  doc.setFont('NotoSans', 'bold');
-  doc.text('BOLD বাংলা স্বাগতম', 10, 130);
+  doc.addFileToVFS('kalpurush.ttf', b64);
+  doc.addFont('kalpurush.ttf', 'Kalpurush', 'normal');
+  doc.addFont('kalpurush.ttf', 'Kalpurush', 'bold');
+  const F = 'Kalpurush';
+  doc.setFont(F, 'bold'); doc.setFontSize(14);
+  doc.text('শিক্ষার্থী তালিকা', 105, 20, { align: 'center' });
+  autoTable(doc, {
+    startY: 30,
+    head: [['#', 'নাম', 'পিতার নাম', 'মাতার নাম', 'ফোন', 'শ্রেণী']],
+    body: [['1', 'মোঃ আব্দুল্লাহ আল মামুন', 'রহিম উদ্দিন', 'আমেনা বেগম', '01712345678', '৫ম'],
+           ['2', 'সাদিয়া আক্তার', 'করিম মিয়া', 'ফাতেমা খাতুন', '01911223344', '১০ম']],
+    theme: 'grid',
+    styles: { font: F, fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [147, 51, 234], fontStyle: 'bold', halign: 'center' },
+  });
   fs.writeFileSync(out, Buffer.from(doc.output('arraybuffer')));
 }
-build(true,  './font-test-1.pdf');   // font registered on THIS doc (first call)
-build(false, './font-test-2.pdf');   // simulates loadFont() early-return (2nd call)
-console.log('written');
+build('./font-test-1.pdf'); build('./font-test-2.pdf');
+console.log('ok');
