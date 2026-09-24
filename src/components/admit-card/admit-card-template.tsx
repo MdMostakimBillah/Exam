@@ -4,32 +4,33 @@ import * as React from "react";
 import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
 
 /**
- * Admit card — reference redesign (Delta Science College mock).
+ * Admit card — modern landscape redesign (Delta Science reference, 2026).
  *
- * Layout mirrors the reference component: theme-colored full-bleed header
- * (logo circle + institution + code·session | gold exam code + exam title),
- * light "Admit Card" ribbon, photo + class badge beside a big examinee name
- * over a 2-column label/value grid, bordered zebra subjects table, dashed
+ * Landscape A4 (297×210mm): theme-colored full-bleed header (logo circle +
+ * institution + code·session | gold exam code + exam title), light "Admit
+ * Card" ribbon, photo + class badge beside a big examinee name over a
+ * 2-column label/value grid, bordered zebra subjects table, dashed
  * perforation, QR verify stub with controller block, light bottom notice
  * strip, and a gold security strip overlaying the right edge.
  *
  * Everything is styled INLINE on purpose: html2canvas rasterises the card
  * for the bulk PDF and the print window receives a plain outerHTML clone
- * with no stylesheet — the reference's Tailwind classes would render
- * unstyled there. Every color is a literal hex (accent resolved from
- * branding at render time), so preview, PDF and print match pixel-wise.
+ * with no stylesheet — Tailwind classes would render unstyled there. Every
+ * color is a literal hex (accent resolved from branding at render time), so
+ * preview, PDF and print match pixel-wise. Typography is modern sans:
+ * Inter for English, Kalpurush/Tiro Bangla for Bengali.
  *
- * The card is 210mm wide with CONTENT-DRIVEN height (like the reference);
- * the exporter measures each card and draws it at true size at the top of
- * its A4 page.
+ * The card is 297mm wide (landscape) with content-driven height capped at
+ * 210mm; the exporter measures each card and draws it centered on its A4
+ * landscape page.
  *
  * Language: all chrome follows `view.lang`; the root carries `lang="bn|en"`
- * so font fallback (Courier New Latin / Tiro Bangla) resolves identically in
- * preview, PDF and print. The institution name stays English (see
- * buildCardView); association branding lives in the watermark.
+ * so font fallback (Inter / Kalpurush / Tiro Bangla) resolves identically in
+ * preview, PDF and print. Institution name stays English; association
+ * branding lives in the watermark.
  */
 
-const FONT = "'Courier New', Courier, 'Tiro Bangla', monospace";
+const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Kalpurush', 'Tiro Bangla', sans-serif";
 /** Reference palette — light slate borders/grays (literal, PDF-safe). */
 const BORDER = "1px solid #e2e8f0";
 const SLATE_400 = "#94a3b8";
@@ -81,17 +82,19 @@ export interface CardView {
 }
 
 const rootStyle: React.CSSProperties = {
-  width: "210mm",
+  width: "297mm",
+  minHeight: "210mm",
   background: "#ffffff",
   color: "#000000",
   fontFamily: FONT,
   fontSize: "11px",
-  lineHeight: 1.35,
+  lineHeight: 1.4,
   overflow: "hidden",
   display: "flex",
   flexDirection: "column",
   boxSizing: "border-box",
   position: "relative",
+  borderRadius: "10px",
   // Stacking context so the negative-z watermark paints above the white
   // background but behind all card content (and survives html2canvas).
   isolation: "isolate",
@@ -122,7 +125,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           src={brand.brandWatermark}
           alt=""
           crossOrigin="anonymous"
-          style={{ width: "150mm", height: "auto", display: "block" }}
+          style={{ width: "170mm", height: "auto", display: "block" }}
         />
       </div>
     );
@@ -331,7 +334,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           alignItems: "center",
           justifyContent: "space-between",
           gap: "18px",
-          padding: "20px 34px 18px 32px",
+          padding: "22px 36px 20px 36px",
         }}
       >
         {/* Left: logo circle + institution + code·session */}
@@ -456,7 +459,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Body: photo + badge | big name + 2-col fields ────────── */}
-      <div style={{ display: "flex", gap: "26px", padding: "22px 32px 0" }}>
+      <div style={{ display: "flex", gap: "28px", padding: "24px 36px 0" }}>
         <div
           style={{
             width: "120px",
@@ -519,7 +522,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontSize: "21px",
+              fontSize: "22px",
               fontWeight: 700,
               color: accentHex,
               lineHeight: 1.2,
@@ -568,7 +571,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Subjects: label + bordered zebra table ───────────────── */}
-      <div style={{ padding: "18px 32px 0" }}>
+      <div style={{ padding: "20px 36px 0" }}>
         <div
           style={{
             fontSize: "12px",
@@ -633,7 +636,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Perforation (notches are print-hidden in the reference) ─ */}
-      <div style={{ margin: "22px 32px 0", borderTop: "1px dashed #cbd5e1" }} />
+      <div style={{ margin: "22px 36px 0", borderTop: "1px dashed #cbd5e1" }} />
 
       {/* ── Footer stub: QR + scan/ID | controller ────────────────── */}
       <div
@@ -642,7 +645,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           justifyContent: "space-between",
           alignItems: "flex-end",
           gap: "20px",
-          padding: "16px 32px 14px",
+          padding: "18px 36px 16px",
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-end", gap: "14px", minWidth: 0 }}>
@@ -720,13 +723,13 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           textAlign: "center",
           fontSize: "10px",
           color: SLATE_400,
-          padding: "8px 32px",
+          padding: "10px 36px",
           boxSizing: "border-box",
         }}
       >
         {L(
           "This admit card is valid only with a matching photo ID. Report to the center 30 minutes before start time.",
-          "এই প্রবেশপত্রটি সংশ্লিষ্ট পরিচয়পত্রসহ কার্যকর। পরীক্ষা শুরুর ৩০ মিনিট আগে কেন্দ্রে উপস্থিত হন।"
+          "এই প্রবেশপত্রটি বৈধ ছবিযুক্ত পরিচয়পত্র সহ প্রদর্শনযোগ্য। পরীক্ষা শুরুর ৩০ মিনিট পূর্বে কেন্দ্রে উপস্থিত থাকুন।"
         )}
       </div>
 

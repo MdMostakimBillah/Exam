@@ -324,13 +324,13 @@ export default function AdmitCardsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staging, toast]);
 
-  // Keep the preview card fully visible: scale = min(fit-width, fit-height).
+  // Keep the preview card fully visible: scale = min(fit-width, fit-height) — landscape.
   useEffect(() => {
     if (!preview) return;
     const el = previewBodyRef.current;
     if (!el) return;
-    const CARD_W = 793.7; // 210mm in CSS px
-    const CARD_H = 1122.5; // 297mm in CSS px
+    const CARD_W = 1122.5; // 297mm in CSS px (landscape width)
+    const CARD_H = 793.7; // 210mm in CSS px (landscape height, content-driven)
     const compute = () => {
       const availW = el.clientWidth - 32;
       const availH = el.clientHeight - 32;
@@ -781,7 +781,7 @@ export default function AdmitCardsPage() {
               className="fixed inset-0 bg-black/70 backdrop-blur-sm"
               onClick={() => setPreview(null)}
             />
-            <div className="relative z-50 w-full max-w-[860px] max-h-[92vh] flex flex-col rounded-md shadow-2xl bg-white overflow-hidden">
+            <div className="relative z-50 w-full max-w-[1180px] max-h-[92vh] flex flex-col rounded-md shadow-2xl bg-white overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 border-b border-black/10 bg-black text-white">
                 <span className="text-sm font-semibold">
                   {bi("প্রবেশপত্র প্রিভিউ", "Admit Card Preview")} — {preview.studentName}
@@ -800,8 +800,8 @@ export default function AdmitCardsPage() {
               >
                 <div
                   style={{
-                    width: `calc(210mm * ${previewScale})`,
-                    height: `calc(297mm * ${previewScale})`,
+                    width: `calc(297mm * ${previewScale})`,
+                    height: `calc(210mm * ${previewScale})`,
                     overflow: "hidden",
                     boxShadow: "0 6px 30px rgba(0,0,0,.35)",
                     background: "#fff",

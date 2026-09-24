@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Tiro+Bangla:ital@0;1&display=swap');
+
+@font-face {
+  font-family: 'Kalpurush';
+  src: url('/fonts/kalpurush.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -115,13 +123,15 @@ body.lang-bn button {
   font-weight: 400;
 }
 
-/* Admit card keeps its typewriter font (Courier New for Latin) in BOTH languages.
-   Must beat `html.lang-bn *` (specificity 0,1,1+) so preview/PDF/print all match. */
+/* Admit card: modern sans — Inter for Latin, Kalpurush for Bangla.
+    Must beat `html.lang-bn *` so preview / html2canvas PDF / print all match.
+    html2canvas rasterises the DOM, so both families must be available as CSS fonts
+    (Tiro Bangla from Google Fonts, Kalpurush via @font-face above, Inter via import). */
 html.lang-bn body .admit-card-page,
 html.lang-bn body .admit-card-page *,
 html body .admit-card-page,
 html body .admit-card-page * {
-  font-family: 'Courier New', Courier, 'Tiro Bangla', monospace !important;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Kalpurush', 'Tiro Bangla', sans-serif !important;
 }
 
 @keyframes fadeIn {
