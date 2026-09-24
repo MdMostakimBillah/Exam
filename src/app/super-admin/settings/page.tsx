@@ -3,7 +3,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/auth";
-import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X, CreditCard, Palette, Upload } from "lucide-react";
+import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Calendar, Plus, Trash2, Check, X, CreditCard, Palette, Upload, Mail, UserCheck, Trophy } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
@@ -851,27 +852,39 @@ export default function SuperAdminSettingsPage() {
                   <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'বিজ্ঞপ্তি সেটিংস' : 'Notification Settings'}</h2>
                   <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'কোন বিজ্ঞপ্তি পেতে চান তা নির্বাচন করুন' : 'Choose which notifications you want to receive'}</p>
                 </div>
-                <div className="space-y-1">
+                <div className={`overflow-hidden rounded-lg border ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
                   {[
-                    { label: "ইমেইল বিজ্ঞপ্তি", labelEn: "Email Notifications", value: emailNotifications, setter: setEmailNotifications },
-                    { label: "নিবন্ধন সতর্কতা", labelEn: "Registration Alerts", value: registrationAlerts, setter: setRegistrationAlerts },
-                    { label: "ফলাফল সতর্কতা", labelEn: "Result Alerts", value: resultAlerts, setter: setResultAlerts },
-                    { label: "পেমেন্ট সতর্কতা", labelEn: "Payment Alerts", value: paymentAlerts, setter: setPaymentAlerts },
-                  ].map((item, i) => (
-                    <div key={i} className={`flex items-center justify-between py-4 px-4 rounded-md transition-colors ${i > 0 ? `border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}` : ""}`}>
-                      <div>
-                        <p className={`text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>{isBn ? item.label : item.labelEn}</p>
-                      </div>
-                      <button onClick={() => item.setter(!item.value)}
-                        className={cn("relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200",
-                          item.value ? isDark ? "bg-white" : "bg-zinc-900" : isDark ? "bg-white/20" : "bg-zinc-300"
-                        )}>
-                        <span className={cn("pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition duration-200",
-                          item.value ? "translate-x-4" : "translate-x-0.5"
-                        )} />
-                      </button>
-                    </div>
-                  ))}
+                    { icon: Mail, label: "ইমেইল বিজ্ঞপ্তি", labelEn: "Email Notifications", desc: "গুরুত্বপূর্ণ ইভেন্টের জন্য ইমেইল আপডেট পান", descEn: "Receive email updates for important events", value: emailNotifications, setter: setEmailNotifications },
+                    { icon: UserCheck, label: "নিবন্ধন সতর্কতা", labelEn: "Registration Alerts", desc: "নতুন নিবন্ধন এলে বিজ্ঞপ্তি দিন", descEn: "Notify when new registrations are received", value: registrationAlerts, setter: setRegistrationAlerts },
+                    { icon: Trophy, label: "ফলাফল সতর্কতা", labelEn: "Result Alerts", desc: "ফলাফল প্রকাশিত হলে বিজ্ঞপ্তি দিন", descEn: "Notify when results are published", value: resultAlerts, setter: setResultAlerts },
+                    { icon: CreditCard, label: "পেমেন্ট সতর্কতা", labelEn: "Payment Alerts", desc: "পেমেন্ট সম্পন্ন হলে বিজ্ঞপ্তি দিন", descEn: "Notify when payments are received", value: paymentAlerts, setter: setPaymentAlerts },
+                  ].map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <Switch
+                        key={i}
+                        checked={item.value}
+                        onCheckedChange={item.setter}
+                        disabled={saving}
+                        label={isBn ? item.label : item.labelEn}
+                        className={cn(
+                          "w-full px-4 py-3.5 transition-colors",
+                          isDark ? "hover:bg-white/[0.03]" : "hover:bg-zinc-50",
+                          i > 0 && `border-t ${isDark ? "border-white/[0.05]" : "border-zinc-100"}`
+                        )}
+                      >
+                        <span className="flex min-w-0 items-center gap-3.5">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-accent-soft text-brand-accent">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0">
+                            <span className={`block text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>{isBn ? item.label : item.labelEn}</span>
+                            <span className={`mt-0.5 block text-xs ${subtextCls}`}>{isBn ? item.desc : item.descEn}</span>
+                          </span>
+                        </span>
+                      </Switch>
+                    );
+                  })}
                 </div>
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSaveNotifications} disabled={saving}
