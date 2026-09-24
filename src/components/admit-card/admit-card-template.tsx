@@ -343,8 +343,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       >
         <div
           style={{
-            width: "26mm",
-            height: "32mm",
+            width: "20mm",
+            height: "20mm",
             border: BORDER,
             display: "flex",
             alignItems: "center",
