@@ -149,6 +149,18 @@ export default function SuperAdminSettingsPage() {
     { id: "notifications", label: "Notifications", labelBn: "বিজ্ঞপ্তি", icon: <Bell className="h-4 w-4" /> },
   ], []);
 
+  /** Map a system_settings write failure to a friendly bilingual toast. */
+  const settingsErrorToast = (err: any) => {
+    const msg = String(err?.message || "");
+    if (err?.code === "42501" || /row-level security|permission denied/i.test(msg)) {
+      toast("error", isBn
+        ? "অনুমতি নেই: system_settings-এ সুপার অ্যাডমিন রাইট পলিসি নেই — সুপাবেস SQL এডিটরে 0017 ফিক্স SQL চালান"
+        : "Not allowed: the super-admin write policy on system_settings is missing — run the 0017 fix SQL in the Supabase SQL Editor");
+      return;
+    }
+    toast("error", msg || (isBn ? "সংরক্ষণ ব্যর্থ" : "Save failed"));
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     const supabase = createClient();
@@ -158,12 +170,15 @@ export default function SuperAdminSettingsPage() {
       { key: 'supportPhone', value: supportPhone, category: 'platform' },
       { key: 'address', value: address, category: 'platform' },
     ];
+    let saveError: any = null;
     for (const setting of settings) {
-      await supabase
+      const { error } = await supabase
         .from('system_settings')
         .upsert(setting, { onConflict: 'key' });
+      if (error) { saveError = error; break; }
     }
     setSaving(false);
+    if (saveError) { settingsErrorToast(saveError); return; }
     toast("success", isBn ? "প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!" : "Profile saved successfully!");
   };
 
@@ -214,12 +229,15 @@ export default function SuperAdminSettingsPage() {
       { key: 'resultAlerts', value: String(resultAlerts), category: 'notifications' },
       { key: 'paymentAlerts', value: String(paymentAlerts), category: 'notifications' },
     ];
+    let saveError: any = null;
     for (const setting of settings) {
-      await supabase
+      const { error } = await supabase
         .from('system_settings')
         .upsert(setting, { onConflict: 'key' });
+      if (error) { saveError = error; break; }
     }
     setSaving(false);
+    if (saveError) { settingsErrorToast(saveError); return; }
     toast("success", isBn ? "বিজ্ঞপ্তি সেটিংস সংরক্ষিত হয়েছে!" : "Notification settings saved!");
   };
 
@@ -232,12 +250,15 @@ export default function SuperAdminSettingsPage() {
       { key: 'paymentCashAddress', value: paymentCashAddress, category: 'payment' },
       { key: 'paymentInstructions', value: paymentInstructions, category: 'payment' },
     ];
+    let saveError: any = null;
     for (const setting of settings) {
-      await supabase
+      const { error } = await supabase
         .from('system_settings')
         .upsert(setting, { onConflict: 'key' });
+      if (error) { saveError = error; break; }
     }
     setSaving(false);
+    if (saveError) { settingsErrorToast(saveError); return; }
     toast("success", isBn ? "পেমেন্ট তথ্য সংরক্ষিত হয়েছে!" : "Payment details saved!");
   };
 
@@ -275,7 +296,7 @@ export default function SuperAdminSettingsPage() {
       await saveBranding.mutateAsync(brandForm);
       toast("success", isBn ? "ব্র্যান্ডিং সংরক্ষিত হয়েছে!" : "Branding saved!");
     } catch (err: any) {
-      toast("error", err?.message || (isBn ? "সংরক্ষণ ব্যর্থ" : "Save failed"));
+      settingsErrorToast(err);
     } finally {
       setSaving(false);
     }
