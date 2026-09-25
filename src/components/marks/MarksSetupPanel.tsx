@@ -14,6 +14,7 @@ import { useClasses } from "@/lib/storage/classes";
 import { useExamsFull } from "@/lib/storage/exams";
 import {
   calculateGradeForSetup,
+  calculateGradePointForSetup,
   calculatePassForSetup,
   calculateScholarshipForSetup,
   useExamMarkSetup,
@@ -207,7 +208,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
         ...current,
         gradeBands: [
           ...current.gradeBands,
-          { id: makeId("grade"), grade: "", minPercent: 0, maxPercent: 0 },
+          { id: makeId("grade"), grade: "", points: 0, minPercent: 0, maxPercent: 0 },
         ],
       }
       : current);
@@ -270,12 +271,12 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
       toast(
         "success",
         bi(
-          `সেটআপ সংরক্ষিত হয়েছে (সংস্করণ ${result.version})`,
-          `Setup saved (version ${result.version})`,
+          `গ্রেড স্কেল সংরক্ষিত হয়েছে (সংস্করণ ${result.version})`,
+          `Grade Scale saved (version ${result.version})`,
         ),
       );
     } catch (error) {
-      toast("error", error instanceof Error ? error.message : bi("সেটআপ সংরক্ষণ ব্যর্থ", "Could not save setup"));
+      toast("error", error instanceof Error ? error.message : bi("গ্রেড স্কেল সংরক্ষণ ব্যর্থ", "Could not save Grade Scale"));
     }
   };
 
@@ -283,6 +284,9 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
   const previewGrade = draft && Number.isFinite(previewValue)
     ? calculateGradeForSetup(previewValue, draft.gradeBands)
     : "—";
+  const previewPoints = draft && Number.isFinite(previewValue)
+    ? calculateGradePointForSetup(previewValue, draft.gradeBands)
+    : null;
   const previewScholarship = draft && Number.isFinite(previewValue)
     ? calculateScholarshipForSetup(previewValue, draft.scholarshipCategories)
     : "NOT_ELIGIBLE";
@@ -346,7 +350,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
             <span>
               {bi("সর্বশেষ সংরক্ষণ", "Last saved")}: {new Date(setup.updatedAt).toLocaleString()}
             </span>
-            <span>{bi("সেটআপ সংরক্ষণ ফলাফল পরিবর্তন করে না", "Saving setup does not change processed results")}</span>
+            <span>{bi("গ্রেড স্কেল সংরক্ষণ ফলাফল পরিবর্তন করে না", "Saving Grade Scale does not change processed results")}</span>
           </div>
         )}
       </div>
@@ -367,7 +371,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
 
       {(setupLoading || examsLoading) && examId && (
         <div className={`${card} animate-pulse p-10 text-center text-sm ${mutedClass}`}>
-          {bi("সেটআপ লোড হচ্ছে...", "Loading setup...")}
+          {bi("গ্রেড স্কেল লোড হচ্ছে...", "Loading Grade Scale...")}
         </div>
       )}
 
@@ -379,7 +383,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
 
       {draft && classEntries.some((item) => !item.resolved) && (
         <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
-          {bi("কিছু ক্লাসের পুরোনো শনাক্তকারী পাওয়া যায়নি। সেটআপ সংরক্ষণের আগে পরীক্ষার ক্লাসগুলো আপডেট করুন।", "Some legacy class identifiers cannot be resolved. Update the exam classes before saving setup.")}
+          {bi("কিছু ক্লাসের পুরোনো শনাক্তকারী পাওয়া যায়নি। গ্রেড স্কেল সংরক্ষণের আগে পরীক্ষার ক্লাসগুলো আপডেট করুন।", "Some legacy class identifiers cannot be resolved. Update the exam classes before saving Grade Scale.")}
         </div>
       )}
 
@@ -389,7 +393,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
             <div className="rounded-md border border-red-500/20 bg-red-500/10 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-300">
                 <TriangleAlert className="h-4 w-4" />
-                {bi("সেটআপ সংরক্ষণের আগে সমস্যাগুলো ঠিক করুন", "Fix these issues before saving")}
+                {bi("গ্রেড স্কেল সংরক্ষণের আগে সমস্যাগুলো ঠিক করুন", "Fix these issues before saving Grade Scale")}
               </div>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-red-600 dark:text-red-400">
                 {validation.errors.slice(0, 8).map((error) => <li key={error}>{error}</li>)}
@@ -522,17 +526,18 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
             <div className={`border-b px-5 py-4 ${borderClass}`}>
               <div className="flex items-center gap-2">
                 <Settings2 className="h-4 w-4 text-brand-accent" />
-                <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("গ্রেড ব্যান্ড", "Grade bands")}</h3>
+                <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("গ্রেড স্কেল", "Grade Scale")}</h3>
               </div>
-              <p className={`mt-1 text-[11px] ${mutedClass}`}>{bi("সব বিষয়ের জন্য ০ থেকে ১০০ পর্যন্ত পূর্ণ কভারেজ প্রয়োজন।", "All subjects require complete 0–100 coverage.")}</p>
+              <p className={`mt-1 text-[11px] ${mutedClass}`}>{bi("ডিফল্ট: A+ 5.0, A 4.0, A- 3.5, B 3.0, C 2.0, D 1.0, F 0.0। প্রয়োজন অনুযায়ী পরিবর্তন করুন।", "Default: A+ 5.0, A 4.0, A- 3.5, B 3.0, C 2.0, D 1.0, F 0.0. Change the values to match your requirement.")}</p>
             </div>
             <div className="space-y-3 p-4">
               {draft.gradeBands.map((band) => {
                 const error = gradeError(band.id);
                 return (
                   <div key={band.id} className={`rounded-md border p-3 ${error ? "border-red-500/40" : isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
-                    <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(140px,1fr)_120px_120px_36px]">
+                    <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(120px,1fr)_90px_110px_110px_36px]">
                       <Input value={band.grade} onChange={(event) => updateGradeBand(band.id, { grade: event.target.value })} placeholder={bi("গ্রেড", "Grade")} className={inputClass} aria-label={bi("গ্রেড", "Grade")} />
+                      <NumberField label={bi("পয়েন্ট", "Points")} value={band.points} min={0} max={5} onChange={(value) => updateGradeBand(band.id, { points: value })} className={inputClass} />
                       <NumberField label={bi("সর্বনিম্ন %", "Min %")} value={band.minPercent} min={0} max={100} onChange={(value) => updateGradeBand(band.id, { minPercent: value })} className={inputClass} />
                       <NumberField label={bi("সর্বোচ্চ %", "Max %")} value={band.maxPercent} min={0} max={100} onChange={(value) => updateGradeBand(band.id, { maxPercent: value })} className={inputClass} />
                       <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-red-500" onClick={() => removeGradeBand(band.id)} aria-label={bi("গ্রেড ব্যান্ড মুছুন", "Remove grade band")}>
@@ -544,7 +549,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
                 );
               })}
               <Button type="button" size="sm" variant="secondary" onClick={addGradeBand}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> {bi("গ্রেড ব্যান্ড যোগ", "Add grade band")}
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> {bi("গ্রেড যোগ", "Add grade")}
               </Button>
             </div>
           </section>
@@ -588,7 +593,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
             <div className={`grid gap-5 p-5 lg:grid-cols-[1fr_1.2fr] ${borderClass}`}>
               <div>
                 <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("পাসের শতাংশ ও নিয়ম প্রিভিউ", "Pass percentage and rule preview")}</h3>
-                <p className={`mt-1 text-[11px] ${mutedClass}`}>{bi("নম্বর প্রবেশের সময় এই গ্রেড ব্যান্ড ব্যবহার হবে।", "These grade bands are used for live subject feedback during mark entry.")}</p>
+                <p className={`mt-1 text-[11px] ${mutedClass}`}>{bi("নম্বর প্রবেশের সময় এই গ্রেড স্কেল ব্যবহার হবে।", "This Grade Scale is used for live subject feedback during mark entry.")}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-[150px_1fr]">
                 <div>
@@ -618,7 +623,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
                   <Input id="setup-preview-percent" type="number" min={0} max={100} step={0.01} value={previewPercent} onChange={(event) => setPreviewPercent(event.target.value)} className={inputClass} />
                 </div>
                 <div className={`flex flex-wrap items-center gap-2 rounded-md p-3 sm:col-span-2 ${softClass}`}>
-                  <Badge>{bi("গ্রেড", "Grade")}: {previewGrade}</Badge>
+                  <Badge>{bi("গ্রেড", "Grade")}: {previewGrade}{previewPoints === null ? "" : ` (${previewPoints.toFixed(1)})`}</Badge>
                   <Badge>{bi("বৃত্তি", "Scholarship")}: {previewScholarship}</Badge>
                   <Badge status={previewPass ? "APPROVED" : "REJECTED"}>{previewPass ? bi("পাস", "Pass") : bi("ফেল", "Fail")}</Badge>
                 </div>
@@ -634,7 +639,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
               </span>
             </div>
             <Button type="button" onClick={handleSave} disabled={!dirty || !validation.valid || saveSetup.isPending} isLoading={saveSetup.isPending}>
-              <Save className="mr-2 h-4 w-4" /> {bi("সেটআপ সংরক্ষণ", "Save Setup")}
+              <Save className="mr-2 h-4 w-4" /> {bi("গ্রেড স্কেল সংরক্ষণ", "Save Grade Scale")}
             </Button>
           </div>
         </>

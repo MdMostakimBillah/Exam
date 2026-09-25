@@ -43,8 +43,8 @@ export default function MarksPage() {
     };
     const handleAppNavigation = (event: Event) => {
       const message = isBn
-        ? "অসংরক্ষিত মার্ক সেটআপ বা নম্বর আছে। এখনই পাতা ছাড়তে চান?"
-        : "You have unsaved mark setup or pending marks. Leave this page now?";
+        ? "অসংরক্ষিত Grade Scale বা নম্বর আছে। এখনই পাতা ছাড়তে চান?"
+        : "You have unsaved Grade Scale changes or pending marks. Leave this page now?";
       if (!window.confirm(message)) event.preventDefault();
     };
     const handleLinkClick = (event: MouseEvent) => {
@@ -56,8 +56,8 @@ export default function MarksPage() {
       const url = new URL(target.href, window.location.href);
       if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return;
       const message = isBn
-        ? "অসংরক্ষিত মার্ক সেটআপ বা নম্বর আছে। এখনই পাতা ছাড়তে চান?"
-        : "You have unsaved mark setup or pending marks. Leave this page now?";
+        ? "অসংরক্ষিত Grade Scale বা নম্বর আছে। এখনই পাতা ছাড়তে চান?"
+        : "You have unsaved Grade Scale changes or pending marks. Leave this page now?";
       if (!window.confirm(message)) event.preventDefault();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -78,8 +78,8 @@ export default function MarksPage() {
         return;
       }
       const message = isBn
-        ? "অসংরক্ষিত মার্ক সেটআপ বা নম্বর আছে। এখনই পাতা ছাড়তে চান?"
-        : "You have unsaved mark setup or pending marks. Leave this page now?";
+        ? "অসংরক্ষিত Grade Scale বা নম্বর আছে। এখনই পাতা ছাড়তে চান?"
+        : "You have unsaved Grade Scale changes or pending marks. Leave this page now?";
       const leave = window.confirm(message);
       allowNextPopRef.current = true;
       if (!leave) window.history.forward();
@@ -96,14 +96,14 @@ export default function MarksPage() {
             {bi("মার্কস ব্যবস্থাপনা", "Marks Management")}
           </h1>
           <p className={`mt-1 text-sm ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {bi("পরীক্ষার নিয়ম সেটআপ করুন এবং অনুমোদিত শিক্ষার্থীদের নম্বর দিন। ফলাফল প্রক্রিয়া Results পাতায় হয়।", "Configure exam marks rules and enter approved student marks. Results are processed separately from the Results page.")}
+            {bi("পরীক্ষার গ্রেড স্কেল সেটআপ করুন এবং অনুমোদিত শিক্ষার্থীদের নম্বর দিন। ফলাফল প্রক্রিয়া Results পাতায় হয়।", "Configure the exam Grade Scale and enter approved student marks. Results are processed separately from the Results page.")}
           </p>
         </div>
 
         <Tabs defaultValue="setup" value={activeTab} onValueChange={(value) => requestTab(value as MarksTab)}>
           <TabsList className="overflow-x-auto">
             <TabsTrigger value="setup">
-              <Settings2 className="mr-1.5 h-4 w-4" /> {bi("মার্ক সেটআপ", "Mark Setup")}
+              <Settings2 className="mr-1.5 h-4 w-4" /> {bi("গ্রেড স্কেল", "Grade Scale")}
             </TabsTrigger>
             <TabsTrigger value="entry">
               <ListChecks className="mr-1.5 h-4 w-4" /> {bi("মার্ক এন্ট্রি", "Mark Entry")}
@@ -128,7 +128,7 @@ export default function MarksPage() {
       >
         <div className="flex items-center gap-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
           <BookOpen className="h-5 w-5 shrink-0" />
-          <span>{marksPending ? bi("অপেক্ষমাণ নম্বর সেটআপের সাথে আলাদা রাখা হয়েছে।", "Pending marks stay separate from the setup tab.") : bi("সেটআপে পরিবর্তন সংরক্ষণ করা হয়নি।", "The setup has unsaved edits.")}</span>
+          <span>{marksPending ? bi("অপেক্ষমাণ নম্বর Grade Scale থেকে আলাদা রাখা হয়েছে।", "Pending marks stay separate from Grade Scale.") : bi("Grade Scale-এ পরিবর্তন সংরক্ষণ করা হয়নি।", "Grade Scale has unsaved edits.")}</span>
         </div>
         <ModalFooter>
           <Button type="button" variant="secondary" onClick={() => setPendingTab(null)}>{bi("থাকুন", "Stay")}</Button>

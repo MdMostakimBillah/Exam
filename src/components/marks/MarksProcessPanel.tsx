@@ -93,7 +93,7 @@ export function MarksProcessPanel() {
           </div>
           {setup && (
             <div className="flex items-center gap-2 pb-1 text-[11px]">
-              <Badge variant="outline">{bi("সেটআপ", "Setup")} v{setup.version}</Badge>
+              <Badge variant="outline">{bi("গ্রেড স্কেল", "Grade Scale")} v{setup.version}</Badge>
               <span className={mutedClass}>{bi("পাস", "Pass")} {setup.passPercent}%</span>
             </div>
           )}
@@ -177,7 +177,7 @@ export function MarksProcessPanel() {
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("ফলাফল", "Result")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("বৃত্তি", "Scholarship")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("অবস্থা", "Status")}</TableHead>
-                    <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("সেটআপ", "Setup")}</TableHead>
+                    <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("গ্রেড স্কেল", "Grade Scale")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -203,7 +203,7 @@ export function MarksProcessPanel() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         title={bi("ফলাফল পুনরায় প্রক্রিয়া করবেন?", "Process results now?")}
-        description={exam ? `${exam.name} · ${bi("সেটআপ", "Setup")} v${setup?.version || 0}` : ""}
+        description={exam ? `${exam.name} · ${bi("গ্রেড স্কেল", "Grade Scale")} v${setup?.version || 0}` : ""}
         maxWidth="max-w-md"
       >
         <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">

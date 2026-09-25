@@ -4,7 +4,7 @@
 
 Redesign `/super-admin/marks` into a theme-aware page with exactly two tabs:
 
-1. **Mark Setup** — configure every exam/class subject, the exam’s percentage-to-grade bands, the pass percentage, and configurable scholarship percentage ranges.
+1. **Grade Scale** — configure every exam/class subject, the exam’s editable percentage-to-grade scale and grade points, the pass percentage, and configurable scholarship percentage ranges.
 2. **Mark Entry** — filter approved candidates by exam and class, optionally narrow by institution, search and paginate the students, and autosave valid mark changes with clear cell-level status.
 
 Result processing remains a separate workflow on `/super-admin/results`; it is not a third Marks tab and is never triggered by a mark keystroke.
@@ -13,9 +13,9 @@ Result processing remains a separate workflow on `/super-admin/results`; it is n
 
 - Grade bands are shared by all subjects within an exam, not configured separately per subject.
 - Grade and scholarship configuration is per exam.
-- Mark Setup owns subject configuration; the Exams page must not remain a second independent subject editor.
+- Grade Scale owns subject configuration; the Exams page must not remain a second independent subject editor.
 - Scholarship categories are user-defined named ranges. Students outside all configured ranges are `NOT_ELIGIBLE`.
-- Grade bands use editable minimum and maximum percentages, with validation for bounds, ordering, overlap, and complete 0–100 coverage.
+- Grade scale rows use editable minimum and maximum percentages plus grade points, with validation for bounds, ordering, overlap, and complete 0–100 coverage. Default points are A+ 5.0, A 4.0, A- 3.5, B 3.0, C 2.0, D 1.0, and F 0.0.
 - Mark Entry requires exam and class, makes institution optional, and defaults to all institutions. Selecting one institution narrows the same class view.
 - Mark Entry is subject-first: one selected subject and a student table, not an all-subject matrix.
 - Only `APPROVED` registrations are eligible.
@@ -26,7 +26,7 @@ Result processing remains a separate workflow on `/super-admin/results`; it is n
 - Use the existing light/dark application theme and brand accent, with semantic colors for grades, save states, validation, and scholarship categories.
 - Use server-side pagination and search for large class-wide tables.
 - Add keyboard navigation and a copy-to-selected helper.
-- Mark Setup saves subjects, grade configuration, pass percentage, and scholarship categories through one atomic action.
+- Grade Scale saves subjects, grade configuration, grade points, pass percentage, and scholarship categories through one atomic action.
 - Existing processed or published results do not change when setup is saved; new rules apply on the next explicit result-processing action.
 - Mark-entry writes and setup remain super-admin-only; the existing student-own-mark read policy is not part of this UI.
 
@@ -46,12 +46,12 @@ Result processing remains a separate workflow on `/super-admin/results`; it is n
 
 ### 1. Add the per-exam mark configuration data model
 
-Create `supabase/migrations/0025_marks_management_redesign.sql` and update the baseline `supabase/schema.sql`.
+Create `supabase/migrations/0025_marks_management_redesign.sql` and update the baseline `supabase/schema.sql`. If `0025` was already applied before grade points were added, apply the follow-up `supabase/migrations/0026_grade_scale_points.sql`.
 
 Add `public.exam_mark_configs` with one row per exam:
 
 - `exam_id` primary key and foreign key to `exams` with cascade delete.
-- `grade_bands` JSONB containing `{ id, grade, minPercent, maxPercent }` rows.
+- `grade_bands` JSONB containing `{ id, grade, points, minPercent, maxPercent }` rows.
 - `scholarship_categories` JSONB containing `{ id, name, minPercent, maxPercent }` rows.
 - `pass_percent` numeric.
 - `version` integer incremented on each successful setup save.
@@ -84,7 +84,7 @@ Add `save_exam_mark_setup(p_exam_id, p_subjects, p_grade_bands, p_scholarship_ca
 - Authorize the super admin.
 - Validate that all class IDs belong to the exam.
 - Validate subject IDs, names, full marks, pass marks, durations, and negative marks.
-- Validate grade ranges cover 0–100 without overlap and that scholarship ranges do not overlap.
+- Validate grade ranges cover 0–100 without overlap, grade points are between 0 and 5, and scholarship ranges do not overlap.
 - Reject reserved or duplicate scholarship names.
 - Update `exams.subjects` and upsert `exam_mark_configs` in one transaction.
 - Increment and return the setup version.
@@ -116,7 +116,7 @@ Refactor `src/lib/storage/grading.ts` or add equivalent shared pure helpers so p
 
 Update status helpers and badges so custom scholarship names display correctly while `NOT_ELIGIBLE` and `PENDING` retain reserved meanings.
 
-### 4. Rebuild Mark Setup
+### 4. Rebuild Grade Scale
 
 Rewrite `src/components/marks/MarksSetupPanel.tsx` without raw JSON textareas.
 
@@ -126,7 +126,7 @@ Layout and behavior:
 - Show all classes belonging to that exam as responsive sections or class tabs.
 - For each class, show editable subject rows with name, full marks, pass marks, duration, and negative marks.
 - Provide add/remove subject controls and stable subject IDs.
-- Show the exam-wide grade-band editor with grade, minimum percentage, and maximum percentage.
+- Show the exam-wide Grade Scale editor with grade, grade points, minimum percentage, and maximum percentage.
 - Show the pass-percentage field.
 - Show an editable scholarship-category table with name, minimum percentage, and maximum percentage.
 - Reserve `NOT_ELIGIBLE` as the automatic outside-all-ranges result.
@@ -139,7 +139,7 @@ Layout and behavior:
 
 Update `src/app/super-admin/marks/page.tsx` to retain exactly the two required tabs, remove unused imports, and use a consistent themed page shell. Do not mount the matrix or processing panels here.
 
-Update the Exams page so subject editing is no longer an independent source of truth. Preserve exam/classes creation, but replace the subject-editing step with a clear callout/link directing the user to Mark Setup after the exam is saved. Existing subject data remains readable by the new setup page.
+Update the Exams page so subject editing is no longer an independent source of truth. Preserve exam/classes creation, but replace the subject-editing step with a clear callout/link directing the user to Grade Scale after the exam is saved. Existing subject data remains readable by the new setup page.
 
 ### 5. Rebuild Mark Entry as a paginated autosaving table
 

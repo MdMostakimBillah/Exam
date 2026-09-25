@@ -2,7 +2,15 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.exam_mark_configs (
   exam_id UUID PRIMARY KEY REFERENCES public.exams(id) ON DELETE CASCADE,
-  grade_bands JSONB NOT NULL DEFAULT '[]'::jsonb,
+  grade_bands JSONB NOT NULL DEFAULT '[
+    {"id":"grade_a_plus","grade":"A+","points":5,"minPercent":80,"maxPercent":100},
+    {"id":"grade_a","grade":"A","points":4,"minPercent":70,"maxPercent":79.99},
+    {"id":"grade_a_minus","grade":"A-","points":3.5,"minPercent":60,"maxPercent":69.99},
+    {"id":"grade_b","grade":"B","points":3,"minPercent":50,"maxPercent":59.99},
+    {"id":"grade_c","grade":"C","points":2,"minPercent":40,"maxPercent":49.99},
+    {"id":"grade_d","grade":"D","points":1,"minPercent":33,"maxPercent":39.99},
+    {"id":"grade_f","grade":"F","points":0,"minPercent":0,"maxPercent":32.99}
+  ]'::jsonb,
   scholarship_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
   pass_percent NUMERIC NOT NULL DEFAULT 33,
   version INTEGER NOT NULL DEFAULT 1,
@@ -14,6 +22,48 @@ CREATE TABLE IF NOT EXISTS public.exam_mark_configs (
   CONSTRAINT exam_mark_configs_pass_percent_range CHECK (pass_percent BETWEEN 0 AND 100),
   CONSTRAINT exam_mark_configs_version_positive CHECK (version > 0)
 );
+
+UPDATE public.exam_mark_configs config
+SET grade_bands = (
+  SELECT COALESCE(
+    JSONB_AGG(
+      CASE
+        WHEN JSONB_TYPEOF(band->'points') = 'number' THEN band
+        ELSE band || JSONB_BUILD_OBJECT(
+          'points', CASE upper(btrim(COALESCE(band->>'grade', '')))
+            WHEN 'A+' THEN 5
+            WHEN 'A' THEN 4
+            WHEN 'A-' THEN 3.5
+            WHEN 'B' THEN 3
+            WHEN 'C' THEN 2
+            WHEN 'D' THEN 1
+            ELSE 0
+          END
+        )
+      END
+      ORDER BY ordinal
+    ),
+    '[]'::jsonb
+  )
+  FROM JSONB_ARRAY_ELEMENTS(config.grade_bands) WITH ORDINALITY AS entries(band, ordinal)
+)
+WHERE JSONB_TYPEOF(config.grade_bands) = 'array'
+  AND EXISTS (
+    SELECT 1
+    FROM JSONB_ARRAY_ELEMENTS(config.grade_bands) missing
+    WHERE JSONB_TYPEOF(missing->'points') IS DISTINCT FROM 'number'
+  );
+
+ALTER TABLE public.exam_mark_configs
+  ALTER COLUMN grade_bands SET DEFAULT '[
+    {"id":"grade_a_plus","grade":"A+","points":5,"minPercent":80,"maxPercent":100},
+    {"id":"grade_a","grade":"A","points":4,"minPercent":70,"maxPercent":79.99},
+    {"id":"grade_a_minus","grade":"A-","points":3.5,"minPercent":60,"maxPercent":69.99},
+    {"id":"grade_b","grade":"B","points":3,"minPercent":50,"maxPercent":59.99},
+    {"id":"grade_c","grade":"C","points":2,"minPercent":40,"maxPercent":49.99},
+    {"id":"grade_d","grade":"D","points":1,"minPercent":33,"maxPercent":39.99},
+    {"id":"grade_f","grade":"F","points":0,"minPercent":0,"maxPercent":32.99}
+  ]'::jsonb;
 
 ALTER TABLE public.exam_mark_configs ENABLE ROW LEVEL SECURITY;
 
@@ -151,6 +201,15 @@ BEGIN
               JSONB_BUILD_OBJECT(
                 'id', 'legacy_grade_' || ordinality::text,
                 'grade', grade,
+                'points', CASE upper(btrim(grade))
+                  WHEN 'A+' THEN 5
+                  WHEN 'A' THEN 4
+                  WHEN 'A-' THEN 3.5
+                  WHEN 'B' THEN 3
+                  WHEN 'C' THEN 2
+                  WHEN 'D' THEN 1
+                  ELSE 0
+                END,
                 'minPercent', min_percent,
                 'maxPercent', max_percent
               )
@@ -181,13 +240,13 @@ BEGIN
 
     IF v_grade_bands IS NULL THEN
       v_grade_bands := '[
-        {"id":"grade_f","grade":"F","minPercent":0,"maxPercent":32.99},
-        {"id":"grade_d","grade":"D","minPercent":33,"maxPercent":39.99},
-        {"id":"grade_c","grade":"C","minPercent":40,"maxPercent":49.99},
-        {"id":"grade_b","grade":"B","minPercent":50,"maxPercent":59.99},
-        {"id":"grade_a_minus","grade":"A-","minPercent":60,"maxPercent":69.99},
-        {"id":"grade_a","grade":"A","minPercent":70,"maxPercent":79.99},
-        {"id":"grade_a_plus","grade":"A+","minPercent":80,"maxPercent":100}
+        {"id":"grade_a_plus","grade":"A+","points":5,"minPercent":80,"maxPercent":100},
+        {"id":"grade_a","grade":"A","points":4,"minPercent":70,"maxPercent":79.99},
+        {"id":"grade_a_minus","grade":"A-","points":3.5,"minPercent":60,"maxPercent":69.99},
+        {"id":"grade_b","grade":"B","points":3,"minPercent":50,"maxPercent":59.99},
+        {"id":"grade_c","grade":"C","points":2,"minPercent":40,"maxPercent":49.99},
+        {"id":"grade_d","grade":"D","points":1,"minPercent":33,"maxPercent":39.99},
+        {"id":"grade_f","grade":"F","points":0,"minPercent":0,"maxPercent":32.99}
       ]'::jsonb;
     END IF;
 
@@ -555,6 +614,7 @@ DECLARE
   v_negative_marks NUMERIC;
   v_grade_ids TEXT[] := '{}'::TEXT[];
   v_grade_names TEXT[] := '{}'::TEXT[];
+  v_grade_points NUMERIC[] := '{}'::NUMERIC[];
   v_grade_mins NUMERIC[] := '{}'::NUMERIC[];
   v_grade_maxes NUMERIC[] := '{}'::NUMERIC[];
   v_sorted_grade_mins NUMERIC[];
@@ -713,11 +773,18 @@ BEGIN
     IF v_name = '' OR length(v_name) > 40 THEN
       RAISE EXCEPTION 'Grade band % requires a grade label', v_subject_id;
     END IF;
-    IF jsonb_typeof(v_range->'minPercent') IS DISTINCT FROM 'number'
+    IF jsonb_typeof(v_range->'points') IS DISTINCT FROM 'number'
+      OR jsonb_typeof(v_range->'minPercent') IS DISTINCT FROM 'number'
       OR jsonb_typeof(v_range->'maxPercent') IS DISTINCT FROM 'number' THEN
-      RAISE EXCEPTION 'Grade band % requires numeric bounds', v_subject_id;
+      RAISE EXCEPTION 'Grade band % requires points and numeric bounds', v_subject_id;
+    END IF;
+    IF (v_range->>'points')::numeric < 0
+      OR (v_range->>'points')::numeric > 5
+      OR (v_range->>'points')::numeric <> ROUND((v_range->>'points')::numeric, 2) THEN
+      RAISE EXCEPTION 'Grade band % has invalid grade points', v_subject_id;
     END IF;
 
+    v_grade_points := ARRAY_APPEND(v_grade_points, (v_range->>'points')::numeric);
     v_grade_mins := ARRAY_APPEND(v_grade_mins, (v_range->>'minPercent')::numeric);
     v_grade_maxes := ARRAY_APPEND(v_grade_maxes, (v_range->>'maxPercent')::numeric);
     v_grade_ids := ARRAY_APPEND(v_grade_ids, v_subject_id);
@@ -764,12 +831,13 @@ BEGIN
   SELECT JSONB_AGG(JSONB_BUILD_OBJECT(
     'id', grade.id,
     'grade', grade.grade,
+    'points', grade.points,
     'minPercent', grade.min_percent,
     'maxPercent', grade.max_percent
   ) ORDER BY grade.min_percent)
   INTO v_normalized_grade_bands
-  FROM unnest(v_grade_ids, v_grade_names, v_grade_mins, v_grade_maxes)
-    AS grade(id, grade, min_percent, max_percent);
+  FROM unnest(v_grade_ids, v_grade_names, v_grade_points, v_grade_mins, v_grade_maxes)
+    AS grade(id, grade, points, min_percent, max_percent);
 
   FOR v_range IN SELECT value FROM jsonb_array_elements(p_scholarship_categories) LOOP
     v_subject_id := btrim(COALESCE(v_range->>'id', ''));

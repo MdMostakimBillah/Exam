@@ -439,7 +439,7 @@ export default function ExamsPage() {
           <div className={`px-4 py-2 border-b flex items-center gap-2 ${isDark ? 'border-white/[0.06]' : 'border-zinc-200'}`}>
               {[
                 { num: 1, label: isBn ? 'পরীক্ষার তথ্য' : 'Exam Info' },
-                { num: 2, label: isBn ? 'শ্রেণী ও মার্ক সেটআপ' : 'Classes & Mark Setup' },
+                { num: 2, label: isBn ? 'শ্রেণী ও গ্রেড স্কেল' : 'Classes & Grade Scale' },
               ].map((step, i) => (
                 <div key={step.num} className="flex items-center gap-2 flex-1">
                   <div className={cn(
@@ -567,18 +567,18 @@ export default function ExamsPage() {
                   <div className="flex items-start gap-3">
                     <div className="rounded-md bg-brand-accent-soft p-2 text-brand-accent"><Settings2 className="h-5 w-5" /></div>
                     <div className="min-w-0 flex-1">
-                      <h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{isBn ? 'বিষয় ও নম্বর Mark Setup-এ যোগ করুন' : 'Configure subjects and marks in Mark Setup'}</h4>
+                      <h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{isBn ? 'বিষয় ও গ্রেড স্কেল Grade Scale-এ যোগ করুন' : 'Configure subjects and grading in Grade Scale'}</h4>
                       <p className={`mt-1 text-xs leading-5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                         {isBn
-                          ? 'এই পাতা শুধু পরীক্ষার তথ্য ও ক্লাস নিয়ে কাজ করে। পরীক্ষাটি সংরক্ষণ হলে বিষয়, গ্রেড, পাস শতাংশ ও বৃত্তির নিয়ম Mark Setup থেকে যোগ করুন।'
-                          : 'This page owns exam details and class selection only. After saving the exam, add subjects, grades, pass rules, and scholarships from Mark Setup.'}
+                          ? 'এই পাতা শুধু পরীক্ষার তথ্য ও ক্লাস নিয়ে কাজ করে। পরীক্ষাটি সংরক্ষণ হলে বিষয়, গ্রেড স্কেল, পাস শতাংশ ও বৃত্তির নিয়ম Grade Scale থেকে যোগ করুন।'
+                          : 'This page owns exam details and class selection only. After saving the exam, add subjects, grading rules, pass rules, and scholarships from Grade Scale.'}
                       </p>
                       {editingExam && (
                         <Link
                           href={`/super-admin/marks?exam=${editingExam.id}`}
                           className="mt-3 inline-flex items-center gap-2 rounded-md bg-brand-accent px-4 py-2 text-xs font-medium text-brand-accent-fg transition-opacity hover:opacity-90"
                         >
-                          <Settings2 className="h-3.5 w-3.5" /> {isBn ? 'Mark Setup খুলুন' : 'Open Mark Setup'}
+                          <Settings2 className="h-3.5 w-3.5" /> {isBn ? 'Grade Scale খুলুন' : 'Open Grade Scale'}
                         </Link>
                       )}
                     </div>

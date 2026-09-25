@@ -455,7 +455,15 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 CREATE TABLE IF NOT EXISTS exam_mark_configs (
   exam_id UUID PRIMARY KEY REFERENCES exams(id) ON DELETE CASCADE,
-  grade_bands JSONB NOT NULL DEFAULT '[]'::jsonb,
+  grade_bands JSONB NOT NULL DEFAULT '[
+    {"id":"grade_a_plus","grade":"A+","points":5,"minPercent":80,"maxPercent":100},
+    {"id":"grade_a","grade":"A","points":4,"minPercent":70,"maxPercent":79.99},
+    {"id":"grade_a_minus","grade":"A-","points":3.5,"minPercent":60,"maxPercent":69.99},
+    {"id":"grade_b","grade":"B","points":3,"minPercent":50,"maxPercent":59.99},
+    {"id":"grade_c","grade":"C","points":2,"minPercent":40,"maxPercent":49.99},
+    {"id":"grade_d","grade":"D","points":1,"minPercent":33,"maxPercent":39.99},
+    {"id":"grade_f","grade":"F","points":0,"minPercent":0,"maxPercent":32.99}
+  ]'::jsonb,
   scholarship_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
   pass_percent NUMERIC NOT NULL DEFAULT 33,
   version INTEGER NOT NULL DEFAULT 1,

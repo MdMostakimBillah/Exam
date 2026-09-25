@@ -155,6 +155,7 @@ export interface ExamSubject {
 export interface MarkGradeBand {
   id: string;
   grade: string;
+  points: number;
   minPercent: number;
   maxPercent: number;
 }

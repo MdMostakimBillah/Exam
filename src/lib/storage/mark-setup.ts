@@ -12,13 +12,13 @@ import type {
 export const DEFAULT_PASS_PERCENT = 33;
 
 export const DEFAULT_GRADE_BANDS: MarkGradeBand[] = [
-  { id: "grade_f", grade: "F", minPercent: 0, maxPercent: 32.99 },
-  { id: "grade_d", grade: "D", minPercent: 33, maxPercent: 39.99 },
-  { id: "grade_c", grade: "C", minPercent: 40, maxPercent: 49.99 },
-  { id: "grade_b", grade: "B", minPercent: 50, maxPercent: 59.99 },
-  { id: "grade_a_minus", grade: "A-", minPercent: 60, maxPercent: 69.99 },
-  { id: "grade_a", grade: "A", minPercent: 70, maxPercent: 79.99 },
-  { id: "grade_a_plus", grade: "A+", minPercent: 80, maxPercent: 100 },
+  { id: "grade_a_plus", grade: "A+", points: 5, minPercent: 80, maxPercent: 100 },
+  { id: "grade_a", grade: "A", points: 4, minPercent: 70, maxPercent: 79.99 },
+  { id: "grade_a_minus", grade: "A-", points: 3.5, minPercent: 60, maxPercent: 69.99 },
+  { id: "grade_b", grade: "B", points: 3, minPercent: 50, maxPercent: 59.99 },
+  { id: "grade_c", grade: "C", points: 2, minPercent: 40, maxPercent: 49.99 },
+  { id: "grade_d", grade: "D", points: 1, minPercent: 33, maxPercent: 39.99 },
+  { id: "grade_f", grade: "F", points: 0, minPercent: 0, maxPercent: 32.99 },
 ];
 
 export const DEFAULT_SCHOLARSHIP_CATEGORIES: ScholarshipCategoryRange[] = [
@@ -41,6 +41,19 @@ function hasTwoDecimalPlaces(value: number): boolean {
   return Math.abs(value * 100 - Math.round(value * 100)) < 1e-7;
 }
 
+function inferGradePoints(grade: string): number {
+  const points: Record<string, number> = {
+    "A+": 5,
+    A: 4,
+    "A-": 3.5,
+    B: 3,
+    C: 2,
+    D: 1,
+    F: 0,
+  };
+  return points[grade.trim().toUpperCase()] ?? 0;
+}
+
 function normalizeSubjects(subjects: ExamSubject[]): ExamSubject[] {
   return subjects.map((subject) => ({
     ...subject,
@@ -59,6 +72,9 @@ function normalizeGradeBands(gradeBands: MarkGradeBand[]): MarkGradeBand[] {
     ...band,
     id: band.id.trim(),
     grade: band.grade.trim(),
+    points: band.points === null || band.points === undefined
+      ? inferGradePoints(band.grade)
+      : Number(band.points),
     minPercent: Number(band.minPercent),
     maxPercent: Number(band.maxPercent),
   }));
@@ -213,6 +229,14 @@ export function validateExamMarkSetup(
     seenGradeIds.add(band.id.toLowerCase());
     if (!band.grade) messages.push("Grade label is required");
     if (band.grade.length > 40) messages.push("Grade label is too long");
+    if (
+      !Number.isFinite(band.points)
+      || band.points < 0
+      || band.points > 5
+      || !hasTwoDecimalPlaces(band.points)
+    ) {
+      messages.push("Grade points must be between 0 and 5");
+    }
     gradeErrors[key] = messages;
   });
   validateRanges(setup.gradeBands, true, gradeErrors);
@@ -264,6 +288,16 @@ export function calculateGradeForSetup(percentage: number, gradeBands: MarkGrade
     .sort((a, b) => b.minPercent - a.minPercent)
     .find((band) => percentage >= band.minPercent && percentage <= band.maxPercent);
   return match?.grade || "F";
+}
+
+export function calculateGradePointForSetup(
+  percentage: number,
+  gradeBands: MarkGradeBand[],
+): number | null {
+  const match = [...gradeBands]
+    .sort((a, b) => b.minPercent - a.minPercent)
+    .find((band) => percentage >= band.minPercent && percentage <= band.maxPercent);
+  return match ? Number(match.points) : null;
 }
 
 export function calculateScholarshipForSetup(

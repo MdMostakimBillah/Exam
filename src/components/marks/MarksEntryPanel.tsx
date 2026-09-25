@@ -780,7 +780,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
         <div className={`${card} p-8 text-center`}>
           <TriangleAlert className="mx-auto mb-2 h-6 w-6 text-amber-500" />
           <p className={`text-sm font-medium ${headingClass}`}>{bi("এই ক্লাসের কোনো বিষয় নেই", "No subjects are configured for this class")}</p>
-          <p className={`mt-1 text-xs ${mutedClass}`}>{bi("প্রথমে Mark Setup থেকে বিষয় যোগ করুন।", "Add subjects in Mark Setup first.")}</p>
+          <p className={`mt-1 text-xs ${mutedClass}`}>{bi("প্রথমে Grade Scale থেকে বিষয় যোগ করুন।", "Add subjects in Grade Scale first.")}</p>
         </div>
       )}
 
