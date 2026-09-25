@@ -228,7 +228,7 @@ CREATE TABLE IF NOT EXISTS results (
   grade TEXT,
   position INTEGER,
   pass BOOLEAN DEFAULT false,
-  scholarship_status TEXT DEFAULT 'PENDING' CHECK (scholarship_status IN ('ELIGIBLE', 'NOT_ELIGIBLE', 'PENDING')),
+  scholarship_status TEXT DEFAULT 'PENDING' CHECK (scholarship_status IN ('TALENT_POOL', 'GENERAL', 'NOT_ELIGIBLE', 'PENDING')),
   status TEXT DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED')),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()

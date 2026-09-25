@@ -14,14 +14,25 @@ export const DEFAULT_SCALE: GradingScale = {
     { min: 33, grade: 'D' },
   ],
   passPercent: 33,
-  scholarshipPercent: 60,
+  talentpoolPercent: 90,
+  generalScholarshipMin: 80,
+  generalScholarshipMax: 89,
 };
 
 function parseScale(value: string | null): GradingScale {
   if (!value) return DEFAULT_SCALE;
   try {
     const parsed = JSON.parse(value) as GradingScale;
-    if (Array.isArray(parsed?.bands) && typeof parsed?.passPercent === 'number') return parsed;
+    if (Array.isArray(parsed?.bands) && typeof parsed?.passPercent === 'number') {
+      return {
+        ...DEFAULT_SCALE,
+        ...parsed,
+        // Back-fill any field the old JSON omitted.
+        talentpoolPercent: parsed.talentpoolPercent ?? DEFAULT_SCALE.talentpoolPercent,
+        generalScholarshipMin: parsed.generalScholarshipMin ?? DEFAULT_SCALE.generalScholarshipMin,
+        generalScholarshipMax: parsed.generalScholarshipMax ?? DEFAULT_SCALE.generalScholarshipMax,
+      };
+    }
   } catch { /* ignore */ }
   return DEFAULT_SCALE;
 }
@@ -47,8 +58,24 @@ export function isPass(percentage: number, scale: GradingScale = DEFAULT_SCALE):
   return percentage >= scale.passPercent;
 }
 
+export type ScholarshipCategory = 'TALENT_POOL' | 'GENERAL' | 'NOT_ELIGIBLE';
+
+/** Return the scholarship category for an aggregate percentage.
+ *  Rules (applied to the OVERALL percentage):
+ *    - overall >= talentpoolPercent      → TALENT_POOL
+ *    - overall >= generalScholarshipMin
+ *        && overall <= generalScholarshipMax → GENERAL
+ *    - otherwise                          → NOT_ELIGIBLE
+ */
+export function getScholarshipCategory(percentage: number, scale: GradingScale = DEFAULT_SCALE): ScholarshipCategory {
+  if (percentage >= scale.talentpoolPercent) return 'TALENT_POOL';
+  if (percentage >= scale.generalScholarshipMin && percentage <= scale.generalScholarshipMax) return 'GENERAL';
+  return 'NOT_ELIGIBLE';
+}
+
+/** @deprecated use getScholarshipCategory */
 export function isScholarship(percentage: number, scale: GradingScale = DEFAULT_SCALE): boolean {
-  return percentage >= scale.scholarshipPercent;
+  return getScholarshipCategory(percentage, scale) !== 'NOT_ELIGIBLE';
 }
 
 export function useGradingScale() {

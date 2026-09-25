@@ -219,7 +219,7 @@ export default function InstitutionDetailPage() {
                                 <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{r.className}</TableCell>
                                 <TableCell className={`text-[11px] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>{r.totalMarks}/{r.totalFullMarks}</TableCell>
                                 <TableCell className={`text-[11px] font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{r.grade}</TableCell>
-                                <TableCell><Badge status={r.scholarshipStatus === 'ELIGIBLE' ? 'ACTIVE' : r.scholarshipStatus === 'PENDING' ? 'PENDING' : 'REJECTED'} /></TableCell>
+                                <TableCell><Badge status={r.scholarshipStatus === 'TALENT_POOL' ? 'ACTIVE' : r.scholarshipStatus === 'GENERAL' ? 'ACTIVE' : r.scholarshipStatus === 'PENDING' ? 'PENDING' : 'REJECTED'} /></TableCell>
                               </TableRow>
                             ))
                           )}

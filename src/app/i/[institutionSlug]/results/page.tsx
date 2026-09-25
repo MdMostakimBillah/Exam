@@ -23,7 +23,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { calculateGrade, isPass, isScholarship } from '@/lib/storage/grading';
+import { calculateGrade, isPass, getScholarshipCategory } from '@/lib/storage/grading';
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function InstitutionResultsPage() {
@@ -171,7 +171,7 @@ export default function InstitutionResultsPage() {
           percentage: pct,
           grade: calculateGrade(pct),
           pass: pct >= 33,
-          scholarshipStatus: isScholarship(pct) ? "ELIGIBLE" : "NOT_ELIGIBLE",
+          scholarshipStatus: getScholarshipCategory(pct),
         },
       });
       toast("success", isBn ? "ফলাফল আপডেট হয়েছে" : "Result updated");
@@ -212,7 +212,7 @@ export default function InstitutionResultsPage() {
         grade: calculateGrade(pct),
         position: 0,
         pass: isPass(pct),
-        scholarshipStatus: isScholarship(pct) ? "ELIGIBLE" : "NOT_ELIGIBLE",
+        scholarshipStatus: getScholarshipCategory(pct),
         status: "DRAFT",
       });
       toast("success", isBn ? "ফলাফল যোগ হয়েছে" : "Result created");

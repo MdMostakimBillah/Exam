@@ -44,7 +44,7 @@ export function truncate(str: string, length: number): string {
 
 export function getStatusColor(status: string): string {
   switch (status) {
-    case 'ACTIVE': case 'APPROVED': case 'PAID': case 'PUBLISHED': case 'VERIFIED': case 'GENERATED': case 'ELIGIBLE':
+    case 'ACTIVE': case 'APPROVED': case 'PAID': case 'PUBLISHED': case 'VERIFIED': case 'GENERATED': case 'ELIGIBLE': case 'TALENT_POOL': case 'GENERAL':
       return 'text-emerald-400 bg-emerald-400/10';
     case 'PENDING': case 'PAYMENT_PENDING': case 'DRAFT': case 'REVIEW': case 'GENERATED':
       return 'text-amber-400 bg-amber-400/10';

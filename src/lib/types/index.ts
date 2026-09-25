@@ -237,7 +237,7 @@ export interface Result {
   grade: string;
   position: number;
   pass: boolean;
-  scholarshipStatus: 'ELIGIBLE' | 'NOT_ELIGIBLE' | 'PENDING';
+  scholarshipStatus: 'TALENT_POOL' | 'GENERAL' | 'NOT_ELIGIBLE' | 'PENDING';
   status: ResultStatus;
   createdAt: string;
   updatedAt: string;
@@ -334,5 +334,7 @@ export interface GradeBand { min: number; grade: string }
 export interface GradingScale {
   bands: GradeBand[];
   passPercent: number;
-  scholarshipPercent: number;
+  talentpoolPercent: number;
+  generalScholarshipMin: number;
+  generalScholarshipMax: number;
 }

@@ -259,7 +259,7 @@ BEGIN
       'A+',
       1,
       true,
-      'ELIGIBLE',
+      'GENERAL',
       'PUBLISHED'
     );
   END IF;

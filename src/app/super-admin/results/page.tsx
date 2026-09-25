@@ -28,7 +28,7 @@ export default function ResultsPage() {
 
   const totalCandidates = filtered.length;
   const passed = useMemo(() => filtered.filter(r => r.pass).length, [filtered]);
-  const scholarshipWinners = useMemo(() => filtered.filter(r => r.scholarshipStatus === 'ELIGIBLE').length, [filtered]);
+  const scholarshipWinners = useMemo(() => filtered.filter(r => r.scholarshipStatus === 'TALENT_POOL' || r.scholarshipStatus === 'GENERAL').length, [filtered]);
   const avgScore = useMemo(() => filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0, [filtered]);
 
   const selection = useTableSelection(filtered);

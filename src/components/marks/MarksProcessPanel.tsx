@@ -115,7 +115,17 @@ export function MarksProcessPanel() {
                       <TableCell><Badge variant="secondary">{r.grade}</Badge></TableCell>
                       <TableCell className="text-[11px] text-zinc-600">{r.percentage}%</TableCell>
                       <TableCell>{r.pass ? <Badge>Pass</Badge> : <Badge>Fail</Badge>}</TableCell>
-                      <TableCell>{r.scholarshipStatus === "ELIGIBLE" ? <Badge>Eligible</Badge> : <Badge variant="outline">N/A</Badge>}</TableCell>
+                      <TableCell>
+                        {r.scholarshipStatus === "TALENT_POOL" ? (
+                          <Badge className="bg-amber-100 text-amber-900 border-amber-300">{isBn ? "ট্যালেন্টপুল" : "Talentpool"}</Badge>
+                        ) : r.scholarshipStatus === "GENERAL" ? (
+                          <Badge className="bg-sky-100 text-sky-900 border-sky-300">{isBn ? "সাধারণ" : "General"}</Badge>
+                        ) : r.scholarshipStatus === "PENDING" ? (
+                          <Badge variant="outline">{isBn ? "নিষ্ক্রিয়" : "Pending"}</Badge>
+                        ) : (
+                          <Badge variant="outline">—</Badge>
+                        )}
+                      </TableCell>
                       <TableCell><Badge>{r.status}</Badge></TableCell>
                     </TableRow>
                   ))}

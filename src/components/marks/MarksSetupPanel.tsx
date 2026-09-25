@@ -130,8 +130,35 @@ export function MarksSetupPanel() {
           <h3 className="text-sm font-semibold text-zinc-900">{isBn ? "গ্রেড স্কেল" : "Grade Scale"}</h3>
         </div>
         <div className="p-4 space-y-3">
+          {/* Thresholds — user-settable.  Merged back into the JSON on every change. */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { key: "passPercent", label: isBn ? "পাস (%)" : "Pass (%)" },
+              { key: "talentpoolPercent", label: isBn ? "ট্যালেন্টপুল (%)" : "Talentpool (%)" },
+              { key: "generalScholarshipMin", label: isBn ? "সাধারণ নিম্ন (%)" : "General min (%)" },
+              { key: "generalScholarshipMax", label: isBn ? "সাধারণ উচ্চ (%)" : "General max (%)" },
+            ].map((f) => (
+              <label key={f.key} className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-500 uppercase tracking-wide">{f.label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="rounded-md border bg-white px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                  value={grading ? (grading as any)[f.key] : f.key === "talentpoolPercent" ? 90 : f.key === "generalScholarshipMin" ? 80 : f.key === "generalScholarshipMax" ? 89 : 33}
+                  onChange={(e) => {
+                    if (!grading) return;
+                    const v = Number(e.target.value);
+                    if (!Number.isFinite(v)) return;
+                    const next = { ...grading, [f.key]: v };
+                    setScaleInput(JSON.stringify(next, null, 2));
+                  }}
+                />
+              </label>
+            ))}
+          </div>
           <textarea
-            className="w-full h-32 rounded-md border bg-white px-3 py-2 text-xs font-mono text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+            className="w-full h-24 rounded-md border bg-white px-3 py-2 text-xs font-mono text-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
             value={scaleInput}
             onChange={(e) => setScaleInput(e.target.value)}
             placeholder={JSON.stringify({
@@ -140,7 +167,9 @@ export function MarksSetupPanel() {
                 { min: 50, grade: "B" }, { min: 40, grade: "C" }, { min: 33, grade: "D" },
               ],
               passPercent: 33,
-              scholarshipPercent: 60,
+              talentpoolPercent: 90,
+              generalScholarshipMin: 80,
+              generalScholarshipMax: 89,
             }, null, 2)}
           />
           <div className="flex items-center gap-2">
@@ -149,7 +178,7 @@ export function MarksSetupPanel() {
             </Button>
             {grading && (
               <code className="text-[11px] text-zinc-500">
-                pass {grading.passPercent}% · scholarship {grading.scholarshipPercent}%
+                pass {grading.passPercent}% · A+ ≥ {grading.bands[0]?.min ?? 80}% · Talentpool ≥ {grading.talentpoolPercent}% · General {grading.generalScholarshipMin}–{grading.generalScholarshipMax}%
               </code>
             )}
           </div>
