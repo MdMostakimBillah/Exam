@@ -18,8 +18,8 @@ import { DEFAULT_INSTRUCTIONS } from "@/lib/storage/admit-cards";
  *      2-column label/value grid (date/time and class/section were dropped
  *      here — the header and the badge already carry them).
  *   3. Bordered zebra subjects table.
- *   4. "Instructions to Candidates" panel — three columns: Before the Exam,
- *      Exam Hall Rules and an amber Violation Warning box.
+ *   4. A minimal "Instructions" strip — three short columns (Before the Exam,
+ *      Exam Hall Rules, Violation Warning) with no bottom note.
  *   5. Dashed perforation + QR verify stub with the three signature slots,
  *      and a gold security strip overlaying the right edge.
  *
@@ -55,6 +55,7 @@ const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Kalpurush', 'Tiro 
 const BORDER = "1px solid #e2e8f0";
 const SLATE_400 = "#94a3b8";
 const SLATE_500 = "#64748b";
+const SLATE_600 = "#475569";
 const SLATE_700 = "#334155";
 /** Mock's gold security-strip / exam-code accent. */
 const GOLD = "#d4af37";
@@ -447,28 +448,21 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
     { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
   ];
 
-  // ── Instructions to candidates ────────────────────────────────
-  // Three columns: preparation, hall rules and the violation warning.
+  // ── Instructions to candidates — minimal, three short columns.
   const prepRules = [
-    L("Report 30 minutes early — carry this admit card.", "৩০ মিনিট আগে প্রবেশপত্রসহ কেন্দ্রে উপস্থিত হন।"),
-    L("Bring a photo ID and your own pen / pencil.", "ছবিযুক্ত পরিচয়পত্র ও নিজস্ব কলম আনুন।"),
-    L("Verify your roll, center code and subject list.", "রোল, কেন্দ্র কোড ও বিষয় যাচাই করে নিন।"),
-    L("Sit only at the desk allotted to your roll.", "শুধু নির্ধারিত ডেস্কে বসবেন।"),
-    L("Keep the admit card in hand until the exam ends.", "পরীক্ষা শেষ না হওয়া পর্যন্ত প্রবেশপত্র রাখুন।"),
+    L("Report 30 minutes early.", "৩০ মিনিট আগে পৌঁছান।"),
+    L("Photo ID required.", "পরিচয়পত্র বাধ্যতামূলক।"),
+    L("Sit at your allotted seat.", "নির্ধারিত আসনে বসুন।"),
   ];
   const hallRules = [
-    L("Switch off mobile phones and keep them aside.", "মোবাইল বন্ধ রেখে সাথে রাখুন।"),
-    L("Write answers on the supplied sheet only.", "নির্ধারিত উত্তরপত্রেই উত্তর দিন।"),
-    L("Hand in the answer script before time ends.", "সময় শেষ হওয়ার আগে খাতা জমা দিন।"),
-    L("Leave the hall only with the invigilator's consent.", "অনুমতি ছাড়া কক্ষ ছাড়তে নেই।"),
-    L("Raise your hand and stay seated for any doubt.", "সংশয় হলে হাত তুলুন, স্থানে থাকুন।"),
+    L("Mobile phones off.", "মোবাইল বন্ধ রাখুন।"),
+    L("Answer sheet only.", "নির্ধারিত কাগজে লিখুন।"),
+    L("No leaving without permission.", "অনুমতি ছাড়া বাইরে যাবেন না।"),
   ];
   const violationRules = [
-    L("Any malpractice cancels the result outright.", "অসদুপায়ে ফলাফল সম্পূর্ণ বাতিল।"),
-    L("Caught candidates are barred from re-sitting.", "ধরা পড়লে পুনরায় পরীক্ষা নিষিদ্ধ।"),
-    L("Banned items mean instant disqualification.", "নিষিদ্ধ বস্তু পাওয়া গেলে বাতিল।"),
-    L("The center chief's decision is final.", "কেন্দ্র প্রধানের সিদ্ধান্তই চূড়ান্ত।"),
-    L("Helping another candidate is malpractice too.", "অন্যকে সাহায্য করলেও বাতিল হবে।"),
+    L("Malpractice cancels result.", "অসদুপায়ে ফলাফল বাতিল।"),
+    L("No re-sitting if caught.", "ধরা পড়লে পুনরায় নিষিদ্ধ।"),
+    L("Controller's decision final.", "পরীক্ষা নিয়ন্ত্রকের সিদ্ধান্ত চূড়ান্ত।"),
   ];
 
   // Institution-authored instruction blob — bilingual, one line per language.
@@ -884,34 +878,28 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           borderRadius: "8px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* ── Instructions: minimal three-column strip ──────── */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
           <div
             style={{
-              fontSize: "10.5px",
+              fontSize: "10px",
               fontWeight: 800,
-              letterSpacing: "0.1em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: accentHex,
               whiteSpace: "nowrap",
               flexShrink: 0,
             }}
           >
-            {L("Instructions to Candidates", "পরীক্ষার্থীদের জন্য নির্দেশনা")}
+            {L("Instructions", "নির্দেশনা")}
           </div>
           <div style={{ flex: 1, height: "1px", background: "#e2e8f0", minWidth: 0 }} />
-          <div
-            style={{
-              fontSize: "9px",
-              color: SLATE_500,
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
-          >
-            {L(
-              "Valid only with a matching photo ID",
-              "ছবিযুক্ত পরিচয়পত্রসহ প্রদর্শনযোগ্য"
-            )}
-          </div>
         </div>
 
         <div
@@ -926,45 +914,35 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             {
               head: L("Before the Exam", "পরীক্ষার আগে"),
               color: accentHex,
-              bg: "#f8fafc",
-              edge: "#e2e8f0",
               items: prepRules,
             },
             {
               head: L("Exam Hall Rules", "পরীক্ষাকক্ষের নিয়ম"),
               color: SLATE_700,
-              bg: "#f8fafc",
-              edge: "#e2e8f0",
               items: hallRules,
             },
             {
               head: L("Violation Warning", "লঙ্ঘনের সতর্কতা"),
               color: "#b45309",
-              bg: "#fffbeb",
-              edge: "#fde68a",
               items: violationRules,
             },
           ].map((col) => (
             <div
               key={col.head}
               style={{
-                boxSizing: "border-box",
                 minWidth: 0,
-                background: col.bg,
-                border: `1px solid ${col.edge}`,
-                borderTop: `3px solid ${col.color}`,
-                borderRadius: "6px",
-                padding: "5px 9px 6px",
+                borderTop: `2.5px solid ${col.color}`,
+                paddingTop: "4px",
               }}
             >
               <div
                 style={{
-                  fontSize: "9.5px",
+                  fontSize: "9px",
                   fontWeight: 800,
-                  letterSpacing: "0.09em",
+                  letterSpacing: "0.1em",
                   textTransform: "uppercase",
                   color: col.color,
-                  marginBottom: "3px",
+                  marginBottom: "4px",
                   wordBreak: "break-word",
                 }}
               >
@@ -974,36 +952,19 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 <div
                   key={i}
                   style={{
-                    display: "flex",
-                    fontSize: "9.5px",
-                    lineHeight: 1.36,
-                    color: SLATE_700,
-                    marginBottom: "1px",
+                    fontSize: "9px",
+                    lineHeight: 1.4,
+                    color: SLATE_600,
+                    marginBottom: "3px",
                   }}
                 >
-                  <span style={{ width: "11px", flexShrink: 0, color: col.color }}>•</span>
-                  <span style={{ minWidth: 0, wordBreak: "break-word" }}>{t}</span>
+                  <span style={{ color: col.color, marginRight: "4px" }}>•</span>
+                  {t}
                 </div>
               ))}
             </div>
           ))}
         </div>
-
-        {noteLines.length ? (
-          <div
-            style={{
-              marginTop: "5px",
-              paddingTop: "5px",
-              borderTop: BORDER,
-              fontSize: "9px",
-              lineHeight: 1.45,
-              color: SLATE_500,
-              wordBreak: "break-word",
-            }}
-          >
-            {noteLines.join("  ")}
-          </div>
-        ) : null}
       </div>
 
       {/* ── Perforation — auto top margin pins the stub to the card foot ─ */}
