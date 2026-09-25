@@ -1,263 +1,306 @@
-import { Mark } from '../types';
-import { createClient } from '@/lib/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchCurrentSession } from './sessions';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { fetchCurrentSession } from "./sessions";
+import type { Mark, MarksSaveResult, MarksSheetPage, MarksSheetPageRow } from "@/lib/types";
 
-const SUPABASE_TABLE = 'marks';
-
-const MARK_COLUMNS = 'id,session_id,student_id,registration_id,exam_id,subject_id,subject_name,marks,entered_by,created_at,updated_at';
-
-export interface SubjectMark {
-  subjectId: string;
-  subjectName: string;
-  fullMarks: number;
-  marks: number | null;
-}
-
-export interface SheetRow {
-  registrationId: string;
-  studentName: string;
-  studentId: string;
-  registrationNumber: string;
-  className: string;
-  examRoll: string | null;
-  roll: string | null;
-  firstName: string;
-  lastName: string;
-  subjectMarks: SubjectMark[];
-}
-
+const SUPABASE_TABLE = "marks";
+const MARK_COLUMNS = "id,session_id,student_id,registration_id,exam_id,subject_id,subject_name,marks,entered_by,created_at,updated_at";
 const DEFAULT_PAGE_SIZE = 20;
 
-function mapMark(data: any): Mark {
+function mapMark(data: Record<string, unknown>): Mark {
   return {
-    id: data.id,
-    sessionId: data.session_id,
-    studentId: data.student_id,
-    registrationId: data.registration_id,
-    examId: data.exam_id,
-    subjectId: data.subject_id,
-    subjectName: data.subject_name,
-    marks: data.marks,
-    enteredBy: data.entered_by,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
+    id: String(data.id),
+    sessionId: String(data.session_id),
+    studentId: String(data.student_id),
+    registrationId: String(data.registration_id),
+    examId: String(data.exam_id),
+    subjectId: String(data.subject_id),
+    subjectName: String(data.subject_name),
+    marks: Number(data.marks),
+    enteredBy: String(data.entered_by),
+    createdAt: String(data.created_at),
+    updatedAt: String(data.updated_at),
   };
 }
 
-export async function fetchMarks(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Mark[]> {
+function invalidateMarkQueries(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: ["marks-sheet-page"] });
+  queryClient.invalidateQueries({ queryKey: ["marks-sheet"] });
+  queryClient.invalidateQueries({ queryKey: ["exam-mark-setup"] });
+  queryClient.invalidateQueries({ queryKey: ["marks"] });
+}
+
+export async function fetchMarks(
+  sessionId?: string,
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+): Promise<Mark[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
   const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
     .select(MARK_COLUMNS)
-    .eq('session_id', sid)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapMark);
-}
-
-export async function fetchMarksByRegistration(registrationId: string, sessionId?: string): Promise<Mark[]> {
-  const supabase = createClient();
-  const sid = sessionId || (await fetchCurrentSession())?.id;
-  if (!sid) return [];
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(MARK_COLUMNS)
-    .eq('session_id', sid)
-    .eq('registration_id', registrationId)
-    .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return data.map(mapMark);
-}
-
-/** All approved registrations for an exam + class (no page cap), each with their per-subject marks, sorted by exam_roll. */
-export async function fetchMarksSheet(examId: string, className: string, sessionId?: string): Promise<SheetRow[]> {
-  const supabase = createClient();
-  const sid = sessionId || (await fetchCurrentSession())?.id;
-  if (!sid) return [];
-
-  const { data: regs, error: regErr } = await supabase
-    .from('registrations')
-    .select('id,student_id,student_name,registration_number,class_name')
-    .eq('session_id', sid)
-    .eq('exam_id', examId)
-    .eq('class_name', className)
-    .eq('status', 'APPROVED')
-    .order('created_at', { ascending: false });
-  if (regErr || !regs) return [];
-
-  const regIds = regs.map((r: any) => r.id);
-  if (regIds.length === 0) return [];
-
-  // All marks for these registrations.
-  const { data: marks, error: markErr } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(MARK_COLUMNS)
-    .eq('session_id', sid)
-    .in('registration_id', regIds);
-  if (markErr && markErr.code !== 'PGRST101') return [];
-
-  // Group marks by registration_id -> SubjectMark[].
-  const marksByReg = new Map<string, Mark[]>();
-  (marks || []).forEach((m: Mark) => {
-    const arr = marksByReg.get(m.registrationId) || [];
-    arr.push(m);
-    marksByReg.set(m.registrationId, arr);
-  });
-
-  // Student exam roll, one query.
-  const studentIds = [...new Set(regs.map((r: any) => r.student_id))];
-  const { data: students, error: stuErr } = await supabase
-    .from('students')
-    .select('id,exam_roll,roll,first_name,last_name')
-    .in('id', studentIds);
-  if (stuErr) return [];
-
-  const stuMap = new Map<string, { examRoll: string | null; roll: string | null; firstName: string; lastName: string }>();
-  (students || []).forEach((s: any) => stuMap.set(s.id, { examRoll: s.exam_roll, roll: s.roll, firstName: s.first_name, lastName: s.last_name }));
-
-  return regs.map((r: any) => {
-    const regMarks = marksByReg.get(r.id) || [];
-    const s = stuMap.get(r.student_id) || { examRoll: null, roll: null, firstName: '', lastName: '' };
-    return {
-      registrationId: r.id,
-      studentName: r.student_name,
-      studentId: r.student_id,
-      registrationNumber: r.registration_number || '',
-      className: r.class_name || className,
-      examRoll: s.examRoll,
-      roll: s.roll,
-      firstName: s.firstName,
-      lastName: s.lastName,
-      subjectMarks: regMarks.map((m: Mark) => ({
-        subjectId: m.subjectId,
-        subjectName: m.subjectName,
-        fullMarks: 0,
-        marks: m.marks,
-      })),
-    };
-  }).sort((a: SheetRow, b: SheetRow) => {
-    const ra = a.examRoll ? parseInt(a.examRoll) : Infinity;
-    const rb = b.examRoll ? parseInt(b.examRoll) : Infinity;
-    return ra - rb;
-  });
-}
-
-/** Marks for a given list of registration ids (no page cap), scoped to the current session. */
-export async function fetchMarksByRegistrationIds(registrationIds: string[], sessionId?: string): Promise<Mark[]> {
-  if (registrationIds.length === 0) return [];
-  const supabase = createClient();
-  const sid = sessionId || (await fetchCurrentSession())?.id;
-  if (!sid) return [];
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(MARK_COLUMNS)
-    .eq('session_id', sid)
-    .in('registration_id', registrationIds);
-  if (error || !data) return [];
-  return data.map(mapMark);
-}
-
-export async function saveExamMarks(examId: string, rows: { registrationId: string; subjectId: string; marks: number }[]): Promise<{ saved: number; updated: number; rejected: unknown[] }> {
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc('save_exam_marks', { p_exam_id: examId, p_rows: rows });
+    .eq("session_id", sid)
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
   if (error) throw error;
-  return { saved: data.saved ?? 0, updated: data.updated ?? 0, rejected: data.rejected ?? [] };
+  return (data || []).map((row: Record<string, unknown>) => mapMark(row));
 }
 
-export async function createMark(data: Omit<Mark, 'id' | 'createdAt' | 'updatedAt'>): Promise<Mark> {
+export async function fetchMarksByRegistration(
+  registrationId: string,
+  sessionId?: string,
+): Promise<Mark[]> {
   const supabase = createClient();
-  const { data: result, error } = await supabase
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid || !registrationId) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(MARK_COLUMNS)
+    .eq("session_id", sid)
+    .eq("registration_id", registrationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row: Record<string, unknown>) => mapMark(row));
+}
+
+export interface MarksSheetPageParams {
+  examId: string;
+  classId: string;
+  institutionId?: string | null;
+  subjectId: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  sessionId?: string;
+}
+
+function mapMarksSheetPage(data: Record<string, any>): MarksSheetPage {
+  const rows: MarksSheetPageRow[] = (data.rows || []).map((row: Record<string, any>) => ({
+    registrationId: String(row.registration_id),
+    studentId: String(row.student_id),
+    studentName: String(row.student_name || ""),
+    institutionId: String(row.institution_id),
+    institutionName: String(row.institution_name || ""),
+    registrationNumber: String(row.registration_number || ""),
+    className: String(row.class_name || ""),
+    examRoll: row.exam_roll ? String(row.exam_roll) : null,
+    mark: row.marks === null || row.marks === undefined ? null : Number(row.marks),
+    fullMarks: Number(row.full_marks),
+    subjectName: String(row.subject_name || ""),
+  }));
+
+  return {
+    rows,
+    page: Number(data.page || 1),
+    pageSize: Number(data.page_size || 50),
+    totalMatching: Number(data.total_matching || 0),
+    totalPages: Number(data.total_pages || 0),
+    totalCandidates: Number(data.total_candidates || 0),
+    summary: {
+      totalCandidates: Number(data.summary?.total_candidates ?? data.total_candidates ?? 0),
+      institutionsRepresented: Number(data.summary?.institutions_represented || 0),
+      enteredCount: Number(data.summary?.entered_count || 0),
+      missingCount: Number(data.summary?.missing_count || 0),
+    },
+  };
+}
+
+export async function fetchMarksSheetPage(params: MarksSheetPageParams): Promise<MarksSheetPage> {
+  if (!params.examId || !params.classId || !params.subjectId) {
+    throw new Error("Exam, class, and subject are required");
+  }
+  const session = params.sessionId || (await fetchCurrentSession())?.id;
+  if (!session) throw new Error("No active session found");
+
+  const { data, error } = await createClient().rpc("get_marks_sheet_page", {
+    p_exam_id: params.examId,
+    p_class_id: params.classId,
+    p_institution_id: params.institutionId || null,
+    p_subject_id: params.subjectId,
+    p_search: params.search?.trim() || "",
+    p_page: params.page || 1,
+    p_page_size: params.pageSize || 50,
+  });
+  if (error) throw error;
+  return mapMarksSheetPage((data || {}) as Record<string, any>);
+}
+
+export async function saveExamMarks(
+  examId: string,
+  rows: { registrationId: string; subjectId: string; marks: number }[],
+): Promise<MarksSaveResult> {
+  const { data, error } = await createClient().rpc("save_exam_marks", {
+    p_exam_id: examId,
+    p_rows: rows.map((row) => ({
+      registration_id: row.registrationId,
+      subject_id: row.subjectId,
+      marks: row.marks,
+    })),
+  });
+  if (error) throw error;
+
+  const payload = (data || {}) as Record<string, any>;
+  return {
+    saved: Number(payload.saved || 0),
+    updated: Number(payload.updated || 0),
+    savedRows: (payload.saved_rows || []).map((row: Record<string, any>) => ({
+      registrationId: String(row.registration_id),
+      subjectId: String(row.subject_id),
+      marks: Number(row.marks),
+    })),
+    updatedRows: (payload.updated_rows || []).map((row: Record<string, any>) => ({
+      registrationId: String(row.registration_id),
+      subjectId: String(row.subject_id),
+      marks: Number(row.marks),
+    })),
+    rejected: (payload.rejected || []).map((row: Record<string, any>) => ({
+      registrationId: row.registration_id || null,
+      subjectId: row.subject_id || null,
+      reason: String(row.reason || "Mark was rejected"),
+    })),
+  };
+}
+
+export async function saveExamMarkCell(
+  examId: string,
+  row: { registrationId: string; subjectId: string; marks: number },
+): Promise<MarksSaveResult> {
+  const result = await saveExamMarks(examId, [row]);
+  if (result.rejected.length > 0) throw new Error(result.rejected[0].reason);
+  if (result.saved + result.updated !== 1) throw new Error("The mark was not saved");
+  return result;
+}
+
+export interface ClearExamMarkResult {
+  success: boolean;
+  cleared: number;
+  reason: string;
+}
+
+export async function clearExamMark(
+  examId: string,
+  registrationId: string,
+  subjectId: string,
+): Promise<ClearExamMarkResult> {
+  const { data, error } = await createClient().rpc("clear_exam_mark", {
+    p_exam_id: examId,
+    p_registration_id: registrationId,
+    p_subject_id: subjectId,
+  });
+  if (error) throw error;
+  const result = (data || {}) as Record<string, any>;
+  if (!result.success) throw new Error(result.reason || "The mark could not be cleared");
+  return {
+    success: true,
+    cleared: Number(result.cleared || 0),
+    reason: String(result.reason || "Mark cleared"),
+  };
+}
+
+export async function createMark(data: Omit<Mark, "id" | "createdAt" | "updatedAt">): Promise<Mark> {
+  const { data: created, error } = await createClient()
     .from(SUPABASE_TABLE)
     .insert({
-      session_id: data.sessionId, student_id: data.studentId, registration_id: data.registrationId,
-      exam_id: data.examId, subject_id: data.subjectId, subject_name: data.subjectName,
-      marks: data.marks, entered_by: data.enteredBy,
+      session_id: data.sessionId,
+      student_id: data.studentId,
+      registration_id: data.registrationId,
+      exam_id: data.examId,
+      subject_id: data.subjectId,
+      subject_name: data.subjectName,
+      marks: data.marks,
+      entered_by: data.enteredBy,
     })
     .select(MARK_COLUMNS)
     .single();
   if (error) throw error;
-  return mapMark(result);
+  return mapMark(created);
 }
 
-export async function updateMark(id: string, data: Partial<Mark>): Promise<Mark | undefined> {
-  const supabase = createClient();
-  const { data: result, error } = await supabase
-    .from(SUPABASE_TABLE).update(data).eq('id', id).select(MARK_COLUMNS).single();
-  if (error) return undefined;
-  return mapMark(result);
+export async function updateMark(id: string, data: Partial<Mark>): Promise<Mark> {
+  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const fieldMap: Record<keyof Mark, string> = {
+    id: "id",
+    sessionId: "session_id",
+    studentId: "student_id",
+    registrationId: "registration_id",
+    examId: "exam_id",
+    subjectId: "subject_id",
+    subjectName: "subject_name",
+    marks: "marks",
+    enteredBy: "entered_by",
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  };
+  (Object.keys(fieldMap) as (keyof Mark)[]).forEach((field) => {
+    if (data[field] !== undefined && field !== "id" && field !== "createdAt" && field !== "updatedAt") {
+      updateData[fieldMap[field]] = data[field];
+    }
+  });
+  const { data: updated, error } = await createClient()
+    .from(SUPABASE_TABLE)
+    .update(updateData)
+    .eq("id", id)
+    .select(MARK_COLUMNS)
+    .single();
+  if (error) throw error;
+  return mapMark(updated);
 }
 
 export async function deleteMark(id: string): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
+  const { error } = await createClient().from(SUPABASE_TABLE).delete().eq("id", id);
   if (error) throw error;
   return true;
 }
 
 export function useMarks(sessionId?: string, page?: number, pageSize?: number) {
   return useQuery({
-    queryKey: ['marks', sessionId, page, pageSize],
+    queryKey: ["marks", sessionId, page, pageSize],
     queryFn: () => fetchMarks(sessionId, page, pageSize),
-    staleTime: 60 * 1000,
-  });
-}
-
-export function useMarksSheet(examId: string, className: string, sessionId?: string) {
-  return useQuery<SheetRow[]>({
-    queryKey: ['marks-sheet', examId, className, sessionId],
-    queryFn: () => fetchMarksSheet(examId, className, sessionId),
-    enabled: !!examId && !!className,
-    staleTime: 60 * 1000,
+    staleTime: 60_000,
   });
 }
 
 export function useMarksByRegistration(registrationId: string, sessionId?: string) {
   return useQuery({
-    queryKey: ['marks', 'registration', registrationId],
+    queryKey: ["marks", "registration", registrationId, sessionId],
     queryFn: () => fetchMarksByRegistration(registrationId, sessionId),
     enabled: !!registrationId,
-    staleTime: 60 * 1000,
+    staleTime: 60_000,
   });
 }
 
-export function useCreateMark() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Omit<Mark, 'id' | 'createdAt' | 'updatedAt'>) => createMark(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['marks'] }),
+export function useMarksSheetPage(params: MarksSheetPageParams) {
+  return useQuery({
+    queryKey: [
+      "marks-sheet-page",
+      params.sessionId,
+      params.examId,
+      params.classId,
+      params.institutionId || null,
+      params.subjectId,
+      params.search || "",
+      params.page || 1,
+      params.pageSize || 50,
+    ],
+    queryFn: () => fetchMarksSheetPage(params),
+    enabled: !!(
+      params.sessionId
+      && params.examId
+      && params.classId
+      && params.subjectId
+    ),
+    staleTime: 30_000,
   });
 }
 
-export function useUpdateMark() {
-  const qc = useQueryClient();
+export function useClearExamMark() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Mark> }) => updateMark(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['marks'] }),
-  });
-}
-
-export function useDeleteMark() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => deleteMark(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['marks'] }),
-  });
-}
-
-export function useSaveExamMarks() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (args: { examId: string; rows: { registrationId: string; subjectId: string; marks: number }[] }) =>
-      saveExamMarks(args.examId, args.rows),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['marks'] });
-      qc.invalidateQueries({ queryKey: ['results'] });
-    },
+    mutationFn: (args: { examId: string; registrationId: string; subjectId: string }) =>
+      clearExamMark(args.examId, args.registrationId, args.subjectId),
+    onSuccess: () => invalidateMarkQueries(queryClient),
   });
 }

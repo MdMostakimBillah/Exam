@@ -5,11 +5,12 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'results';
 
-const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,created_at,updated_at';
+const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,created_at,updated_at';
 
 const RESULT_FULL_COLUMNS = RESULT_LIST_COLUMNS + ',subject_marks';
 
 const DEFAULT_PAGE_SIZE = 20;
+const EXAM_RESULTS_PAGE_SIZE = 200;
 
 function mapResult(data: any): Result {
   return {
@@ -25,14 +26,17 @@ function mapResult(data: any): Result {
     roll: data.roll,
     registrationNumber: data.registration_number,
     subjectMarks: data.subject_marks || [],
-    totalMarks: data.total_marks,
-    totalFullMarks: data.total_full_marks,
-    percentage: data.percentage,
-    grade: data.grade,
-    position: data.position,
-    pass: data.pass,
-    scholarshipStatus: data.scholarship_status,
+    totalMarks: Number(data.total_marks ?? 0),
+    totalFullMarks: Number(data.total_full_marks ?? 0),
+    percentage: Number(data.percentage ?? 0),
+    grade: data.grade || '',
+    position: Number(data.position ?? 0),
+    pass: Boolean(data.pass),
+    scholarshipStatus: data.scholarship_status || 'PENDING',
     status: data.status,
+    markSetupVersion: data.mark_setup_version === null || data.mark_setup_version === undefined
+      ? null
+      : Number(data.mark_setup_version),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -50,8 +54,8 @@ export async function fetchResults(sessionId?: string, page: number = 1, pageSiz
     .eq('session_id', sid)
     .order('created_at', { ascending: false })
     .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapResult);
+  if (error) throw error;
+  return (data || []).map(mapResult);
 }
 
 export async function fetchResultsByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Result[]> {
@@ -62,16 +66,16 @@ export async function fetchResultsByInstitution(institutionId: string, sessionId
   const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(RESULT_LIST_COLUMNS)
+    .select(RESULT_FULL_COLUMNS)
     .eq('session_id', sid)
     .eq('institution_id', institutionId)
     .order('created_at', { ascending: false })
     .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapResult);
+  if (error) throw error;
+  return (data || []).map(mapResult);
 }
 
-export async function fetchResultsByExam(examId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Result[]> {
+export async function fetchResultsByExam(examId: string, sessionId?: string, page: number = 1, pageSize: number = EXAM_RESULTS_PAGE_SIZE): Promise<Result[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
@@ -84,8 +88,8 @@ export async function fetchResultsByExam(examId: string, sessionId?: string, pag
     .eq('exam_id', examId)
     .order('created_at', { ascending: false })
     .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapResult);
+  if (error) throw error;
+  return (data || []).map(mapResult);
 }
 
 export async function fetchResultById(id: string): Promise<Result | undefined> {
@@ -118,6 +122,7 @@ export async function createResult(data: Omit<Result, 'id' | 'createdAt' | 'upda
       pass: data.pass,
       scholarship_status: data.scholarshipStatus,
       status: data.status,
+      mark_setup_version: data.markSetupVersion,
     })
     .select(RESULT_FULL_COLUMNS)
     .single();
@@ -125,7 +130,7 @@ export async function createResult(data: Omit<Result, 'id' | 'createdAt' | 'upda
   return mapResult(result);
 }
 
-export async function updateResult(id: string, data: Partial<Result>): Promise<Result | undefined> {
+export async function updateResult(id: string, data: Partial<Result>): Promise<Result> {
   const supabase = createClient();
   const updateData: any = { updated_at: new Date().toISOString() };
   if (data.sessionId !== undefined) updateData.session_id = data.sessionId;
@@ -147,6 +152,7 @@ export async function updateResult(id: string, data: Partial<Result>): Promise<R
   if (data.pass !== undefined) updateData.pass = data.pass;
   if (data.scholarshipStatus !== undefined) updateData.scholarship_status = data.scholarshipStatus;
   if (data.status !== undefined) updateData.status = data.status;
+  if (data.markSetupVersion !== undefined) updateData.mark_setup_version = data.markSetupVersion;
 
   const { data: result, error } = await supabase
     .from(SUPABASE_TABLE)
@@ -154,14 +160,15 @@ export async function updateResult(id: string, data: Partial<Result>): Promise<R
     .eq('id', id)
     .select(RESULT_FULL_COLUMNS)
     .single();
-  if (error) return undefined;
+  if (error) throw error;
   return mapResult(result);
 }
 
 export async function deleteResult(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
-  return !error;
+  if (error) throw error;
+  return true;
 }
 
 export function useResults(sessionId?: string, page?: number, pageSize?: number) {
@@ -181,10 +188,10 @@ export function useResultsByInstitution(institutionId: string, sessionId?: strin
   });
 }
 
-export function useResultsByExam(examId: string, sessionId?: string) {
+export function useResultsByExam(examId: string, sessionId?: string, page?: number, pageSize?: number) {
   return useQuery({
-    queryKey: ['results', 'exam', examId, sessionId],
-    queryFn: () => fetchResultsByExam(examId, sessionId),
+    queryKey: ['results', 'exam', examId, sessionId, page || 1, pageSize || EXAM_RESULTS_PAGE_SIZE],
+    queryFn: () => fetchResultsByExam(examId, sessionId, page, pageSize),
     enabled: !!examId,
     staleTime: 60 * 1000,
   });
@@ -222,11 +229,30 @@ export function useDeleteResult() {
   });
 }
 
-export async function processExamResults(examId: string): Promise<{ processed: number; skipped: number }> {
+export interface ProcessExamResultsResult {
+  processed: number;
+  skipped: number;
+  missingIncomplete: number;
+  withoutRequiredSubjects: number;
+  totalRegistrations: number;
+  totalUniqueStudents: number;
+  setupVersion: number;
+}
+
+export async function processExamResults(examId: string): Promise<ProcessExamResultsResult> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc('process_exam_results', { p_exam_id: examId });
   if (error) throw error;
-  return { processed: data.processed ?? 0, skipped: data.skipped ?? 0 };
+  const result = (data || {}) as Record<string, any>;
+  return {
+    processed: Number(result.processed || 0),
+    skipped: Number(result.skipped || 0),
+    missingIncomplete: Number(result.missing_incomplete || 0),
+    withoutRequiredSubjects: Number(result.without_required_subjects || 0),
+    totalRegistrations: Number(result.total_registrations || 0),
+    totalUniqueStudents: Number(result.total_unique_students || 0),
+    setupVersion: Number(result.setup_version || 0),
+  };
 }
 
 export function useProcessExamResults() {

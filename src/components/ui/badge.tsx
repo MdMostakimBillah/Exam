@@ -19,7 +19,7 @@ function Badge({ className, status, variant = 'default', children, ...props }: B
       return 'bg-red-500/10 text-red-500 border-red-500/20';
     }
     if (s === 'REFUNDED') {
-      return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+    return 'border-brand-accent/20 bg-brand-accent-soft text-brand-accent';
     }
     if (s === 'CLOSED' || s === 'ARCHIVED' || s === 'INACTIVE') {
       return 'bg-gray-500/10 text-gray-500 border-gray-500/20';

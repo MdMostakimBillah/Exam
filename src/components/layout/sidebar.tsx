@@ -185,7 +185,12 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
           return (
             <button
               key={item.href}
-              onClick={() => { router.push(item.href); onClose?.(); }}
+              onClick={() => {
+                const navigationEvent = new CustomEvent("app:before-navigation", { cancelable: true });
+                if (!window.dispatchEvent(navigationEvent)) return;
+                router.push(item.href);
+                onClose?.();
+              }}
               className={cn(
                 'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200',
                 isActive

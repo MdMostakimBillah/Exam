@@ -194,9 +194,7 @@ export default function ResultPage() {
                 <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3">
                   <CheckCircle className="h-4 w-4 text-emerald-400" />
                   <span className="text-sm text-emerald-300">
-                    {foundResult.scholarshipStatus === 'TALENT_POOL'
-                      ? "Congratulations! You won the Talentpool Scholarship."
-                      : "Congratulations! You are eligible for the scholarship."}
+                    {`Congratulations! You are eligible for the ${foundResult.scholarshipStatus} scholarship.`}
                   </span>
                 </div>
               )}

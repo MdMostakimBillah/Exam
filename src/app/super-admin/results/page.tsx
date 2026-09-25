@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { MarksProcessPanel } from "@/components/marks/MarksProcessPanel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -7,7 +8,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useResults } from "@/lib/storage/results";
-import { useExams } from "@/lib/storage/exams";
+import { useExamsFull } from "@/lib/storage/exams";
 import { Award, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -15,20 +16,20 @@ import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function ResultsPage() {
   const { theme } = useTheme();
-  const { lang: language, t } = useLang();
+  const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
   const [mounted, setMounted] = useState(false);
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
 
-  const { data: results = [], isFetching } = useResults();
-  const { data: exams = [] } = useExams();
+  const { data: results = [], isFetching, error: resultsError } = useResults(undefined, 1, 200);
+  const { data: exams = [] } = useExamsFull();
   const filtered = useMemo(() => examFilter ? results.filter(r => r.examId === examFilter) : results, [results, examFilter]);
 
   const totalCandidates = filtered.length;
   const passed = useMemo(() => filtered.filter(r => r.pass).length, [filtered]);
-  const scholarshipWinners = useMemo(() => filtered.filter(r => r.scholarshipStatus === 'TALENT_POOL' || r.scholarshipStatus === 'GENERAL').length, [filtered]);
+  const scholarshipWinners = useMemo(() => filtered.filter(r => r.scholarshipStatus !== 'NOT_ELIGIBLE' && r.scholarshipStatus !== 'PENDING').length, [filtered]);
   const avgScore = useMemo(() => filtered.length > 0 ? Math.round(filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length) : 0, [filtered]);
 
   const selection = useTableSelection(filtered);
@@ -80,6 +81,9 @@ export default function ResultsPage() {
             {isBn ? 'পরীক্ষার ফলাফল দেখুন' : 'View examination results'}
           </p>
         </div>
+        <div className="mb-6">
+          <MarksProcessPanel />
+        </div>
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
@@ -121,7 +125,11 @@ export default function ResultsPage() {
         </div>
 
         {/* Table */}
-        {filtered.length === 0 ? (
+        {resultsError ? (
+          <div className={`${card} p-10 text-center text-sm text-red-600 dark:text-red-400`}>
+            {resultsError.message}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className={`${card} flex flex-col items-center justify-center py-16`}>
             <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
               <Award className={`h-7 w-7 ${iconColor}`} />

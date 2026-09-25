@@ -82,8 +82,6 @@ export default function InstitutionsPage() {
   const pendingCount = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
   const suspendedCount = useMemo(() => institutions.filter(i => i.status === 'SUSPENDED').length, [institutions]);
 
-  if (!mounted) return <InstitutionsSkeleton isDark={isDark} />;
-
   useEffect(() => {
     if (institutionsError) {
       toast(
@@ -93,7 +91,9 @@ export default function InstitutionsPage() {
         }`,
       );
     }
-  }, [institutionsError]);
+  }, [institutionsError, isBn, toast]);
+
+  if (!mounted) return <InstitutionsSkeleton isDark={isDark} />;
 
   const statusCounts = {
     all: institutions.length,

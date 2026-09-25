@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 const SUPABASE_TABLE = 'results';
 
-const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,created_at,updated_at';
+const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,created_at,updated_at';
 
 const RESULT_FULL_COLUMNS = RESULT_LIST_COLUMNS + ',subject_marks';
 
@@ -23,14 +23,17 @@ function mapResult(data: any): Result {
     roll: data.roll,
     registrationNumber: data.registration_number,
     subjectMarks: data.subject_marks || [],
-    totalMarks: data.total_marks,
-    totalFullMarks: data.total_full_marks,
-    percentage: data.percentage,
-    grade: data.grade,
-    position: data.position,
-    pass: data.pass,
-    scholarshipStatus: data.scholarship_status,
+    totalMarks: Number(data.total_marks ?? 0),
+    totalFullMarks: Number(data.total_full_marks ?? 0),
+    percentage: Number(data.percentage ?? 0),
+    grade: data.grade || '',
+    position: Number(data.position ?? 0),
+    pass: Boolean(data.pass),
+    scholarshipStatus: data.scholarship_status || 'PENDING',
     status: data.status,
+    markSetupVersion: data.mark_setup_version === null || data.mark_setup_version === undefined
+      ? null
+      : Number(data.mark_setup_version),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };

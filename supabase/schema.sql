@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS students (
   phone TEXT,
   address TEXT,
   photo_url TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   status TEXT DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED')),
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
@@ -228,8 +229,9 @@ CREATE TABLE IF NOT EXISTS results (
   grade TEXT,
   position INTEGER,
   pass BOOLEAN DEFAULT false,
-  scholarship_status TEXT DEFAULT 'PENDING' CHECK (scholarship_status IN ('TALENT_POOL', 'GENERAL', 'NOT_ELIGIBLE', 'PENDING')),
+  scholarship_status TEXT DEFAULT 'PENDING' NOT NULL CHECK (scholarship_status = btrim(scholarship_status) AND scholarship_status <> ''),
   status TEXT DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED')),
+  mark_setup_version INTEGER,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -451,8 +453,32 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS exam_mark_configs (
+  exam_id UUID PRIMARY KEY REFERENCES exams(id) ON DELETE CASCADE,
+  grade_bands JSONB NOT NULL DEFAULT '[]'::jsonb,
+  scholarship_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
+  pass_percent NUMERIC NOT NULL DEFAULT 33,
+  version INTEGER NOT NULL DEFAULT 1,
+  updated_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT exam_mark_configs_grade_bands_array CHECK (jsonb_typeof(grade_bands) = 'array'),
+  CONSTRAINT exam_mark_configs_scholarship_categories_array CHECK (jsonb_typeof(scholarship_categories) = 'array'),
+  CONSTRAINT exam_mark_configs_pass_percent_range CHECK (pass_percent BETWEEN 0 AND 100),
+  CONSTRAINT exam_mark_configs_version_positive CHECK (version > 0)
+);
+
 -- Enable RLS on profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_mark_configs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Super admin full access exam mark configs" ON exam_mark_configs;
+CREATE POLICY "Super admin full access exam mark configs" ON exam_mark_configs
+  FOR ALL USING (is_super_admin()) WITH CHECK (is_super_admin());
+
+DROP POLICY IF EXISTS "Authenticated read exam mark configs" ON exam_mark_configs;
+CREATE POLICY "Authenticated read exam mark configs" ON exam_mark_configs
+  FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Super admin full access profiles" ON profiles;
 CREATE POLICY "Super admin full access profiles" ON profiles
@@ -488,6 +514,7 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_students_institution_session ON students(institution_id, session_id);
 CREATE INDEX IF NOT EXISTS idx_students_session ON students(session_id);
+CREATE INDEX IF NOT EXISTS idx_students_user_id ON students(user_id);
 CREATE INDEX IF NOT EXISTS idx_exams_session ON exams(session_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_session ON registrations(session_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_institution_session ON registrations(institution_id, session_id);
@@ -495,7 +522,12 @@ CREATE INDEX IF NOT EXISTS idx_registrations_exam_session ON registrations(exam_
 CREATE INDEX IF NOT EXISTS idx_exam_centers_session ON exam_centers(session_id);
 CREATE INDEX IF NOT EXISTS idx_admit_cards_session ON admit_cards(session_id);
 CREATE INDEX IF NOT EXISTS idx_marks_session ON marks(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_marks_registration_subject ON marks(registration_id, subject_id);
+CREATE INDEX IF NOT EXISTS idx_marks_registration_exam_subject ON marks(registration_id, exam_id, subject_id) INCLUDE (marks, updated_at);
+CREATE INDEX IF NOT EXISTS idx_registrations_marks_sheet ON registrations(exam_id, session_id, class_name, institution_id, created_at, id) WHERE status = 'APPROVED';
+CREATE INDEX IF NOT EXISTS idx_students_session_class_exam_roll ON students(session_id, class, exam_roll);
 CREATE INDEX IF NOT EXISTS idx_results_session ON results(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_results_exam_student ON results(exam_id, student_id);
 CREATE INDEX IF NOT EXISTS idx_certificates_session ON certificates(session_id);
 CREATE INDEX IF NOT EXISTS idx_payments_session ON payments(session_id);
 CREATE INDEX IF NOT EXISTS idx_payments_institution_session ON payments(institution_id, session_id);
@@ -525,17 +557,20 @@ ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 CREATE OR REPLACE FUNCTION is_super_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN (auth.jwt() ->> 'role') = 'super_admin' OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'super_admin';
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'super_admin'
+  );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Helper function to get user's institution
 CREATE OR REPLACE FUNCTION get_user_institution_id()
 RETURNS UUID AS $$
 BEGIN
-  RETURN (auth.jwt() -> 'app_metadata' ->> 'institution_id')::UUID;
+  RETURN (SELECT institution_id FROM public.profiles WHERE id = auth.uid());
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ============================================
 -- ACADEMIC SESSIONS POLICIES
@@ -652,15 +687,9 @@ DROP POLICY IF EXISTS "Super admin full access marks" ON marks;
 CREATE POLICY "Super admin full access marks" ON marks
   FOR ALL USING (is_super_admin());
 
-DROP POLICY IF EXISTS "Institution admin own marks" ON marks;
-CREATE POLICY "Institution admin own marks" ON marks
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM registrations r
-      WHERE r.id = marks.registration_id
-      AND r.institution_id = get_user_institution_id()
-    )
-  );
+DROP POLICY IF EXISTS "Students read own marks" ON marks;
+CREATE POLICY "Students read own marks" ON marks
+  FOR SELECT USING (student_id IN (SELECT id FROM students WHERE user_id = auth.uid()));
 
 -- ============================================
 -- RESULTS POLICIES

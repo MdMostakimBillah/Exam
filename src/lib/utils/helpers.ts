@@ -53,7 +53,7 @@ export function getStatusColor(status: string): string {
     case 'CLOSED': case 'ARCHIVED': case 'INACTIVE': case 'REFUNDED':
       return 'text-zinc-400 bg-zinc-400/10';
     default:
-      return 'text-blue-400 bg-blue-400/10';
+      return 'text-brand-accent bg-brand-accent-soft';
   }
 }
 

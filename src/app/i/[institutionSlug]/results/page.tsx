@@ -9,13 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useResultsByInstitution, useCreateResult, useUpdateResult, useDeleteResult } from "@/lib/storage/results";
-import { useRegistrationsByInstitution } from "@/lib/storage/registrations";
-import { useExams, useExamById } from "@/lib/storage/exams";
+import { useAllRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useClasses } from "@/lib/storage/classes";
+import { useExamsFull } from "@/lib/storage/exams";
 import { useStudentsByInstitution } from "@/lib/storage/students";
 import { useCurrentSession } from "@/lib/storage/sessions";
-import { Result, Registration, Exam, ExamSubject } from "@/lib/types";
+import type { Result } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
-import { Award, Trophy, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown } from "lucide-react";
+import { Award, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -23,7 +24,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { calculateGrade, isPass, getScholarshipCategory } from '@/lib/storage/grading';
+import { calculateGradeForSetup, calculatePassForSetup, calculateScholarshipForSetup, useExamMarkSetup } from "@/lib/storage/mark-setup";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function InstitutionResultsPage() {
@@ -40,10 +41,8 @@ export default function InstitutionResultsPage() {
   const [editingResult, setEditingResult] = useState<Result | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Result | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const [selectedRegistration, setSelectedRegistration] = useState("");
-  const [selectedExamId, setSelectedExamId] = useState("");
   const [marksInput, setMarksInput] = useState<Record<string, string>>({});
   const [showPdfModal, setShowPdfModal] = useState(false);
 
@@ -51,17 +50,36 @@ export default function InstitutionResultsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  const { data: results = [], isFetching } = useResultsByInstitution(inst?.id || '', currentSession?.id);
-  const { data: exams = [] } = useExams();
-  const { data: registrations = [] } = useRegistrationsByInstitution(inst?.id || '', currentSession?.id);
-  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: results = [], isFetching, error: resultsError } = useResultsByInstitution(inst?.id || '', currentSession?.id, 1, 200);
+  const { data: exams = [] } = useExamsFull();
+  const { data: registrations = [] } = useAllRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id, 1, 200);
+  const { data: allClasses = [] } = useClasses();
+  const selectedExamForModal = useMemo(
+    () => editingResult
+      ? exams.find((item) => item.id === editingResult.examId)
+      : selectedRegistration
+        ? exams.find((item) => item.id === registrations.find((item) => item.id === selectedRegistration)?.examId)
+        : null,
+    [editingResult, exams, registrations, selectedRegistration],
+  );
+  const { data: selectedExamSetup } = useExamMarkSetup(selectedExamForModal?.id || '');
+  const modalSubjects = useMemo(() => {
+    if (!selectedExamForModal) return [];
+    const className = editingResult?.className
+      || registrations.find((item) => item.id === selectedRegistration)?.className
+      || "";
+    const classRecord = allClasses.find((item) => item.id === className || item.name === className || item.code === className);
+    const allowedIds = [className, classRecord?.id, classRecord?.code].filter(Boolean) as string[];
+    return selectedExamForModal.subjects.filter((subject) => !subject.classId || allowedIds.includes(subject.classId));
+  }, [allClasses, editingResult, registrations, selectedExamForModal, selectedRegistration]);
   const createResultMutation = useCreateResult();
   const updateResultMutation = useUpdateResult();
   const deleteResultMutation = useDeleteResult();
 
   const approvedRegistrations = registrations.filter(r => r.status === "APPROVED");
-  const existingRegNumbers = new Set(results.map(r => r.registrationNumber));
-  const availableRegistrations = approvedRegistrations.filter(r => !existingRegNumbers.has(r.id));
+  const existingResultKeys = new Set(results.map(r => `${r.examId}:${r.studentId}`));
+  const availableRegistrations = approvedRegistrations.filter(r => !existingResultKeys.has(`${r.examId}:${r.studentId}`));
 
   const filtered = examFilter ? results.filter(r => r.examId === examFilter) : results;
 
@@ -74,6 +92,7 @@ export default function InstitutionResultsPage() {
     { header: isBn ? "শতাংশ" : "%", key: 'percentage' },
     { header: isBn ? "গ্রেড" : "Grade", key: 'grade' },
     { header: isBn ? "অবস্থান" : "Position", key: 'position' },
+    { header: isBn ? "বৃত্তি" : "Scholarship", key: 'scholarship' },
     { header: isBn ? "প্রকাশিত" : "Published", key: 'published' },
   ];
 
@@ -84,6 +103,7 @@ export default function InstitutionResultsPage() {
     percentage: `${r.percentage.toFixed(1)}%`,
     grade: r.grade,
     position: `#${r.position}`,
+    scholarship: r.scholarshipStatus,
     published: r.status === "PUBLISHED" ? (isBn ? "হ্যাঁ" : "Yes") : (isBn ? "না" : "No"),
   }));
 
@@ -98,7 +118,6 @@ export default function InstitutionResultsPage() {
   const handleCreate = () => {
     setEditingResult(null);
     setSelectedRegistration("");
-    setSelectedExamId("");
     setMarksInput({});
     setShowModal(true);
     setMenuOpenId(null);
@@ -106,8 +125,7 @@ export default function InstitutionResultsPage() {
 
   const handleEdit = (r: Result) => {
     setEditingResult(r);
-    setSelectedRegistration(r.registrationNumber);
-    setSelectedExamId(r.examId);
+    setSelectedRegistration(registrations.find(item => item.studentId === r.studentId && item.examId === r.examId)?.id || "");
     const marksRec: Record<string, string> = {};
     r.subjectMarks.forEach(s => { marksRec[s.subjectId] = String(s.marks); });
     setMarksInput(marksRec);
@@ -119,7 +137,6 @@ export default function InstitutionResultsPage() {
     await deleteResultMutation.mutateAsync(r.id);
     toast("success", isBn ? "ফলাফল মুছে ফেলা হয়েছে" : "Result deleted");
     setShowDeleteConfirm(null);
-    setRefreshKey(k => k + 1);
   };
 
   const handleTogglePublish = async (r: Result) => {
@@ -129,7 +146,6 @@ export default function InstitutionResultsPage() {
       ? (newStatus === "PUBLISHED" ? "ফলাফল প্রকাশিত হয়েছে" : "ফলাফল খসড়ায় ফেরানো হয়েছে")
       : (newStatus === "PUBLISHED" ? "Result published" : "Result moved to draft")
     );
-    setRefreshKey(k => k + 1);
   };
 
   const handlePublishAll = async () => {
@@ -146,86 +162,104 @@ export default function InstitutionResultsPage() {
       await updateResultMutation.mutateAsync({ id: r.id, data: { status: "PUBLISHED" } });
     }
     toast("success", isBn ? `${unpublished.length}টি ফলাফল প্রকাশিত হয়েছে` : `${unpublished.length} results published`);
-    setRefreshKey(k => k + 1);
   };
 
   const handleSave = async () => {
-    if (editingResult) {
-      const exam = exams.find(e => e.id === editingResult.examId);
-      if (!exam) return;
-      let totalM = 0;
-      let totalFull = 0;
-      const subjectMarks = exam.subjects.map((subj: ExamSubject) => {
-        const m = parseFloat(marksInput[subj.id] || "0") || 0;
-        totalM += m;
-        totalFull += subj.fullMarks;
-        return { subjectId: subj.id, subjectName: subj.name, marks: m, fullMarks: subj.fullMarks };
-      });
-      const pct = totalFull > 0 ? Math.round((totalM / totalFull) * 1000) / 10 : 0;
-      await updateResultMutation.mutateAsync({
-        id: editingResult.id,
-        data: {
-          subjectMarks,
-          totalMarks: totalM,
-          totalFullMarks: totalFull,
-          percentage: pct,
-          grade: calculateGrade(pct),
-          pass: pct >= 33,
-          scholarshipStatus: getScholarshipCategory(pct),
-        },
-      });
-      toast("success", isBn ? "ফলাফল আপডেট হয়েছে" : "Result updated");
-    } else {
-      if (!selectedRegistration) {
-        toast("error", isBn ? "নিবন্ধন নির্বাচন করুন" : "Please select a registration");
+    try {
+      const exam = editingResult
+        ? exams.find((item) => item.id === editingResult.examId)
+        : selectedRegistration
+          ? exams.find((item) => item.id === registrations.find((item) => item.id === selectedRegistration)?.examId)
+          : null;
+      if (!exam || !selectedExamSetup) {
+        toast("error", isBn ? "পরীক্ষার সেটআপ পাওয়া যায়নি" : "Exam setup is unavailable");
         return;
       }
-      const reg = registrations.find(r => r.id === selectedRegistration);
-      if (!reg) return;
-      const exam = exams.find(e => e.id === reg.examId);
-      if (!exam) return;
-      let totalM = 0;
-      let totalFull = 0;
-      const subjectMarks = exam.subjects.map((subj: ExamSubject) => {
-        const m = parseFloat(marksInput[subj.id] || "0") || 0;
-        totalM += m;
-        totalFull += subj.fullMarks;
-        return { subjectId: subj.id, subjectName: subj.name, marks: m, fullMarks: subj.fullMarks };
-      });
-      const pct = totalFull > 0 ? Math.round((totalM / totalFull) * 1000) / 10 : 0;
-      const student = students.find(s => s.id === reg.studentId);
-      await createResultMutation.mutateAsync({
-        sessionId: currentSession?.id || '',
-        studentId: reg.studentId,
-        studentName: reg.studentName,
-        institutionId: inst!.id,
-        institutionName: inst!.name,
-        examId: reg.examId,
-        examName: reg.examName,
-        className: reg.className,
-        roll: student?.examRoll || "",
-        registrationNumber: reg.registrationNumber,
-        subjectMarks,
-        totalMarks: totalM,
-        totalFullMarks: totalFull,
-        percentage: pct,
-        grade: calculateGrade(pct),
-        position: 0,
-        pass: isPass(pct),
-        scholarshipStatus: getScholarshipCategory(pct),
-        status: "DRAFT",
-      });
-      toast("success", isBn ? "ফলাফল যোগ হয়েছে" : "Result created");
-    }
-    setShowModal(false);
-    setRefreshKey(k => k + 1);
-  };
+      if (modalSubjects.length === 0) {
+        toast("error", isBn ? "এই শ্রেণীর কোনো বিষয় নেই" : "No subjects apply to this class");
+        return;
+      }
 
-  const selectedExamForModal = editingResult
-    ? exams.find(e => e.id === editingResult.examId)
-    : selectedRegistration
-      ? exams.find(e => e.id === registrations.find(r => r.id === selectedRegistration)?.examId)
-      : null;
+      let totalMarks = 0;
+      let totalFullMarks = 0;
+      const subjectMarks = modalSubjects.map((subject) => {
+        const rawMark = (marksInput[subject.id] || "").trim();
+        const mark = Number(rawMark);
+        const hasTwoDecimals = Math.abs(mark * 100 - Math.round(mark * 100)) < 1e-7;
+        if (!rawMark || !Number.isFinite(mark) || !hasTwoDecimals) {
+          throw new Error(isBn
+            ? `${subject.name}-এর জন্য সর্বোচ্চ দুই দশমিকের নম্বন দিন`
+            : `Enter a mark with at most two decimal places for ${subject.name}`);
+        }
+        if (mark < 0 || mark > subject.fullMarks) {
+          throw new Error(isBn
+            ? `${subject.name}-এর নম্বর 0 থেকে ${subject.fullMarks}-এর মধ্যে হতে হবে`
+            : `${subject.name} must be between 0 and ${subject.fullMarks}`);
+        }
+        totalMarks += mark;
+        totalFullMarks += subject.fullMarks;
+        return { subjectId: subject.id, subjectName: subject.name, marks: mark, fullMarks: subject.fullMarks };
+      });
+      const calculatedPercentage = totalFullMarks > 0 ? (totalMarks / totalFullMarks) * 100 : 0;
+      const percentage = Math.round(calculatedPercentage * 10) / 10;
+
+      if (editingResult) {
+        await updateResultMutation.mutateAsync({
+          id: editingResult.id,
+          data: {
+            subjectMarks,
+            totalMarks,
+            totalFullMarks,
+            percentage,
+            grade: calculateGradeForSetup(calculatedPercentage, selectedExamSetup.gradeBands),
+            pass: calculatePassForSetup(calculatedPercentage, selectedExamSetup.passPercent),
+            scholarshipStatus: calculateScholarshipForSetup(calculatedPercentage, selectedExamSetup.scholarshipCategories),
+            markSetupVersion: selectedExamSetup.version,
+          },
+        });
+        toast("success", isBn ? "ফলাফল আপডেট হয়েছে" : "Result updated");
+      } else {
+        if (!selectedRegistration) {
+          toast("error", isBn ? "নিবন্ধন নির্বাচন করুন" : "Please select a registration");
+          return;
+        }
+        const registration = registrations.find((item) => item.id === selectedRegistration);
+        if (!registration) return;
+        const student = students.find((item) => item.id === registration.studentId);
+        const position = 1 + results.filter((item) => (
+          item.examId === exam.id
+          && item.className === registration.className
+          && item.totalMarks > totalMarks
+        )).length;
+        await createResultMutation.mutateAsync({
+          sessionId: currentSession?.id || '',
+          studentId: registration.studentId,
+          studentName: registration.studentName,
+          institutionId: inst!.id,
+          institutionName: inst!.name,
+          examId: registration.examId,
+          examName: registration.examName,
+          className: registration.className,
+          roll: student?.examRoll || "",
+          registrationNumber: registration.registrationNumber,
+          subjectMarks,
+          totalMarks,
+          totalFullMarks,
+          percentage,
+          grade: calculateGradeForSetup(calculatedPercentage, selectedExamSetup.gradeBands),
+          position,
+          pass: calculatePassForSetup(calculatedPercentage, selectedExamSetup.passPercent),
+          scholarshipStatus: calculateScholarshipForSetup(calculatedPercentage, selectedExamSetup.scholarshipCategories),
+          status: "DRAFT",
+          markSetupVersion: selectedExamSetup.version,
+        });
+        toast("success", isBn ? "ফলাফল যোগ হয়েছে" : "Result created");
+      }
+      setShowModal(false);
+    } catch (error) {
+      toast("error", error instanceof Error ? error.message : isBn ? "ফলাফল সংরক্ষণ ব্যর্থ" : "Could not save result");
+    }
+  };
 
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
@@ -300,7 +334,11 @@ export default function InstitutionResultsPage() {
               <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({filtered.length})</span>
             </div>
           </div>
-          {filtered.length === 0 ? (
+          {resultsError ? (
+            <div className="flex flex-col items-center justify-center py-16 text-sm text-red-600 dark:text-red-400">
+              {resultsError.message}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? "bg-white/[0.08]" : "bg-zinc-100"}`}>
                 <Award className={`h-7 w-7 ${iconColor}`} />
@@ -321,6 +359,7 @@ export default function InstitutionResultsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "শতাংশ" : "%"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "গ্রেড" : "Grade"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "অবস্থান" : "Position"}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "বৃত্তি" : "Scholarship"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "প্রকাশিত" : "Published"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}></TableHead>
                 </TableRow>
@@ -355,6 +394,7 @@ export default function InstitutionResultsPage() {
                         #{result.position}
                       </span>
                     </TableCell>
+                    <TableCell><Badge status={result.scholarshipStatus}>{result.scholarshipStatus}</Badge></TableCell>
                     <TableCell>
                       <Badge status={result.status === "PUBLISHED" ? "APPROVED" : "PENDING"} />
                     </TableCell>
@@ -391,8 +431,6 @@ export default function InstitutionResultsPage() {
                 value={selectedRegistration}
                 onChange={(e) => {
                   setSelectedRegistration(e.target.value);
-                  const reg = registrations.find(r => r.id === e.target.value);
-                  if (reg) setSelectedExamId(reg.examId);
                   setMarksInput({});
                 }}
                 className={inputCls}
@@ -405,8 +443,11 @@ export default function InstitutionResultsPage() {
 
           {selectedExamForModal && (
             <div className="space-y-3">
-              <p className={`text-[11px] font-medium ${labelCls}`}>{isBn ? "বিষয় অনুযায়ী নম্বর" : "Marks by Subject"}</p>
-              {selectedExamForModal.subjects.map((subj: ExamSubject) => (
+              <p className={`text-[11px] font-medium ${labelCls}`}>
+                {isBn ? "বিষয় অনুযায়ী নম্বর" : "Marks by Subject"}
+                {selectedExamSetup ? ` · ${isBn ? "সেটআপ" : "Setup"} v${selectedExamSetup.version}` : ""}
+              </p>
+              {modalSubjects.map((subj) => (
                 <div key={subj.id} className="flex items-center gap-3">
                   <span className={`text-[11px] flex-1 ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>{subj.name}</span>
                   <span className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{subj.fullMarks}</span>
@@ -414,6 +455,7 @@ export default function InstitutionResultsPage() {
                     type="number"
                     min={0}
                     max={subj.fullMarks}
+                    step={0.01}
                     value={marksInput[subj.id] || ""}
                     onChange={(e) => setMarksInput({ ...marksInput, [subj.id]: e.target.value })}
                     className={cn("w-20 text-center text-[12px]", inputCls)}

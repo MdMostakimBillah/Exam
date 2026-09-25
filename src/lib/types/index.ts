@@ -152,6 +152,46 @@ export interface ExamSubject {
   negativeMarks: number;
 }
 
+export interface MarkGradeBand {
+  id: string;
+  grade: string;
+  minPercent: number;
+  maxPercent: number;
+}
+
+export interface ScholarshipCategoryRange {
+  id: string;
+  name: string;
+  minPercent: number;
+  maxPercent: number;
+}
+
+export interface ExamMarkSetup {
+  examId: string;
+  subjects: ExamSubject[];
+  gradeBands: MarkGradeBand[];
+  scholarshipCategories: ScholarshipCategoryRange[];
+  passPercent: number;
+  version: number;
+  updatedBy?: string | null;
+  createdAt?: string;
+  updatedAt: string;
+}
+
+export interface ExamMarkSetupInput {
+  examId: string;
+  subjects: ExamSubject[];
+  gradeBands: MarkGradeBand[];
+  scholarshipCategories: ScholarshipCategoryRange[];
+  passPercent: number;
+}
+
+export interface ExamMarkSetupSaveResult {
+  version: number;
+  updatedAt: string;
+  setup: ExamMarkSetup;
+}
+
 export interface Registration {
   id: string;
   sessionId: string;
@@ -218,6 +258,49 @@ export interface Mark {
   updatedAt: string;
 }
 
+export interface MarksSheetPageRow {
+  registrationId: string;
+  studentId: string;
+  studentName: string;
+  institutionId: string;
+  institutionName: string;
+  registrationNumber: string;
+  className: string;
+  examRoll: string | null;
+  mark: number | null;
+  fullMarks: number;
+  subjectName: string;
+}
+
+export interface MarksSheetPage {
+  rows: MarksSheetPageRow[];
+  page: number;
+  pageSize: number;
+  totalMatching: number;
+  totalPages: number;
+  totalCandidates: number;
+  summary: {
+    totalCandidates: number;
+    institutionsRepresented: number;
+    enteredCount: number;
+    missingCount: number;
+  };
+}
+
+export interface MarksSaveRejection {
+  registrationId: string | null;
+  subjectId: string | null;
+  reason: string;
+}
+
+export interface MarksSaveResult {
+  saved: number;
+  updated: number;
+  savedRows: { registrationId: string; subjectId: string; marks: number }[];
+  updatedRows: { registrationId: string; subjectId: string; marks: number }[];
+  rejected: MarksSaveRejection[];
+}
+
 export interface Result {
   id: string;
   sessionId: string;
@@ -237,8 +320,9 @@ export interface Result {
   grade: string;
   position: number;
   pass: boolean;
-  scholarshipStatus: 'TALENT_POOL' | 'GENERAL' | 'NOT_ELIGIBLE' | 'PENDING';
+  scholarshipStatus: string;
   status: ResultStatus;
+  markSetupVersion: number | null;
   createdAt: string;
   updatedAt: string;
 }

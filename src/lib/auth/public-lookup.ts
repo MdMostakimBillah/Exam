@@ -23,7 +23,7 @@ const supabaseAdmin = createClient(
 );
 
 const RESULT_COLUMNS =
-  "id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,subject_marks,created_at,updated_at";
+  "id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,subject_marks,created_at,updated_at";
 
 const CERTIFICATE_COLUMNS =
   "id,session_id,certificate_number,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,position,total_marks,exam_year,issue_date,result_id,qr_code,status,created_at,updated_at";
@@ -83,8 +83,11 @@ function mapResult(data: Record<string, unknown>): Result {
     grade: (data.grade as string) ?? "",
     position: Number(data.position ?? 0),
     pass: Boolean(data.pass),
-    scholarshipStatus: (data.scholarship_status as Result["scholarshipStatus"]) ?? "NONE",
+    scholarshipStatus: (data.scholarship_status as Result["scholarshipStatus"]) ?? "PENDING",
     status: (data.status as Result["status"]) ?? "PUBLISHED",
+    markSetupVersion: data.mark_setup_version === null || data.mark_setup_version === undefined
+      ? null
+      : Number(data.mark_setup_version),
     createdAt: data.created_at as string,
     updatedAt: data.updated_at as string,
   };
@@ -156,6 +159,7 @@ export async function searchPublicResults(input: {
     const exact = await supabaseAdmin
       .from("results")
       .select(RESULT_COLUMNS)
+      .eq("status", "PUBLISHED")
       .eq("registration_number", reg)
       .limit(10);
     rows = (exact.data as Record<string, unknown>[]) || [];
@@ -166,6 +170,7 @@ export async function searchPublicResults(input: {
       const loose = await supabaseAdmin
         .from("results")
         .select(RESULT_COLUMNS)
+        .eq("status", "PUBLISHED")
         .ilike("registration_number", escaped)
         .limit(10);
       rows = (loose.data as Record<string, unknown>[]) || [];

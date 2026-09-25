@@ -12,12 +12,19 @@ const TabsContext = React.createContext<TabsContextValue>({ activeTab: '', setAc
 
 interface TabsProps {
   defaultValue: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
   children: React.ReactNode;
   className?: string;
 }
 
-function Tabs({ defaultValue, children, className }: TabsProps) {
-  const [activeTab, setActiveTab] = React.useState(defaultValue);
+function Tabs({ defaultValue, value, onValueChange, children, className }: TabsProps) {
+  const [internalTab, setInternalTab] = React.useState(defaultValue);
+  const activeTab = value ?? internalTab;
+  const setActiveTab = (tab: string) => {
+    if (value === undefined) setInternalTab(tab);
+    onValueChange?.(tab);
+  };
   return (
     <TabsContext.Provider value={{ activeTab, setActiveTab }}>
       <div className={className}>{children}</div>
@@ -29,7 +36,7 @@ function TabsList({ children, className }: { children: React.ReactNode; classNam
   const { theme } = useTheme();
   const isDark = theme === "dark";
   return (
-    <div className={cn('flex border-b -mb-px', isDark ? 'border-white/[0.04]' : 'border-zinc-200', className)}>
+    <div role="tablist" className={cn('flex border-b -mb-px', isDark ? 'border-white/[0.04]' : 'border-zinc-200', className)}>
       {children}
     </div>
   );
@@ -41,6 +48,26 @@ function TabsTrigger({ value, children, className }: { value: string; children: 
   const isDark = theme === "dark";
   return (
     <button
+      type="button"
+      role="tab"
+      id={`tab-${value}`}
+      aria-controls={`tabpanel-${value}`}
+      aria-selected={activeTab === value}
+      tabIndex={activeTab === value ? 0 : -1}
+      onKeyDown={(event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const tabs = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') || []);
+        if (tabs.length === 0) return;
+        const currentIndex = tabs.indexOf(event.currentTarget);
+        const nextIndex = event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? tabs.length - 1
+            : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[nextIndex]?.focus();
+        tabs[nextIndex]?.click();
+      }}
       onClick={() => setActiveTab(value)}
       className={cn(
         'px-5 py-3 text-sm font-medium transition-all duration-200 border-b-2 -mb-px relative',
@@ -58,10 +85,21 @@ function TabsTrigger({ value, children, className }: { value: string; children: 
   );
 }
 
-function TabsContent({ value, children, className }: { value: string; children: React.ReactNode; className?: string }) {
+function TabsContent({ value, children, className, keepMounted = false }: { value: string; children: React.ReactNode; className?: string; keepMounted?: boolean }) {
   const { activeTab } = React.useContext(TabsContext);
-  if (activeTab !== value) return null;
-  return <div className={cn('py-5 animate-fadeIn', className)}>{children}</div>;
+  const active = activeTab === value;
+  if (!active && !keepMounted) return null;
+  return (
+    <div
+      role="tabpanel"
+      id={`tabpanel-${value}`}
+      aria-labelledby={`tab-${value}`}
+      hidden={!active}
+      className={cn('py-5 animate-fadeIn', className)}
+    >
+      {children}
+    </div>
+  );
 }
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
