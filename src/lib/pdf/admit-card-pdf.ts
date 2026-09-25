@@ -44,6 +44,11 @@ function timestamp(): string {
  *  A4 landscape page, drawn at true size centered on the page. */
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
+  // Ensure web fonts (Inter, Tiro Bangla, Kalpurush) are loaded before raster — otherwise
+  // html2canvas falls back to a local font and PDF differs from preview.
+  if (typeof document !== "undefined" && (document as any).fonts?.ready) {
+    try { await (document as any).fonts.ready; } catch {}
+  }
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
   const PX_TO_MM = 25.4 / 96;
   const PAGE_W = 297;
@@ -58,6 +63,7 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
       useCORS: true,
       allowTaint: false,
       backgroundColor: "#ffffff",
+      logging: false,
     });
     const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
     if (i > 0) pdf.addPage();

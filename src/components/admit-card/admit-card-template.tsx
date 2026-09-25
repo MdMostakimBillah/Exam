@@ -113,8 +113,8 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%) rotate(-30deg)",
-          zIndex: -1,
-          opacity: 0.07,
+          zIndex: 0,
+          opacity: 0.06,
           pointerEvents: "none",
           userSelect: "none",
           lineHeight: 0,
@@ -138,8 +138,8 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%) rotate(-30deg)",
-        zIndex: -1,
-        opacity: 0.07,
+        zIndex: 0,
+        opacity: 0.06,
         textAlign: "center",
         pointerEvents: "none",
         whiteSpace: "nowrap",
@@ -228,6 +228,8 @@ function SubjectHalf({
           borderLeft: divider ? BORDER : undefined,
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
         }}
       >
         {subject.code}
@@ -238,11 +240,13 @@ function SubjectHalf({
           minWidth: 0,
           boxSizing: "border-box",
           padding: "8px 14px",
-          fontSize: "13.5px",
+          fontSize: "13px",
           color: SLATE_700,
           wordBreak: "break-word",
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
           flexWrap: "wrap",
           gap: "2px 8px",
         }}
@@ -328,6 +332,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       {/* ── Header: theme-color full-bleed bar ───────────────────── */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           background: accentHex,
           color: "#ffffff",
           display: "flex",
@@ -337,20 +343,20 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           padding: "22px 36px 20px 36px",
         }}
       >
-        {/* Left: logo circle + institution + code·session */}
+        {/* Left: Association logo + BMA title (main) + Institution (sub) + code·session */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "14px",
+            gap: "12px",
             minWidth: 0,
-            maxWidth: "56%",
+            maxWidth: "62%",
           }}
         >
           <div
             style={{
-              width: "46px",
-              height: "46px",
+              width: "48px",
+              height: "48px",
               borderRadius: "50%",
               flexShrink: 0,
               display: "flex",
@@ -358,44 +364,56 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               justifyContent: "center",
               overflow: "hidden",
               boxSizing: "border-box",
-              background: view.institutionLogo ? "#ffffff" : "rgba(255,255,255,0.12)",
-              border: view.institutionLogo
-                ? undefined
-                : "1px solid rgba(255,255,255,0.35)",
+              background: brand.brandLogo ? "#ffffff" : "rgba(255,255,255,0.14)",
+              border: brand.brandLogo ? undefined : "1px solid rgba(255,255,255,0.35)",
             }}
           >
-            {view.institutionLogo ? (
+            {brand.brandLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={view.institutionLogo}
+                src={brand.brandLogo}
                 alt=""
                 crossOrigin="anonymous"
                 style={{
                   width: "100%",
                   height: "100%",
                   objectFit: "contain",
-                  padding: "4px",
+                  padding: "5px",
                   boxSizing: "border-box",
                 }}
               />
             ) : (
               <span
                 style={{
-                  fontSize: "20px",
-                  fontWeight: 700,
+                  fontSize: "18px",
+                  fontWeight: 800,
                   textTransform: "uppercase",
+                  letterSpacing: "0.5px",
                 }}
               >
-                {(view.institutionName || "?").trim().charAt(0)}
+                {(brand.brandShort || "BMA").trim().slice(0, 3)}
               </span>
             )}
           </div>
           <div style={{ minWidth: 0 }}>
             <div
               style={{
-                fontSize: "17px",
-                fontWeight: 700,
+                fontSize: "16.5px",
+                fontWeight: 800,
+                lineHeight: 1.15,
+                letterSpacing: "0.2px",
+                wordBreak: "break-word",
+              }}
+            >
+              {L(brand.brandName || "Bangladesh Madrasah Association", brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন")}
+            </div>
+            <div
+              style={{
+                fontSize: "12.5px",
+                fontWeight: 600,
+                color: "#e2e8f0",
                 lineHeight: 1.2,
+                marginTop: "2px",
                 wordBreak: "break-word",
               }}
             >
@@ -403,9 +421,9 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             </div>
             <div
               style={{
-                fontSize: "11px",
+                fontSize: "10.5px",
                 color: "#cbd5e1",
-                marginTop: "3px",
+                marginTop: "2px",
                 wordBreak: "break-word",
               }}
             >
@@ -442,27 +460,33 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         </div>
       </div>
 
-      {/* ── Ribbon: "Admit Card", light band, accent text ────────── */}
+      {/* ── Ribbon: "Admit Card" — flex-centered so PDF raster matches preview */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           background: "#f8fafc",
           borderBottom: BORDER,
-          textAlign: "center",
-          padding: "8px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "32px",
           fontSize: "14px",
           fontWeight: 700,
           letterSpacing: "0.08em",
+          lineHeight: 1,
           color: accentHex,
+          textAlign: "center",
         }}
       >
         {L("Admit Card", "প্রবেশপত্র")}
       </div>
 
       {/* ── Body: photo + badge | big name + 2-col fields ────────── */}
-      <div style={{ display: "flex", gap: "28px", padding: "24px 36px 0" }}>
+      <div style={{ display: "flex", gap: "28px", padding: "24px 36px 0", position: "relative", zIndex: 1 }}>
         <div
           style={{
-            width: "120px",
+            width: "128px",
             flexShrink: 0,
             display: "flex",
             flexDirection: "column",
@@ -472,9 +496,9 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         >
           <div
             style={{
-              width: "112px",
-              height: "140px",
-              borderRadius: "6px",
+              width: "124px",
+              height: "156px",
+              borderRadius: "8px",
               border: BORDER,
               background: "#f1f5f9",
               display: "flex",
@@ -482,6 +506,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               justifyContent: "center",
               overflow: "hidden",
               boxSizing: "border-box",
+              position: "relative",
             }}
           >
             {view.photo ? (
@@ -490,7 +515,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 src={view.photo}
                 alt={L("Photo", "ছবি")}
                 crossOrigin="anonymous"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }}
               />
             ) : (
               <span style={{ fontSize: "12px", color: SLATE_400 }}>
@@ -571,7 +596,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Subjects: label + bordered zebra table ───────────────── */}
-      <div style={{ padding: "20px 36px 0" }}>
+      <div style={{ padding: "20px 36px 0", position: "relative", zIndex: 1 }}>
         <div
           style={{
             fontSize: "12px",
@@ -614,7 +639,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 style={{
                   display: "flex",
                   boxSizing: "border-box",
-                  minHeight: "34px",
+                  minHeight: "36px",
                   background: i % 2 === 1 ? "#f8fafc" : "#ffffff",
                   borderTop: i > 0 ? BORDER : undefined,
                 }}
@@ -641,6 +666,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       {/* ── Footer stub: QR + scan/ID | controller ────────────────── */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-end",
@@ -718,6 +745,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       {/* ── Bottom notice strip ───────────────────────────────────── */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           background: "#f8fafc",
           borderTop: BORDER,
           textAlign: "center",
