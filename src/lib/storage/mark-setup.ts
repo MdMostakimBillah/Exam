@@ -151,6 +151,7 @@ function validateRanges(
 export function validateExamMarkSetup(
   input: ExamMarkSetupInput,
   examClassIds: string[] = [],
+  validateSubjects = true,
 ): MarkSetupValidation {
   const setup = normalizeExamMarkSetup(input);
   const errors: string[] = [];
@@ -160,9 +161,10 @@ export function validateExamMarkSetup(
   let passPercentError: string | undefined;
 
   if (!setup.examId) errors.push("Select an exam");
-  if (setup.subjects.length === 0) errors.push("Configure at least one subject");
+  if (validateSubjects) {
+    if (setup.subjects.length === 0) errors.push("Configure at least one subject");
 
-  const seenSubjectIds = new Set<string>();
+    const seenSubjectIds = new Set<string>();
   setup.subjects.forEach((subject, index) => {
     const key = subject.id || `subject_${index}`;
     const subjectMessages: string[] = [];
@@ -214,6 +216,7 @@ export function validateExamMarkSetup(
     if (!setup.subjects.some((subject) => !subject.classId || subject.classId === classId)) {
       errors.push(`Configure at least one subject for every exam class (${classId})`);
     }
+  }
   }
 
   if (setup.gradeBands.length === 0) {
@@ -371,15 +374,15 @@ export async function fetchExamMarkSetup(examId: string): Promise<ExamMarkSetup>
 export async function saveExamMarkSetup(
   input: ExamMarkSetupInput,
   examClassIds: string[] = [],
+  validateSubjects = true,
 ): Promise<ExamMarkSetupSaveResult> {
   const normalized = normalizeExamMarkSetup(input);
-  const validation = validateExamMarkSetup(normalized, examClassIds);
+  const validation = validateExamMarkSetup(normalized, examClassIds, validateSubjects);
   if (!validation.valid) throw new Error(validation.errors[0] || "Invalid mark setup");
 
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("save_exam_mark_setup", {
+  const { data, error } = await supabase.rpc("save_exam_grade_scale", {
     p_exam_id: normalized.examId,
-    p_subjects: normalized.subjects,
     p_grade_bands: normalized.gradeBands,
     p_scholarship_categories: normalized.scholarshipCategories,
     p_pass_percent: normalized.passPercent,
@@ -414,8 +417,8 @@ export function useExamMarkSetup(examId: string) {
 export function useSaveExamMarkSetup() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ input, examClassIds }: { input: ExamMarkSetupInput; examClassIds: string[] }) =>
-      saveExamMarkSetup(input, examClassIds),
+    mutationFn: ({ input, examClassIds, validateSubjects = true }: { input: ExamMarkSetupInput; examClassIds: string[]; validateSubjects?: boolean }) =>
+      saveExamMarkSetup(input, examClassIds, validateSubjects),
     onSuccess: (result) => {
       queryClient.setQueryData(["exam-mark-setup", result.setup.examId], result.setup);
       queryClient.invalidateQueries({ queryKey: ["exam-mark-setup", result.setup.examId] });

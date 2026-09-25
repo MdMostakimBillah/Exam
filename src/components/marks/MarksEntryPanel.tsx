@@ -142,8 +142,8 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   }, [allClasses, exam]);
 
   const subjects = useMemo(
-    () => (setup?.subjects || []).filter((subject) => !subject.classId || subject.classId === classId),
-    [classId, setup],
+    () => (exam?.subjects || setup?.subjects || []).filter((subject) => !subject.classId || subject.classId === classId),
+    [classId, exam, setup],
   );
   const selectedSubject = useMemo(
     () => subjects.find((subject) => subject.id === subjectId),
@@ -175,17 +175,17 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   }, [classId, examId, fullMarks, subjectId]);
 
   useEffect(() => {
-    if (!setup || setup.examId !== examId) return;
-    if (!classId && setup.subjects.length > 0) {
+    if (!exam || exam.id !== examId) return;
+    if (!classId && exam.subjects.length > 0) {
       const firstClass = classEntries[0]?.id;
       if (firstClass) setClassId(firstClass);
       return;
     }
     if (classId && !subjectId) {
-      const available = setup.subjects.filter((subject) => !subject.classId || subject.classId === classId);
+      const available = exam.subjects.filter((subject) => !subject.classId || subject.classId === classId);
       if (available[0]) setSubjectId(available[0].id);
     }
-  }, [classEntries, classId, examId, setup, subjectId]);
+  }, [classEntries, classId, exam, examId, subjectId]);
 
   useEffect(() => {
     setCells((current) => {
