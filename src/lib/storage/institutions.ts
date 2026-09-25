@@ -7,6 +7,17 @@ const SUPABASE_TABLE = 'institutions';
 
 const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,total_students,total_applications,created_at,updated_at';
 
+/**
+ * Same list without migration 0022's column. PostgREST rejects an unknown
+ * column in the WHOLE select, so while 0022 is still pending every read
+ * (and any profile save) would fail — retry once with this list instead so
+ * the app keeps working until the SQL has been applied.
+ */
+const LEGACY_INSTITUTION_COLUMNS = INSTITUTION_COLUMNS.replace(',principal_signature_url', '');
+
+const isPreMigrationError = (error: unknown): boolean =>
+  /principal_signature_url/.test(String((error as { message?: string })?.message ?? ''));
+
 const INSTITUTIONS_STALE_TIME = 5 * 60 * 1000;
 
 function mapInstitution(data: any): Institution {
@@ -57,26 +68,38 @@ export async function uploadPrincipalSignature(slug: string, file: File): Promis
 }
 
 export async function fetchInstitutions(): Promise<Institution[]> {
-  const { data, error } = await createClient().from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).order('created_at', { ascending: false });
+  const supabase = createClient();
+  let { data, error } = await supabase.from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).order('created_at', { ascending: false });
+  if (error && isPreMigrationError(error)) {
+    ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).order('created_at', { ascending: false }));
+  }
   if (error || !data) return [];
   return data.map(mapInstitution);
 }
 
 export async function fetchInstitutionById(id: string): Promise<Institution | undefined> {
-  const { data, error } = await createClient().from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).eq('id', id).single();
+  const supabase = createClient();
+  let { data, error } = await supabase.from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).eq('id', id).single();
+  if (error && isPreMigrationError(error)) {
+    ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).eq('id', id).single());
+  }
   if (error || !data) return undefined;
   return mapInstitution(data);
 }
 
 export async function fetchInstitutionBySlug(slug: string): Promise<Institution | undefined> {
-  const { data, error } = await createClient().from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).eq('slug', slug).single();
+  const supabase = createClient();
+  let { data, error } = await supabase.from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).eq('slug', slug).single();
+  if (error && isPreMigrationError(error)) {
+    ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).eq('slug', slug).single());
+  }
   if (error || !data) return undefined;
   return mapInstitution(data);
 }
 
 export async function createInstitution(data: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>): Promise<Institution> {
   const supabase = createClient();
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).insert({
+  const payload = {
     name: data.name,
     name_en: data.nameEn ?? null,
     code: data.code,
@@ -91,7 +114,12 @@ export async function createInstitution(data: Omit<Institution, 'id' | 'createdA
     admin_user_id: data.adminUserId,
     status: data.status,
     logo_url: data.logo,
-  }).select(INSTITUTION_COLUMNS).single();
+  };
+  let { data: result, error } = await supabase.from(SUPABASE_TABLE).insert(payload).select(INSTITUTION_COLUMNS).single();
+  if (error && isPreMigrationError(error)) {
+    // Invalid RETURNING list rolls the whole statement back — safe to retry.
+    ({ data: result, error } = await supabase.from(SUPABASE_TABLE).insert(payload).select('*').single());
+  }
   if (error) throw error;
   return mapInstitution(result);
 }
@@ -114,7 +142,13 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   if (data.status !== undefined) u.status = data.status;
   if (data.logo !== undefined) u.logo_url = data.logo;
   if (data.principalSignature !== undefined) u.principal_signature_url = data.principalSignature;
-  const { data: result, error } = await createClient().from(SUPABASE_TABLE).update(u).eq('id', id).select(INSTITUTION_COLUMNS).single();
+  let { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(INSTITUTION_COLUMNS).single();
+  if (error && isPreMigrationError(error)) {
+    // 0022 not applied yet: drop the new column and retry (the failed
+    // statement changed nothing, so this is not a partial save).
+    delete u.principal_signature_url;
+    ({ data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(LEGACY_INSTITUTION_COLUMNS).single());
+  }
   if (error) return undefined;
   return mapInstitution(result);
 }
