@@ -46,8 +46,6 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION public.handle_new_user() OWNER TO postgres;
-
 -- The old check constraint rejected 'student' (so the student portal could
 -- never create an account) while happily accepting 'super_admin'.
 -- Rebuild it against the real, intended role set.
@@ -110,14 +108,6 @@ BEGIN
   IF NEW.institution_id IS DISTINCT FROM OLD.institution_id THEN
     RAISE EXCEPTION 'profile institution cannot be changed by this account'
       USING ERRCODE = '42501';
-  END IF;
-
-  IF NEW.email IS DISTINCT FROM OLD.email
-     AND EXISTS (
-       SELECT 1 FROM public.profiles p
-       WHERE lower(p.email) = lower(NEW.email) AND p.id <> NEW.id
-     ) THEN
-    RAISE EXCEPTION 'email already in use' USING ERRCODE = '23505';
   END IF;
 
   RETURN NEW;
@@ -381,7 +371,7 @@ COMMIT;
 -- Verification (run manually afterwards):
 --   * signup with data.role='super_admin'  -> profile.role = institution_admin
 --   * PATCH own profile role               -> 42501
---   * INSERT into institutions as anon     -> rejected unless registration_open
---   * REST read of results/certificates as anon -> 0 rows
+--   * INSERT into institutions as anon     -> permission denied
+--   * REST read of students/results/certificates as anon -> 0 rows
 --   * rpc record_login_attempt as anon     -> function not found
 -- ============================================================
