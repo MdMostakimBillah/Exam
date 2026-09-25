@@ -7,7 +7,7 @@ import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import { EducationIllustration } from "@/components/ui/education-illustration";
-import { Building2, Users, FileText, Award, CreditCard, BarChart3, ArrowRight, BookOpen, ClipboardList, Sun, Moon, Globe, Check, Star } from "lucide-react";
+import { Building2, Users, FileText, Award, CreditCard, BarChart3, ArrowRight, BookOpen, ClipboardList, Sun, Moon, Globe, Check, Star, Menu, X } from "lucide-react";
 
 function useScrollReveal(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -51,9 +51,6 @@ export default function HomePage() {
     }
   }, [user, router]);
 
-  const glassBg = isDark 
-    ? "bg-white/5 backdrop-blur-xl border border-white/10" 
-    : "bg-white/80 backdrop-blur-xl border border-zinc-200";
   const glassCard = isDark 
     ? "bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08]" 
     : "bg-white border border-zinc-200 shadow-sm shadow-zinc-200/50";
@@ -66,6 +63,34 @@ export default function HomePage() {
     ? "border border-white/10 text-zinc-300 hover:bg-white/5 hover:border-white/20" 
     : "border border-zinc-300 text-zinc-700 hover:bg-zinc-100";
   const iconBtn = isDark ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/5" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100";
+
+  // Floating glass pill nav — compact on every width, drawer replaces the
+  // link row below lg so nothing wraps or overflows on a phone.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const pillShell = isDark
+    ? "bg-white/[0.07] backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_-14px_rgba(0,0,0,0.6)]"
+    : "bg-white/70 backdrop-blur-2xl border border-white/60 shadow-[0_12px_40px_-16px_rgba(0,0,0,0.35)]";
+  const mobileLink = isDark
+    ? "text-zinc-300 hover:text-white hover:bg-white/[0.06]"
+    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-900/[0.04]";
+
+  // The drawer has no scrim (it's anchored to the pill), so close it on
+  // Escape and on any click/scroll target outside the header.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const close = () => setMobileNavOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onClick = (e: MouseEvent) => {
+      const nav = document.querySelector("[data-pill-nav]");
+      if (nav && !nav.contains(e.target as Node)) close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("click", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("click", onClick);
+    };
+  }, [mobileNavOpen]);
 
   const features = [
     { icon: Building2, title: t("features.institution"), desc: t("features.institutionDesc") },
@@ -133,6 +158,14 @@ export default function HomePage() {
         }
         .animate-fade-in {
           animation: fadeIn 1s ease-out forwards;
+        }
+        @keyframes navIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        /* Fast drop-in for the pill's mobile drawer — a 1s fade feels laggy */
+        .animate-nav-in {
+          animation: navIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-float {
           animation: float 6s ease-in-out infinite;
@@ -211,40 +244,67 @@ export default function HomePage() {
         }
       `}</style>
 
-      {/* Header */}
-      <header className={`fixed top-0 left-0 right-0 z-50 ${glassBg}`}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
+      {/* Header — centered floating glass pill */}
+      <header data-pill-nav className="fixed top-3 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-24px)] sm:w-[calc(100%-48px)] max-w-6xl">
+        <div className={`flex items-center gap-2 rounded-full px-2 py-2 ${pillShell}`}>
+          <Link href="/" className="flex items-center gap-2.5 pl-1.5 pr-1 shrink-0 min-w-0">
             {b.brandLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={b.brandLogo}
                 alt={brandName}
-                className={`w-9 h-9 rounded-md object-contain bg-white/90 ring-1 ${isDark ? "ring-white/15" : "ring-zinc-200"}`}
+                className={`w-9 h-9 shrink-0 rounded-full object-contain bg-white/90 ring-1 ${isDark ? "ring-white/15" : "ring-zinc-200"}`}
               />
             ) : (
-              <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
+              <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
             )}
-            <span className={`text-sm font-semibold ${text}`}>{brandName}</span>
+            <span className={`text-sm font-semibold truncate max-w-[30vw] sm:max-w-[240px] ${text}`}>{brandName}</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className={`text-sm transition-colors ${textNav}`}>{t("nav.features")}</a>
-            <a href="#platform" className={`text-sm transition-colors ${textNav}`}>{t("nav.platform")}</a>
-            <a href="#workflow" className={`text-sm transition-colors ${textNav}`}>{t("nav.workflow")}</a>
+
+          <nav className="hidden xl:flex items-center gap-6 2xl:gap-7 mx-auto px-4">
+            <a href="#features" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.features")}</a>
+            <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.platform")}</a>
+            <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.workflow")}</a>
             <Link href="/result" className={`text-sm transition-colors ${textNav}`}>{t("nav.results")}</Link>
             <Link href="/verify-certificate" className={`text-sm transition-colors ${textNav}`}>{t("nav.verify")}</Link>
           </nav>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setLang(lang === "en" ? "bn" : "en")} className={`p-2.5 rounded-md transition-all ${iconBtn}`}>
+
+          <div className="flex items-center gap-1 sm:gap-1.5 ml-auto xl:ml-0 shrink-0">
+            <button onClick={() => setLang(lang === "en" ? "bn" : "en")} className={`p-2 sm:p-2.5 rounded-full transition-all ${iconBtn}`} aria-label="Toggle language">
               <Globe className="w-4 h-4" />
             </button>
-            <button onClick={toggleTheme} className={`p-2.5 rounded-md transition-all ${iconBtn}`}>
+            <button onClick={toggleTheme} className={`p-2 sm:p-2.5 rounded-full transition-all ${iconBtn}`} aria-label="Toggle theme">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <Link href="/login" className={`text-sm px-4 py-2 rounded-md transition-all ${textNav}`}>{t("nav.signIn")}</Link>
-            <Link href="/register" className={`text-sm px-5 py-2.5 rounded-md font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
+            <Link href="/login" className={`hidden lg:inline-flex text-sm px-4 py-2 rounded-full transition-all ${textNav}`}>{t("nav.signIn")}</Link>
+            <Link href="/register" className={`hidden xl:inline-flex text-sm px-5 py-2.5 rounded-full font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
+            <button
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileNavOpen}
+              className={`xl:hidden p-2 sm:p-2.5 rounded-full transition-all ${mobileNavOpen ? (isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white") : iconBtn}`}
+            >
+              {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
           </div>
         </div>
+
+        {/* Below xl the link row would crowd the pill — same glass, drops down instead */}
+        {mobileNavOpen && (
+          <div className={`xl:hidden mt-2 rounded-3xl border p-3 backdrop-blur-2xl shadow-2xl animate-nav-in ${isDark ? "bg-[#0d0d0f]/95 border-white/10" : "bg-white/90 border-white/60"}`}>
+            <div className="flex flex-col">
+              <a href="#features" onClick={() => setMobileNavOpen(false)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.features")}</a>
+              <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.platform")}</a>
+              <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.workflow")}</a>
+              <Link href="/result" className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.results")}</Link>
+              <Link href="/verify-certificate" className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.verify")}</Link>
+            </div>
+            <div className={`mt-2 pt-3 border-t flex flex-col gap-2 ${isDark ? "border-white/10" : "border-zinc-200"}`}>
+              <Link href="/login" className={`text-center text-sm px-4 py-3 rounded-full font-medium transition-all ${btnSecondary}`}>{t("nav.signIn")}</Link>
+              <Link href="/register" className={`text-center text-sm px-4 py-3 rounded-full font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
@@ -254,7 +314,7 @@ export default function HomePage() {
         <div className={`absolute bottom-1/4 right-0 w-[400px] h-[400px] rounded-full blur-[100px] ${isDark ? "bg-purple-500/10" : "bg-purple-500/5"}`} />
         
         <div className="max-w-7xl mx-auto w-full relative">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
             <div className="space-y-8 animate-fade-in-up opacity-0">
               <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs ${glassCard}`}>
                 <span className="relative flex h-2 w-2">
@@ -486,7 +546,7 @@ export default function HomePage() {
       {/* CTA */}
       <section className="py-24 sm:py-32 px-6">
         <div className={`max-w-7xl mx-auto ${ctaReveal.className}`} ref={ctaReveal.ref}>
-          <div className={`rounded-3xl p-12 sm:p-16 text-center ${glassCard} relative overflow-hidden`}>
+          <div className={`rounded-3xl p-8 sm:p-16 text-center ${glassCard} relative overflow-hidden`}>
             <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] ${isDark ? "bg-blue-500/10" : "bg-blue-500/5"}`} />
             <div className={`absolute bottom-0 right-0 w-[200px] h-[200px] rounded-full blur-[80px] ${isDark ? "bg-purple-500/10" : "bg-purple-500/5"}`} />
             <div className="relative z-10">
@@ -503,7 +563,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className={`py-16 px-6 ${isDark ? "bg-white/5 border-t border-white/[0.06]" : "bg-white border-t border-zinc-200"}`}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-10 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-5">
                 {b.brandLogo ? (

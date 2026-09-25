@@ -76,8 +76,9 @@ function StatCard({
           <Icon className="h-5 w-5 text-brand-accent" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{value}</p>
-          <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{label}</p>
+          {/* truncate keeps a long currency figure from widening the card on a phone */}
+          <p className={`text-base sm:text-lg font-bold tracking-tight leading-tight truncate ${isDark ? "text-white" : "text-zinc-900"}`}>{value}</p>
+          <p className={`text-[11px] truncate ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{label}</p>
         </div>
       </div>
     </Link>
@@ -88,12 +89,12 @@ function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   const sk = isDark ? "bg-white/[0.05]" : "bg-zinc-200/70";
   return (
     <div className="animate-pulse">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={`t${i}`} className={`h-[66px] rounded-md ${sk}`} />
         ))}
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={`a${i}`} className={`h-[66px] rounded-md ${sk}`} />
         ))}
@@ -233,7 +234,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <LoadingBar isLoading={!!isLoading} />
-      <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
+      <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header — simple; the session lives in the topbar selector */}
         <div className="mb-8">
           <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -259,24 +260,24 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
         ) : (
           <>
             {/* Today — Asia/Dhaka day, recomputed against the live lists */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {todayCards.map((s) => (
                 <StatCard key={s.label} {...s} isDark={isDark} />
               ))}
             </div>
 
             {/* Overview — lifetime totals */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {overviewCards.map((s) => (
                 <StatCard key={s.label} {...s} isDark={isDark} />
               ))}
             </div>
 
             {/* Actionable queues */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
               {/* Pending registrations */}
               <div className={card}>
-                <div className={`p-5 border-b flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <div className={`p-4 sm:p-5 border-b flex flex-wrap items-center justify-between gap-2 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
                   <div className="flex items-center gap-2">
                     <ClipboardList className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
                     <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -322,7 +323,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
 
               {/* Payments awaiting review */}
               <div className={card}>
-                <div className={`p-5 border-b flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                <div className={`p-4 sm:p-5 border-b flex flex-wrap items-center justify-between gap-2 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
                   <div className="flex items-center gap-2">
                     <Wallet className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
                     <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -370,7 +371,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
             </div>
 
             {/* Recent Institutions + Graph */}
-            <div className="grid grid-cols-12 gap-6">
+            <div className="grid grid-cols-12 gap-4 sm:gap-6">
               {/* Recent Institutions */}
               <div className="col-span-12 lg:col-span-7">
                 <div className={`${card}`}>

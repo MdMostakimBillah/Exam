@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { cn, getInitials } from "@/lib/utils/helpers";
-import { Search, Bell, ChevronDown, Command, Sun, Moon, Settings, LogOut, Calendar, Check } from "lucide-react";
+import { Search, Bell, ChevronDown, Command, Sun, Moon, Settings, LogOut, Calendar, Check, Menu } from "lucide-react";
 import { Avatar } from "../ui/avatar";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "../ui/dropdown-menu";
 import { useAuth, logout } from "@/lib/auth/auth";
@@ -18,9 +18,11 @@ import { useInstitutionBySlug } from "@/lib/storage/institutions";
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
+  /** Opens the mobile drawer (hamburger, lg:hidden only). */
+  onMenu?: () => void;
 }
 
-const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
+const Topbar = React.memo(function Topbar({ sidebarCollapsed, onMenu }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -126,16 +128,29 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
 
   return (
     <header className={cn(
-      'fixed top-0 right-0 z-30 h-16 flex items-center justify-between px-6 transition-all duration-200',
+      'fixed top-0 z-30 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 transition-all duration-200',
       isDark
         ? 'bg-[#0D0D0D] border-b border-white/[0.04]'
         : 'bg-white border-b border-gray-200/50',
-      'left-[240px]'
+      'left-0 right-0 lg:left-[240px]'
     )}>
-      {/* Search */}
-      <div className="flex items-center gap-4">
+      {/* Left side */}
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        {/* Drawer toggle — mobile/tablet only */}
+        <button
+          onClick={onMenu}
+          type="button"
+          aria-label="Open menu"
+          className={cn(
+            'lg:hidden shrink-0 -ml-1 p-2 rounded-md transition-colors',
+            isDark ? 'text-zinc-400 hover:text-white hover:bg-white/[0.06]' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+          )}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        {/* Search — full control from sm up, icon-only below (fits 320px) */}
         <button className={cn(
-          'flex items-center gap-3 rounded-md border px-4 py-2 text-sm transition-all duration-200',
+          'hidden sm:flex items-center gap-3 rounded-md border px-4 py-2 text-sm transition-all duration-200 shrink-0',
           isDark 
             ? 'border-white/[0.06] bg-white/[0.02] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.1]' 
             : 'border-gray-200/50 bg-gray-50/80 text-gray-500 hover:text-gray-900 hover:bg-gray-100 hover:border-gray-300'
@@ -149,12 +164,23 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
             <Command className="h-3 w-3" />K
           </kbd>
         </button>
+        <button
+          type="button"
+          aria-label={isBn ? 'অনুসন্ধান' : 'Search'}
+          className={cn(
+            'sm:hidden shrink-0 p-2 rounded-md transition-colors',
+            isDark ? 'text-zinc-400 hover:text-white hover:bg-white/[0.06]' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+          )}
+        >
+          <Search className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-2">
-        {/* Session Switcher */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* Session Switcher — hidden on phones so the topbar can't overflow */}
         {currentSession && (
+          <div className="hidden md:block">
           <DropdownMenu
             align="right"
             trigger={
@@ -223,6 +249,7 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
               </>
             )}
           </DropdownMenu>
+          </div>
         )}
 
         <DropdownMenu
@@ -342,7 +369,8 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
                 ) : (
                   <Avatar name={displayName} size="sm" />
                 )}
-                <div className="flex flex-col items-start">
+                {/* Name/role take too much room below sm — avatar only there */}
+                <div className="hidden sm:flex flex-col items-start">
                   <span className={cn(
                     'text-sm font-medium',
                     isDark ? 'text-white' : 'text-gray-900'
@@ -352,7 +380,7 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
                     isDark ? 'text-zinc-500' : 'text-gray-500'
                   )}>{user.role.replace('_', ' ')}</span>
                 </div>
-                <ChevronDown className={cn('h-4 w-4', isDark ? 'text-zinc-500' : 'text-gray-400')} />
+                <ChevronDown className={cn('h-4 w-4 shrink-0', isDark ? 'text-zinc-500' : 'text-gray-400')} />
               </button>
             }
           >

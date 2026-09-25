@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Building2, Users, FileText, Award,
   CreditCard, BarChart3, Bell, Settings,
   ClipboardList, FileCheck, School, BookOpen,
-  CalendarDays, GraduationCap, LogOut, ChevronRight, BookMarked, Hash
+  CalendarDays, GraduationCap, LogOut, ChevronRight, BookMarked, Hash, X
 } from "lucide-react";
 import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
@@ -17,6 +17,10 @@ import { useInstitutionBySlug } from "@/lib/storage/institutions";
 interface SidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
+  /** Below lg the sidebar is a drawer — true slides it in over the content. */
+  mobileOpen?: boolean;
+  /** Closes the drawer (hamburger toggle / scrim click / link navigation). */
+  onClose?: () => void;
 }
 
 interface NavItem {
@@ -46,7 +50,7 @@ const superAdminNav: NavItem[] = [
   { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: '/super-admin/settings' },
 ];
 
-const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme } = useTheme();
@@ -90,7 +94,12 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
 
   const navItems = user?.role === 'SUPER_ADMIN' ? superAdminNav : institutionNav;
 
+  // Desktop can collapse the rail to icons; the mobile drawer must always
+  // show labels and stay 240px wide regardless of that flag.
+  const showLabels = !collapsed || mobileOpen;
+
   const handleLogout = async () => {
+    onClose?.();
     await logout();
     router.push('/login');
   };
@@ -98,9 +107,25 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
   return (
     <aside className={cn(
       'fixed left-0 top-0 z-40 h-screen flex flex-col',
-      'transition-all duration-200',
-      collapsed ? 'w-[72px]' : 'w-[240px]'
+      'transition-transform duration-200 ease-out',
+      collapsed && !mobileOpen ? 'w-[72px]' : 'w-[240px]',
+      isDark ? 'bg-[#0D0D0D]' : 'bg-white',
+      mobileOpen ? 'translate-x-0 shadow-2xl shadow-black/40' : '-translate-x-full',
+      'lg:translate-x-0 lg:shadow-none'
     )}>
+      {/* Close — drawer only (lg:hidden); desktop collapses via onToggle */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          aria-label="Close menu"
+          className={cn(
+            'lg:hidden absolute top-4 right-2.5 z-10 p-2 rounded-md transition-colors',
+            isDark ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+          )}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
       {/* Logo */}
       <div className={cn(
         'flex items-center border-b shrink-0',
@@ -108,7 +133,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
       )}>
         <div className={cn(
           'flex items-center',
-          collapsed ? 'h-16 px-4 justify-center w-full' : 'h-16 px-5'
+          showLabels ? 'h-16 px-5 pr-9 lg:pr-5' : 'h-16 px-4 pr-9 lg:pr-4 justify-center w-full'
         )}>
           <div className="flex items-center gap-3">
             {brand.brandLogo ? (
@@ -129,7 +154,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
                 {brand.brandShort}
               </div>
             )}
-            {!collapsed && (
+            {showLabels && (
               <div className="min-w-0">
                 <span className={cn(
                   'block truncate text-sm font-semibold tracking-tight',
@@ -160,7 +185,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
           return (
             <button
               key={item.href}
-              onClick={() => router.push(item.href)}
+              onClick={() => { router.push(item.href); onClose?.(); }}
               className={cn(
                 'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200',
                 isActive
@@ -171,10 +196,10 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
               )}
             >
               <item.icon className="h-[18px] w-[18px] shrink-0" />
-              {!collapsed && (
+              {showLabels && (
                 <span className="flex-1 text-left">{isBn ? item.labelBn : item.label}</span>
               )}
-              {isActive && !collapsed && (
+              {isActive && showLabels && (
                 <ChevronRight className={cn(
                   'h-3.5 w-3.5 text-brand-accent-fg opacity-50'
                 )} />
@@ -185,7 +210,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle }: Sid
       </nav>
 
       {/* User & Logout */}
-      {user && !collapsed && (
+      {user && showLabels && (
         <div className={cn(
           'border-t p-3 shrink-0',
           isDark ? 'bg-[#0D0D0D] border-white/[0.04]' : 'bg-white border-gray-200/50'

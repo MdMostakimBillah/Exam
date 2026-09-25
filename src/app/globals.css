@@ -20,6 +20,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* Belt-and-braces: nothing may ever produce a horizontal scrollbar on a
+     phone. `clip` (not `hidden`) avoids creating a scroll container, so
+     position:fixed headers and the sidebar drawer keep working. */
+  overflow-x: clip;
 }
 
 body {
