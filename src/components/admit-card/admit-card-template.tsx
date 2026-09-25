@@ -251,12 +251,15 @@ function SubjectHalf({
           wordBreak: "break-word",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
+          // Subject sits left and takes the available width; date/time is
+          // pinned to the right edge of the cell (marginLeft, not gap —
+          // html2canvas 1.4.1 does not lay out flex gap).
+          justifyContent: "space-between",
+          textAlign: "left",
           height: "100%",
         }}
       >
-        <span style={{ textAlign: "center" }}>{subject.name}</span>
+        <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>{subject.name}</span>
         {when ? (
           <span
             style={{
