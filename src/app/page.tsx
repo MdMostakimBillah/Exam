@@ -64,12 +64,14 @@ export default function HomePage() {
     : "border border-zinc-300 text-zinc-700 hover:bg-zinc-100";
   const iconBtn = isDark ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/5" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100";
 
-  // Floating glass pill nav — compact on every width, drawer replaces the
-  // link row below lg so nothing wraps or overflows on a phone.
+  // Floating glass nav — same `rounded-md` corners as every other card, but
+  // with a real glassmorphism treatment: translucent gradient body, heavy
+  // backdrop blur + saturation boost, hairline border and an inner top
+  // highlight so it reads as glass over the hero instead of a flat white bar.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const pillShell = isDark
-    ? "bg-white/[0.07] backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_-14px_rgba(0,0,0,0.6)]"
-    : "bg-white/70 backdrop-blur-2xl border border-white/60 shadow-[0_12px_40px_-16px_rgba(0,0,0,0.35)]";
+    ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06] backdrop-blur-2xl backdrop-saturate-150 border border-white/[0.14] ring-1 ring-inset ring-white/[0.06] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]"
+    : "bg-gradient-to-b from-white/90 via-white/80 to-white/70 backdrop-blur-2xl backdrop-saturate-150 border border-white/70 ring-1 ring-inset ring-black/[0.04] shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]";
   const mobileLink = isDark
     ? "text-zinc-300 hover:text-white hover:bg-white/[0.06]"
     : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-900/[0.04]";
@@ -244,9 +246,9 @@ export default function HomePage() {
         }
       `}</style>
 
-      {/* Header — centered floating glass pill */}
+      {/* Header — centered floating glass bar */}
       <header data-pill-nav className="fixed top-3 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-24px)] sm:w-[calc(100%-48px)] max-w-6xl">
-        <div className={`flex items-center gap-2 rounded-full px-2 py-2 ${pillShell}`}>
+        <div className={`flex items-center gap-2 rounded-md px-2 py-2 ${pillShell}`}>
           <Link href="/" className="flex items-center gap-2.5 pl-1.5 pr-1 shrink-0 min-w-0">
             {b.brandLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -289,15 +291,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Below xl the link row would crowd the pill — same glass, drops down instead */}
+        {/* Below xl the link row would crowd the bar — same glass, drops down instead */}
         {mobileNavOpen && (
-          <div className={`xl:hidden mt-2 rounded-3xl border p-3 backdrop-blur-2xl shadow-2xl animate-nav-in ${isDark ? "bg-[#0d0d0f]/95 border-white/10" : "bg-white/90 border-white/60"}`}>
+          <div className={`xl:hidden mt-2 rounded-md border p-3 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)] animate-nav-in ${isDark ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06] border-white/[0.14] ring-1 ring-inset ring-white/[0.06]" : "bg-gradient-to-b from-white/90 via-white/80 to-white/70 border-white/70 ring-1 ring-inset ring-black/[0.04]"}`}>
             <div className="flex flex-col">
-              <a href="#features" onClick={() => setMobileNavOpen(false)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.features")}</a>
-              <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.platform")}</a>
-              <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.workflow")}</a>
-              <Link href="/result" className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.results")}</Link>
-              <Link href="/verify-certificate" className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.verify")}</Link>
+              <a href="#features" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.features")}</a>
+              <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.platform")}</a>
+              <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.workflow")}</a>
+              <Link href="/result" className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.results")}</Link>
+              <Link href="/verify-certificate" className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.verify")}</Link>
             </div>
             <div className={`mt-2 pt-3 border-t flex flex-col gap-2 ${isDark ? "border-white/10" : "border-zinc-200"}`}>
               <Link href="/login" className={`text-center text-sm px-4 py-3 rounded-full font-medium transition-all ${btnSecondary}`}>{t("nav.signIn")}</Link>
