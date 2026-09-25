@@ -232,6 +232,37 @@ export function useInstitutionStudentCounts(sessionId?: string) {
   });
 }
 
+/**
+ * Per-class student counts (class name -> count) for ONE session, computed
+ * directly from the students table so the Classes table's "Students" column
+ * is live rather than derived from a counter nothing updates. A session with
+ * no students yields an empty map, so every class shows 0.
+ * Refetches every 30s and on window focus — same cadence as
+ * useInstitutionStudentCounts so both tables stay in sync without reloads.
+ */
+export function useClassStudentCounts(sessionId?: string) {
+  return useQuery<Record<string, number>>({
+    queryKey: ['students', 'counts', 'by-class', sessionId],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from(SUPABASE_TABLE)
+        .select('class')
+        .eq('session_id', sessionId!);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data || []) {
+        if (row.class) counts[row.class] = (counts[row.class] || 0) + 1;
+      }
+      return counts;
+    },
+    enabled: !!sessionId,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
+  });
+}
+
 export function useStudents(sessionId?: string, page?: number, pageSize?: number) {
   return useQuery({
     queryKey: ['students', sessionId, page, pageSize],

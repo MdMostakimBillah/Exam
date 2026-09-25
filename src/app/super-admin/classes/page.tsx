@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useClasses, useCreateClass, useUpdateClass, useDeleteClass } from "@/lib/storage/classes";
+import { useClassStudentCounts } from "@/lib/storage/students";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { Class } from "@/lib/types";
 import { BookMarked, Plus, Search, Edit, Trash2, CheckCircle, XCircle, FileDown } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -31,6 +33,12 @@ export default function ClassesPage() {
   useEffect(() => { setMounted(true); }, []);
 
   const { data: allClasses = [] } = useClasses();
+  const { data: currentSession } = useCurrentSession();
+  const { data: classStudentCounts, isSuccess: countsLoaded } = useClassStudentCounts(currentSession?.id);
+  // Registered students for a class, keyed on students.class === class.name.
+  // A dash while the counts query is still in flight, never a misleading 0.
+  const studentCount = (cls: Class) =>
+    countsLoaded ? (classStudentCounts?.[cls.name] ?? 0) : null;
   const createClassMutation = useCreateClass();
   const updateClassMutation = useUpdateClass();
   const deleteClassMutation = useDeleteClass();
@@ -46,6 +54,7 @@ export default function ClassesPage() {
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'নাম' : 'Name', key: 'name' },
     { header: isBn ? 'কোড' : 'Code', key: 'code' },
+    { header: isBn ? 'শিক্ষার্থী' : 'Students', key: 'students' },
     { header: isBn ? 'স্ট্যাটাস' : 'Status', key: 'status' },
   ], [isBn]);
 
@@ -54,8 +63,9 @@ export default function ClassesPage() {
     .map((cls) => ({
       name: cls.name,
       code: cls.code,
+      students: countsLoaded ? (classStudentCounts?.[cls.name] ?? 0) : 0,
       status: cls.isActive ? (isBn ? 'সক্রিয়' : 'Active') : (isBn ? 'নিষ্ক্রিয়' : 'Inactive'),
-    })), [filtered, selection, isBn]);
+    })), [filtered, selection, isBn, classStudentCounts, countsLoaded]);
 
   if (!mounted) return <ClassesSkeleton isDark={isDark} />;
 
@@ -184,6 +194,7 @@ export default function ClassesPage() {
                   </TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নাম' : 'Name'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Students'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider text-right ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্য' : 'Actions'}</TableHead>
                 </TableRow>
@@ -203,6 +214,11 @@ export default function ClassesPage() {
                       </div>
                     </TableCell>
                     <TableCell className={`text-[11px] font-mono text-center ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{cls.code}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded text-[11px] font-semibold ${isDark ? 'bg-white/[0.06] text-zinc-300' : 'bg-zinc-100 text-zinc-700'}`}>
+                        {studentCount(cls) ?? '–'}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-center">
                       <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${cls.isActive ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-zinc-400' : 'text-zinc-500')}`}>
                         {cls.isActive ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
