@@ -329,8 +329,8 @@ export default function AdmitCardsPage() {
     if (!preview) return;
     const el = previewBodyRef.current;
     if (!el) return;
-    const CARD_W = 794; // spec: fixed 794px A4 at 96 DPI (1:1 preview/PDF)
-    const CARD_H = 559; // 794 * 210/297 landscape height, keeps aspect
+    const CARD_W = 1122.5; // 297mm in CSS px (landscape width)
+    const CARD_H = 793.7; // 210mm in CSS px (landscape height, content-driven)
     const compute = () => {
       const availW = el.clientWidth - 32;
       const availH = el.clientHeight - 32;
@@ -800,13 +800,12 @@ export default function AdmitCardsPage() {
               >
                 <div
                   style={{
-                    width: `calc(794px * ${previewScale})`,
-                    height: `calc(559px * ${previewScale})`,
+                    width: `calc(297mm * ${previewScale})`,
+                    height: `calc(210mm * ${previewScale})`,
                     overflow: "hidden",
                     boxShadow: "0 6px 30px rgba(0,0,0,.35)",
                     background: "#fff",
                     flexShrink: 0,
-                    boxSizing: "border-box",
                   }}
                 >
                   <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>

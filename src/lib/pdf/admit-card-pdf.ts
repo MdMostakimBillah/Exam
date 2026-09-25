@@ -18,12 +18,12 @@ import { jsPDF } from "jspdf";
  *   does not affect the PDF
  */
 
-const PX_PER_MM = 96 / 25.4; // fixed 96 DPI per spec (794px = A4 width)
+const PX_PER_MM = 96 / 25.4;
 const PAGE_W_MM = 297;
 const PAGE_H_MM = 210;
-const PAGE_W_PX = 794; // spec: fixed container 794px (A4 at 96 DPI) — 1:1 preview/PDF
-const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 794 for portrait; 559 for landscape height at 794px width
-const CAPTURE_SCALE = 2; // spec: { useCORS: true, scale: 2, logging: false }
+const PAGE_W_PX = Math.round(PAGE_W_MM * PX_PER_MM); // 1123
+const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 794
+const CAPTURE_SCALE = 2.5; // ~300dpi sharp, bounded memory
 
 async function waitForFonts(): Promise<void> {
   if (typeof document === "undefined" || !(document as any).fonts) return;
@@ -72,6 +72,63 @@ export async function waitForImages(roots: Array<ParentNode>): Promise<void> {
     ),
     new Promise<void>((res) => setTimeout(res, 15000)),
   ]);
+}
+
+/**
+ * Ensure student photos render pixel-identical in PDF by center-cropping
+ * to the exact container size (124×156) before capture. html2canvas's
+ * object-fit:cover has subtle DPI/scale differences vs the browser;
+ * a pre-cropped data URL guarantees the PDF photo matches the preview.
+ */
+async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
+  const PHOTO_W = 124;
+  const PHOTO_H = 156;
+  const imgs = Array.from(root.querySelectorAll('img[alt="Photo"], img[alt="ছবি"]')) as HTMLImageElement[];
+  for (const img of imgs) {
+    const src = img.getAttribute("src") || img.src;
+    if (!src || src.startsWith("data:")) continue;
+    // Only process the student photo container (124×156), not logo/QR/watermark
+    const rect = img.getBoundingClientRect();
+    // Skip tiny icons and QR (64px) and logos (48px)
+    if (rect.width < 80 || rect.height < 80) continue;
+    try {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      await new Promise<void>((res, rej) => {
+        image.onload = () => res();
+        image.onerror = () => rej(new Error("load"));
+        image.src = src;
+      });
+      // Center-crop to container aspect (124:156)
+      const targetAspect = PHOTO_W / PHOTO_H;
+      const srcAspect = image.naturalWidth / image.naturalHeight;
+      let sw = image.naturalWidth, sh = image.naturalHeight, sx = 0, sy = 0;
+      if (srcAspect > targetAspect) {
+        sw = sh * targetAspect;
+        sx = (image.naturalWidth - sw) / 2;
+      } else {
+        sh = sw / targetAspect;
+        sy = (image.naturalHeight - sh) / 2;
+      }
+      const canvas = document.createElement("canvas");
+      // Render at 2× for capture scale 2.5 sharpness
+      const hires = 2;
+      canvas.width = PHOTO_W * hires;
+      canvas.height = PHOTO_H * hires;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      const cropped = canvas.toDataURL("image/jpeg", 0.92);
+      if (cropped.length < src.length * 4) img.src = cropped;
+      // Also enforce exact box so html2canvas does not re-stretch
+      img.style.width = "100%";
+      img.style.height = "100%";
+      (img.style as any).objectFit = "cover";
+      (img.style as any).objectPosition = "center top";
+    } catch {}
+  }
+  await waitForImages([root]);
 }
 
 /**
@@ -134,7 +191,8 @@ function timestamp(): string {
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
   await waitForFonts();
-  // Pre-inline images for every card before any canvas work so dimensions are stable
+  // Pre-process photos to exact size, then inline remaining remote images so dimensions are stable
+  for (const el of elements) await prepareStudentPhotos(el);
   for (const el of elements) await inlineRemoteImages(el);
   await waitForImages(elements);
 

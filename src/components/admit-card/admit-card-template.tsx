@@ -82,8 +82,8 @@ export interface CardView {
 }
 
 const rootStyle: React.CSSProperties = {
-  width: "794px",
-  minHeight: "559px", // 794 * 210/297 landscape aspect at 96 DPI, box-sizing border-box
+  width: "297mm",
+  minHeight: "210mm",
   background: "#ffffff",
   color: "#000000",
   fontFamily: FONT,
@@ -125,7 +125,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           src={brand.brandWatermark}
           alt=""
           crossOrigin="anonymous"
-          style={{ width: "480px", height: "480px", objectFit: "contain", display: "block" }}
+          style={{ width: "170mm", height: "auto", display: "block" }}
         />
       </div>
     );
@@ -180,8 +180,10 @@ function formatCardDate(iso: string, bn: boolean): string {
   }
 }
 
-/** One half of a subject row: fixed code column + fluid name column
- *  (reference look — left-aligned, light borders, no table markup). */
+/** One half of a subject row: fixed code column + fluid name column.
+ *  Uses deterministic centering (flex + text-align) that html2canvas
+ *  renders identically to the browser preview — no gap/flexWrap quirks,
+ *  explicit height on the row, inner cells fill row height. */
 function SubjectHalf({
   subject,
   bn,
@@ -201,9 +203,10 @@ function SubjectHalf({
             flexShrink: 0,
             boxSizing: "border-box",
             borderLeft: divider ? BORDER : undefined,
+            height: "100%",
           }}
         />
-        <div style={{ flex: 1, minWidth: 0 }} />
+        <div style={{ flex: 1, minWidth: 0, height: "100%" }} />
       </>
     );
   }
@@ -224,12 +227,14 @@ function SubjectHalf({
           boxSizing: "border-box",
           padding: "8px 14px",
           fontSize: "12px",
+          lineHeight: 1.35,
           color: SLATE_500,
           borderLeft: divider ? BORDER : undefined,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
+          height: "100%",
         }}
       >
         {subject.code}
@@ -241,19 +246,27 @@ function SubjectHalf({
           boxSizing: "border-box",
           padding: "8px 14px",
           fontSize: "13px",
+          lineHeight: 1.4,
           color: SLATE_700,
           wordBreak: "break-word",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          flexWrap: "wrap",
-          gap: "2px 8px",
+          height: "100%",
         }}
       >
-        <span>{subject.name}</span>
+        <span style={{ textAlign: "center" }}>{subject.name}</span>
         {when ? (
-          <span style={{ fontSize: "10px", color: SLATE_500, whiteSpace: "nowrap" }}>
+          <span
+            style={{
+              fontSize: "10px",
+              lineHeight: 1.2,
+              color: SLATE_500,
+              whiteSpace: "nowrap",
+              marginLeft: "8px",
+            }}
+          >
             {when}
           </span>
         ) : null}
@@ -336,12 +349,11 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           zIndex: 1,
           background: accentHex,
           color: "#ffffff",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px",
+          display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
+          gap: "18px",
           padding: "22px 36px 20px 36px",
-          boxSizing: "border-box",
         }}
       >
         {/* Left: Association logo + BMA title (main) + Institution (sub) + code·session */}
@@ -351,7 +363,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             alignItems: "center",
             gap: "12px",
             minWidth: 0,
-            maxWidth: "100%",
+            maxWidth: "62%",
           }}
         >
           <div
@@ -379,7 +391,6 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                   width: "100%",
                   height: "100%",
                   objectFit: "contain",
-                  display: "block",
                   padding: "5px",
                   boxSizing: "border-box",
                 }}
@@ -434,8 +445,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           </div>
         </div>
 
-        {/* Right: exam code (gold) + exam title — grid column 2 */}
-        <div style={{ textAlign: "right", minWidth: 0, boxSizing: "border-box" }}>
+        {/* Right: exam code (gold) + exam title */}
+        <div style={{ textAlign: "right", maxWidth: "42%", minWidth: 0 }}>
           {view.examCode ? (
             <div
               style={{
@@ -640,8 +651,9 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 key={i}
                 style={{
                   display: "flex",
+                  alignItems: "stretch",
                   boxSizing: "border-box",
-                  minHeight: "36px",
+                  minHeight: "38px",
                   background: i % 2 === 1 ? "#f8fafc" : "#ffffff",
                   borderTop: i > 0 ? BORDER : undefined,
                 }}
@@ -670,12 +682,11 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         style={{
           position: "relative",
           zIndex: 1,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px",
-          alignItems: "end",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          gap: "20px",
           padding: "18px 36px 16px",
-          boxSizing: "border-box",
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-end", gap: "14px", minWidth: 0 }}>
@@ -695,7 +706,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 src={view.qrDataUrl}
                 alt="QR"
                 crossOrigin="anonymous"
-                style={{ width: "64px", height: "64px", display: "block", objectFit: "contain" }}
+                style={{ width: "64px", height: "64px", display: "block" }}
               />
             ) : (
               <div
