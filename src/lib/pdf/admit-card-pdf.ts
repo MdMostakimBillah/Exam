@@ -11,7 +11,7 @@ import { jsPDF } from "jspdf";
  *
  * - 297×210mm landscape A4 (exact)
  * - explicit px dimensions at 96dpi + controlled scale
- * - document.fonts.ready before capture
+ * - document.fonts.ready before capture + cloned-doc font injection
  * - all <img> preloaded and remote sources inlined to data URLs to avoid
  *   CORS taint and dimension recalculation
  * - html2canvas width/height/windowWidth locked to card size so viewport
@@ -23,26 +23,25 @@ const PAGE_W_MM = 297;
 const PAGE_H_MM = 210;
 const PAGE_W_PX = Math.round(PAGE_W_MM * PX_PER_MM); // 1123
 const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 794
-const CAPTURE_SCALE = 2.5; // ~300dpi sharp, bounded memory
+const CAPTURE_SCALE = 2; // sharp, bounded memory — 2× at 96dpi = ~192dpi, JPEG keeps size sane
 
-async function waitForFonts(): Promise<void> {
-  if (typeof document === "undefined" || !(document as any).fonts) return;
-  const fonts: FontFaceSet = (document as any).fonts;
+async function waitForFonts(target: Document = document): Promise<void> {
+  const fonts: FontFaceSet | undefined = (target as any).fonts;
+  if (!fonts) return;
   try {
     await fonts.ready;
-    // Explicitly check weights used by the card (Inter 400/600/700, Tiro Bangla, Kalpurush)
     const checks = [
       '700 14px Inter',
       '600 13px Inter',
       '400 11px Inter',
       '400 14px "Tiro Bangla"',
+      '400 14px Kalpurush',
     ];
     await Promise.all(
       checks.map((c) => {
         try { return fonts.load(c); } catch { return Promise.resolve([] as any); }
       })
     );
-    // Small extra tick for @font-face swap (Kalpurush via /fonts/kalpurush.ttf)
     await new Promise<void>((res) => requestAnimationFrame(() => res()));
   } catch {}
 }
@@ -50,7 +49,6 @@ async function waitForFonts(): Promise<void> {
 export async function waitForImages(roots: Array<ParentNode>): Promise<void> {
   const imgs: HTMLImageElement[] = [];
   for (const root of roots) imgs.push(...Array.from(root.querySelectorAll("img")));
-  // Decode (not just load) so dimensions are known before capture
   await Promise.all(
     imgs.map(async (img) => {
       try {
@@ -87,9 +85,7 @@ async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
   for (const img of imgs) {
     const src = img.getAttribute("src") || img.src;
     if (!src || src.startsWith("data:")) continue;
-    // Only process the student photo container (124×156), not logo/QR/watermark
     const rect = img.getBoundingClientRect();
-    // Skip tiny icons and QR (64px) and logos (48px)
     if (rect.width < 80 || rect.height < 80) continue;
     try {
       const image = new Image();
@@ -99,7 +95,6 @@ async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
         image.onerror = () => rej(new Error("load"));
         image.src = src;
       });
-      // Center-crop to container aspect (124:156)
       const targetAspect = PHOTO_W / PHOTO_H;
       const srcAspect = image.naturalWidth / image.naturalHeight;
       let sw = image.naturalWidth, sh = image.naturalHeight, sx = 0, sy = 0;
@@ -111,7 +106,6 @@ async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
         sy = (image.naturalHeight - sh) / 2;
       }
       const canvas = document.createElement("canvas");
-      // Render at 2× for capture scale 2.5 sharpness
       const hires = 2;
       canvas.width = PHOTO_W * hires;
       canvas.height = PHOTO_H * hires;
@@ -121,7 +115,6 @@ async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
       ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       const cropped = canvas.toDataURL("image/jpeg", 0.92);
       if (cropped.length < src.length * 4) img.src = cropped;
-      // Also enforce exact box so html2canvas does not re-stretch
       img.style.width = "100%";
       img.style.height = "100%";
       (img.style as any).objectFit = "cover";
@@ -134,8 +127,7 @@ async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
 /**
  * Inline remote images to data URLs so html2canvas does not hit CORS taint
  * and does not recalculate dimensions. Already-data URLs, blob URLs and
- * same-origin are left untouched. Preserves aspect — size is controlled by
- * the <img> CSS (object-fit), not by rewriting width/height.
+ * same-origin are left untouched.
  */
 async function inlineRemoteImages(root: HTMLElement): Promise<Map<string, string>> {
   const imgs = Array.from(root.querySelectorAll("img")) as HTMLImageElement[];
@@ -145,7 +137,6 @@ async function inlineRemoteImages(root: HTMLElement): Promise<Map<string, string
   for (const img of imgs) {
     const src = img.getAttribute("src") || img.src;
     if (!src || src.startsWith("data:") || src.startsWith("blob:")) continue;
-    // Same-origin check — crossOrigin anonymous still needs ACAO, so inline it to be safe
     try {
       const url = new URL(src, window.location.href);
       if (url.origin === window.location.origin && !src.includes("supabase")) continue;
@@ -187,11 +178,34 @@ function timestamp(): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
+/** Clone font-related styles into the html2canvas cloned document so text metrics match preview. */
+function injectFontsIntoClone(clonedDoc: Document) {
+  // 1) Copy external <link> stylesheets that contain Inter / Tiro Bangla
+  Array.from(document.querySelectorAll('link[rel="stylesheet"]')).forEach((orig) => {
+    const href = (orig as HTMLLinkElement).href;
+    if (!href) return;
+    if (href.includes("fonts.googleapis")) {
+      const link = clonedDoc.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      clonedDoc.head.appendChild(link);
+    }
+  });
+  // 2) Ensure Kalpurush @font-face is present in clone
+  const style = clonedDoc.createElement("style");
+  style.textContent =
+    "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
+    "@page{size:297mm 210mm;margin:0}" +
+    ".admit-card-page{page-break-after:avoid;break-after:avoid}" +
+    // Force html2canvas to respect border-box and avoid viewport scaling quirks
+    "html,body{margin:0;padding:0;background:#fff}";
+  clonedDoc.head.appendChild(style);
+}
+
 /** Capture each element and download a single multi-page PDF — one card per A4 landscape page. */
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
-  await waitForFonts();
-  // Pre-process photos to exact size, then inline remaining remote images so dimensions are stable
+  await waitForFonts(document);
   for (const el of elements) await prepareStudentPhotos(el);
   for (const el of elements) await inlineRemoteImages(el);
   await waitForImages(elements);
@@ -200,12 +214,9 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
 
   for (let i = 0; i < elements.length; i++) {
     const el = elements[i];
-    // Deterministic source rect — lock to the card's A4 pixel box, not viewport
     const widthPx = el.offsetWidth || PAGE_W_PX;
     const heightPx = el.offsetHeight || PAGE_H_PX;
     const heightMm = Math.min(heightPx / PX_PER_MM, PAGE_H_MM);
-    // Vertically center the card on the A4 landscape sheet; header/footer
-    // spacing inside the card is preserved, only the sheet whitespace is centered.
     const y = Math.max((PAGE_H_MM - heightMm) / 2, 0);
 
     const canvas = await html2canvas(el, {
@@ -217,20 +228,15 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
       width: widthPx,
       height: heightPx,
       windowWidth: widthPx,
+      windowHeight: heightPx,
       scrollX: 0,
       scrollY: 0,
       imageTimeout: 15000,
       onclone: (clonedDoc) => {
-        // Ensure the cloned document has the same font stack — html2canvas
-        // clones the DOM but the @font-face for Kalpurush must be present.
-        const style = clonedDoc.createElement("style");
-        style.textContent =
-          "@page{size:297mm 210mm;margin:0}" +
-          ".admit-card-page{page-break-after:avoid;break-after:avoid}";
-        clonedDoc.head.appendChild(style);
+        injectFontsIntoClone(clonedDoc as unknown as Document);
       },
     });
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
     if (i > 0) pdf.addPage([PAGE_W_MM, PAGE_H_MM], "landscape");
     pdf.addImage(dataUrl, "JPEG", 0, y, PAGE_W_MM, heightMm, undefined, "FAST");
   }
@@ -246,7 +252,7 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
   const body = elements.map((el) => el.outerHTML).join("");
   const cardEl = elements[0]?.querySelector(".admit-card-page");
   const lang = cardEl?.getAttribute("lang") || "en";
-  await waitForFonts();
+  await waitForFonts(document);
   win.document.write(
     '<!DOCTYPE html><html lang="' +
       lang +
@@ -254,6 +260,7 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
       "<title>Admit Card</title>" +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Tiro+Bangla&display=swap" />' +
       "<style>" +
+      "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
       "@page{size:297mm 210mm;margin:0}" +
       "html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
       ".admit-card-page{page-break-after:always;break-after:page}" +
@@ -264,17 +271,8 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
       "</body></html>"
   );
   win.document.close();
-  // Ensure Kalpurush @font-face from the opener is available in the new window
-  const link = win.document.createElement("link");
-  link.rel = "preload";
-  link.as = "font";
-  link.href = "/fonts/kalpurush.ttf";
-  link.crossOrigin = "anonymous";
-  win.document.head.appendChild(link);
   await waitForImages([win.document.body]);
-  if ((win.document as any).fonts?.ready) {
-    try { await (win.document as any).fonts.ready; } catch {}
-  }
+  await waitForFonts(win.document);
   win.focus();
   win.print();
 }
