@@ -30,9 +30,14 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
+    // /student/login lives under this layout, so the sign-in Server Action
+    // writes its cookie while this effect is already done running. Re-read
+    // the session on every navigation — otherwise `student` stays null and
+    // the dashboard renders as a blank page after a successful login.
     getStudentSession().then((session) => {
       if (cancelled) return;
       if (!session) {
+        setStudent(null);
         timer = setTimeout(() => router.push("/student/login"), 500);
         return;
       }
@@ -43,10 +48,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [router]);
+  }, [router, pathname]);
 
   const handleLogout = () => {
     clearStudentSession();
+    setStudent(null);
     router.push("/student/login");
   };
 

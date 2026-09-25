@@ -1,13 +1,17 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { User, UserRole } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  refresh: () => Promise<void>;
+  /** Re-reads the session cookie and profile. Resolves to the user that was
+   *  found (or null), so callers that just signed in through a Server Action
+   *  can tell whether the browser can actually see the session yet. */
+  refresh: () => Promise<User | null>;
   hasRole: (role: UserRole) => boolean;
   isAuthenticated: boolean;
 }
@@ -15,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  refresh: async () => {},
+  refresh: async () => null,
   hasRole: () => false,
   isAuthenticated: false,
 });
@@ -28,14 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (): Promise<User | null> => {
     try {
       const supabase = createClient();
       const { data: { user: authUser } } = await supabase.auth.getUser();
 
       if (!authUser) {
         setUser(null);
-        return;
+        return null;
       }
 
       const { data: profile, error } = await supabase
@@ -46,10 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error || !profile) {
         setUser(null);
-        return;
+        return null;
       }
 
-      setUser({
+      const next: User = {
         id: profile.id,
         email: profile.email,
         name: profile.name,
@@ -59,9 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar: profile.avatar,
         createdAt: profile.created_at,
         updatedAt: profile.updated_at,
-      });
+      };
+      setUser(next);
+      return next;
     } catch {
       setUser(null);
+      return null;
     }
   }, []);
 
@@ -86,10 +93,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchUser]);
 
+  // Server Actions (loginWithLockout, loginStudent, ...) write the session
+  // cookie on the server response. The browser Supabase client never hears
+  // about that — no SIGNED_IN event, no storage event — so a sign-in that
+  // happens inside an action leaves this context reporting `user: null`
+  // until something reads the cookie again. Re-read it whenever the route
+  // changes while signed out; signed-in users never pay for the round trip.
+  const pathname = usePathname();
+  const checkedPathRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (loading) return; // the mount fetch is still running
+    if (user) {
+      checkedPathRef.current = pathname;
+      return;
+    }
+    // First pass after the mount fetch: that fetch already covered this route.
+    if (checkedPathRef.current === null) {
+      checkedPathRef.current = pathname;
+      return;
+    }
+    if (checkedPathRef.current === pathname) return; // already re-checked here
+
+    checkedPathRef.current = pathname;
+    void fetchUser();
+  }, [pathname, user, loading, fetchUser]);
+
   const refresh = useCallback(async () => {
     setLoading(true);
-    await fetchUser();
+    const next = await fetchUser();
     setLoading(false);
+    return next;
   }, [fetchUser]);
 
   const hasRole = useCallback(
