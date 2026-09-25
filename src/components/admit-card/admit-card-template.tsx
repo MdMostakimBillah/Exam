@@ -82,8 +82,8 @@ export interface CardView {
 }
 
 const rootStyle: React.CSSProperties = {
-  width: "297mm",
-  minHeight: "210mm",
+  width: "794px",
+  minHeight: "559px", // 794 * 210/297 landscape aspect at 96 DPI, box-sizing border-box
   background: "#ffffff",
   color: "#000000",
   fontFamily: FONT,
@@ -125,7 +125,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           src={brand.brandWatermark}
           alt=""
           crossOrigin="anonymous"
-          style={{ width: "170mm", height: "auto", display: "block" }}
+          style={{ width: "480px", height: "480px", objectFit: "contain", display: "block" }}
         />
       </div>
     );
@@ -336,11 +336,12 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           zIndex: 1,
           background: accentHex,
           color: "#ffffff",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "16px",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: "18px",
           padding: "22px 36px 20px 36px",
+          boxSizing: "border-box",
         }}
       >
         {/* Left: Association logo + BMA title (main) + Institution (sub) + code·session */}
@@ -350,7 +351,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             alignItems: "center",
             gap: "12px",
             minWidth: 0,
-            maxWidth: "62%",
+            maxWidth: "100%",
           }}
         >
           <div
@@ -378,6 +379,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                   width: "100%",
                   height: "100%",
                   objectFit: "contain",
+                  display: "block",
                   padding: "5px",
                   boxSizing: "border-box",
                 }}
@@ -432,8 +434,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           </div>
         </div>
 
-        {/* Right: exam code (gold) + exam title */}
-        <div style={{ textAlign: "right", maxWidth: "42%", minWidth: 0 }}>
+        {/* Right: exam code (gold) + exam title — grid column 2 */}
+        <div style={{ textAlign: "right", minWidth: 0, boxSizing: "border-box" }}>
           {view.examCode ? (
             <div
               style={{
@@ -668,11 +670,12 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         style={{
           position: "relative",
           zIndex: 1,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          gap: "20px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "16px",
+          alignItems: "end",
           padding: "18px 36px 16px",
+          boxSizing: "border-box",
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-end", gap: "14px", minWidth: 0 }}>
@@ -692,7 +695,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 src={view.qrDataUrl}
                 alt="QR"
                 crossOrigin="anonymous"
-                style={{ width: "64px", height: "64px", display: "block" }}
+                style={{ width: "64px", height: "64px", display: "block", objectFit: "contain" }}
               />
             ) : (
               <div

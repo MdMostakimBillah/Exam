@@ -18,12 +18,12 @@ import { jsPDF } from "jspdf";
  *   does not affect the PDF
  */
 
-const PX_PER_MM = 96 / 25.4;
+const PX_PER_MM = 96 / 25.4; // fixed 96 DPI per spec (794px = A4 width)
 const PAGE_W_MM = 297;
 const PAGE_H_MM = 210;
-const PAGE_W_PX = Math.round(PAGE_W_MM * PX_PER_MM); // 1123
-const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 794
-const CAPTURE_SCALE = 2.5; // ~300dpi sharp, bounded memory
+const PAGE_W_PX = 794; // spec: fixed container 794px (A4 at 96 DPI) — 1:1 preview/PDF
+const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 794 for portrait; 559 for landscape height at 794px width
+const CAPTURE_SCALE = 2; // spec: { useCORS: true, scale: 2, logging: false }
 
 async function waitForFonts(): Promise<void> {
   if (typeof document === "undefined" || !(document as any).fonts) return;
