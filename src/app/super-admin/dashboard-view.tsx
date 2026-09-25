@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, Users, FileText, DollarSign, ArrowRight, TrendingUp, GraduationCap,
-  CheckCircle, ClipboardList, Wallet, AlertTriangle, Banknote, CreditCard,
+  CheckCircle, ClipboardList, Wallet, AlertTriangle, CreditCard,
   BadgeCheck, UserPlus, Clock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -106,8 +106,8 @@ function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   return (
     <div className="animate-pulse">
       <div className={`h-4 w-24 rounded-full ${sk} mb-3`} />
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
           <div key={`t${i}`} className={`h-[66px] rounded-md ${sk}`} />
         ))}
       </div>
@@ -173,17 +173,14 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
     const approvedToday = registrations.filter(
       (r) => r.status === "APPROVED" && isToday(r.updatedAt)
     );
-    const instToday = institutions.filter((i) => isToday(i.createdAt));
     return {
-      income: paidToday.reduce((s, p) => s + Number(p.amount || 0), 0),
       due: dueToday.reduce((s, p) => s + Number(p.amount || 0), 0),
       paid: paidToday.length,
       registrations: regToday.length,
       approved: approvedToday.length,
-      institutions: instToday.length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payments, registrations, institutions, dayStartMs]);
+  }, [payments, registrations, dayStartMs]);
 
   // ---- Actionable queues ----
   const pendingRegs = useMemo(() =>
@@ -235,10 +232,8 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
 
   // KPI grids — kept as data so adding a card is a one-line change.
   const todayCards = [
-    { icon: Banknote, label: isBn ? 'আজকের আয়' : "Today's Income", value: formatCurrency(today.income), href: '/super-admin/payments' },
     { icon: CreditCard, label: isBn ? 'আজ পরিশোধিত' : "Today's Paid", value: today.paid, href: '/super-admin/payments' },
     { icon: Clock, label: isBn ? 'আজকের বকেয়া' : "Today's Due", value: formatCurrency(today.due), href: '/super-admin/payments' },
-    { icon: Building2, label: isBn ? 'আজ যোগ হওয়া প্রতিষ্ঠান' : "Today's Institutions", value: today.institutions, href: '/super-admin/institutions' },
     { icon: UserPlus, label: isBn ? 'আজকের নিবন্ধন' : "Today's Registrations", value: today.registrations, href: '/super-admin/registrations' },
     { icon: BadgeCheck, label: isBn ? 'আজ অনুমোদিত' : "Today's Approved", value: today.approved, href: '/super-admin/registrations' },
   ];
@@ -284,7 +279,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
           <>
             {/* Today — Asia/Dhaka day, recomputed against the live lists */}
             <SectionHeading title={isBn ? 'আজকের কার্যক্রম' : 'Today'} isDark={isDark} />
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {todayCards.map((s) => (
                 <StatCard key={s.label} {...s} isDark={isDark} />
               ))}
