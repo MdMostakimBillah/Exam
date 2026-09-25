@@ -22,6 +22,29 @@ interface GeneratePdfOptions {
 const DEFAULT_ACCENT = "#9333ea";
 const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
+/**
+ * Column keys whose values are centred horizontally in exported PDF tables
+ * (SN, codes, phone, class, roll, status…). Everything else — names,
+ * institution, father, mother — stays left-aligned. Shared with the
+ * in-modal HTML preview so preview and downloaded PDF agree.
+ */
+export const PDF_CENTER_KEYS = new Set<string>([
+  "sn",
+  "regNumber",
+  "registrationNumber",
+  "phone",
+  "gender",
+  "class",
+  "roll",
+  "status",
+  "amount",
+  "marks",
+  "score",
+  "gpa",
+  "grade",
+  "total",
+]);
+
 type Rgb = [number, number, number];
 
 function hexToRgb(hex: string): Rgb {
@@ -230,10 +253,22 @@ export async function generatePdf(options: GeneratePdfOptions) {
     ];
   });
 
+  // ── Cell alignment — same formula as the admit-card PDF ───────────────
+  // Every cell centres its content vertically (admit card = flex
+  // alignItems:center). Horizontally: code/short values sit centred,
+  // long text (name, institution, father, mother) stays left-aligned so
+  // rows read cleanly.
   const columnStyles: any = {
-    0: { halign: "center", cellWidth: 10 },
+    0: { halign: "center", cellWidth: 10, valign: "middle" },
   };
-  if (withImage) columnStyles[1] = { halign: "center", cellWidth: 16 };
+  if (withImage) columnStyles[1] = { halign: "center", cellWidth: 16, valign: "middle" };
+  const firstDataCol = withImage ? 2 : 1;
+  columns.forEach((c, i) => {
+    columnStyles[firstDataCol + i] = {
+      halign: PDF_CENTER_KEYS.has(c.key) ? "center" : "left",
+      valign: "middle",
+    };
+  });
 
   autoTable(doc, {
     startY: yPos,
@@ -260,7 +295,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
       fillColor: pal.tintRgb,
     },
     columnStyles,
-    ...(withImage ? { bodyStyles: { minCellHeight: 16 } } : {}),
+    bodyStyles: { valign: "middle", ...(withImage ? { minCellHeight: 16 } : {}) },
     margin: { left: 14, right: 14 },
     ...(withImage
       ? {

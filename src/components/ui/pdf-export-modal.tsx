@@ -4,7 +4,7 @@ import { X, FileDown, Eye, LayoutTemplate, RotateCcw, Check } from "lucide-react
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding } from "@/lib/storage/branding";
-import { accentPalette } from "@/lib/utils/generate-pdf";
+import { accentPalette, PDF_CENTER_KEYS } from "@/lib/utils/generate-pdf";
 
 export interface PdfColumn {
   header: string;
@@ -349,7 +349,7 @@ function PdfPreview({
               </th>
             )}
             {columns.map((col) => (
-              <th key={col.key} className="px-2 py-1.5 text-left font-bold border" style={{ borderColor: pal.dark }}>
+              <th key={col.key} className="px-2 py-1.5 text-center font-bold border" style={{ borderColor: pal.dark }}>
                 {col.header.toUpperCase()}
               </th>
             ))}
@@ -358,9 +358,9 @@ function PdfPreview({
         <tbody>
           {data.slice(0, 8).map((row, idx) => (
             <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? pal.tint : "#ffffff" }}>
-              <td className="px-2 py-1.5 text-center border" style={{ borderColor: pal.light }}>{idx + 1}</td>
+              <td className="px-2 py-1.5 text-center align-middle border" style={{ borderColor: pal.light }}>{idx + 1}</td>
               {imageKey && (
-                <td className="px-1 py-1 text-center border" style={{ borderColor: pal.light }}>
+                <td className="px-1 py-1 text-center align-middle border" style={{ borderColor: pal.light }}>
                   {String(row[imageKey] ?? "") ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -372,7 +372,13 @@ function PdfPreview({
                 </td>
               )}
               {columns.map((col) => (
-                <td key={col.key} className="px-2 py-1.5 border text-gray-700" style={{ borderColor: pal.light }}>
+                <td
+                  key={col.key}
+                  className={`px-2 py-1.5 border text-gray-700 align-middle ${
+                    PDF_CENTER_KEYS.has(col.key) ? "text-center" : "text-left"
+                  }`}
+                  style={{ borderColor: pal.light }}
+                >
                   {String(row[col.key] ?? "")}
                 </td>
               ))}
