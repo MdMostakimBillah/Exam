@@ -127,10 +127,9 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed }: TopbarProps) {
   return (
     <header className={cn(
       'fixed top-0 right-0 z-30 h-16 flex items-center justify-between px-6 transition-all duration-200',
-      'backdrop-blur-2xl',
-      isDark 
-        ? 'bg-white/5 border-white/10' 
-        : 'bg-white/60 border-white/80',
+      isDark
+        ? 'bg-[#0D0D0D] border-b border-white/[0.04]'
+        : 'bg-white border-b border-gray-200/50',
       'left-[240px]'
     )}>
       {/* Search */}

@@ -13,7 +13,7 @@ const Sidebar = dynamic(() => import("./sidebar").then((m) => m.Sidebar), {
 const Topbar = dynamic(() => import("./topbar").then((m) => m.Topbar), {
   ssr: false,
   loading: () => (
-    <header className="fixed top-0 right-0 z-30 h-16 left-[240px] bg-white/5 animate-pulse" />
+    <header className="fixed top-0 right-0 z-30 h-16 left-[240px] bg-[#0D0D0D] animate-pulse" />
   ),
 });
 
