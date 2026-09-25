@@ -230,7 +230,7 @@ function FooterSignature({
       ) : null}
       <div
         style={{
-          fontSize: "17px",
+          fontSize: "13px",
           fontStyle: "italic",
           fontWeight: 700,
           color: accent,
@@ -246,12 +246,16 @@ function FooterSignature({
           margin: "8px auto 4px",
         }}
       />
+      {/* Fixed 2-line box: the rule must sit on the same line as the
+       *  neighbouring slots even when this designation wraps. */}
       <div
         style={{
           fontSize: "11px",
+          lineHeight: 1.45,
           color: SLATE_500,
           maxWidth: "165px",
           wordBreak: "break-word",
+          height: "32px",
         }}
       >
         {sub}
@@ -831,7 +835,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           <div style={{ textAlign: "center", flexShrink: 0 }}>
           <div
             style={{
-              fontSize: "17px",
+              fontSize: "13px",
               fontStyle: "italic",
               fontWeight: 700,
               color: accentHex,
@@ -847,7 +851,16 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               margin: "8px auto 4px",
             }}
           />
-          <div style={{ fontSize: "11px", color: SLATE_500 }}>
+          <div
+            style={{
+              fontSize: "11px",
+              lineHeight: 1.45,
+              color: SLATE_500,
+              maxWidth: "165px",
+              wordBreak: "break-word",
+              height: "32px",
+            }}
+          >
             {L(`Secretary, ${brandShort} Association`, `সাধারণ সম্পাদক, ${assocBn}`)}
           </div>
           </div>
