@@ -16,15 +16,35 @@ export function useToast() {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
+  // Auto-dismiss handles are tracked so they can be cleared on unmount —
+  // previously each toast scheduled a timer that outlived the provider.
+  const timers = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const toast = React.useCallback((type: ToastType, message: string) => {
     const id = Math.random().toString(36);
     setToasts(prev => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+    const handle = setTimeout(() => {
+      timers.current.delete(id);
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+    timers.current.set(id, handle);
   }, []);
 
   const dismiss = React.useCallback((id: string) => {
+    const handle = timers.current.get(id);
+    if (handle) {
+      clearTimeout(handle);
+      timers.current.delete(id);
+    }
     setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  React.useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const handle of pending.values()) clearTimeout(handle);
+      pending.clear();
+    };
   }, []);
 
   const ctxValue = React.useMemo(() => ({ toast }), [toast]);

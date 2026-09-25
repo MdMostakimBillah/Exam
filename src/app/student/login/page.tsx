@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { loginStudent } from "@/lib/auth/student-auth";
+import { loginStudent } from "@/lib/auth/student-login";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -118,6 +118,9 @@ export default function StudentLoginPage() {
                     onChange={(e) => setStudentId(e.target.value)}
                     placeholder={isBn ? "যেমন: STU-2024-0001" : "e.g., STU-2024-0001"}
                     required
+                    maxLength={32}
+                    autoComplete="off"
+                    spellCheck={false}
                     disabled={locked}
                     className={cn(
                       "w-full h-11 pl-10 pr-4 rounded-lg text-sm transition-all duration-200 outline-none",
@@ -140,6 +143,9 @@ export default function StudentLoginPage() {
                   onChange={(e) => setPhoneOrEmail(e.target.value)}
                   placeholder={isBn ? "নিবন্ধিত ফোন বা ইমেইল" : "Registered phone or email"}
                   required
+                  maxLength={100}
+                  autoComplete="off"
+                  spellCheck={false}
                   disabled={locked}
                   className={cn(
                     "w-full h-11 px-4 rounded-lg text-sm transition-all duration-200 outline-none",

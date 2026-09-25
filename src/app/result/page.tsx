@@ -2,9 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { fetchResults } from "@/lib/storage/results";
-import { fetchStudents } from "@/lib/storage/students";
+import { searchPublicResults } from "@/lib/auth/public-lookup";
 import { Result } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,51 +28,34 @@ export default function ResultPage() {
     if (reg) setRegNumber(reg);
   }, []);
 
-  const {
-    data: results = [],
-    isLoading: resultsLoading,
-    refetch: refetchResults,
-  } = useQuery<Result[]>({
-    queryKey: ['results', 'published'],
-    queryFn: () => fetchResults(),
-    staleTime: 60 * 1000,
-  });
-
-  const {
-    data: students = [],
-    isLoading: studentsLoading,
-    refetch: refetchStudents,
-  } = useQuery({
-    queryKey: ['students', 'all'],
-    queryFn: () => fetchStudents(),
-    staleTime: 60 * 1000,
-  });
-
   const [foundResult, setFoundResult] = useState<Result | null>(null);
-  const isButtonLoading = resultsLoading || studentsLoading;
+  const [lookupError, setLookupError] = useState("");
+  const [isButtonLoading, setIsButtonLoading] = useState(false);
 
   const handleSearch = useCallback(async () => {
+    if (!regNumber.trim()) return;
     setSearched(true);
     setFoundResult(null);
-
-    if (results.length === 0 || students.length === 0) {
-      await Promise.all([refetchResults(), refetchStudents()]);
-    }
-
-    const currentResults = results.length > 0 ? results : [];
-    const currentStudents = students.length > 0 ? students : [];
-
-    const found = currentResults.find(r => {
-      const regMatch = r.registrationNumber === regNumber || r.registrationNumber.toLowerCase() === regNumber.toLowerCase();
-      if (searchType === 'dob') {
-        if (!regMatch) return false;
-        const student = currentStudents.find(s => s.id === r.studentId);
-        return student && student.dateOfBirth === dob;
+    setLookupError("");
+    setIsButtonLoading(true);
+    try {
+      const res = await searchPublicResults({
+        registrationNumber: regNumber,
+        mode: searchType,
+        dob,
+        roll,
+      });
+      if (res.ok) {
+        setFoundResult(res.result ?? null);
+      } else {
+        setLookupError(res.error || "Lookup failed. Please try again.");
       }
-      return regMatch && r.roll === roll;
-    });
-    setFoundResult(found || null);
-  }, [results, students, regNumber, searchType, dob, roll, refetchResults, refetchStudents]);
+    } catch {
+      setLookupError("Lookup failed. Please try again.");
+    } finally {
+      setIsButtonLoading(false);
+    }
+  }, [regNumber, searchType, dob, roll]);
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#080808]" : "bg-gray-50"}`}>
@@ -121,6 +102,9 @@ export default function ResultPage() {
                   value={regNumber}
                   onChange={(e) => setRegNumber(e.target.value)}
                   placeholder="e.g. APP-2026-0001"
+                  maxLength={40}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </div>
               {searchType === 'dob' ? (
@@ -131,7 +115,7 @@ export default function ResultPage() {
               ) : (
                 <div>
                   <label className="block text-xs text-zinc-500 mb-1">Exam Roll</label>
-                  <Input value={roll} onChange={(e) => setRoll(e.target.value)} placeholder="e.g. 1" />
+                  <Input value={roll} onChange={(e) => setRoll(e.target.value)} placeholder="e.g. 1" maxLength={6} inputMode="numeric" />
                 </div>
               )}
               <Button onClick={handleSearch} disabled={isButtonLoading} className="w-full">
@@ -144,7 +128,9 @@ export default function ResultPage() {
         {searched && !foundResult && !isButtonLoading && (
           <div className="mt-6 text-center py-8">
             <XCircle className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm text-zinc-500">No result found. Please check your details and try again.</p>
+            <p className="text-sm text-zinc-500">
+              {lookupError || "No result found. Please check your details and try again."}
+            </p>
           </div>
         )}
 

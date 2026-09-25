@@ -2,8 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { checkAccountLockout } from "@/lib/auth/server-auth";
-import { login } from "@/lib/auth/auth";
+import { checkAccountLockout, loginWithLockout } from "@/lib/auth/server-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -70,11 +69,22 @@ export default function LoginPage() {
         return;
       }
 
-      const user = await login(email, password);
+      // loginWithLockout (server action) records every attempt in
+      // login_attempts, which is what actually arms the 3-strikes lockout.
+      // The old client-side login() never wrote to that table, so
+      // checkAccountLockout() always read an empty table — brute force was
+      // unlimited. See audit C2.
+      const result = await loginWithLockout(email, password);
 
-      if (user) {
-        if (user.role === "SUPER_ADMIN") router.push("/super-admin");
+      if (result.success && result.user) {
+        if (result.user.role === "SUPER_ADMIN") router.push("/super-admin");
         else router.push("/i");
+      } else if (result.locked) {
+        setLocked(true);
+        setRetryAfter(result.retryAfter || 300);
+        setError(isBn
+          ? `অ্যাকাউন্ট লক করা হয়েছে। ${formatTime(result.retryAfter || 300)} অপেক্ষা করুন।`
+          : `Account locked. Wait ${formatTime(result.retryAfter || 300)}.`);
       } else {
         setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : "Invalid email or password");
       }

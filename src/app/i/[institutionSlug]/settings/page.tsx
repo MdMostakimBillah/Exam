@@ -3,11 +3,12 @@ import { useState, useEffect, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { useInstitutionBySlug, useUpdateInstitution } from "@/lib/storage/institutions";
+import { useInstitutionBySlug, useUpdateInstitution, uploadPrincipalSignature } from "@/lib/storage/institutions";
 import { uploadLogo } from "@/lib/auth/register-action";
 import { updateUser } from "@/lib/storage/users";
-import { getCurrentUser } from "@/lib/auth/auth";
-import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Upload, Mail, UserCheck, Trophy, CreditCard } from "lucide-react";
+import { useAuth } from "@/lib/auth/auth";
+import { changePassword } from "@/lib/auth/server-auth";
+import { Settings, Building2, User, Lock, Bell, Save, Eye, EyeOff, CheckCircle2, Upload, Mail, UserCheck, Trophy, CreditCard, PenLine } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -20,6 +21,7 @@ export default function InstitutionSettingsPage() {
   const params = useParams();
   const slug = params.institutionSlug as string;
   const { toast } = useToast();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const { lang: language, t } = useLang();
   const isDark = theme === "dark";
@@ -44,6 +46,11 @@ export default function InstitutionSettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState("");
   const [logoError, setLogoError] = useState("");
+  // Principal signature — shown in the admit-card footer.
+  const [sigFile, setSigFile] = useState<File | null>(null);
+  const [sigPreview, setSigPreview] = useState("");
+  const [sigRemoved, setSigRemoved] = useState(false);
+  const [sigError, setSigError] = useState("");
 
   // Account fields
   const [adminName, setAdminName] = useState("");
@@ -78,13 +85,16 @@ export default function InstitutionSettingsPage() {
       setLogoPreview(inst.logo || "");
       setLogoFile(null);
       setLogoError("");
+      setSigPreview(inst.principalSignature || "");
+      setSigFile(null);
+      setSigRemoved(false);
+      setSigError("");
     }
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setAdminName(currentUser.name);
-      setAdminEmail(currentUser.email);
+    if (user) {
+      setAdminName(user.name || "");
+      setAdminEmail(user.email || "");
     }
-  }, [slug, inst]);
+  }, [slug, inst, user]);
 
   const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,6 +115,34 @@ export default function InstitutionSettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  const handleSigChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSigError("");
+    // Raster only — an SVG signature can fail (or execute) in html2canvas.
+    const allowed = ["image/png", "image/jpeg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setSigError(isBn ? "শুধু PNG, JPG বা WEBP ছবি দিন" : "Only PNG, JPG or WEBP images are allowed");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      const sizeKB = Math.round(file.size / 1024);
+      setSigError(
+        isBn
+          ? `স্বাক্ষর ৩৫০KB এর কম হতে হবে। বর্তমান: ${sizeKB}KB`
+          : `Signature must be under 350KB. Current: ${sizeKB}KB`
+      );
+      e.target.value = "";
+      return;
+    }
+    setSigFile(file);
+    setSigRemoved(false);
+    const reader = new FileReader();
+    reader.onloadend = () => setSigPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     if (inst) {
@@ -119,6 +157,21 @@ export default function InstitutionSettingsPage() {
           logoUrl = inst.logo || "";
         }
       }
+      // Principal signature — a failed upload must NOT silently drop the
+      // signature, so it aborts the save with an error instead.
+      let sigUrl = inst.principalSignature || "";
+      if (sigFile) {
+        try {
+          sigUrl = await uploadPrincipalSignature(inst.slug, sigFile);
+        } catch (err) {
+          console.error("Signature upload failed:", err);
+          setSaving(false);
+          toast("error", isBn ? "স্বাক্ষর আপলোড ব্যর্থ হয়েছে — সংরক্ষণ বাতিল" : "Signature upload failed — nothing was saved");
+          return;
+        }
+      } else if (sigRemoved) {
+        sigUrl = "";
+      }
       await updateInstitutionMutation.mutateAsync({
         id: inst.id,
         data: {
@@ -132,24 +185,32 @@ export default function InstitutionSettingsPage() {
           city,
           district,
           logo: logoUrl || inst.logo,
+          principalSignature: sigUrl,
         },
       });
       setLogoFile(null);
+      setSigFile(null);
+      setSigRemoved(false);
     }
-    await new Promise((r) => setTimeout(r, 600));
     setSaving(false);
     toast("success", isBn ? "প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!" : "Profile saved successfully!");
   };
 
   const handleSaveAccount = async () => {
+    if (!user) return;
     setSaving(true);
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      updateUser(currentUser.id, { name: adminName, email: adminEmail });
+    try {
+      const updated = await updateUser(user.id, { name: adminName, email: adminEmail });
+      if (!updated) {
+        toast("error", isBn ? "অ্যাকাউন্ট সংরক্ষণ করা যায়নি" : "Could not save account");
+        return;
+      }
+      toast("success", isBn ? "অ্যাকাউন্ট সফলভাবে সংরক্ষিত হয়েছে!" : "Account saved successfully!");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Could not save account");
+    } finally {
+      setSaving(false);
     }
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    toast("success", isBn ? "অ্যাকাউন্ট সফলভাবে সংরক্ষিত হয়েছে!" : "Account saved successfully!");
   };
 
   const handleChangePassword = async () => {
@@ -165,27 +226,27 @@ export default function InstitutionSettingsPage() {
       toast("error", isBn ? "নতুন পাসওয়ার্ড মিলছে না" : "Passwords do not match");
       return;
     }
-    const currentUser = getCurrentUser();
-    if (currentUser && currentUser.password !== currentPassword) {
-      toast("error", isBn ? "বর্তমান পাসওয়ার্ড সঠিক নয়" : "Current password is incorrect");
-      return;
-    }
     setSaving(true);
-    if (currentUser) {
-      updateUser(currentUser.id, { password: newPassword });
+    try {
+      // Verified against Supabase Auth on the server — the old client-side
+      // check compared against a password field that was always undefined.
+      const result = await changePassword(currentPassword, newPassword);
+      if (result.success) {
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        toast("success", isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!" : "Password changed successfully!");
+      } else {
+        toast("error", result.error || (isBn ? "পাসওয়ার্ড পরিবর্তন করা যায়নি" : "Could not change password"));
+      }
+    } catch {
+      toast("error", isBn ? "পাসওয়ার্ড পরিবর্তন করা যায়নি" : "Could not change password");
+    } finally {
+      setSaving(false);
     }
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    toast("success", isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!" : "Password changed successfully!");
   };
 
   const handleSaveNotifications = async () => {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
     toast("success", isBn ? "বিজ্ঞপ্তি সেটিংস সংরক্ষিত হয়েছে!" : "Notification settings saved!");
   };
 
@@ -297,6 +358,56 @@ export default function InstitutionSettingsPage() {
                       </label>
                       {logoError && (
                         <p className="text-xs text-red-500 mt-1.5">{logoError}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Principal signature — printed in the admit-card footer */}
+                  <div className={`flex items-center gap-4 pb-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <div className="shrink-0">
+                      {sigPreview ? (
+                        <div className={`h-16 w-40 rounded-md overflow-hidden flex items-center justify-center ${isDark ? "border-2 border-white/10 bg-white" : "border-2 border-zinc-200 bg-white"}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sigPreview}
+                            alt={isBn ? "অধ্যক্ষের স্বাক্ষর" : "Principal signature"}
+                            className="max-h-full max-w-full object-contain p-1"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`h-16 w-40 rounded-md flex items-center justify-center ${isDark ? "bg-white/[0.04] border border-white/[0.06]" : "bg-zinc-100 border border-zinc-200"}`}>
+                          <PenLine className={`h-6 w-6 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-[13px] font-medium ${labelCls}`}>
+                        {isBn ? 'অধ্যক্ষের স্বাক্ষর' : 'Principal Signature'}
+                      </p>
+                      <p className={`text-xs mb-2 ${subtextCls}`}>
+                        {isBn ? 'সর্বোচ্চ ৩৫০KB — প্রবেশপত্রের ফুটারে দেখানো হবে' : 'Max 350KB — shown in the admit-card footer'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <label className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-all",
+                          isDark ? "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
+                        )}>
+                          <Upload className="h-3.5 w-3.5" />
+                          {isBn ? 'স্বাক্ষর পরিবর্তন করুন' : 'Change signature'}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleSigChange} className="hidden" />
+                        </label>
+                        {sigPreview && (
+                          <button
+                            type="button"
+                            onClick={() => { setSigFile(null); setSigPreview(""); setSigRemoved(true); setSigError(""); }}
+                            className={cn("px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                              isDark ? "text-zinc-400 hover:text-red-400" : "text-zinc-500 hover:text-red-600")}>
+                            {isBn ? 'সরান' : 'Remove'}
+                          </button>
+                        )}
+                      </div>
+                      {sigError && (
+                        <p className="text-xs text-red-500 mt-1.5">{sigError}</p>
                       )}
                     </div>
                   </div>

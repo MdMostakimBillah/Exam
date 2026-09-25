@@ -9,6 +9,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 import { createClient } from "@/lib/supabase/client";
+import { updateUserServer } from "@/lib/auth/user-actions";
 import { useSessions, useCreateSession, useSetCurrentSession, useUpdateSession, useDeleteSession } from "@/lib/storage/sessions";
 import { useBranding, useSaveBranding, uploadBrandingImage, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
 import { accentFg } from "@/components/branding/accent-color";
@@ -101,7 +102,7 @@ export default function SuperAdminSettingsPage() {
   const { data: brandingData } = useBranding();
   const saveBranding = useSaveBranding();
   const [brandForm, setBrandForm] = useState<BrandingSettings | null>(null);
-  const [uploadKind, setUploadKind] = useState<"" | "logo" | "watermark">("");
+  const [uploadKind, setUploadKind] = useState<"" | "logo" | "watermark" | "md-signature">("");
 
   // Seed the form once — later background refetches must not clobber edits.
   useEffect(() => {
@@ -188,10 +189,20 @@ export default function SuperAdminSettingsPage() {
   };
 
   const handleSaveAccount = async () => {
+    if (!user) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    toast("success", isBn ? "অ্যাকাউন্ট সফলভাবে সংরক্ষিত হয়েছে!" : "Account saved successfully!");
+    try {
+      const res = await updateUserServer({ userId: user.id, name: adminName, email: adminEmail });
+      if (!res.success) {
+        toast("error", res.error || (isBn ? "অ্যাকাউন্ট সংরক্ষণ করা যায়নি" : "Could not save account"));
+        return;
+      }
+      toast("success", isBn ? "অ্যাকাউন্ট সফলভাবে সংরক্ষিত হয়েছে!" : "Account saved successfully!");
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "Could not save account");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -267,7 +278,7 @@ export default function SuperAdminSettingsPage() {
     toast("success", isBn ? "পেমেন্ট তথ্য সংরক্ষিত হয়েছে!" : "Payment details saved!");
   };
 
-  const handleBrandFile = async (kind: "logo" | "watermark", file?: File | null) => {
+  const handleBrandFile = async (kind: "logo" | "watermark" | "md-signature", file?: File | null) => {
     if (!file || !brandForm) return;
     // Raster only — SVGs can silently fail to rasterise in html2canvas (PDF).
     const allowed = ["image/png", "image/jpeg", "image/webp"];
@@ -285,7 +296,8 @@ export default function SuperAdminSettingsPage() {
     try {
       const url = await uploadBrandingImage(file, kind);
       if (kind === "logo") setBrandForm({ ...brandForm, brandLogo: url });
-      else setBrandForm({ ...brandForm, brandWatermark: url });
+      else if (kind === "watermark") setBrandForm({ ...brandForm, brandWatermark: url });
+      else setBrandForm({ ...brandForm, mdSignature: url });
       toast("success", isBn ? "ইমেজ আপলোড হয়েছে — এখন সংরক্ষণ করুন" : "Image uploaded — click Save Changes to apply");
     } catch (err: any) {
       toast("error", err?.message || (isBn ? "আপলোড ব্যর্থ" : "Upload failed"));
@@ -584,6 +596,41 @@ export default function SuperAdminSettingsPage() {
                           )}
                         </div>
                         <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'প্রবেশপত্র ও সব পিডিএফে পেছনে দেখানো হবে — খালি রাখলে টেক্সট ওয়াটারমার্ক ব্যবহার হবে' : 'Appears behind admit cards and all PDFs — leave empty for the text watermark'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── MD signature (admit card footer) ── */}
+                  <div className={`pt-5 border-t ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <p className={`text-[13px] font-semibold mb-1 ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'বিএমএ এমডির স্বাক্ষর' : 'BMA MD Signature'}</p>
+                    <p className={`text-[11px] mb-4 ${subtextCls}`}>{isBn ? 'প্রবেশপত্রের ফুটারে এমডির স্বাক্ষর হিসেবে দেখানো হবে — খালি রাখলে স্বাক্ষরের ঘর ফাঁকা থাকবে' : 'Shown as the MD signature in the admit-card footer — leave empty for a blank signature line'}</p>
+                    <div className="flex items-center gap-4">
+                      <div className={cn("h-16 w-40 rounded-md flex items-center justify-center overflow-hidden shrink-0", isDark ? "bg-white/[0.04] border border-white/[0.08]" : "bg-zinc-50 border border-zinc-200")}>
+                        {brandForm.mdSignature ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={brandForm.mdSignature} alt="MD signature" className="max-h-full max-w-full object-contain p-1" />
+                        ) : (
+                          <span className={`text-[10px] font-semibold ${labelCls}`}>{isBn ? 'স্বাক্ষর নেই' : 'No signature'}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                          <label className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all cursor-pointer",
+                            isDark ? "bg-white/10 text-white hover:bg-white/20" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
+                            uploadKind === "md-signature" && "opacity-60 pointer-events-none")}>
+                            <Upload className="h-4 w-4" />
+                            {uploadKind === "md-signature" ? (isBn ? 'আপলোড হচ্ছে…' : 'Uploading…') : (isBn ? 'স্বাক্ষর আপলোড' : 'Upload Signature')}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadKind === "md-signature"}
+                              onChange={(e) => { handleBrandFile("md-signature", e.target.files?.[0]); e.target.value = ""; }} />
+                          </label>
+                          {brandForm.mdSignature && (
+                            <button onClick={() => setBrandForm({ ...brandForm, mdSignature: "" })}
+                              className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", isDark ? "text-zinc-400 hover:text-red-400" : "text-zinc-500 hover:text-red-600")}>
+                              {isBn ? 'সরান' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                        <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'সর্বোচ্চ ৩৫০KB — PNG/JPG/WEBP, স্বচ্ছ পটভূমি ভালো দেখায়' : 'Max 350KB — PNG/JPG/WEBP, a transparent background looks best'}</p>
                       </div>
                     </div>
                   </div>

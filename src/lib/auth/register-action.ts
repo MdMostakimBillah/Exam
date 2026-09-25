@@ -1,11 +1,40 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { requireRegistrationOpen, requireUser } from "./action-guard";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+/**
+ * Upload guard shared by the public register page and the institution
+ * settings page: signed-in staff/admins may upload, anonymous callers only
+ * while registration is open. Nobody else reaches the service-role client.
+ */
+async function canUploadBranding(): Promise<{ ok: boolean; error?: string }> {
+  const caller = await requireUser();
+  if (caller.ok) {
+    const allowed = ["SUPER_ADMIN", "INSTITUTION_ADMIN", "STAFF"];
+    return allowed.includes(caller.role)
+      ? { ok: true }
+      : { ok: false, error: "Not allowed to upload branding images" };
+  }
+  const reg = await requireRegistrationOpen();
+  return reg.ok ? { ok: true } : { ok: false, error: reg.error };
+}
+
+/** Raster-only, path-safe extension allowlist. SVG is excluded on purpose —
+ *  a stored SVG opened directly executes script on the storage origin. */
+const ALLOWED_IMAGE_EXT = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif"]);
+/** Matches system_settings.max_upload_size_mb (5). */
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+/** Slug becomes part of the storage object key — keep it strictly slug-safe. */
+const SAFE_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+/** Institution codes become URL/path fragments elsewhere — keep them tight. */
+const SAFE_CODE = /^[A-Za-z0-9][A-Za-z0-9_-]{1,39}$/;
+
 
 export interface RegisterInstitutionResult {
   success: boolean;
@@ -27,6 +56,22 @@ export async function registerInstitution(data: {
   password: string;
 }): Promise<RegisterInstitutionResult> {
   try {
+    // Public self-registration: allowed only while registration is open.
+    const gate = await requireRegistrationOpen();
+    if (!gate.ok) return { success: false, error: gate.error };
+
+    // Basic shape validation before anything touches the database.
+    if (!data.name?.trim()) return { success: false, error: "Institution name is required" };
+    if (data.name.trim().length > 200) return { success: false, error: "Institution name is too long" };
+    if (!data.email?.includes("@") || data.email.length > 254) return { success: false, error: "A valid email is required" };
+    if ((data.password || "").length < 8) return { success: false, error: "Password must be at least 8 characters" };
+    if (!SAFE_SLUG.test(data.slug)) return { success: false, error: "Invalid institution slug" };
+    if (!SAFE_CODE.test(data.code || "")) return { success: false, error: "Invalid institution code" };
+    if ((data.phone || "").length > 30 || (data.whatsapp || "").length > 30) {
+      return { success: false, error: "Phone number is too long" };
+    }
+    if ((data.logoUrl || "").length > 500) return { success: false, error: "Logo URL is too long" };
+
     // 1. Create institution
     const { data: institution, error: instError } = await supabaseAdmin
       .from("institutions")
@@ -114,10 +159,24 @@ export async function registerInstitution(data: {
 
 export async function uploadLogo(slug: string, file: ArrayBuffer, ext: string): Promise<string> {
   try {
-    const path = `institution-logos/${slug}-${Date.now()}.${ext}`;
+    // Who is calling, and are they allowed to write to the public bucket?
+    const gate = await canUploadBranding();
+    if (!gate.ok) return "";
+
+    // Sanitize every piece that becomes part of the object key.
+    const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+    if (!safeSlug) return "";
+
+    const safeExt = String(ext || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    if (!ALLOWED_IMAGE_EXT.has(safeExt)) return "";
+
+    // Enforce the advertised upload cap (settings page shows 5 MB).
+    if (!file || file.byteLength > MAX_LOGO_BYTES) return "";
+
+    const path = `institution-logos/${safeSlug}-${Date.now()}.${safeExt}`;
     const { error } = await supabaseAdmin.storage
       .from("public")
-      .upload(path, file, { contentType: `image/${ext}`, upsert: true });
+      .upload(path, file, { contentType: `image/${safeExt}`, upsert: false });
 
     if (error) return "";
 

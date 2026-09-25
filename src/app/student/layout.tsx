@@ -24,13 +24,25 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   useEffect(() => {
     setMounted(true);
+    // The timer used to be created inside .then() and "cleaned up" by
+    // returning from that callback — nothing ever called the returned
+    // function, so a redirect could fire after the layout unmounted.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
     getStudentSession().then((session) => {
+      if (cancelled) return;
       if (!session) {
-        const timer = setTimeout(() => router.push("/student/login"), 500);
-        return () => clearTimeout(timer);
+        timer = setTimeout(() => router.push("/student/login"), 500);
+        return;
       }
       setStudent(session);
     });
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [router]);
 
   const handleLogout = () => {

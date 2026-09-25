@@ -31,7 +31,6 @@ import {
   openPrintWindow,
   printAdmitCards,
 } from "@/lib/pdf/admit-card-pdf";
-import QRCode from "qrcode";
 import {
   FileCheck,
   Download,
@@ -202,6 +201,9 @@ export default function AdmitCardsPage() {
       : card.qrCode || `${origin}/result?reg=${card.registrationNumber}`;
     let qrDataUrl = "";
     try {
+      // qrcode (~60 kB) is only needed once the user actually exports —
+      // loaded on demand so it stays out of the initial page bundle.
+      const { default: QRCode } = await import("qrcode");
       qrDataUrl = await QRCode.toDataURL(qrText, {
         margin: 1,
         width: 256,
@@ -237,6 +239,7 @@ export default function AdmitCardsPage() {
       institutionName: inst?.nameEn || card.institutionName,
       institutionCode: inst?.code || "",
       institutionLogo: inst?.logo,
+      principalSignature: inst?.principalSignature || "",
       examName: card.examName,
       examCode: cardExam?.code || "",
       examPeriod,

@@ -19,7 +19,7 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request,
           })
-          supabaseResponse.cookies.set({ name, value, ...options })
+          supabaseResponse.cookies.set(name, value, options)
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options })
@@ -36,40 +36,57 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Protect super-admin routes
-  if (pathname.startsWith('/super-admin') && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
+  const needsRole =
+    pathname.startsWith('/super-admin') ||
+    pathname.startsWith('/student/dashboard') ||
+    pathname.startsWith('/student/payments') ||
+    pathname.startsWith('/i')
 
-  // Protect institution routes (except root /i which handles its own auth)
-  if (pathname.match(/^\/i\/[^/]+/) && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Protect student dashboard and payments routes
-  if ((pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/payments')) && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/student/login'
-    return NextResponse.redirect(url)
-  }
-
-  // If logged in super_admin tries to access /i, redirect to /super-admin
-  if (pathname.startsWith('/i') && user) {
+  // H5: knowing "someone is signed in" is not authorization. Every guarded
+  // area also checks WHICH role the caller has (RLS is the real boundary;
+  // this just stops the obvious "any account can open /super-admin" path).
+  let role: string | null = null
+  if (user && needsRole) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
-    
-    if (profile?.role === 'super_admin' && !pathname.startsWith('/super-admin')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/super-admin'
-      return NextResponse.redirect(url)
-    }
+      .maybeSingle()
+    role = profile?.role ? String(profile.role).toLowerCase() : null
+  }
+
+  const isStudent = role === 'student'
+  const isStaff =
+    role === 'institution_admin' || role === 'staff' || role === 'viewer' || role === 'super_admin'
+
+  const redirect = (to: string) => {
+    const url = request.nextUrl.clone()
+    url.pathname = to
+    return NextResponse.redirect(url)
+  }
+
+  // Protect super-admin routes (super_admin only)
+  if (pathname.startsWith('/super-admin')) {
+    if (!user) return redirect('/login')
+    if (role !== 'super_admin') return redirect(isStudent ? '/student/dashboard' : '/i')
+  }
+
+  // Protect institution routes (except root /i which handles its own auth)
+  if (pathname.match(/^\/i\/[^/]+/)) {
+    if (!user) return redirect('/login')
+    if (isStudent) return redirect('/student/dashboard')
+    if (!isStaff) return redirect('/login')
+  }
+
+  // Protect student dashboard and payments routes (students only)
+  if (pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/payments')) {
+    if (!user) return redirect('/student/login')
+    if (!isStudent) return redirect(role === 'super_admin' ? '/super-admin' : '/i')
+  }
+
+  // If a signed-in super admin opens /i, send them to their own dashboard.
+  if (pathname.startsWith('/i') && role === 'super_admin') {
+    return redirect('/super-admin')
   }
 
   return supabaseResponse

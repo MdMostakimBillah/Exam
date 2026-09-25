@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useStudentsByInstitution } from "@/lib/storage/students";
@@ -24,6 +24,15 @@ export default function InstitutionReportsPage() {
   const [generating, setGenerating] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Clear the pending "report generated" timer on unmount — it used to fire
+  // setState/alert after the page had already been left.
+  const genTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (genTimerRef.current) clearTimeout(genTimerRef.current);
+    };
+  }, []);
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
@@ -64,7 +73,9 @@ export default function InstitutionReportsPage() {
 
   const handleGenerate = (reportId: string) => {
     setGenerating(reportId);
-    setTimeout(() => {
+    if (genTimerRef.current) clearTimeout(genTimerRef.current);
+    genTimerRef.current = setTimeout(() => {
+      genTimerRef.current = null;
       setGenerating(null);
       alert(isBn ? "রিপোর্ট তৈরি হয়েছে!" : "Report generated!");
     }, 800);

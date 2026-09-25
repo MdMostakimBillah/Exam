@@ -1,5 +1,6 @@
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
+// jspdf + html2canvas are ~600 KB combined and are only needed when the user
+// actually exports a PDF — both are imported on demand inside
+// exportAdmitCardsPdf() so they stay out of the initial page bundle.
 
 /**
  * Admit-card export — deterministic, visually identical to preview.
@@ -241,6 +242,10 @@ function applyFontMetricsShim(): () => void {
 /** Capture each element and download a single multi-page PDF — one card per A4 landscape page. */
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
   await waitForFonts(document);
   for (const el of elements) await prepareStudentPhotos(el);
   for (const el of elements) await inlineRemoteImages(el);

@@ -1,5 +1,6 @@
 import { Profile, UserRole } from '../types';
 import { createClient } from '@/lib/supabase/client';
+import { createUserServer, deleteUserServer, updateUserServer } from '@/lib/auth/user-actions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PROFILE_COLUMNS = 'id,email,name,role,username,institution_id,avatar,created_at,updated_at';
@@ -9,7 +10,10 @@ function mapProfile(data: any): Profile {
     id: data.id,
     email: data.email,
     name: data.name,
-    role: data.role,
+    // The database stores roles lowercase; the UI compares against
+    // UserRole's uppercase literals. Normalise here so role checks
+    // (and the "keep one super admin" guard) actually work.
+    role: String(data.role || "").toUpperCase() as Profile["role"],
     institutionId: data.institution_id,
     avatar: data.avatar,
     createdAt: data.created_at,
@@ -33,7 +37,9 @@ export async function fetchUsers(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    // Bounded: this feeds a select, not a table dump (audit P3).
+    .limit(1000);
   if (error) throw error;
   return (data || []).map(mapProfile);
 }
@@ -65,40 +71,38 @@ export async function getUsers(): Promise<Profile[]> {
 }
 
 export async function createUser(data: { email: string; name: string; password: string; role: UserRole; institutionId?: string }): Promise<Profile> {
-  const supabase = createClient();
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // Routed through the guarded server action: the raw client-side path both
+  // trusted a browser-supplied role and collided with the handle_new_user
+  // trigger's profile insert (duplicate key on every call).
+  const res = await createUserServer({
     email: data.email,
     password: data.password,
-    options: { data: { name: data.name, role: data.role } },
+    name: data.name,
+    role: data.role,
+    institutionId: data.institutionId,
   });
-  if (authError) throw authError;
+  if (!res.success || !res.userId) throw new Error(res.error || "Could not create user");
 
-  const { data: result, error } = await supabase
-    .from('profiles')
-    .insert({
-      id: authData.user!.id,
-      email: data.email,
-      name: data.name,
-      role: data.role,
-      institution_id: data.institutionId,
-    })
-    .select(PROFILE_COLUMNS)
-    .single();
-  if (error) throw error;
-  return mapProfile(result);
+  const created = await fetchUserProfile(res.userId);
+  if (!created) throw new Error("User created but the profile could not be read back");
+  return created;
 }
 
 export async function updateUser(id: string, data: Partial<Profile> & { password?: string }): Promise<Profile | undefined> {
   const supabase = createClient();
 
+  // Password changes go through the guarded service-role action —
+  // supabase.auth.admin.* is not callable from the browser.
   if (data.password) {
-    const { error: pwError } = await supabase.auth.admin.updateUserById(id, { password: data.password });
-    if (pwError) throw pwError;
+    const res = await updateUserServer({ userId: id, password: data.password });
+    if (!res.success) throw new Error(res.error || "Could not change password");
   }
 
   const updateData: any = { updated_at: new Date().toISOString() };
   if (data.name !== undefined) updateData.name = data.name;
-  if (data.role !== undefined) updateData.role = data.role;
+  if (data.email !== undefined) updateData.email = data.email;
+  // DB stores roles lowercase (profiles_role_check); the UI uses uppercase.
+  if (data.role !== undefined) updateData.role = String(data.role).toLowerCase();
   if (data.institutionId !== undefined) updateData.institution_id = data.institutionId;
   if (data.avatar !== undefined) updateData.avatar = data.avatar;
 
@@ -113,9 +117,8 @@ export async function updateUser(id: string, data: Partial<Profile> & { password
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.from('profiles').delete().eq('id', id);
-  return !error;
+  const res = await deleteUserServer(id);
+  return res.success;
 }
 
 export function useUserProfile(userId: string) {
@@ -145,21 +148,19 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId, data }: { userId: string; data: Partial<Profile> }) => {
-      const supabase = createClient();
-      const updateData: any = { updated_at: new Date().toISOString() };
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.role !== undefined) updateData.role = data.role;
-      if (data.institutionId !== undefined) updateData.institution_id = data.institutionId;
-      if (data.avatar !== undefined) updateData.avatar = data.avatar;
-
-      const { data: result, error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', userId)
-        .select(PROFILE_COLUMNS)
-        .single();
-      if (error) throw error;
-      return mapProfile(result);
+      // Same rules as updateUser(): privileged columns and passwords only
+      // ever travel through the super-admin-guarded server action.
+      const res = await updateUserServer({
+        userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        institutionId: data.institutionId,
+      });
+      if (!res.success) throw new Error(res.error || "Could not update profile");
+      const updated = await fetchUserProfile(userId);
+      if (!updated) throw new Error("Profile could not be read back");
+      return updated;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
@@ -171,9 +172,8 @@ export function useDeleteProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (userId: string) => {
-      const supabase = createClient();
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
-      if (error) throw error;
+      const res = await deleteUserServer(userId);
+      if (!res.success) throw new Error(res.error || "Could not delete user");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });

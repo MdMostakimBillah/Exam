@@ -2,8 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { fetchCertificateByNumber } from "@/lib/storage/certificates";
+import { lookupCertificate } from "@/lib/auth/public-lookup";
 import { Certificate } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,23 +17,28 @@ export default function VerifyCertificatePage() {
   const isDark = theme === "dark";
   const [certNumber, setCertNumber] = useState("");
   const [searched, setSearched] = useState(false);
-
-  const {
-    data: certificate,
-    isLoading: searchLoading,
-    refetch: refetchCertificate,
-  } = useQuery<Certificate | undefined>({
-    queryKey: ['certificate', certNumber],
-    queryFn: () => fetchCertificateByNumber(certNumber),
-    enabled: false,
-  });
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [lookupError, setLookupError] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const isButtonLoading = searchLoading;
 
   const handleSearch = useCallback(async () => {
+    if (!certNumber.trim()) return;
     setSearched(true);
-    await refetchCertificate();
-  }, [refetchCertificate]);
+    setCertificate(null);
+    setLookupError("");
+    setSearchLoading(true);
+    try {
+      const res = await lookupCertificate(certNumber);
+      if (res.ok) setCertificate(res.certificate ?? null);
+      else setLookupError(res.error || "Lookup failed. Please try again.");
+    } catch {
+      setLookupError("Lookup failed. Please try again.");
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [certNumber]);
 
   const bg = isDark ? "bg-[#080808]" : "bg-gray-50";
   const text = isDark ? "text-zinc-100" : "text-gray-900";
@@ -73,6 +77,9 @@ export default function VerifyCertificatePage() {
                   value={certNumber}
                   onChange={(e) => setCertNumber(e.target.value)}
                   placeholder="e.g. SCX-2026-000001"
+                  maxLength={40}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </div>
               <Button onClick={handleSearch} disabled={isButtonLoading || !certNumber} className="w-full">
@@ -85,7 +92,9 @@ export default function VerifyCertificatePage() {
         {searched && !certificate && !isButtonLoading && (
           <div className="mt-6 text-center py-8">
             <XCircle className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm text-zinc-500">Certificate not found. Please check the certificate number.</p>
+            <p className="text-sm text-zinc-500">
+              {lookupError || "Certificate not found. Please check the certificate number."}
+            </p>
           </div>
         )}
 
