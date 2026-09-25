@@ -3,9 +3,6 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/contexts/language-context";
-import { MarksSetupPanel } from "@/components/marks/MarksSetupPanel";
-import { MarksMatrix } from "@/components/marks/MarksMatrix";
-import { MarksProcessPanel } from "@/components/marks/MarksProcessPanel";
 import { BookOpen } from "lucide-react";
 
 export default function MarksPage() {
@@ -43,23 +40,16 @@ export default function MarksPage() {
           </TabsList>
 
           <TabsContent value="setup">
-            <MarksSetupPanel />
+            <></>
           </TabsContent>
           <TabsContent value="entry">
-            <div className="p-8 text-center">
-              <h2 className="text-2xl font-bold text-zinc-900 mb-4">
-                {isBn ? "দর্শনীয় Marks Entry" : "Demo Marks Entry"}
-              </h2>
-              <p className="text-zinc-500 text-lg max-w-md mx-auto">
-                {isBn ? " marks entry পেইজ এখন অ্যাক্টিভ নয়। অনুগ্রহ করে অন্য ট্যাব ব্যবহার করুন।" : "The marks entry page is now inactive. Please use another tab."}
-              </p>
-            </div>
+            <></>
           </TabsContent>
           <TabsContent value="matrix">
-            <MarksMatrix />
+            <></>
           </TabsContent>
           <TabsContent value="process">
-            <MarksProcessPanel />
+            <></>
           </TabsContent>
         </Tabs>
       </div>
