@@ -49,25 +49,9 @@ function startOfDhakaDay(now: Date = new Date()): number {
   );
 }
 
-/** Small uppercase section label with an accent dot. */
-function SectionHeading({ title, isDark }: { title: string; isDark: boolean }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="h-1.5 w-1.5 rounded-full bg-brand-accent" />
-      <h2
-        className={`text-[11px] font-semibold uppercase tracking-widest ${
-          isDark ? "text-zinc-500" : "text-zinc-400"
-        }`}
-      >
-        {title}
-      </h2>
-    </div>
-  );
-}
-
 /**
  * KPI card in the dashboard's original style: accent icon tile on the left,
- * value over label, trailing chevron.
+ * value over label.
  */
 function StatCard({
   icon: Icon,
@@ -95,7 +79,6 @@ function StatCard({
           <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{value}</p>
           <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{label}</p>
         </div>
-        <ArrowRight className={`h-4 w-4 shrink-0 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
       </div>
     </Link>
   );
@@ -105,13 +88,11 @@ function DashboardSkeleton({ isDark }: { isDark: boolean }) {
   const sk = isDark ? "bg-white/[0.05]" : "bg-zinc-200/70";
   return (
     <div className="animate-pulse">
-      <div className={`h-4 w-24 rounded-full ${sk} mb-3`} />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={`t${i}`} className={`h-[66px] rounded-md ${sk}`} />
         ))}
       </div>
-      <div className={`h-4 w-28 rounded-full ${sk} mb-3`} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={`a${i}`} className={`h-[66px] rounded-md ${sk}`} />
@@ -278,16 +259,14 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
         ) : (
           <>
             {/* Today — Asia/Dhaka day, recomputed against the live lists */}
-            <SectionHeading title={isBn ? 'আজকের কার্যক্রম' : 'Today'} isDark={isDark} />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {todayCards.map((s) => (
                 <StatCard key={s.label} {...s} isDark={isDark} />
               ))}
             </div>
 
             {/* Overview — lifetime totals */}
-            <SectionHeading title={isBn ? 'সারসংক্ষেপ' : 'Overview'} isDark={isDark} />
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {overviewCards.map((s) => (
                 <StatCard key={s.label} {...s} isDark={isDark} />
               ))}
