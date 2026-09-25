@@ -64,14 +64,14 @@ export default function HomePage() {
     : "border border-zinc-300 text-zinc-700 hover:bg-zinc-100";
   const iconBtn = isDark ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/5" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100";
 
-  // Floating glass nav — same `rounded-md` corners as every other card, but
-  // with a real glassmorphism treatment: translucent gradient body, heavy
-  // backdrop blur + saturation boost, hairline border and an inner top
-  // highlight so it reads as glass over the hero instead of a flat white bar.
+  // Floating glass nav — same `rounded-md` corners as every other card and no
+  // outline of any kind (no border, no ring): the edge is defined purely by a
+  // translucent gradient body, heavy backdrop blur + saturation boost and a
+  // soft drop shadow, so it reads as a slab of frosted glass over the hero.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const pillShell = isDark
-    ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06] backdrop-blur-2xl backdrop-saturate-150 border border-white/[0.14] ring-1 ring-inset ring-white/[0.06] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]"
-    : "bg-gradient-to-b from-white/90 via-white/80 to-white/70 backdrop-blur-2xl backdrop-saturate-150 border border-white/70 ring-1 ring-inset ring-black/[0.04] shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)]";
+    ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06] backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)]"
+    : "bg-gradient-to-b from-white/90 via-white/80 to-white/70 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45)]";
   const mobileLink = isDark
     ? "text-zinc-300 hover:text-white hover:bg-white/[0.06]"
     : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-900/[0.04]";
@@ -272,19 +272,19 @@ export default function HomePage() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-1.5 ml-auto xl:ml-0 shrink-0">
-            <button onClick={() => setLang(lang === "en" ? "bn" : "en")} className={`p-2 sm:p-2.5 rounded-full transition-all ${iconBtn}`} aria-label="Toggle language">
+            <button onClick={() => setLang(lang === "en" ? "bn" : "en")} className={`p-2 sm:p-2.5 rounded-md transition-all ${iconBtn}`} aria-label="Toggle language">
               <Globe className="w-4 h-4" />
             </button>
-            <button onClick={toggleTheme} className={`p-2 sm:p-2.5 rounded-full transition-all ${iconBtn}`} aria-label="Toggle theme">
+            <button onClick={toggleTheme} className={`p-2 sm:p-2.5 rounded-md transition-all ${iconBtn}`} aria-label="Toggle theme">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <Link href="/login" className={`hidden lg:inline-flex text-sm px-4 py-2 rounded-full transition-all ${textNav}`}>{t("nav.signIn")}</Link>
-            <Link href="/register" className={`hidden xl:inline-flex text-sm px-5 py-2.5 rounded-full font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
+            <Link href="/login" className={`hidden lg:inline-flex text-sm px-4 py-2 rounded-md transition-all ${textNav}`}>{t("nav.signIn")}</Link>
+            <Link href="/register" className={`hidden xl:inline-flex text-sm px-5 py-2.5 rounded-md font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
             <button
               onClick={() => setMobileNavOpen((v) => !v)}
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileNavOpen}
-              className={`xl:hidden p-2 sm:p-2.5 rounded-full transition-all ${mobileNavOpen ? (isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white") : iconBtn}`}
+              className={`xl:hidden p-2 sm:p-2.5 rounded-md transition-all ${mobileNavOpen ? (isDark ? "bg-white/10 text-white" : "bg-zinc-900 text-white") : iconBtn}`}
             >
               {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -293,7 +293,7 @@ export default function HomePage() {
 
         {/* Below xl the link row would crowd the bar — same glass, drops down instead */}
         {mobileNavOpen && (
-          <div className={`xl:hidden mt-2 rounded-md border p-3 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.9)] animate-nav-in ${isDark ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06] border-white/[0.14] ring-1 ring-inset ring-white/[0.06]" : "bg-gradient-to-b from-white/90 via-white/80 to-white/70 border-white/70 ring-1 ring-inset ring-black/[0.04]"}`}>
+          <div className={`xl:hidden mt-2 rounded-md p-3 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45)] animate-nav-in ${isDark ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06]" : "bg-gradient-to-b from-white/90 via-white/80 to-white/70"}`}>
             <div className="flex flex-col">
               <a href="#features" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.features")}</a>
               <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.platform")}</a>
@@ -302,8 +302,8 @@ export default function HomePage() {
               <Link href="/verify-certificate" className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.verify")}</Link>
             </div>
             <div className={`mt-2 pt-3 border-t flex flex-col gap-2 ${isDark ? "border-white/10" : "border-zinc-200"}`}>
-              <Link href="/login" className={`text-center text-sm px-4 py-3 rounded-full font-medium transition-all ${btnSecondary}`}>{t("nav.signIn")}</Link>
-              <Link href="/register" className={`text-center text-sm px-4 py-3 rounded-full font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
+              <Link href="/login" className={`text-center text-sm px-4 py-3 rounded-md font-medium transition-all ${btnSecondary}`}>{t("nav.signIn")}</Link>
+              <Link href="/register" className={`text-center text-sm px-4 py-3 rounded-md font-medium transition-all ${btnPrimary}`}>{t("nav.registerInstitution")}</Link>
             </div>
           </div>
         )}
