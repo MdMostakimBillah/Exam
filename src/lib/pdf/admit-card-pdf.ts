@@ -202,6 +202,42 @@ function injectFontsIntoClone(clonedDoc: Document) {
   clonedDoc.head.appendChild(style);
 }
 
+/**
+ * html2canvas derives every glyph's baseline from a 1×1 <img> probe it
+ * appends to *this* document (`img.offsetTop - span.offsetTop + 2`).
+ *
+ * Tailwind's preflight forces `img, svg, … { display: block }`, so that probe
+ * drops onto its own line and the formula returns a **line-box offset**
+ * (~1.5 × font-size) instead of the font ascent. Every text run is then
+ * painted ~6–14px lower than the browser preview puts it — which is exactly
+ * why the "Admit Card" ribbon (flex-centred in a 32px band) looked off-centre
+ * in the downloaded PDF while the preview was perfect.
+ *
+ * Measured on the real card: baseline metric 21px instead of 15px → ribbon
+ * text 6.7px low; with this shim → 0.7px (sub-pixel). Re-inlining the probe
+ * restores html2canvas's intended measurement. Plain CSS on purpose —
+ * html2canvas creates and destroys the probe synchronously, so a
+ * MutationObserver would always run too late. Selector is scoped to the
+ * probe's own inline styles so app markup can never match it.
+ */
+const FONT_METRICS_SHIM_ID = "h2c-font-metrics-shim";
+const FONT_METRICS_SHIM_CSS =
+  'body > div[style*="visibility: hidden"] img[style*="vertical-align: baseline"] { display: inline !important; }';
+
+/** Install the shim for the duration of a capture; returns a disposer. */
+function applyFontMetricsShim(): () => void {
+  if (typeof document === "undefined" || document.getElementById(FONT_METRICS_SHIM_ID)) {
+    return () => undefined;
+  }
+  const style = document.createElement("style");
+  style.id = FONT_METRICS_SHIM_ID;
+  style.textContent = FONT_METRICS_SHIM_CSS;
+  document.head.appendChild(style);
+  return () => {
+    style.remove();
+  };
+}
+
 /** Capture each element and download a single multi-page PDF — one card per A4 landscape page. */
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
@@ -211,34 +247,39 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
   await waitForImages(elements);
 
   const pdf = new jsPDF({ unit: "mm", format: [PAGE_W_MM, PAGE_H_MM], orientation: "landscape" });
+  const releaseFontMetricsShim = applyFontMetricsShim();
 
-  for (let i = 0; i < elements.length; i++) {
-    const el = elements[i];
-    const widthPx = el.offsetWidth || PAGE_W_PX;
-    const heightPx = el.offsetHeight || PAGE_H_PX;
-    const heightMm = Math.min(heightPx / PX_PER_MM, PAGE_H_MM);
-    const y = Math.max((PAGE_H_MM - heightMm) / 2, 0);
+  try {
+    for (let i = 0; i < elements.length; i++) {
+      const el = elements[i];
+      const widthPx = el.offsetWidth || PAGE_W_PX;
+      const heightPx = el.offsetHeight || PAGE_H_PX;
+      const heightMm = Math.min(heightPx / PX_PER_MM, PAGE_H_MM);
+      const y = Math.max((PAGE_H_MM - heightMm) / 2, 0);
 
-    const canvas = await html2canvas(el, {
-      scale: CAPTURE_SCALE,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: "#ffffff",
-      logging: false,
-      width: widthPx,
-      height: heightPx,
-      windowWidth: widthPx,
-      windowHeight: heightPx,
-      scrollX: 0,
-      scrollY: 0,
-      imageTimeout: 15000,
-      onclone: (clonedDoc) => {
-        injectFontsIntoClone(clonedDoc as unknown as Document);
-      },
-    });
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
-    if (i > 0) pdf.addPage([PAGE_W_MM, PAGE_H_MM], "landscape");
-    pdf.addImage(dataUrl, "JPEG", 0, y, PAGE_W_MM, heightMm, undefined, "FAST");
+      const canvas = await html2canvas(el, {
+        scale: CAPTURE_SCALE,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: widthPx,
+        height: heightPx,
+        windowWidth: widthPx,
+        windowHeight: heightPx,
+        scrollX: 0,
+        scrollY: 0,
+        imageTimeout: 15000,
+        onclone: (clonedDoc) => {
+          injectFontsIntoClone(clonedDoc as unknown as Document);
+        },
+      });
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
+      if (i > 0) pdf.addPage([PAGE_W_MM, PAGE_H_MM], "landscape");
+      pdf.addImage(dataUrl, "JPEG", 0, y, PAGE_W_MM, heightMm, undefined, "FAST");
+    }
+  } finally {
+    releaseFontMetricsShim();
   }
   pdf.save(filename || `admit-cards-${timestamp()}.pdf`);
 }
