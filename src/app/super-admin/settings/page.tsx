@@ -415,7 +415,7 @@ export default function SuperAdminSettingsPage() {
               <div className={`${card} p-6`}>
                 <div className="mb-6">
                   <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'ব্র্যান্ডিং ও ল্যান্ডিং পেজ' : 'Branding & Landing Page'}</h2>
-                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'লোগো, নাম, ল্যান্ডিং পেজের লেখা এবং সব পিডিএফের ওয়াটারমার্ক পরিবর্তন করুন' : 'Change the logo, names, landing-page text and the watermark shown in every PDF'}</p>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'লোগো, নাম, ল্যান্ডিং পেজের লেখা, সব পিডিএফের ওয়াটারমার্ক এবং প্রবেশপত্রের এমডি স্বাক্ষর পরিবর্তন করুন' : 'Change the logo, names, landing-page text, the watermark shown in every PDF and the MD signature on admit cards'}</p>
                 </div>
 
                 <div className="space-y-6">

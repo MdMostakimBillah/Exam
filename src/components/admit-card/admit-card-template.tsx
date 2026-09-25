@@ -75,6 +75,9 @@ export interface CardView {
   centerCode?: string; // "(001)" style sequence when resolvable
   subjects: CardSubject[];
   qrDataUrl: string;
+  /** Institution principal's signature image (Settings → Profile).
+   *  Empty → blank signature line above the label. */
+  principalSignature?: string | null;
   /** Bilingual blob — EN lines + BN lines; filtered by lang at render. */
   instructions?: string;
   /** admit_cards.created_at — kept for provenance. */
@@ -178,6 +181,83 @@ function formatCardDate(iso: string, bn: boolean): string {
   } catch {
     return iso;
   }
+}
+
+/**
+ * Footer signature slot: optional signature image (uploaded in Settings)
+ * sitting above an italic accent title, a 165px rule and the designation
+ * below it. The footer bottom-aligns its children, so the image never
+ * pushes the rule out of line with the neighbouring "Controller of
+ * Examinations" slot (the stack under the image is identical).
+ * Inline styles only — html2canvas must paint it exactly as the preview.
+ */
+function FooterSignature({
+  image,
+  title,
+  sub,
+  accent,
+}: {
+  image?: string | null;
+  title: string;
+  sub: string;
+  accent: string;
+}) {
+  return (
+    <div style={{ textAlign: "center", flexShrink: 0 }}>
+      {image ? (
+        <div
+          style={{
+            height: "34px",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            marginBottom: "6px",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image}
+            alt=""
+            crossOrigin="anonymous"
+            style={{
+              maxHeight: "34px",
+              maxWidth: "165px",
+              objectFit: "contain",
+              display: "block",
+            }}
+          />
+        </div>
+      ) : null}
+      <div
+        style={{
+          fontSize: "17px",
+          fontStyle: "italic",
+          fontWeight: 700,
+          color: accent,
+          lineHeight: 1.15,
+        }}
+      >
+        {title}
+      </div>
+      <div
+        style={{
+          width: "165px",
+          borderTop: `1px solid ${SLATE_400}`,
+          margin: "8px auto 4px",
+        }}
+      />
+      <div
+        style={{
+          fontSize: "11px",
+          color: SLATE_500,
+          maxWidth: "165px",
+          wordBreak: "break-word",
+        }}
+      >
+        {sub}
+      </div>
+    </div>
+  );
 }
 
 /** One half of a subject row: fixed code column + fluid name column.
@@ -734,7 +814,21 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             </div>
           </div>
         </div>
-        <div style={{ textAlign: "center", flexShrink: 0 }}>
+        {/* Right: MD + Principal + Controller signature slots */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "24px", flexShrink: 0 }}>
+          <FooterSignature
+            image={brand.mdSignature}
+            title={L("Managing Director", "নির্বাহী পরিচালক")}
+            sub={L(`${brandShort} Association`, assocBn)}
+            accent={accentHex}
+          />
+          <FooterSignature
+            image={view.principalSignature}
+            title={L("Principal", "অধ্যক্ষ")}
+            sub={view.institutionName}
+            accent={accentHex}
+          />
+          <div style={{ textAlign: "center", flexShrink: 0 }}>
           <div
             style={{
               fontSize: "17px",
@@ -755,6 +849,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           />
           <div style={{ fontSize: "11px", color: SLATE_500 }}>
             {L(`Secretary, ${brandShort} Association`, `সাধারণ সম্পাদক, ${assocBn}`)}
+          </div>
           </div>
         </div>
       </div>

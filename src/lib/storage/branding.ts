@@ -20,6 +20,8 @@ export interface BrandingSettings {
   brandLogo: string;
   /** Watermark image URL for PDFs/admit cards; empty → text watermark. */
   brandWatermark: string;
+  /** Managing Director's signature image — shown on the admit-card footer. */
+  mdSignature: string;
   /** Landing hero headline, part 1 (empty → built-in translation). */
   heroTitle1: string;
   heroTitle1Bn: string;
@@ -43,6 +45,7 @@ export const BRANDING_DEFAULTS: BrandingSettings = {
   brandShort: "BMA",
   brandLogo: "",
   brandWatermark: "",
+  mdSignature: "",
   heroTitle1: "",
   heroTitle1Bn: "",
   heroTitle2: "",
@@ -100,7 +103,7 @@ export function useSaveBranding() {
       const { data: prevRows } = await supabase
         .from("system_settings")
         .select("key,value")
-        .in("key", ["brandLogo", "brandWatermark"]);
+        .in("key", ["brandLogo", "brandWatermark", "mdSignature"]);
       const rows = BRANDING_KEYS.map((k) => ({
         key: k,
         value: values[k] ?? "",
@@ -116,6 +119,7 @@ export function useSaveBranding() {
       // Best-effort: drop old storage objects that were replaced or removed.
       await removeBrandingObject(prev.brandLogo, values.brandLogo);
       await removeBrandingObject(prev.brandWatermark, values.brandWatermark);
+      await removeBrandingObject(prev.mdSignature, values.mdSignature);
       return values;
     },
     onSuccess: () => {
@@ -150,10 +154,10 @@ async function removeBrandingObject(oldUrl?: string, newUrl?: string): Promise<v
   }
 }
 
-/** Upload a branding image (logo / watermark) to the public bucket. */
+/** Upload a branding image (logo / watermark / MD signature) to the public bucket. */
 export async function uploadBrandingImage(
   file: File,
-  kind: "logo" | "watermark"
+  kind: "logo" | "watermark" | "md-signature"
 ): Promise<string> {
   const supabase = createClient();
   const ext =

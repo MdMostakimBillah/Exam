@@ -5,7 +5,7 @@ import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/aut
 
 const SUPABASE_TABLE = 'institutions';
 
-const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,total_students,total_applications,created_at,updated_at';
+const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,total_students,total_applications,created_at,updated_at';
 
 const INSTITUTIONS_STALE_TIME = 5 * 60 * 1000;
 
@@ -26,11 +26,34 @@ function mapInstitution(data: any): Institution {
     adminUserId: data.admin_user_id,
     status: data.status,
     logo: data.logo_url,
+    principalSignature: data.principal_signature_url ?? '',
     totalStudents: data.total_students,
     totalApplications: data.total_applications,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
+}
+
+/**
+ * Upload the principal's signature image to the public bucket
+ * (`institution-signatures/` folder — INSERT allowed for signed-in
+ * staff by migration 0022). Returns the public URL.
+ */
+export async function uploadPrincipalSignature(slug: string, file: File): Promise<string> {
+  const safeSlug =
+    String(slug).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) ||
+    "institution";
+  const ext =
+    (file.name.split(".").pop() || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+  const path = `institution-signatures/${safeSlug}-${Date.now()}.${ext}`;
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from("public")
+    .upload(path, file, { contentType: file.type || "image/png", upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from("public").getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error("Could not resolve signature URL");
+  return data.publicUrl;
 }
 
 export async function fetchInstitutions(): Promise<Institution[]> {
@@ -90,6 +113,7 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   if (data.adminUserId !== undefined) u.admin_user_id = data.adminUserId;
   if (data.status !== undefined) u.status = data.status;
   if (data.logo !== undefined) u.logo_url = data.logo;
+  if (data.principalSignature !== undefined) u.principal_signature_url = data.principalSignature;
   const { data: result, error } = await createClient().from(SUPABASE_TABLE).update(u).eq('id', id).select(INSTITUTION_COLUMNS).single();
   if (error) return undefined;
   return mapInstitution(result);

@@ -69,6 +69,8 @@ export interface Institution {
   adminUserId?: string;
   status: InstitutionStatus;
   logo?: string;
+  /** Principal's signature image URL — shown on the admit-card footer. */
+  principalSignature?: string;
   totalStudents: number;
   totalApplications: number;
   createdAt: string;
