@@ -66,9 +66,8 @@ function SectionHeading({ title, isDark }: { title: string; isDark: boolean }) {
 }
 
 /**
- * Vertical KPI card: accent icon tile, big value, muted label.
- * `today` cards get an inset accent rail on the left edge instead of extra
- * chrome, so the highlight reads as one block.
+ * KPI card in the dashboard's original style: accent icon tile on the left,
+ * value over label, trailing chevron.
  */
 function StatCard({
   icon: Icon,
@@ -76,48 +75,27 @@ function StatCard({
   value,
   href,
   isDark,
-  today = false,
 }: {
   icon: LucideIcon;
   label: string;
   value: ReactNode;
   href: string;
   isDark: boolean;
-  today?: boolean;
 }) {
   const shell = isDark
-    ? "bg-[#141416] border border-white/[0.06] hover:border-white/[0.12]"
-    : "bg-white border border-zinc-200 hover:border-zinc-300 shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] hover:border-white/[0.1] transition-colors rounded-md"
+    : "bg-white border border-zinc-200 hover:border-zinc-300 transition-colors rounded-md shadow-sm";
   return (
-    <Link href={href} className="block h-full">
-      <div
-        className={`${shell} rounded-lg p-4 h-full transition-colors`}
-        style={today ? { boxShadow: "inset 3px 0 0 var(--brand-accent)" } : undefined}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-brand-accent-soft">
-            <Icon className="h-[18px] w-[18px] text-brand-accent" />
-          </div>
-          {today && (
-            <span className="text-[9px] font-bold uppercase tracking-widest text-brand-accent pt-1">
-              Today
-            </span>
-          )}
+    <Link href={href} className="block">
+      <div className={`${shell} px-4 py-3 flex items-center gap-3`}>
+        <div className="h-10 w-10 rounded-md flex items-center justify-center shrink-0 bg-brand-accent-soft">
+          <Icon className="h-5 w-5 text-brand-accent" />
         </div>
-        <p
-          className={`mt-3 text-xl font-bold tracking-tight leading-tight break-words ${
-            isDark ? "text-white" : "text-zinc-900"
-          }`}
-        >
-          {value}
-        </p>
-        <p
-          className={`mt-0.5 text-[11px] leading-tight ${
-            isDark ? "text-zinc-500" : "text-zinc-400"
-          }`}
-        >
-          {label}
-        </p>
+        <div className="flex-1 min-w-0">
+          <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{value}</p>
+          <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{label}</p>
+        </div>
+        <ArrowRight className={`h-4 w-4 shrink-0 ${isDark ? 'text-zinc-600' : 'text-zinc-300'}`} />
       </div>
     </Link>
   );
@@ -130,22 +108,22 @@ function DashboardSkeleton({ isDark }: { isDark: boolean }) {
       <div className={`h-4 w-24 rounded-full ${sk} mb-3`} />
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={`t${i}`} className={`h-[124px] rounded-lg ${sk}`} />
+          <div key={`t${i}`} className={`h-[66px] rounded-md ${sk}`} />
         ))}
       </div>
       <div className={`h-4 w-28 rounded-full ${sk} mb-3`} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={`a${i}`} className={`h-[124px] rounded-lg ${sk}`} />
+          <div key={`a${i}`} className={`h-[66px] rounded-md ${sk}`} />
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className={`h-56 rounded-lg ${sk}`} />
-        <div className={`h-56 rounded-lg ${sk}`} />
+        <div className={`h-56 rounded-md ${sk}`} />
+        <div className={`h-56 rounded-md ${sk}`} />
       </div>
       <div className="grid grid-cols-12 gap-6">
-        <div className={`col-span-12 lg:col-span-7 h-72 rounded-lg ${sk}`} />
-        <div className={`col-span-12 lg:col-span-5 h-72 rounded-lg ${sk}`} />
+        <div className={`col-span-12 lg:col-span-7 h-72 rounded-md ${sk}`} />
+        <div className={`col-span-12 lg:col-span-5 h-72 rounded-md ${sk}`} />
       </div>
     </div>
   );
@@ -235,8 +213,8 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
   );
 
   const card = isDark
-    ? "bg-[#141416] border border-white/[0.06] rounded-lg"
-    : "bg-white border border-zinc-200 rounded-lg shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] rounded-md"
+    : "bg-white border border-zinc-200 rounded-md shadow-sm";
   const subtext = isDark ? "text-zinc-500" : "text-zinc-400";
   const shimmer = isDark ? "bg-white/[0.04]" : "bg-zinc-100";
 
@@ -308,7 +286,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
             <SectionHeading title={isBn ? 'আজকের কার্যক্রম' : 'Today'} isDark={isDark} />
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
               {todayCards.map((s) => (
-                <StatCard key={s.label} {...s} isDark={isDark} today />
+                <StatCard key={s.label} {...s} isDark={isDark} />
               ))}
             </div>
 
@@ -458,14 +436,9 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
               <div className="col-span-12 lg:col-span-5">
                 <div className={`${card} h-full`}>
                   <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
-                    <div className="flex items-center justify-between">
-                      <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                        {isBn ? `${year} সালে প্রতিষ্ঠান যোগ` : `Institutions Added · ${year}`}
-                      </h3>
-                      <span className={`text-[11px] font-semibold ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
-                        {addedThisYear}
-                      </span>
-                    </div>
+                    <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                      {isBn ? 'প্রতিষ্ঠান যোগ' : 'Institutions Added'}
+                    </h3>
                   </div>
                   <div className="p-5">
                     {addedThisYear === 0 ? (
@@ -485,7 +458,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                           bars with % inside an auto-height flex column, which the
                           browser resolves to auto (0px), so nothing rendered.
                         */}
-                        <div className="flex items-end gap-1.5 h-32">
+                        <div className="flex items-end gap-2 h-32">
                           {monthlyInstitutions.map((h, i) => {
                             const pct = h > 0 ? Math.max((h / maxMonthly) * 100, 8) : 0;
                             return (
@@ -499,7 +472,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                                   </span>
                                 )}
                                 <div
-                                  className="w-full rounded-t-md bg-brand-accent transition-all"
+                                  className="w-full rounded-t-md transition-all bg-brand-accent-strong"
                                   style={{ height: `${pct}%` }}
                                   title={`${h} ${isBn ? 'টি প্রতিষ্ঠান' : 'institutions'}`}
                                 />
@@ -507,7 +480,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                             );
                           })}
                         </div>
-                        <div className="flex gap-1.5 mt-2">
+                        <div className="flex gap-2 mt-3">
                           {['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map((m, i) => (
                             <span key={`${m}${i}`} className={`flex-1 text-center text-[9px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>{m}</span>
                           ))}
