@@ -2,16 +2,36 @@
 
 import * as React from "react";
 import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/branding";
+import { DEFAULT_INSTRUCTIONS } from "@/lib/storage/admit-cards";
 
 /**
  * Admit card — modern landscape redesign (Delta Science reference, 2026).
  *
- * Landscape A4 (297×210mm): theme-colored full-bleed header (logo circle +
- * institution + code·session | gold exam code + exam title), light "Admit
- * Card" ribbon, photo + class badge beside a big examinee name over a
- * 2-column label/value grid, bordered zebra subjects table, dashed
- * perforation, QR verify stub with controller block, light bottom notice
- * strip, and a gold security strip overlaying the right edge.
+ * Landscape A4 (297×210mm):
+ *   1. Two-tier accent header — gold hairline, then the identity row
+ *      (logo · association overline · institution · code/session meta |
+ *      "ADMIT CARD" chip + gold exam code), a hairline, and the exam title
+ *      row with its period on the right. The old washed-out "Admit Card"
+ *      ribbon and the bottom notice strip are gone; their copy moved into
+ *      the chip and the instructions panel.
+ *   2. Photo + class/section badge beside a big examinee name over a
+ *      2-column label/value grid (date/time and class/section were dropped
+ *      here — the header and the badge already carry them).
+ *   3. Bordered zebra subjects table.
+ *   4. "Instructions to Candidates" panel — three columns: Before the Exam,
+ *      Exam Hall Rules and an amber Violation Warning box.
+ *   5. Dashed perforation + QR verify stub with the three signature slots,
+ *      and a gold security strip overlaying the right edge.
+ *
+ * VERTICAL BUDGET IS HARD: the exporter clamps each card to 210mm
+ * (`heightMm = Math.min(heightPx / PX_PER_MM, PAGE_H_MM)`), so anything that
+ * overflows is silently cropped out of the PDF. The card is a flex column
+ * with `minHeight: 210mm`; the perforation and the stub carry
+ * `marginTop: "auto"` so leftover space is absorbed between the body and the
+ * tear-off line instead of pushing content past the page — and a long subject
+ * list (6 rows) or a custom instruction note still fits. Verified with a
+ * worst-case probe (10 subjects, unpublished routine, long names, custom
+ * note) at exactly 794px in both languages.
  *
  * Everything is styled INLINE on purpose: html2canvas rasterises the card
  * for the bulk PDF and the print window receives a plain outerHTML clone
@@ -78,7 +98,9 @@ export interface CardView {
   /** Institution principal's signature image (Settings → Profile).
    *  Empty → blank signature line above the label. */
   principalSignature?: string | null;
-  /** Bilingual blob — EN lines + BN lines; filtered by lang at render. */
+  /** Institution-authored instruction blob — EN lines + BN lines. The shipped
+   *  default is boilerplate the structured rules below now state properly, so
+   *  only a customised blob is printed (see noteLines). */
   instructions?: string;
   /** admit_cards.created_at — kept for provenance. */
   createdAt: string;
@@ -207,11 +229,11 @@ function FooterSignature({
       {image ? (
         <div
           style={{
-            height: "34px",
+            height: "26px",
             display: "flex",
             alignItems: "flex-end",
             justifyContent: "center",
-            marginBottom: "6px",
+            marginBottom: "3px",
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -243,7 +265,7 @@ function FooterSignature({
         style={{
           width: "165px",
           borderTop: `1px solid ${SLATE_400}`,
-          margin: "8px auto 4px",
+          margin: "6px auto 3px",
         }}
       />
       {/* Fixed 2-line box: the rule must sit on the same line as the
@@ -309,7 +331,7 @@ function SubjectHalf({
           width: "86px",
           flexShrink: 0,
           boxSizing: "border-box",
-          padding: "8px 14px",
+          padding: "4px 14px",
           fontSize: "12px",
           lineHeight: 1.35,
           color: SLATE_500,
@@ -328,7 +350,7 @@ function SubjectHalf({
           flex: 1,
           minWidth: 0,
           boxSizing: "border-box",
-          padding: "8px 14px",
+          padding: "4px 14px",
           fontSize: "13px",
           lineHeight: 1.4,
           color: SLATE_700,
@@ -413,17 +435,55 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
     view.section && view.section !== "—" ? ` / ${view.section}` : ""
   }`;
 
-  // 2-column label/value grid — the reference's field set, plus class info.
+  // 2-column label/value grid. "Date & Time" lives in the header tier and
+  // "Class / Section" in the badge under the photo — duplicating them here
+  // only cost a whole extra grid row of vertical budget.
   const fields: Array<{ label: string; value: string }> = [
     { label: L("Father's Name", "পিতার নাম"), value: view.fatherName || "—" },
     { label: L("Mother's Name", "মাতার নাম"), value: view.motherName || "—" },
     { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
     { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
     { label: L("Exam Center", "পরীক্ষার কেন্দ্র"), value: centerText },
-    { label: L("Date & Time", "তারিখ ও সময়"), value: view.examPeriod || "—" },
-    { label: L("Class / Section", "শ্রেণি / শাখা"), value: classNameFull || "—" },
     { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
   ];
+
+  // ── Instructions to candidates ────────────────────────────────
+  // Three columns: preparation, hall rules and the violation warning.
+  const prepRules = [
+    L("Report 30 minutes early — carry this admit card.", "৩০ মিনিট আগে প্রবেশপত্রসহ কেন্দ্রে উপস্থিত হন।"),
+    L("Bring a photo ID and your own pen / pencil.", "ছবিযুক্ত পরিচয়পত্র ও নিজস্ব কলম আনুন।"),
+    L("Verify your roll, center code and subject list.", "রোল, কেন্দ্র কোড ও বিষয় যাচাই করে নিন।"),
+    L("Sit only at the desk allotted to your roll.", "শুধু নির্ধারিত ডেস্কে বসবেন।"),
+    L("Keep the admit card in hand until the exam ends.", "পরীক্ষা শেষ না হওয়া পর্যন্ত প্রবেশপত্র রাখুন।"),
+  ];
+  const hallRules = [
+    L("Switch off mobile phones and keep them aside.", "মোবাইল বন্ধ রেখে সাথে রাখুন।"),
+    L("Write answers on the supplied sheet only.", "নির্ধারিত উত্তরপত্রেই উত্তর দিন।"),
+    L("Hand in the answer script before time ends.", "সময় শেষ হওয়ার আগে খাতা জমা দিন।"),
+    L("Leave the hall only with the invigilator's consent.", "অনুমতি ছাড়া কক্ষ ছাড়তে নেই।"),
+    L("Raise your hand and stay seated for any doubt.", "সংশয় হলে হাত তুলুন, স্থানে থাকুন।"),
+  ];
+  const violationRules = [
+    L("Any malpractice cancels the result outright.", "অসদুপায়ে ফলাফল সম্পূর্ণ বাতিল।"),
+    L("Caught candidates are barred from re-sitting.", "ধরা পড়লে পুনরায় পরীক্ষা নিষিদ্ধ।"),
+    L("Banned items mean instant disqualification.", "নিষিদ্ধ বস্তু পাওয়া গেলে বাতিল।"),
+    L("The center chief's decision is final.", "কেন্দ্র প্রধানের সিদ্ধান্তই চূড়ান্ত।"),
+    L("Helping another candidate is malpractice too.", "অন্যকে সাহায্য করলেও বাতিল হবে।"),
+  ];
+
+  // Institution-authored instruction blob — bilingual, one line per language.
+  // The shipped default is boilerplate that the structured rules above now
+  // state properly, so only a *customised* note is printed (no duplicates).
+  const rawNote = (view.instructions || "").trim();
+  const isDefaultNote = rawNote === DEFAULT_INSTRUCTIONS.trim();
+  const noteLines =
+    rawNote && !isDefaultNote
+      ? rawNote
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((s) => (bn ? /[\u0980-\u09ff]/.test(s) : !/[\u0980-\u09ff]/.test(s)))
+      : [];
 
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
@@ -436,21 +496,39 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           zIndex: 1,
           background: accentHex,
           color: "#ffffff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "18px",
-          padding: "22px 36px 20px 36px",
+          padding: "14px 36px 12px",
         }}
       >
-        {/* Left: Association logo + BMA title (main) + Institution (sub) + code·session */}
+        {/* Gold hairline across the top edge — the modern accent detail. */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            background: `linear-gradient(to right, ${GOLD} 0%, rgba(255,255,255,0.55) 50%, ${GOLD} 100%)`,
+          }}
+        />
+
+        {/* ── Tier 1: identity row ──────────────────────────────── */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "18px",
+          }}
+        >
+        {/* Left: Association logo + overline + institution + code·session */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "12px",
             minWidth: 0,
-            maxWidth: "62%",
+            maxWidth: "64%",
           }}
         >
           <div
@@ -496,12 +574,15 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             )}
           </div>
           <div style={{ minWidth: 0 }}>
+            {/* Overline — standard masthead order: body › institution › codes */}
             <div
               style={{
-                fontSize: "16.5px",
-                fontWeight: 800,
-                lineHeight: 1.15,
-                letterSpacing: "0.2px",
+                fontSize: "9.5px",
+                fontWeight: 700,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.78)",
+                lineHeight: 1.2,
                 wordBreak: "break-word",
               }}
             >
@@ -509,10 +590,10 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             </div>
             <div
               style={{
-                fontSize: "12.5px",
-                fontWeight: 600,
-                color: "#e2e8f0",
+                fontSize: "15.5px",
+                fontWeight: 800,
                 lineHeight: 1.2,
+                letterSpacing: "0.2px",
                 marginTop: "2px",
                 wordBreak: "break-word",
               }}
@@ -521,8 +602,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             </div>
             <div
               style={{
-                fontSize: "10.5px",
-                color: "#cbd5e1",
+                fontSize: "10px",
+                color: "rgba(255,255,255,0.75)",
                 marginTop: "2px",
                 wordBreak: "break-word",
               }}
@@ -532,58 +613,83 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           </div>
         </div>
 
-        {/* Right: exam code (gold) + exam title */}
-        <div style={{ textAlign: "right", maxWidth: "42%", minWidth: 0 }}>
+        {/* Right: the document chip + exam code */}
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div
+            style={{
+              display: "inline-block",
+              background: "rgba(255,255,255,0.16)",
+              border: "1px solid rgba(255,255,255,0.5)",
+              borderRadius: "4px",
+              padding: "5px 14px",
+              fontSize: "11px",
+              fontWeight: 800,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+              boxSizing: "border-box",
+            }}
+          >
+            {L("Admit Card", "প্রবেশপত্র")}
+          </div>
           {view.examCode ? (
             <div
               style={{
+                marginTop: "5px",
                 fontSize: "10.5px",
                 fontWeight: 700,
-                letterSpacing: "0.6px",
+                letterSpacing: "0.14em",
                 color: GOLD,
               }}
             >
               {view.examCode}
             </div>
           ) : null}
+        </div>
+        </div>
+
+        {/* ── Tier 2: exam title row under a hairline ───────────── */}
+        <div style={{ height: "1px", background: "rgba(255,255,255,0.22)", margin: "8px 0 6px" }} />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: "18px",
+          }}
+        >
           <div
             style={{
-              fontSize: "13.5px",
-              fontWeight: 500,
-              marginTop: "2px",
-              lineHeight: 1.25,
+              fontSize: "17px",
+              fontWeight: 800,
+              lineHeight: 1.2,
+              letterSpacing: "0.2px",
               wordBreak: "break-word",
+              minWidth: 0,
             }}
           >
             {view.examName}
           </div>
+          {view.examPeriod ? (
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.85)",
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              {view.examPeriod}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* ── Ribbon: "Admit Card" — flex-centered so PDF raster matches preview */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          background: "#f8fafc",
-          borderBottom: BORDER,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "32px",
-          fontSize: "14px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          lineHeight: 1,
-          color: accentHex,
-          textAlign: "center",
-        }}
-      >
-        {L("Admit Card", "প্রবেশপত্র")}
-      </div>
-
       {/* ── Body: photo + badge | big name + 2-col fields ────────── */}
-      <div style={{ display: "flex", gap: "28px", padding: "24px 36px 0", position: "relative", zIndex: 1 }}>
+      <div style={{ display: "flex", gap: "28px", padding: "15px 36px 0", position: "relative", zIndex: 1 }}>
         <div
           style={{
             width: "128px",
@@ -623,7 +729,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               </span>
             )}
           </div>
-          {/* Candidate badge — reference shows student type; we show class */}
+          {/* Candidate badge — class + section (the grid no longer repeats it) */}
           {view.className ? (
             <div
               style={{
@@ -637,9 +743,13 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 textTransform: "uppercase",
                 padding: "2px 9px",
                 boxSizing: "border-box",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              {view.className}
+              {classNameFull}
             </div>
           ) : null}
         </div>
@@ -647,11 +757,11 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontSize: "22px",
+              fontSize: "21px",
               fontWeight: 700,
               color: accentHex,
               lineHeight: 1.2,
-              marginBottom: "14px",
+              marginBottom: "10px",
               wordBreak: "break-word",
             }}
           >
@@ -662,7 +772,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               columnGap: "26px",
-              rowGap: "14px",
+              rowGap: "10px",
             }}
           >
             {fields.map((f) => (
@@ -674,7 +784,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                     letterSpacing: "0.6px",
                     textTransform: "uppercase",
                     color: SLATE_400,
-                    marginBottom: "3px",
+                    marginBottom: "2px",
                   }}
                 >
                   {f.label}
@@ -696,7 +806,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
       </div>
 
       {/* ── Subjects: label + bordered zebra table ───────────────── */}
-      <div style={{ padding: "20px 36px 0", position: "relative", zIndex: 1 }}>
+      <div style={{ padding: "11px 36px 0", position: "relative", zIndex: 1 }}>
         <div
           style={{
             fontSize: "12px",
@@ -704,7 +814,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             letterSpacing: "0.6px",
             textTransform: "uppercase",
             color: SLATE_500,
-            marginBottom: "8px",
+            marginBottom: "6px",
           }}
         >
           {L("Subjects", "বিষয়সমূহ")}
@@ -740,7 +850,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                   display: "flex",
                   alignItems: "stretch",
                   boxSizing: "border-box",
-                  minHeight: "38px",
+                  minHeight: "30px",
                   background: i % 2 === 1 ? "#f8fafc" : "#ffffff",
                   borderTop: i > 0 ? BORDER : undefined,
                 }}
@@ -752,7 +862,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           )}
         </div>
         {!hasRoutine && view.subjects.length > 0 ? (
-          <div style={{ fontSize: "10px", color: SLATE_500, marginTop: "6px" }}>
+          <div style={{ fontSize: "9.5px", color: SLATE_500, marginTop: "4px" }}>
             {L(
               "Date / time of subjects will appear once the exam routine is published.",
               "রুটিন প্রকাশের পর বিষয়ের তারিখ / সময় দেখাবে।"
@@ -761,8 +871,143 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
         ) : null}
       </div>
 
-      {/* ── Perforation (notches are print-hidden in the reference) ─ */}
-      <div style={{ margin: "22px 36px 0", borderTop: "1px dashed #cbd5e1" }} />
+      {/* ── Instructions: preparation · hall rules · violation warning ── */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          margin: "auto 36px 0",
+          padding: "9px 12px 9px",
+          boxSizing: "border-box",
+          background: "#ffffff",
+          border: BORDER,
+          borderRadius: "8px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div
+            style={{
+              fontSize: "10.5px",
+              fontWeight: 800,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: accentHex,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {L("Instructions to Candidates", "পরীক্ষার্থীদের জন্য নির্দেশনা")}
+          </div>
+          <div style={{ flex: 1, height: "1px", background: "#e2e8f0", minWidth: 0 }} />
+          <div
+            style={{
+              fontSize: "9px",
+              color: SLATE_500,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {L(
+              "Valid only with a matching photo ID",
+              "ছবিযুক্ত পরিচয়পত্রসহ প্রদর্শনযোগ্য"
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            columnGap: "14px",
+            marginTop: "6px",
+          }}
+        >
+          {[
+            {
+              head: L("Before the Exam", "পরীক্ষার আগে"),
+              color: accentHex,
+              bg: "#f8fafc",
+              edge: "#e2e8f0",
+              items: prepRules,
+            },
+            {
+              head: L("Exam Hall Rules", "পরীক্ষাকক্ষের নিয়ম"),
+              color: SLATE_700,
+              bg: "#f8fafc",
+              edge: "#e2e8f0",
+              items: hallRules,
+            },
+            {
+              head: L("Violation Warning", "লঙ্ঘনের সতর্কতা"),
+              color: "#b45309",
+              bg: "#fffbeb",
+              edge: "#fde68a",
+              items: violationRules,
+            },
+          ].map((col) => (
+            <div
+              key={col.head}
+              style={{
+                boxSizing: "border-box",
+                minWidth: 0,
+                background: col.bg,
+                border: `1px solid ${col.edge}`,
+                borderTop: `3px solid ${col.color}`,
+                borderRadius: "6px",
+                padding: "5px 9px 6px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "9.5px",
+                  fontWeight: 800,
+                  letterSpacing: "0.09em",
+                  textTransform: "uppercase",
+                  color: col.color,
+                  marginBottom: "3px",
+                  wordBreak: "break-word",
+                }}
+              >
+                {col.head}
+              </div>
+              {col.items.map((t, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    fontSize: "9.5px",
+                    lineHeight: 1.36,
+                    color: SLATE_700,
+                    marginBottom: "1px",
+                  }}
+                >
+                  <span style={{ width: "11px", flexShrink: 0, color: col.color }}>•</span>
+                  <span style={{ minWidth: 0, wordBreak: "break-word" }}>{t}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {noteLines.length ? (
+          <div
+            style={{
+              marginTop: "5px",
+              paddingTop: "5px",
+              borderTop: BORDER,
+              fontSize: "9px",
+              lineHeight: 1.45,
+              color: SLATE_500,
+              wordBreak: "break-word",
+            }}
+          >
+            {noteLines.join("  ")}
+          </div>
+        ) : null}
+      </div>
+
+      {/* ── Perforation — auto top margin pins the stub to the card foot ─ */}
+      <div style={{ margin: "auto 36px 0", borderTop: "1px dashed #cbd5e1" }} />
 
       {/* ── Footer stub: QR + scan/ID | controller ────────────────── */}
       <div
@@ -773,7 +1018,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           justifyContent: "space-between",
           alignItems: "flex-end",
           gap: "20px",
-          padding: "18px 36px 16px",
+          padding: "10px 36px 9px",
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-end", gap: "14px", minWidth: 0 }}>
@@ -848,7 +1093,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             style={{
               width: "165px",
               borderTop: `1px solid ${SLATE_400}`,
-              margin: "8px auto 4px",
+              margin: "6px auto 3px",
             }}
           />
           <div
@@ -865,26 +1110,6 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           </div>
           </div>
         </div>
-      </div>
-
-      {/* ── Bottom notice strip ───────────────────────────────────── */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          background: "#f8fafc",
-          borderTop: BORDER,
-          textAlign: "center",
-          fontSize: "10px",
-          color: SLATE_400,
-          padding: "10px 36px",
-          boxSizing: "border-box",
-        }}
-      >
-        {L(
-          "This admit card is valid only with a matching photo ID. Report to the center 30 minutes before start time.",
-          "এই প্রবেশপত্রটি বৈধ ছবিযুক্ত পরিচয়পত্র সহ প্রদর্শনযোগ্য। পরীক্ষা শুরুর ৩০ মিনিট পূর্বে কেন্দ্রে উপস্থিত থাকুন।"
-        )}
       </div>
 
       {/* ── Gold security strip — overlays the right edge ────────── */}

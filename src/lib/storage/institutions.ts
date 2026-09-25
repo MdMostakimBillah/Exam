@@ -18,7 +18,7 @@ const LEGACY_INSTITUTION_COLUMNS = INSTITUTION_COLUMNS.replace(',principal_signa
 const isPreMigrationError = (error: unknown): boolean =>
   /principal_signature_url/.test(String((error as { message?: string })?.message ?? ''));
 
-const INSTITUTIONS_STALE_TIME = 5 * 60 * 1000;
+const INSTITUTIONS_STALE_TIME = 60 * 1000; // 1 min (was 5 min) - keeps lists fresh after RLS or data fixes
 
 function mapInstitution(data: any): Institution {
   return {
@@ -73,7 +73,11 @@ export async function fetchInstitutions(): Promise<Institution[]> {
   if (error && isPreMigrationError(error)) {
     ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).order('created_at', { ascending: false }));
   }
-  if (error || !data) return [];
+  if (error) {
+    console.error("[fetchInstitutions] Supabase error:", error.message, error.code, error.details);
+    throw error;
+  }
+  if (!data) return [];
   return data.map(mapInstitution);
 }
 
@@ -83,7 +87,11 @@ export async function fetchInstitutionById(id: string): Promise<Institution | un
   if (error && isPreMigrationError(error)) {
     ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).eq('id', id).single());
   }
-  if (error || !data) return undefined;
+  if (error) {
+    console.error("[fetchInstitutionById] Supabase error:", error.message, error.code, error.details);
+    throw error;
+  }
+  if (!data) return undefined;
   return mapInstitution(data);
 }
 
@@ -93,7 +101,11 @@ export async function fetchInstitutionBySlug(slug: string): Promise<Institution 
   if (error && isPreMigrationError(error)) {
     ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).eq('slug', slug).single());
   }
-  if (error || !data) return undefined;
+  if (error) {
+    console.error("[fetchInstitutionBySlug] Supabase error:", error.message, error.code, error.details);
+    throw error;
+  }
+  if (!data) return undefined;
   return mapInstitution(data);
 }
 
@@ -149,7 +161,10 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
     delete u.principal_signature_url;
     ({ data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(LEGACY_INSTITUTION_COLUMNS).single());
   }
-  if (error) return undefined;
+  if (error) {
+    console.error("[updateInstitution] Supabase error:", error.message, error.code, error.details);
+    throw error;
+  }
   return mapInstitution(result);
 }
 

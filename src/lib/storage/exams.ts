@@ -137,6 +137,16 @@ export function useExams(sessionId?: string, page?: number, pageSize?: number) {
     refetchOnWindowFocus: true,
   });
 }
+
+export function useExamsFull(sessionId?: string) {
+  return useQuery<Exam[]>({
+    queryKey: ['exams', sessionId],
+    queryFn: () => fetchExamsFull(sessionId),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useExamById(id: string) {
   return useQuery({
     queryKey: ['exams', id],

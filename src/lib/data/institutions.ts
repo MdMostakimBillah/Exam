@@ -35,6 +35,10 @@ export async function fetchInstitutionsServer(): Promise<Institution[]> {
     .from(SUPABASE_TABLE)
     .select(INSTITUTION_COLUMNS)
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error) {
+    console.error("[fetchInstitutionsServer] Supabase error:", error.message, error.code, error.details);
+    throw error;
+  }
+  if (!data) return [];
   return data.map(mapInstitution);
 }

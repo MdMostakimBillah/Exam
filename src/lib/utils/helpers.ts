@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { calculateGrade as _calculateGrade, DEFAULT_SCALE } from '@/lib/storage/grading';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -7,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Global cap for every image upload in the app (logos, photos, payment
  *  proofs, branding images). Photos are stored as base64 in the DB, so a
- *  tight cap keeps storage predictable (~350KB ≈ 3,000-5,000 students/GB). */
+ * tight cap keeps storage predictable (~350KB ≈ 3,000-5,000 students/GB). */
 export const MAX_IMAGE_SIZE = 350 * 1024;
 
 export function generateApplicationId(): string {
@@ -29,17 +30,11 @@ export function generateTransactionId(): string {
 }
 
 export function calculateGrade(percentage: number): string {
-  if (percentage >= 80) return 'A+';
-  if (percentage >= 70) return 'A';
-  if (percentage >= 60) return 'A-';
-  if (percentage >= 50) return 'B';
-  if (percentage >= 40) return 'C';
-  if (percentage >= 33) return 'D';
-  return 'F';
+  return _calculateGrade(percentage, DEFAULT_SCALE);
 }
 
 export function isPass(percentage: number): boolean {
-  return percentage >= 33;
+  return percentage >= DEFAULT_SCALE.passPercent;
 }
 
 export function truncate(str: string, length: number): string {

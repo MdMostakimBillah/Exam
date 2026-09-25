@@ -221,3 +221,20 @@ export function useDeleteResult() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['results'] }); },
   });
 }
+
+export async function processExamResults(examId: string): Promise<{ processed: number; skipped: number }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc('process_exam_results', { p_exam_id: examId });
+  if (error) throw error;
+  return { processed: data.processed ?? 0, skipped: data.skipped ?? 0 };
+}
+
+export function useProcessExamResults() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (examId: string) => processExamResults(examId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+    },
+  });
+}

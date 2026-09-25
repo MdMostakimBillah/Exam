@@ -23,17 +23,8 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { calculateGrade, isPass, isScholarship } from '@/lib/storage/grading';
 import { LoadingBar } from "@/components/ui/loading-bar";
-
-function calcGrade(pct: number): string {
-  if (pct >= 80) return "A+";
-  if (pct >= 70) return "A";
-  if (pct >= 60) return "A-";
-  if (pct >= 50) return "B";
-  if (pct >= 40) return "C";
-  if (pct >= 33) return "D";
-  return "F";
-}
 
 export default function InstitutionResultsPage() {
   const params = useParams();
@@ -178,9 +169,9 @@ export default function InstitutionResultsPage() {
           totalMarks: totalM,
           totalFullMarks: totalFull,
           percentage: pct,
-          grade: calcGrade(pct),
+          grade: calculateGrade(pct),
           pass: pct >= 33,
-          scholarshipStatus: pct >= 60 ? "ELIGIBLE" : "NOT_ELIGIBLE",
+          scholarshipStatus: isScholarship(pct) ? "ELIGIBLE" : "NOT_ELIGIBLE",
         },
       });
       toast("success", isBn ? "ফলাফল আপডেট হয়েছে" : "Result updated");
@@ -212,16 +203,16 @@ export default function InstitutionResultsPage() {
         examId: reg.examId,
         examName: reg.examName,
         className: reg.className,
-        roll: student?.roll || "",
-        registrationNumber: reg.id,
+        roll: student?.examRoll || "",
+        registrationNumber: reg.registrationNumber,
         subjectMarks,
         totalMarks: totalM,
         totalFullMarks: totalFull,
         percentage: pct,
-        grade: calcGrade(pct),
+        grade: calculateGrade(pct),
         position: 0,
-        pass: pct >= 33,
-        scholarshipStatus: pct >= 60 ? "ELIGIBLE" : "NOT_ELIGIBLE",
+        pass: isPass(pct),
+        scholarshipStatus: isScholarship(pct) ? "ELIGIBLE" : "NOT_ELIGIBLE",
         status: "DRAFT",
       });
       toast("success", isBn ? "ফলাফল যোগ হয়েছে" : "Result created");

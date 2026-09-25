@@ -328,3 +328,11 @@ export interface SystemSetting {
   value: string;
   category: string;
 }
+
+export interface GradeBand { min: number; grade: string }
+
+export interface GradingScale {
+  bands: GradeBand[];
+  passPercent: number;
+  scholarshipPercent: number;
+}

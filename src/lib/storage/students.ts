@@ -5,7 +5,7 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'students';
 
-const STUDENT_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,date_of_birth,gender,father_name,mother_name,phone,address,photo_url,status,created_at,updated_at';
+const STUDENT_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,gender,father_name,mother_name,phone,address,photo_url,status,created_at,updated_at';
 
 const DEFAULT_PAGE_SIZE = 20;
 

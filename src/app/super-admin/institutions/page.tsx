@@ -39,7 +39,7 @@ export default function InstitutionsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: institutions = [], isFetching } = useInstitutions();
+  const { data: institutions = [], isFetching, error: institutionsError } = useInstitutions();
   const createInstitutionMutation = useCreateInstitution();
   const updateInstitutionMutation = useUpdateInstitution();
   const deleteInstitutionMutation = useDeleteInstitution();
@@ -83,6 +83,17 @@ export default function InstitutionsPage() {
   const suspendedCount = useMemo(() => institutions.filter(i => i.status === 'SUSPENDED').length, [institutions]);
 
   if (!mounted) return <InstitutionsSkeleton isDark={isDark} />;
+
+  useEffect(() => {
+    if (institutionsError) {
+      toast(
+        "error",
+        `${isBn ? "প্রতিষ্ঠান লোড করতে ব্যর্থ" : "Failed to load institutions"}: ${
+          institutionsError instanceof Error ? institutionsError.message : String(institutionsError)
+        }`,
+      );
+    }
+  }, [institutionsError]);
 
   const statusCounts = {
     all: institutions.length,
@@ -221,12 +232,26 @@ export default function InstitutionsPage() {
             </div>
           </div>
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
-                <Building2 className={`h-7 w-7 ${iconColor}`} />
+            institutionsError ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-red-950/40' : 'bg-red-50'}`}>
+                  <Building2 className={`h-7 w-7 ${isDark ? 'text-red-300' : 'text-red-500'}`} />
+                </div>
+                <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  {isBn ? "প্রতিষ্ঠান লোড করতে ব্যর্থ" : "Failed to load institutions"}
+                </p>
+                <p className={`text-xs mt-1 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+                  {institutionsError instanceof Error ? institutionsError.message : String(institutionsError)}
+                </p>
               </div>
-              <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো প্রতিষ্ঠান পাওয়া যায়নি' : 'No institutions found'}</p>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.08]' : 'bg-zinc-100'}`}>
+                  <Building2 className={`h-7 w-7 ${iconColor}`} />
+                </div>
+                <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'কোনো প্রতিষ্ঠান পাওয়া যায়নি' : 'No institutions found'}</p>
+              </div>
+            )
           ) : (
             <Table>
               <TableHeader>
