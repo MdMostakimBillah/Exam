@@ -6,7 +6,10 @@ import { checkAccountLockout, loginWithLockout } from "@/lib/auth/server-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { ArrowRight, Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
+import {
+  ArrowRight, Eye, EyeOff, Lock, AlertCircle, ShieldCheck,
+  UserPlus, ClipboardList, FileText, BookOpen, Award, BarChart3,
+} from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -95,6 +98,49 @@ export default function LoginPage() {
     setLoading(false);
   };
 
+  // Left panel — the "Examination System" pitch. Static copy, kept out of the
+  // JSX so the panel markup stays readable. Tints are fixed palette colours
+  // (not --brand-accent) because this surface is always dark, whatever accent
+  // the tenant has saved.
+  const examFeatures = [
+    {
+      icon: UserPlus,
+      title: isBn ? "ছাত্র নিবন্ধন" : "Student Registration",
+      desc: isBn ? "বাল্ক এনরোলমেন্ট, ইমপোর্ট ও যাচাই" : "Bulk enrolment, import & validation",
+      tint: "bg-blue-500/10 text-blue-300",
+    },
+    {
+      icon: ClipboardList,
+      title: isBn ? "প্রবেশপত্র" : "Admit Cards",
+      desc: isBn ? "QR সহ প্রিন্ট-রেডি কার্ড" : "QR-enabled cards, ready to print",
+      tint: "bg-sky-500/10 text-sky-300",
+    },
+    {
+      icon: FileText,
+      title: isBn ? "পরীক্ষা ব্যবস্থাপনা" : "Examinations",
+      desc: isBn ? "বিষয়, রুটিন ও গ্রেডিং" : "Subjects, routine & grading",
+      tint: "bg-indigo-500/10 text-indigo-300",
+    },
+    {
+      icon: BookOpen,
+      title: isBn ? "নম্বর ও ফলাফল" : "Marks & Results",
+      desc: isBn ? "এন্ট্রি থেকে প্রকাশিত ফলাফল" : "Mark entry through to published results",
+      tint: "bg-violet-500/10 text-violet-300",
+    },
+    {
+      icon: Award,
+      title: isBn ? "সনদ ও যাচাই" : "Certificates",
+      desc: isBn ? "অনলাইনে তাৎক্ষণিক যাচাই" : "Issue once, verify instantly online",
+      tint: "bg-emerald-500/10 text-emerald-300",
+    },
+    {
+      icon: BarChart3,
+      title: isBn ? "রিপোর্ট ও বিশ্লেষণ" : "Reports & Analytics",
+      desc: isBn ? "লাইভ ড্যাশবোর্ড ও এক্সপোর্ট" : "Live dashboards and exports",
+      tint: "bg-amber-500/10 text-amber-300",
+    },
+  ];
+
   if (!mounted) return null;
 
   return (
@@ -121,16 +167,85 @@ export default function LoginPage() {
           <div className="absolute inset-8 rounded-full border border-white/[0.04] animate-spin-slow" style={{ animationDirection: "reverse", animationDuration: "30s" }} />
           <div className="absolute inset-16 rounded-full border border-white/[0.03] animate-spin-slow" style={{ animationDuration: "25s" }} />
         </div>
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-          <div className="max-w-md text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/[0.06] border border-white/[0.08] mb-8 animate-scaleIn backdrop-blur-sm">
-              <span className="text-3xl font-bold text-white">B</span>
+        {/* Scroll guard: if a short viewport can't fit the pitch, the panel
+            scrolls instead of clipping (auto margins collapse to 0 when the
+            content overflows, so nothing is lost off the top). */}
+        <div className="relative z-10 flex h-full w-full flex-col overflow-y-auto p-8 sm:p-10 xl:p-14">
+          <div className="mx-auto my-auto flex w-full max-w-2xl flex-col gap-6">
+            {/* Brand */}
+            <div className="flex items-center gap-3 animate-fadeInUp">
+              <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.07] text-lg font-bold text-white backdrop-blur-sm">
+                B
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">
+                  {isBn ? "বাংলাদেশ মাদ্রাসা এসোসিয়েশন" : "Bangladesh Madrasah Association"}
+                </p>
+                <p className="truncate text-xs text-zinc-500">
+                  {isBn ? "স্কলারশিপ পরীক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম" : "Scholarship Examination Management Platform"}
+                </p>
+              </div>
             </div>
-            <h1 className="text-4xl font-bold text-white mb-4 tracking-tight animate-fadeInUp" style={{ animationDelay: "0.1s" }}>
-              {isBn ? "বাংলাদেশ মাদ্রাসা এসোসিয়েশন" : "Bangladesh Madrasah Association"}
-            </h1>
-            <p className="text-lg text-zinc-400 mb-12 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
-              {isBn ? "স্কলারশিপ পরীক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম" : "Scholarship Examination Management Platform"}
+
+            {/* Headline */}
+            <div className="max-w-xl animate-fadeInUp" style={{ animationDelay: "0.08s" }}>
+              <span className="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.06] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-400 backdrop-blur-sm">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </span>
+                {isBn ? "পরীক্ষা সিস্টেম" : "Examination System"}
+              </span>
+
+              <h1 className="mt-5 text-3xl font-bold leading-[1.14] tracking-tight text-white xl:text-4xl">
+                {isBn ? (
+                  <>
+                    একটি প্ল্যাটফর্মে <br className="hidden sm:block" />
+                    সম্পূর্ণ <span className="bg-gradient-to-r from-blue-400 via-sky-400 to-cyan-300 bg-clip-text text-transparent">পরীক্ষা ব্যবস্থাপনা</span>
+                  </>
+                ) : (
+                  <>
+                    Every step of the{" "}
+                    <span className="bg-gradient-to-r from-blue-400 via-sky-400 to-cyan-300 bg-clip-text text-transparent">
+                      examination
+                    </span>
+                    , in one place.
+                  </>
+                )}
+              </h1>
+
+              <p className="mt-4 text-sm leading-relaxed text-zinc-400">
+                {isBn
+                  ? "নিবন্ধন থেকে প্রবেশপত্র, নম্বর, ফলাফল ও যাচাইযোগ্য সনদ — সবকিছু একই সংযুক্ত কার্যপ্রবাহে।"
+                  : "From enrolment and admit cards to marks, results and verifiable certificates — one connected workflow."}
+              </p>
+            </div>
+
+            {/* Feature cards */}
+            <div className="grid grid-cols-2 gap-3">
+              {examFeatures.map((f, i) => (
+                <div
+                  key={f.title}
+                  className="group flex items-start gap-3 rounded-md border border-white/[0.07] bg-white/[0.04] p-3.5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07] animate-fadeInUp"
+                  style={{ animationDelay: `${0.16 + i * 0.06}s` }}
+                >
+                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-transform duration-300 group-hover:scale-110", f.tint)}>
+                    <f.icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold leading-tight text-white">{f.title}</p>
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-zinc-500">{f.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Trust line */}
+            <p className="flex items-center gap-2 text-[11px] text-zinc-600 animate-fadeInUp" style={{ animationDelay: "0.56s" }}>
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
+              {isBn
+                ? "ভূমিকাভিত্তিক প্রবেশ · লক করা প্রচেষ্টা · সব লগইন নিরীক্ষিত"
+                : "Role-based access · lockout-protected · every sign-in audit-logged"}
             </p>
           </div>
         </div>
