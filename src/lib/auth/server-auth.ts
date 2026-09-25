@@ -91,9 +91,21 @@ export async function loginWithLockout(email: string, password: string): Promise
     // Re-check the lockout for this email+IP after the failure.
     const after = await probeLockout(emailLc, ip);
 
+    // Never disclose whether an address exists — credential-shaped failures
+    // stay generic. Only causes the caller can actually act on are passed
+    // through; everything else is swallowed so we can't leak internals.
+    const raw = error.message || "";
+    const actionable = /email not confirmed/i.test(raw)
+      ? "Confirm your email address, then sign in again."
+      : /rate limit|too many requests/i.test(raw)
+        ? "Too many attempts. Wait a moment and try again."
+        : /database error|schema cache|service unavailable/i.test(raw)
+          ? "Sign-in is temporarily unavailable. Try again shortly."
+          : null;
+
     return {
       success: false,
-      error: "Invalid email or password",
+      error: actionable || "Invalid email or password",
       locked: after.locked,
       retryAfter: after.locked ? after.retryAfter : 0,
     };
@@ -124,9 +136,20 @@ export async function loginWithLockout(email: string, password: string): Promise
         },
       };
     }
+
+    // Credentials were right but no profile row is readable (signup trigger
+    // never fired, or RLS hid it). Signing in anyway would leave a session
+    // cookie behind while we report failure — the next navigation would then
+    // half-work. Drop the session and say what actually happened instead of
+    // pretending the password was wrong.
+    await supabase.auth.signOut();
+    return {
+      success: false,
+      error: "This account isn't set up yet. Ask an administrator to complete it.",
+    };
   }
 
-  return { success: false, error: "Authentication failed" };
+  return { success: false, error: "Invalid email or password" };
 }
 
 export interface LockoutResult {

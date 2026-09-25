@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { checkAccountLockout, loginWithLockout } from "@/lib/auth/server-auth";
+import { useAuth } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
@@ -15,6 +16,14 @@ export default function LoginPage() {
   const router = useRouter();
   const { theme } = useTheme();
   const { lang: language } = useLang();
+  // The session is created by a Server Action, i.e. the cookies are written
+  // on the server. The browser Supabase client has no way to notice that —
+  // it only discovers a session on a full page load or a storage event, and
+  // cookie writes fire neither. Without an explicit refresh the shared
+  // AuthProvider still reports `user: null`, so /i bounces straight back to
+  // /login (instantly) and /super-admin after 3s: credentials correct,
+  // "sign-in does nothing". Hydrate the context BEFORE navigating.
+  const { refresh } = useAuth();
   const isDark = theme === "dark";
   const isBn = language === "bn";
   const [email, setEmail] = useState("");
@@ -80,8 +89,18 @@ export default function LoginPage() {
       const result = await loginWithLockout(email, password);
 
       if (result.success && result.user) {
-        if (result.user.role === "SUPER_ADMIN") router.push("/super-admin");
-        else router.push("/i");
+        // Hydrate the shared auth context first — see the useAuth() note above.
+        const sessionUser = await refresh();
+        const target = result.user.role === "SUPER_ADMIN" ? "/super-admin" : "/i";
+        if (sessionUser) {
+          router.push(target);
+        } else {
+          // refresh() re-read the cookie this action just wrote and still saw
+          // nothing (cookies blocked or overridden in this browser). A full
+          // load re-initialises everything from the cookie and lets middleware
+          // decide, instead of looping silently back to this screen.
+          window.location.assign(target);
+        }
       } else if (result.locked) {
         setLocked(true);
         setRetryAfter(result.retryAfter || 300);
@@ -172,21 +191,6 @@ export default function LoginPage() {
             content overflows, so nothing is lost off the top). */}
         <div className="relative z-10 flex h-full w-full flex-col overflow-y-auto p-8 sm:p-10 xl:p-14">
           <div className="mx-auto my-auto flex w-full max-w-2xl flex-col gap-6">
-            {/* Brand */}
-            <div className="flex items-center gap-3 animate-fadeInUp">
-              <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.07] text-lg font-bold text-white backdrop-blur-sm">
-                B
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">
-                  {isBn ? "বাংলাদেশ মাদ্রাসা এসোসিয়েশন" : "Bangladesh Madrasah Association"}
-                </p>
-                <p className="truncate text-xs text-zinc-500">
-                  {isBn ? "স্কলারশিপ পরীক্ষা ব্যবস্থাপনা প্ল্যাটফর্ম" : "Scholarship Examination Management Platform"}
-                </p>
-              </div>
-            </div>
-
             {/* Headline */}
             <div className="max-w-xl animate-fadeInUp" style={{ animationDelay: "0.08s" }}>
               <span className="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.06] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-400 backdrop-blur-sm">
@@ -267,10 +271,11 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className={`block text-[13px] mb-2 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                <label htmlFor="login-email" className={`block text-[13px] mb-2 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
                   {isBn ? "ইমেইল" : "Email"}
                 </label>
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -288,11 +293,12 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className={`block text-[13px] mb-2 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                <label htmlFor="login-password" className={`block text-[13px] mb-2 font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
                   {isBn ? "পাসওয়ার্ড" : "Password"}
                 </label>
                 <div className="relative">
                   <input
+                    id="login-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
