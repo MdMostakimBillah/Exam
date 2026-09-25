@@ -1,8 +1,11 @@
 "use client";
+
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/contexts/language-context";
+import { MarksSetupPanel } from "@/components/marks/MarksSetupPanel";
+import { MarksEntryPanel } from "@/components/marks/MarksEntryPanel";
 import { BookOpen } from "lucide-react";
 
 export default function MarksPage() {
@@ -16,40 +19,28 @@ export default function MarksPage() {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            {isBn ? "নম্বর প্রবেশ" : "Marks Entry"}
+            {isBn ? " marks ব্যবস্থাপনা " : "Marks Management"}
           </h1>
           <p className="text-sm mt-1 text-zinc-500">
-            {isBn ? "পরীক্ষার নম্বর প্রবেশ, সেটআপ এবং পরিসংখ্যান" : "Enter marks, configure subjects/grading, and process results"}
+            {isBn ? "নম্বর প্রবেশ, সেটআপ এবং পরিসংখ্যান" : "Enter marks, configure subjects/grading, and process results"}
           </p>
         </div>
 
         <Tabs defaultValue="setup">
           <TabsList>
             <TabsTrigger value="setup">
-              <BookOpen className="h-4 w-4 mr-1" /> {isBn ? "সেটআপ" : "Setup"}
+              <BookOpen className="h-4 w-4 mr-1" /> {isBn ? "Mark Setup" : "Mark Setup"}
             </TabsTrigger>
             <TabsTrigger value="entry">
-              {isBn ? "ডেমো" : "Demo"}
-            </TabsTrigger>
-            <TabsTrigger value="matrix">
-              {isBn ? "ম্যাট্রিক্স" : "Matrix"}
-            </TabsTrigger>
-            <TabsTrigger value="process">
-              {isBn ? "পরিসংখ্যান" : "Process"}
+              {isBn ? "Mark Entry" : "Mark Entry"}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="setup">
-            <></>
+            <MarksSetupPanel />
           </TabsContent>
           <TabsContent value="entry">
-            <></>
-          </TabsContent>
-          <TabsContent value="matrix">
-            <></>
-          </TabsContent>
-          <TabsContent value="process">
-            <></>
+            <MarksEntryPanel />
           </TabsContent>
         </Tabs>
       </div>
