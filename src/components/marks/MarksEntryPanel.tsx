@@ -14,7 +14,6 @@ import {
   BookOpen,
   Building2,
   Check,
-  ClipboardCopy,
   ClipboardList,
   Eraser,
   GraduationCap,
@@ -34,7 +33,6 @@ import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -68,6 +66,13 @@ interface CellState {
 
 interface MarksEntryPanelProps {
   onPendingChange?: (pending: boolean) => void;
+  /**
+   * Institution the sheet is pinned to (institution role). When set, every
+   * query is forced to this institution and the institution filter is hidden.
+   */
+  scopedInstitutionId?: string;
+  /** Display name of the pinned institution, shown in the summary tiles. */
+  scopedInstitutionName?: string;
 }
 
 const AUTOSAVE_DELAY = 600;
@@ -90,7 +95,7 @@ function normalizedMarkText(value: number): string {
   return String(Number(value.toFixed(2)));
 }
 
-export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
+export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedInstitutionName }: MarksEntryPanelProps) {
   const { lang } = useLang();
   const { theme } = useTheme();
   const { toast } = useToast();
@@ -110,13 +115,15 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   const [subjectId, setSubjectId] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  // Roll range: raw inputs are what the user typed (digits only on commit),
+  // the committed values are what the RPC receives.
+  const [rollFromInput, setRollFromInput] = useState("");
+  const [rollToInput, setRollToInput] = useState("");
+  const [rollFrom, setRollFrom] = useState("");
+  const [rollTo, setRollTo] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [cells, setCells] = useState<Record<string, CellState>>({});
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [copyOpen, setCopyOpen] = useState(false);
-  const [copyValue, setCopyValue] = useState("");
-  const [copyError, setCopyError] = useState("");
   const [clearTarget, setClearTarget] = useState<MarksSheetPageRow | null>(null);
   const [blockedAction, setBlockedAction] = useState<string | null>(null);
   const [isFlushing, setIsFlushing] = useState(false);
@@ -156,16 +163,23 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   );
   const fullMarks = selectedSubject?.fullMarks || 0;
 
+  // Institution role: the sheet is always pinned to this institution; the
+  // super-admin institution filter is hidden and ignored while pinned.
+  const isScoped = Boolean(scopedInstitutionId);
+  const effectiveInstitutionId = scopedInstitutionId || institutionId;
+
   const queryParams: MarksSheetPageParams = useMemo(() => ({
     examId,
     classId,
-    institutionId: institutionId || null,
+    institutionId: effectiveInstitutionId || null,
     subjectId,
     search,
+    rollFrom,
+    rollTo,
     page,
     pageSize,
     sessionId: currentSession?.id,
-  }), [classId, currentSession?.id, examId, institutionId, page, pageSize, search, subjectId]);
+  }), [classId, currentSession?.id, effectiveInstitutionId, examId, page, pageSize, rollFrom, rollTo, search, subjectId]);
 
   const marksQuery = useMarksSheetPage(queryParams);
   const rows = marksQuery.data?.rows || EMPTY_ROWS;
@@ -240,10 +254,6 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   }, [hasPendingSave]);
 
   useEffect(() => {
-    setSelectedIds(new Set());
-  }, [examId, classId, institutionId, page, pageSize, search, subjectId]);
-
-  useEffect(() => {
     const currentPageRows = rows;
     const currentKeys = new Set(currentPageRows.map((row) => row.registrationId));
     setCells((current) => {
@@ -265,19 +275,28 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       const nextSearch = searchInput.trim();
-      const applySearch = () => {
+      // Roll bounds: digits only, and typed backwards we still apply the range
+      // the user meant (small → large).
+      const rawFrom = rollFromInput.replace(/\D/g, "");
+      const rawTo = rollToInput.replace(/\D/g, "");
+      const reversed = !!rawFrom && !!rawTo && Number(rawFrom) > Number(rawTo);
+      const nextFrom = reversed ? rawTo : rawFrom;
+      const nextTo = reversed ? rawFrom : rawTo;
+      const applyFilters = () => {
         setSearch(nextSearch);
+        setRollFrom(nextFrom);
+        setRollTo(nextTo);
         setPage(1);
       };
       if (hasPendingSave()) {
-        blockedActionRef.current = applySearch;
+        blockedActionRef.current = applyFilters;
         setBlockedAction(isBn ? "অসংরক্ষিত নম্বর আছে" : "You have pending marks");
       } else {
-        applySearch();
+        applyFilters();
       }
     }, SEARCH_DELAY);
     return () => clearTimeout(timer);
-  }, [hasPendingSave, isBn, searchInput]);
+  }, [hasPendingSave, isBn, rollFromInput, rollToInput, searchInput]);
 
   useEffect(() => () => {
     timersRef.current.forEach((timer) => clearTimeout(timer));
@@ -478,6 +497,17 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     setBlockedAction(label);
   }, [hasPendingSave]);
 
+  // Text search and the roll range always reset together (filters, exam, class).
+  const clearTextFilters = () => {
+    setSearchInput("");
+    setSearch("");
+    setRollFromInput("");
+    setRollToInput("");
+    setRollFrom("");
+    setRollTo("");
+    setPage(1);
+  };
+
   const changeExam = (nextExamId: string) => guardAction(
     bi("পরীক্ষা বদলানো হবে", "The exam will change"),
     () => {
@@ -485,9 +515,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
       setClassId("");
       setSubjectId("");
       setInstitutionId("");
-      setSearchInput("");
-      setSearch("");
-      setPage(1);
+      clearTextFilters();
       setCells({});
     },
   );
@@ -497,9 +525,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     () => {
       setClassId(nextClassId);
       setSubjectId("");
-      setSearchInput("");
-      setSearch("");
-      setPage(1);
+      clearTextFilters();
       setCells({});
     },
   );
@@ -531,9 +557,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     setClassId("");
     setSubjectId("");
     setInstitutionId("");
-    setSearchInput("");
-    setSearch("");
-    setPage(1);
+    clearTextFilters();
     setCells({});
   };
 
@@ -636,46 +660,20 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     }
   };
 
-  const applyCopy = async () => {
-    if (!copyValue.trim()) {
-      setCopyError(bi("একটি নম্বর দিন", "Enter a mark value"));
-      return;
-    }
-    const error = cellError(copyValue, fullMarks);
-    const value = Number(copyValue);
-    if (error) {
-      setCopyError(error);
-      return;
-    }
-    if (selectedIds.size === 0) {
-      setCopyError(bi("অন্তত একটি শিক্ষার্থী নির্বাচন করুন", "Select at least one student"));
-      return;
-    }
-
-    const saves: Promise<boolean>[] = [];
-    selectedIds.forEach((registrationId) => {
-      const revision = updateCell(registrationId, copyValue, true);
-      saves.push(persistCell(registrationId, revision, value));
-    });
-    const results = await Promise.all(saves);
-    const succeeded = results.filter(Boolean).length;
-    const failed = results.length - succeeded;
-    if (failed > 0) {
-      toast("warning", bi(`${succeeded}টি সংরক্ষিত, ${failed}টি ব্যর্থ`, `${succeeded} saved, ${failed} failed`));
-    } else {
-      toast("success", bi(`${succeeded}টি নম্বর কপি হয়েছে`, `${succeeded} marks copied`));
-    }
-    setCopyOpen(false);
-    setCopyValue("");
-    setCopyError("");
-  };
-
+  /**
+   * Enter / ↓ / Tab move to the next student's mark box, ↑ / Shift+Tab to the
+   * previous one — so a whole block of rolls can be typed without touching the
+   * mouse. At the first/last row Tab is left to the browser.
+   */
   const handleInputKey = (event: KeyboardEvent<HTMLInputElement>, registrationId: string) => {
-    if (!["Enter", "ArrowDown", "ArrowUp"].includes(event.key)) return;
+    const isTab = event.key === "Tab";
+    if (!isTab && !["Enter", "ArrowDown", "ArrowUp"].includes(event.key)) return;
     const index = rows.findIndex((row) => row.registrationId === registrationId);
-    const nextIndex = event.key === "ArrowUp" ? index - 1 : index + 1;
+    const backwards = event.key === "ArrowUp" || (isTab && event.shiftKey);
+    const nextIndex = backwards ? index - 1 : index + 1;
     const nextRow = rows[nextIndex];
     if (!nextRow) {
+      if (isTab) return;
       event.currentTarget.blur();
       return;
     }
@@ -683,17 +681,6 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     inputRefs.current.get(nextRow.registrationId)?.focus();
   };
 
-  const toggleSelected = (registrationId: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(registrationId)) next.delete(registrationId);
-      else next.add(registrationId);
-      return next;
-    });
-  };
-
-  const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.registrationId));
-  const someSelected = rows.some((row) => selectedIds.has(row.registrationId));
   const selectedExamName = exam?.name || "—";
   const selectedClassName = classEntries.find((item) => item.id === classId)?.name || "—";
   const selectedInstitutionName = institutionId
@@ -704,7 +691,6 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     ? "rounded-xl border border-white/[0.06] bg-[#141416]"
     : "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
   const borderClass = isDark ? "border-white/[0.06]" : "border-zinc-100";
-  const labelClass = isDark ? "text-zinc-400" : "text-zinc-600";
   const mutedClass = "text-zinc-500";
   const headingClass = isDark ? "text-white" : "text-zinc-900";
   const softClass = isDark ? "bg-white/[0.02]" : "bg-zinc-50";
@@ -754,19 +740,21 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
               disabled={!examId}
             />
           </Field>
-          <Field label={bi("প্রতিষ্ঠান", "Institution")} htmlFor="marks-entry-institution">
-            <Select
-              id="marks-entry-institution"
-              value={institutionId}
-              onChange={(event) => changeInstitution(event.target.value)}
-              options={[
-                { label: bi("সব প্রতিষ্ঠান", "All institutions"), value: "" },
-                ...institutions.filter((item) => item.status === "ACTIVE").map((item) => ({ label: item.name, value: item.id })),
-              ]}
-              className={inputClass}
-              disabled={!classId}
-            />
-          </Field>
+          {!isScoped && (
+            <Field label={bi("প্রতিষ্ঠান", "Institution")} htmlFor="marks-entry-institution">
+              <Select
+                id="marks-entry-institution"
+                value={institutionId}
+                onChange={(event) => changeInstitution(event.target.value)}
+                options={[
+                  { label: bi("সব প্রতিষ্ঠান", "All institutions"), value: "" },
+                  ...institutions.filter((item) => item.status === "ACTIVE").map((item) => ({ label: item.name, value: item.id })),
+                ]}
+                className={inputClass}
+                disabled={!classId}
+              />
+            </Field>
+          )}
           <Field label={bi("বিষয়", "Subject")} htmlFor="marks-entry-subject">
             <Select
               id="marks-entry-subject"
@@ -789,6 +777,29 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder={bi("নাম, নিবন্ধন, প্রতিষ্ঠান বা রোল", "Name, registration, institution, or roll")}
                 className={`pl-9 ${inputClass}`}
+                disabled={!subjectId}
+              />
+            </div>
+          </Field>
+          <Field label={bi("রোল রেঞ্জ", "Roll range")} htmlFor="marks-entry-roll-from">
+            <div className="flex items-center gap-2">
+              <Input
+                id="marks-entry-roll-from"
+                value={rollFromInput}
+                onChange={(event) => setRollFromInput(event.target.value.replace(/\D/g, ""))}
+                placeholder={bi("থেকে", "From")}
+                inputMode="numeric"
+                className={`text-center ${inputClass}`}
+                disabled={!subjectId}
+              />
+              <span className={`shrink-0 text-xs ${mutedClass}`}>→</span>
+              <Input
+                id="marks-entry-roll-to"
+                value={rollToInput}
+                onChange={(event) => setRollToInput(event.target.value.replace(/\D/g, ""))}
+                placeholder={bi("পর্যন্ত", "To")}
+                inputMode="numeric"
+                className={`text-center ${inputClass}`}
                 disabled={!subjectId}
               />
             </div>
@@ -817,13 +828,13 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
       )}
 
       {subjectId && summary && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        <div className={`grid grid-cols-2 gap-3 lg:grid-cols-3 ${isScoped ? "xl:grid-cols-5" : "xl:grid-cols-6"}`}>
           {[
             { icon: ClipboardList, label: bi("নির্বাচিত পরীক্ষা", "Exam"), value: selectedExamName },
             { icon: GraduationCap, label: bi("ক্লাস", "Class"), value: selectedClassName },
-            { icon: Building2, label: bi("প্রতিষ্ঠান ফিল্টার", "Institution filter"), value: selectedInstitutionName },
+            { icon: Building2, label: isScoped ? bi("প্রতিষ্ঠান", "Institution") : bi("প্রতিষ্ঠান ফিল্টার", "Institution filter"), value: scopedInstitutionName || selectedInstitutionName },
             { icon: Users, label: bi("অনুমোদিত শিক্ষার্থী", "Approved students"), value: summary.totalCandidates },
-            { icon: Landmark, label: bi("প্রতিষ্ঠান", "Institutions"), value: summary.institutionsRepresented },
+            ...(!isScoped ? [{ icon: Landmark, label: bi("প্রতিষ্ঠান", "Institutions"), value: summary.institutionsRepresented }] : []),
             { icon: PencilLine, label: bi("প্রবেশ / অনুপস্থিত", "Entered / missing"), value: `${summary.enteredCount} / ${summary.missingCount}` },
           ].map((item) => (
             <div key={item.label} className={`${card} group flex items-center gap-3 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
@@ -853,16 +864,12 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className={`hidden items-center gap-1.5 text-[10px] ${mutedClass} md:flex`}>
+                <kbd className="kbd-chip">Tab</kbd>
                 <kbd className="kbd-chip">Enter</kbd>
                 <kbd className="kbd-chip">↑</kbd>
                 <kbd className="kbd-chip">↓</kbd>
                 {bi("দিয়ে সারি বদলান", "to move between rows")}
               </span>
-              {selectedIds.size > 0 && (
-                <Button type="button" size="sm" variant="secondary" onClick={() => setCopyOpen(true)}>
-                  <ClipboardCopy className="mr-1.5 h-3.5 w-3.5" /> {selectedIds.size} {bi("টিতে কপি", "selected")}
-                </Button>
-              )}
               <Select
                 value={String(pageSize)}
                 onChange={(event) => guardAction(bi("পৃষ্ঠার আকার বদলাবে", "Page size will change"), () => {
@@ -903,33 +910,24 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                 <Users className={`h-7 w-7 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
               </div>
               <p className={`text-sm font-medium ${headingClass}`}>
-                {search
-                  ? bi("অনুসন্ধানের সাথে কোনো শিক্ষার্থী মেলেনি", "No students match this search")
+                {search || rollFrom || rollTo
+                  ? bi("এই ফিল্টারে কোনো শিক্ষার্থী মেলেনি", "No students match these filters")
                   : summary?.totalCandidates === 0
                     ? bi("এই ক্লাসে কোনো অনুমোদিত নিবন্ধন নেই", "There are no approved registrations for this class")
                     : bi("কোনো শিক্ষার্থী পাওয়া যায়নি", "No students found")}
               </p>
-              {search && (
-                <Button type="button" className="mt-4" variant="secondary" onClick={() => guardAction(bi("অনুসন্ধান মুছে যাবে", "Search will be cleared"), () => { setSearchInput(""); setSearch(""); setPage(1); })}>
-                  {bi("অনুসন্ধান মুছুন", "Clear search")}
+              {(search || rollFrom || rollTo) && (
+                <Button type="button" className="mt-4" variant="secondary" onClick={() => guardAction(bi("ফিল্টার মুছে যাবে", "Filters will be cleared"), clearTextFilters)}>
+                  {bi("ফিল্টার মুছুন", "Clear filters")}
                 </Button>
               )}
             </div>
           ) : (
             <>
-              <Table className="min-w-[1050px]">
+              <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow className={isDark ? "border-white/[0.04] hover:bg-transparent" : "border-zinc-100 hover:bg-transparent"}>
-                    <TableHead className="w-10">
-                      <TableCheckbox
-                        checked={allSelected}
-                        indeterminate={someSelected}
-                        onChange={() => setSelectedIds(allSelected ? new Set() : new Set(rows.map((row) => row.registrationId)))}
-                      />
-                    </TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("পরীক্ষা রোল", "Exam roll")}</TableHead>
-                    <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("শিক্ষার্থী", "Student")}</TableHead>
-                    <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("প্রতিষ্ঠান", "Institution")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("নিবন্ধন নম্বর", "Registration no.")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("নম্বর", "Mark")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("শতাংশ", "%")}</TableHead>
@@ -949,17 +947,9 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                     return (
                       <TableRow
                         key={row.registrationId}
-                        className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"} ${selectedIds.has(row.registrationId) ? "bg-brand-accent-soft" : ""}`}
+                        className={isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"}
                       >
-                        <TableCell>
-                          <TableCheckbox
-                            checked={selectedIds.has(row.registrationId)}
-                            onChange={() => toggleSelected(row.registrationId)}
-                          />
-                        </TableCell>
                         <TableCell className={`font-mono text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{row.examRoll || "—"}</TableCell>
-                        <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{row.studentName}</TableCell>
-                        <TableCell className={`max-w-44 truncate text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`} title={row.institutionName}>{row.institutionName}</TableCell>
                         <TableCell className={`font-mono text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{row.registrationNumber}</TableCell>
                         <TableCell>
                           <div className="w-32">
@@ -988,7 +978,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                               onKeyDown={(event) => handleInputKey(event, row.registrationId)}
                               placeholder={row.mark === null ? bi("প্রবেশ করা হয়নি", "Not entered") : normalizedMarkText(row.mark)}
                               className={`${inputClass} h-9 rounded-lg text-center text-xs font-semibold tabular-nums ${cell?.status === "error" ? "border-red-500/60" : cell?.status === "saving" ? "border-amber-500/60" : cell?.status === "saved" ? "border-emerald-500/50" : ""}`}
-                              aria-label={`${row.studentName} ${bi("নম্বর", "mark")}`}
+                              aria-label={`${row.examRoll || row.registrationNumber} ${bi("নম্বর", "mark")}`}
                               aria-invalid={cell?.status === "error"}
                               aria-describedby={cell?.error ? `mark-error-${row.registrationId}` : undefined}
                             />
@@ -1011,7 +1001,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-red-500"
-                              aria-label={`${bi("মুছুন", "Clear")} ${row.studentName}`}
+                              aria-label={`${bi("মুছুন", "Clear")} ${row.examRoll || row.registrationNumber}`}
                               onClick={() => setClearTarget(row)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1038,34 +1028,11 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
         </div>
       )}
 
-      <Modal open={copyOpen} onClose={() => setCopyOpen(false)} title={bi("নির্বাচিত শিক্ষার্থীদের কপি করুন", "Copy mark to selected students")} description={`${selectedIds.size} ${bi("টি শিক্ষার্থী নির্বাচিত", "students selected")}`} maxWidth="max-w-md">
-        <div className="space-y-2">
-          <label className={`block text-[11px] font-medium ${labelClass}`} htmlFor="copy-mark-value">{bi("নম্বর", "Mark value")}</label>
-          <Input
-            id="copy-mark-value"
-            type="text"
-            inputMode="decimal"
-            step="0.01"
-            min={0}
-            max={fullMarks}
-            value={copyValue}
-            onChange={(event) => { setCopyValue(event.target.value); setCopyError(""); }}
-            className={inputClass}
-            aria-invalid={!!copyError}
-          />
-          {copyError && <p className="text-[11px] text-red-500">{copyError}</p>}
-        </div>
-        <ModalFooter>
-          <Button type="button" variant="secondary" onClick={() => setCopyOpen(false)}>{bi("বাতিল", "Cancel")}</Button>
-          <Button type="button" onClick={() => void applyCopy()}><ClipboardCopy className="mr-2 h-4 w-4" />{bi("কপি ও সংরক্ষণ", "Copy and save")}</Button>
-        </ModalFooter>
-      </Modal>
-
       <Modal
         open={!!clearTarget}
         onClose={() => setClearTarget(null)}
         title={bi("সংরক্ষিত নম্বর মুছবেন?", "Clear this saved mark?")}
-        description={clearTarget ? `${clearTarget.studentName} · ${clearTarget.subjectName}` : ""}
+        description={clearTarget ? `${clearTarget.examRoll || clearTarget.registrationNumber} · ${clearTarget.subjectName}` : ""}
         maxWidth="max-w-md"
       >
         <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{bi("এই কাজটি শুধু নির্বাচিত নম্বরটি মুছবে। ফলাফল বদলাতে Results থেকে আবার প্রক্রিয়া করতে হবে।", "Only this selected mark will be deleted. Results only change after explicit processing from Results.")}</p>

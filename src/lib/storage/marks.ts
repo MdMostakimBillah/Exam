@@ -72,6 +72,9 @@ export interface MarksSheetPageParams {
   institutionId?: string | null;
   subjectId: string;
   search?: string;
+  /** Numeric exam-roll range bounds (digits only), e.g. "110001" → "119999". */
+  rollFrom?: string;
+  rollTo?: string;
   page?: number;
   pageSize?: number;
   sessionId?: string;
@@ -115,6 +118,8 @@ export async function fetchMarksSheetPage(params: MarksSheetPageParams): Promise
   const session = params.sessionId || (await fetchCurrentSession())?.id;
   if (!session) throw new Error("No active session found");
 
+  const rollFrom = params.rollFrom?.trim() || "";
+  const rollTo = params.rollTo?.trim() || "";
   const { data, error } = await createClient().rpc("get_marks_sheet_page", {
     p_exam_id: params.examId,
     p_class_id: params.classId,
@@ -123,6 +128,11 @@ export async function fetchMarksSheetPage(params: MarksSheetPageParams): Promise
     p_search: params.search?.trim() || "",
     p_page: params.page || 1,
     p_page_size: params.pageSize || 50,
+    // Sent only when a range is set: PostgREST resolves an RPC by argument
+    // names, so omitting them keeps the pre-0029 (7-argument) function working
+    // until migration 0029 is applied, and the defaults cover it after.
+    ...(rollFrom ? { p_roll_from: rollFrom } : {}),
+    ...(rollTo ? { p_roll_to: rollTo } : {}),
   });
   if (error) throw error;
   return mapMarksSheetPage((data || {}) as Record<string, any>);
@@ -282,6 +292,8 @@ export function useMarksSheetPage(params: MarksSheetPageParams) {
       params.institutionId || null,
       params.subjectId,
       params.search || "",
+      params.rollFrom || "",
+      params.rollTo || "",
       params.page || 1,
       params.pageSize || 50,
     ],
