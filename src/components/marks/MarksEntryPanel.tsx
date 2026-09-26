@@ -831,8 +831,8 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                 <item.icon className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className={`text-[10px] uppercase tracking-wider ${mutedClass}`}>{item.label}</p>
-                <p className={`mt-0.5 truncate text-sm font-semibold ${headingClass}`} title={String(item.value)}>{item.value}</p>
+                <p className={`truncate text-sm font-semibold leading-tight ${headingClass}`} title={String(item.value)}>{item.value}</p>
+                <p className={`mt-1 text-[10px] uppercase leading-tight tracking-wider ${mutedClass}`}>{item.label}</p>
               </div>
             </div>
           ))}
@@ -1003,7 +1003,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                           {percentage === null ? "—" : `${percentage.toFixed(2)}%`}
                         </TableCell>
                         <TableCell><Badge>{grade}</Badge></TableCell>
-                        <TableCell><CellStatusView cell={cell} isBn={isBn} onRetry={() => void retryCell(row.registrationId)} /></TableCell>
+                        <TableCell><CellStatusView cell={cell} mark={row.mark} isBn={isBn} onRetry={() => void retryCell(row.registrationId)} /></TableCell>
                         <TableCell>
                           {cell?.lastSavedValue !== null && cell?.lastSavedValue !== undefined ? (
                             <Button
@@ -1108,8 +1108,13 @@ function Field({ label, htmlFor, children }: FieldProps) {
   );
 }
 
-function CellStatusView({ cell, isBn, onRetry }: { cell?: CellState; isBn: boolean; onRetry: () => void }) {
+function CellStatusView({ cell, mark, isBn, onRetry }: { cell?: CellState; mark?: number | null; isBn: boolean; onRetry: () => void }) {
   if (!cell || cell.status === "idle") {
+    // A mark that already exists on the row (loaded from the sheet) is saved,
+    // even though there is no local edit state for it yet.
+    if (mark !== null && mark !== undefined) {
+      return <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400"><Check className="h-3 w-3" />{isBn ? "সংরক্ষিত" : "Saved"}</span>;
+    }
     return <span className="text-[10px] text-zinc-400 dark:text-zinc-500">{isBn ? "প্রবেশ হয়নি" : "Not entered"}</span>;
   }
   if (cell.status === "dirty") {
