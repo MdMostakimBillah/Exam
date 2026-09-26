@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BookOpen, ListChecks, Settings2 } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { BarChart3, BookOpen, ChevronRight, ListChecks, Settings2, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { MarksEntryPanel } from "@/components/marks/MarksEntryPanel";
 import { MarksSetupPanel } from "@/components/marks/MarksSetupPanel";
 import { Button } from "@/components/ui/button";
@@ -88,24 +89,69 @@ export default function MarksPage() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [isBn, protectedState]);
 
+  const steps: { icon: LucideIcon; label: string; tab?: MarksTab; href?: string }[] = [
+    { icon: Settings2, label: bi("গ্রেড স্কেল", "Grade Scale"), tab: "setup" },
+    { icon: ListChecks, label: bi("মার্ক এন্ট্রি", "Mark Entry"), tab: "entry" },
+    { icon: BarChart3, label: bi("ফলাফল", "Results"), href: "/super-admin/results" },
+  ];
+
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="mx-auto max-w-[1600px] p-6 lg:p-8">
-        <div className="mb-7">
-          <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-            {bi("মার্কস ব্যবস্থাপনা", "Marks Management")}
-          </h1>
-          <p className={`mt-1 text-sm ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {bi("পরীক্ষার গ্রেড স্কেল সেটআপ করুন এবং অনুমোদিত শিক্ষার্থীদের নম্বর দিন। ফলাফল প্রক্রিয়া Results পাতায় হয়।", "Configure the exam Grade Scale and enter approved student marks. Results are processed separately from the Results page.")}
-          </p>
+        <div className="mb-7 flex animate-fadeInDown flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-accent text-brand-accent-fg shadow-lg shadow-black/10">
+              <ListChecks className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+                {bi("মার্কস ব্যবস্থাপনা", "Marks Management")}
+              </h1>
+              <p className={`mt-1 max-w-2xl text-sm ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+                {bi("পরীক্ষার গ্রেড স্কেল সেটআপ করুন এবং অনুমোদিত শিক্ষার্থীদের নম্বর দিন। ফলাফল প্রক্রিয়া Results পাতায় হয়।", "Configure the exam Grade Scale and enter approved student marks. Results are processed separately from the Results page.")}
+              </p>
+            </div>
+          </div>
+
+          <nav
+            aria-label={bi("কাজের ধারা", "Workflow")}
+            className={`hidden shrink-0 items-center gap-1 self-start rounded-xl border p-1 md:flex ${isDark ? "border-white/[0.06] bg-[#141416]" : "border-zinc-200 bg-white shadow-sm"}`}
+          >
+            {steps.map((step, index) => {
+              const active = !!step.tab && step.tab === activeTab;
+              const content = (
+                <>
+                  <step.icon className={`h-3.5 w-3.5 ${active ? "text-brand-accent" : ""}`} />
+                  <span>{step.label}</span>
+                </>
+              );
+              const cls = `flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                active
+                  ? "bg-brand-accent-soft text-brand-accent"
+                  : isDark
+                    ? "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+              }`;
+              return (
+                <Fragment key={step.label}>
+                  {index > 0 && <ChevronRight className={`h-3 w-3 ${isDark ? "text-zinc-700" : "text-zinc-300"}`} />}
+                  {step.href ? (
+                    <Link href={step.href} className={cls}>{content}</Link>
+                  ) : (
+                    <button type="button" onClick={() => requestTab(step.tab as MarksTab)} className={cls}>{content}</button>
+                  )}
+                </Fragment>
+              );
+            })}
+          </nav>
         </div>
 
         <Tabs defaultValue="setup" value={activeTab} onValueChange={(value) => requestTab(value as MarksTab)}>
           <TabsList className="overflow-x-auto">
-            <TabsTrigger value="setup">
+            <TabsTrigger value="setup" className={activeTab === "setup" ? "font-semibold text-brand-accent" : undefined}>
               <Settings2 className="mr-1.5 h-4 w-4" /> {bi("গ্রেড স্কেল", "Grade Scale")}
             </TabsTrigger>
-            <TabsTrigger value="entry">
+            <TabsTrigger value="entry" className={activeTab === "entry" ? "font-semibold text-brand-accent" : undefined}>
               <ListChecks className="mr-1.5 h-4 w-4" /> {bi("মার্ক এন্ট্রি", "Mark Entry")}
             </TabsTrigger>
           </TabsList>

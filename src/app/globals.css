@@ -284,6 +284,37 @@ html body .admit-card-page * {
 .stagger-7 { animation-delay: 0.35s; }
 .stagger-8 { animation-delay: 0.4s; }
 
+/* Subtle lift on hover for metric tiles / section cards (used by StatCard and
+   the Marks page). Kept very small so it reads as polish, not animation. */
+.hover-lift {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -20px rgba(0, 0, 0, 0.55);
+}
+
+/* Keyboard-shortcut chip (Marks entry navigation hint). */
+kbd.kbd-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.04);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+.dark kbd.kbd-chip {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

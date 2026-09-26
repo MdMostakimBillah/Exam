@@ -12,10 +12,15 @@ import {
 import {
   AlertCircle,
   BookOpen,
+  Building2,
   Check,
   ClipboardCopy,
+  ClipboardList,
   Eraser,
+  GraduationCap,
+  Landmark,
   Loader2,
+  PencilLine,
   RotateCcw,
   Search,
   Trash2,
@@ -165,6 +170,8 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
   const marksQuery = useMarksSheetPage(queryParams);
   const rows = marksQuery.data?.rows || EMPTY_ROWS;
   const summary = marksQuery.data?.summary;
+  const progressTotal = (summary?.enteredCount || 0) + (summary?.missingCount || 0);
+  const progressPct = progressTotal > 0 ? Math.round(((summary?.enteredCount || 0) / progressTotal) * 100) : 0;
 
   useEffect(() => {
     cellsRef.current = cells;
@@ -519,6 +526,17 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     () => setPage(nextPage),
   );
 
+  const resetFilters = () => {
+    setExamId("");
+    setClassId("");
+    setSubjectId("");
+    setInstitutionId("");
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+    setCells({});
+  };
+
   const confirmBlockedAction = async () => {
     setIsFlushing(true);
     const success = await flushPending();
@@ -683,26 +701,32 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
     : bi("সব প্রতিষ্ঠান", "All institutions");
 
   const card = isDark
-    ? "rounded-md border border-white/[0.06] bg-[#141416]"
-    : "rounded-md border border-zinc-200 bg-white shadow-sm";
+    ? "rounded-xl border border-white/[0.06] bg-[#141416]"
+    : "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
   const borderClass = isDark ? "border-white/[0.06]" : "border-zinc-100";
   const labelClass = isDark ? "text-zinc-400" : "text-zinc-600";
-  const mutedClass = isDark ? "text-zinc-500" : "text-zinc-500";
+  const mutedClass = "text-zinc-500";
   const headingClass = isDark ? "text-white" : "text-zinc-900";
   const softClass = isDark ? "bg-white/[0.02]" : "bg-zinc-50";
+  const chip = "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-accent-soft text-brand-accent";
   const inputClass = isDark
     ? "bg-white/[0.04] border-white/[0.08] text-white placeholder:text-zinc-600"
-    : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
+    : "bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400";
 
   return (
     <div className="space-y-6">
       <div className={card}>
-        <div className={`flex items-center gap-2 border-b px-5 py-4 ${borderClass}`}>
-          <BookOpen className="h-4 w-4 text-brand-accent" />
-          <div>
+        <div className={`flex items-center gap-3 border-b px-5 py-4 ${borderClass}`}>
+          <div className={chip}><BookOpen className="h-4 w-4" /></div>
+          <div className="min-w-0 flex-1">
             <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("বিষয়ভিত্তিক নম্বর প্রবেশ", "Subject-first mark entry")}</h3>
             <p className={`mt-0.5 text-[11px] ${mutedClass}`}>{bi("শুধু অনুমোদিত নিবন্ধনকারী শিক্ষার্থীদের নম্বর দেখা যাবে।", "Only approved registrations are eligible.")}</p>
           </div>
+          {examId && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => guardAction(bi("ফিল্টার রিসেট হবে", "Filters will reset"), resetFilters)}>
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> {bi("রিসেট", "Reset")}
+            </Button>
+          )}
         </div>
         <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-5">
           <Field label={bi("পরীক্ষা", "Exam")} htmlFor="marks-entry-exam">
@@ -777,10 +801,12 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
       )}
 
       {examId && !setupLoading && subjects.length === 0 && (
-        <div className={`${card} p-8 text-center`}>
-          <TriangleAlert className="mx-auto mb-2 h-6 w-6 text-amber-500" />
-          <p className={`text-sm font-medium ${headingClass}`}>{bi("এই ক্লাসের কোনো বিষয় নেই", "No subjects are configured for this class")}</p>
-          <p className={`mt-1 text-xs ${mutedClass}`}>{bi("প্রথমে Grade Scale থেকে বিষয় যোগ করুন।", "Add subjects in Grade Scale first.")}</p>
+        <div className={`${card} px-6 py-12 text-center`}>
+          <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? "bg-amber-500/10" : "bg-amber-50"}`}>
+            <TriangleAlert className="h-7 w-7 text-amber-500" />
+          </div>
+          <p className={`text-sm font-semibold ${headingClass}`}>{bi("এই ক্লাসের কোনো বিষয় নেই", "No subjects are configured for this class")}</p>
+          <p className={`mx-auto mt-1.5 max-w-sm text-xs leading-relaxed ${mutedClass}`}>{bi("প্রথমে Grade Scale থেকে বিষয় যোগ করুন।", "Add subjects in Grade Scale first.")}</p>
         </div>
       )}
 
@@ -791,18 +817,23 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
       )}
 
       {subjectId && summary && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
           {[
-            { label: bi("নির্বাচিত পরীক্ষা", "Exam"), value: selectedExamName },
-            { label: bi("ক্লাস", "Class"), value: selectedClassName },
-            { label: bi("প্রতিষ্ঠান ফিল্টার", "Institution filter"), value: selectedInstitutionName },
-            { label: bi("অনুমোদিত শিক্ষার্থী", "Approved students"), value: summary.totalCandidates },
-            { label: bi("প্রতিষ্ঠান", "Institutions"), value: summary.institutionsRepresented },
-            { label: bi("প্রবেশ / অনুপস্থিত", "Entered / missing"), value: `${summary.enteredCount} / ${summary.missingCount}` },
+            { icon: ClipboardList, label: bi("নির্বাচিত পরীক্ষা", "Exam"), value: selectedExamName },
+            { icon: GraduationCap, label: bi("ক্লাস", "Class"), value: selectedClassName },
+            { icon: Building2, label: bi("প্রতিষ্ঠান ফিল্টার", "Institution filter"), value: selectedInstitutionName },
+            { icon: Users, label: bi("অনুমোদিত শিক্ষার্থী", "Approved students"), value: summary.totalCandidates },
+            { icon: Landmark, label: bi("প্রতিষ্ঠান", "Institutions"), value: summary.institutionsRepresented },
+            { icon: PencilLine, label: bi("প্রবেশ / অনুপস্থিত", "Entered / missing"), value: `${summary.enteredCount} / ${summary.missingCount}` },
           ].map((item) => (
-            <div key={item.label} className={`${card} px-4 py-3`}>
-              <p className={`text-[10px] uppercase tracking-wider ${mutedClass}`}>{item.label}</p>
-              <p className={`mt-1 truncate text-sm font-semibold ${headingClass}`} title={String(item.value)}>{item.value}</p>
+            <div key={item.label} className={`${card} group flex items-center gap-3 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-accent-soft text-brand-accent transition-transform duration-200 group-hover:scale-105">
+                <item.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`text-[10px] uppercase tracking-wider ${mutedClass}`}>{item.label}</p>
+                <p className={`mt-0.5 truncate text-sm font-semibold ${headingClass}`} title={String(item.value)}>{item.value}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -811,9 +842,9 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
       {subjectId && (
         <div className={card}>
           <div className={`flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${borderClass}`}>
-            <div className="flex items-center gap-2">
-              <Users className={`h-4 w-4 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
-              <div>
+            <div className="flex items-center gap-3">
+              <div className={chip}><Users className="h-4 w-4" /></div>
+              <div className="min-w-0">
                 <h3 className={`text-sm font-semibold ${headingClass}`}>{selectedSubject?.name || bi("নম্বর প্রবেশ", "Mark entry")}</h3>
                 <p className={`text-[11px] ${mutedClass}`}>
                   {selectedSubject ? `${bi("পূর্ণ নম্বর", "Full marks")}: ${selectedSubject.fullMarks}` : ""} · {marksQuery.data?.totalMatching || 0} {bi("টি মিল", "matches")}
@@ -821,6 +852,12 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <span className={`hidden items-center gap-1.5 text-[10px] ${mutedClass} md:flex`}>
+                <kbd className="kbd-chip">Enter</kbd>
+                <kbd className="kbd-chip">↑</kbd>
+                <kbd className="kbd-chip">↓</kbd>
+                {bi("দিয়ে সারি বদলান", "to move between rows")}
+              </span>
               {selectedIds.size > 0 && (
                 <Button type="button" size="sm" variant="secondary" onClick={() => setCopyOpen(true)}>
                   <ClipboardCopy className="mr-1.5 h-3.5 w-3.5" /> {selectedIds.size} {bi("টিতে কপি", "selected")}
@@ -843,14 +880,28 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
             </div>
           </div>
 
+          {progressTotal > 0 && (
+            <div className={`border-b px-5 py-3 ${borderClass}`}>
+              <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider">
+                <span className={mutedClass}>{bi("প্রবেশ অগ্রগতি", "Entry progress")}</span>
+                <span className={`tabular-nums ${headingClass}`}>{progressPct}% · {summary?.enteredCount ?? 0}/{progressTotal}</span>
+              </div>
+              <div className={`mt-1.5 h-1.5 overflow-hidden rounded-full ${isDark ? "bg-white/[0.06]" : "bg-zinc-200"}`}>
+                <div className="h-full rounded-full bg-brand-accent transition-all duration-500" style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+          )}
+
           {marksQuery.isLoading ? (
             <div className="p-10 text-center">
               <Loader2 className={`mx-auto mb-3 h-6 w-6 animate-spin ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
               <p className={`text-sm ${mutedClass}`}>{bi("শিক্ষার্থী লোড হচ্ছে...", "Loading students...")}</p>
             </div>
           ) : rows.length === 0 ? (
-            <div className="p-10 text-center">
-              <Users className={`mx-auto mb-3 h-8 w-8 ${isDark ? "text-zinc-600" : "text-zinc-300"}`} />
+            <div className="px-6 py-14 text-center">
+              <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? "bg-white/[0.06]" : "bg-zinc-100"}`}>
+                <Users className={`h-7 w-7 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+              </div>
               <p className={`text-sm font-medium ${headingClass}`}>
                 {search
                   ? bi("অনুসন্ধানের সাথে কোনো শিক্ষার্থী মেলেনি", "No students match this search")
@@ -936,7 +987,7 @@ export function MarksEntryPanel({ onPendingChange }: MarksEntryPanelProps) {
                               }}
                               onKeyDown={(event) => handleInputKey(event, row.registrationId)}
                               placeholder={row.mark === null ? bi("প্রবেশ করা হয়নি", "Not entered") : normalizedMarkText(row.mark)}
-                              className={`${inputClass} h-9 text-xs ${cell?.status === "error" ? "border-red-500/60" : cell?.status === "saving" ? "border-amber-500/60" : cell?.status === "saved" ? "border-emerald-500/50" : ""}`}
+                              className={`${inputClass} h-9 rounded-lg text-center text-xs font-semibold tabular-nums ${cell?.status === "error" ? "border-red-500/60" : cell?.status === "saving" ? "border-amber-500/60" : cell?.status === "saved" ? "border-emerald-500/50" : ""}`}
                               aria-label={`${row.studentName} ${bi("নম্বর", "mark")}`}
                               aria-invalid={cell?.status === "error"}
                               aria-describedby={cell?.error ? `mark-error-${row.registrationId}` : undefined}
@@ -1047,8 +1098,10 @@ interface FieldProps {
 }
 
 function Field({ label, htmlFor, children }: FieldProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   return (
-    <div>
+    <div className={`rounded-xl border p-3 transition-colors ${isDark ? "border-white/[0.06] bg-white/[0.02]" : "border-zinc-200/80 bg-zinc-50/70"}`}>
       <label className="mb-1.5 block text-[11px] font-medium text-zinc-600 dark:text-zinc-400" htmlFor={htmlFor}>{label}</label>
       {children}
     </div>
