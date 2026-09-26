@@ -7,16 +7,30 @@ const SUPABASE_TABLE = 'registrations';
 
 const REGISTRATION_COLUMNS = 'id,session_id,application_id,registration_number,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,status,payment_status,student_payment_status,payment_amount,transaction_id,created_at,updated_at';
 
+/**
+ * Read select: the registration columns plus the linked student row.
+ *
+ * `registrations.student_name` is a snapshot written when the registration was
+ * created, so editing a student on the Students page never reached this table.
+ * Reads therefore prefer the live student name and only fall back to the
+ * stored copy when the student row is not visible (or missing).
+ */
+const REGISTRATION_SELECT = `${REGISTRATION_COLUMNS},student:students(first_name,last_name)`;
+
 const DEFAULT_PAGE_SIZE = 20;
 
 function mapRegistration(data: any): Registration {
+  const student = Array.isArray(data.student) ? data.student[0] : data.student;
+  const liveName = student
+    ? `${student.first_name ?? ''} ${student.last_name ?? ''}`.trim()
+    : '';
   return {
     id: data.id,
     sessionId: data.session_id,
     applicationId: data.application_id,
     registrationNumber: data.registration_number || '',
     studentId: data.student_id,
-    studentName: data.student_name,
+    studentName: liveName || data.student_name,
     institutionId: data.institution_id,
     institutionName: data.institution_name,
     examId: data.exam_id,
@@ -40,7 +54,7 @@ export async function fetchRegistrations(sessionId?: string, page: number = 1, p
   const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(REGISTRATION_COLUMNS)
+    .select(REGISTRATION_SELECT)
     .eq('session_id', sid)
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -56,7 +70,7 @@ export async function fetchRegistrationsByInstitution(institutionId: string, ses
   const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(REGISTRATION_COLUMNS)
+    .select(REGISTRATION_SELECT)
     .eq('session_id', sid)
     .eq('institution_id', institutionId)
     .order('created_at', { ascending: false })
@@ -73,7 +87,7 @@ export async function fetchRegistrationsByExam(examId: string, sessionId?: strin
   const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(REGISTRATION_COLUMNS)
+    .select(REGISTRATION_SELECT)
     .eq('session_id', sid)
     .eq('exam_id', examId)
     .order('created_at', { ascending: false })
@@ -110,7 +124,7 @@ export async function fetchAllRegistrationsByInstitution(institutionId: string, 
     const from = page * PAGE;
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select(REGISTRATION_COLUMNS)
+      .select(REGISTRATION_SELECT)
       .eq('session_id', sid)
       .eq('institution_id', institutionId)
       .order('created_at', { ascending: false })
@@ -136,7 +150,7 @@ export async function fetchAllRegistrations(sessionId?: string): Promise<Registr
     const from = page * PAGE;
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select(REGISTRATION_COLUMNS)
+      .select(REGISTRATION_SELECT)
       .eq('session_id', sid)
       .order('created_at', { ascending: false })
       .range(from, from + PAGE - 1);
@@ -215,7 +229,7 @@ export async function generateGlobalRegistrationNumber(): Promise<string> {
 }
 
 export async function fetchRegistrationById(id: string): Promise<Registration | undefined> {
-  const { data, error } = await createClient().from(SUPABASE_TABLE).select(REGISTRATION_COLUMNS).eq('id', id).single();
+  const { data, error } = await createClient().from(SUPABASE_TABLE).select(REGISTRATION_SELECT).eq('id', id).single();
   if (error || !data) return undefined;
   return mapRegistration(data);
 }
@@ -303,7 +317,7 @@ export async function fetchRegistrationsByStudent(studentId: string): Promise<Re
   const supabase = createClient();
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(REGISTRATION_COLUMNS)
+    .select(REGISTRATION_SELECT)
     .eq('student_id', studentId)
     .order('created_at', { ascending: false });
   if (error || !data) return [];

@@ -9,6 +9,27 @@ const STUDENT_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first
 
 const DEFAULT_PAGE_SIZE = 20;
 
+/**
+ * Tables that store their OWN copy of the student's name, snapshotted when the
+ * row was created. Every page reading them (Registrations, Payments, Results,
+ * Certificates, Admit Cards) renders that copy, so renaming a student has to be
+ * pushed into all of them — otherwise the Students page shows the new name while
+ * those pages keep the old one. `marks` has no name column (the marks sheet reads
+ * `registrations.student_name`, which is covered first).
+ */
+const STUDENT_NAME_COPY_TABLES = ['registrations', 'payments', 'results', 'certificates', 'admit_cards'];
+
+async function syncStudentNameCopies(studentId: string, fullName: string): Promise<void> {
+  const supabase = createClient();
+  await Promise.all(
+    STUDENT_NAME_COPY_TABLES.map(async (table) => {
+      const { error } = await supabase.from(table).update({ student_name: fullName }).eq('student_id', studentId);
+      // Never fail the student edit over a mirrored copy — surface it instead.
+      if (error) console.warn(`[students] could not sync ${table}.student_name:`, error.message);
+    }),
+  );
+}
+
 function mapStudent(data: any): Student {
   return {
     id: data.id,
@@ -154,6 +175,15 @@ export async function updateStudent(id: string, data: Partial<Student>): Promise
   if (data.status !== undefined) u.status = data.status;
   const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(STUDENT_COLUMNS).single();
   if (error) return undefined;
+
+  // Keep the name copies stored on Registrations/Payments/Results/Certificates/
+  // Admit Cards in step with the edit — otherwise those pages keep showing the
+  // name the student had before this change.
+  if (data.firstName !== undefined || data.lastName !== undefined) {
+    const fullName = `${result.first_name ?? ''} ${result.last_name ?? ''}`.trim();
+    await syncStudentNameCopies(id, fullName);
+  }
+
   return mapStudent(result);
 }
 
@@ -336,6 +366,15 @@ export function useUpdateStudent() {
     mutationFn: ({ id, data }: { id: string; data: Partial<Student> }) => updateStudent(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['students'] });
+      // Registration/Payment/Result/Certificate/Admit-card rows display the
+      // student's name — refetch them too so an edit here shows up on those
+      // pages without a manual refresh.
+      qc.invalidateQueries({ queryKey: ['registrations'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['results'] });
+      qc.invalidateQueries({ queryKey: ['certificates'] });
+      qc.invalidateQueries({ queryKey: ['admit_cards'] });
+      qc.invalidateQueries({ queryKey: ['admit-cards'] });
     },
   });
 }
