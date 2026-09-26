@@ -381,12 +381,26 @@ export async function saveExamMarkSetup(
   if (!validation.valid) throw new Error(validation.errors[0] || "Invalid mark setup");
 
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("save_exam_grade_scale", {
+  const primary = await supabase.rpc("save_exam_grade_scale", {
     p_exam_id: normalized.examId,
     p_grade_bands: normalized.gradeBands,
     p_scholarship_categories: normalized.scholarshipCategories,
     p_pass_percent: normalized.passPercent,
   });
+  let data = primary.data;
+  let error = primary.error;
+
+  if (error && (error.code === "PGRST202" || /save_exam_grade_scale|function/i.test(error.message))) {
+    const fallback = await supabase.rpc("save_exam_mark_setup", {
+      p_exam_id: normalized.examId,
+      p_subjects: normalized.subjects,
+      p_grade_bands: normalized.gradeBands,
+      p_scholarship_categories: normalized.scholarshipCategories,
+      p_pass_percent: normalized.passPercent,
+    });
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error) throw error;
 
   return {
@@ -395,8 +409,8 @@ export async function saveExamMarkSetup(
     setup: {
       examId: normalized.examId,
       subjects: (data?.subjects || normalized.subjects) as ExamSubject[],
-      gradeBands: (data?.grade_bands || normalized.gradeBands) as MarkGradeBand[],
-      scholarshipCategories: (data?.scholarship_categories || normalized.scholarshipCategories) as ScholarshipCategoryRange[],
+      gradeBands: normalizeGradeBands((data?.grade_bands || normalized.gradeBands) as MarkGradeBand[]),
+      scholarshipCategories: normalizeScholarshipCategories((data?.scholarship_categories || normalized.scholarshipCategories) as ScholarshipCategoryRange[]),
       passPercent: Number(data?.pass_percent ?? normalized.passPercent),
       version: Number(data?.version ?? 1),
       updatedBy: null,
