@@ -67,11 +67,13 @@ interface CellState {
 interface MarksEntryPanelProps {
   onPendingChange?: (pending: boolean) => void;
   /**
-   * Institution the sheet is pinned to (institution role). When set, every
-   * query is forced to this institution and the institution filter is hidden.
+   * Caller's own institution (institution role). When set, the institution
+   * filter is hidden and no institution id is sent: the RPC is blind and
+   * excludes this institution's own students server-side, so the sheet only
+   * ever shows other institutions' papers.
    */
   scopedInstitutionId?: string;
-  /** Display name of the pinned institution, shown in the summary tiles. */
+  /** Display name of the excluded (own) institution, shown in the summary tiles. */
   scopedInstitutionName?: string;
 }
 
@@ -163,15 +165,15 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   );
   const fullMarks = selectedSubject?.fullMarks || 0;
 
-  // Institution role: the sheet is always pinned to this institution; the
-  // super-admin institution filter is hidden and ignored while pinned.
+  // Institution role: the sheet is blind — no institution id is sent and the
+  // RPC excludes this institution's own students server-side. The super-admin
+  // institution filter is hidden and ignored while scoped.
   const isScoped = Boolean(scopedInstitutionId);
-  const effectiveInstitutionId = scopedInstitutionId || institutionId;
 
   const queryParams: MarksSheetPageParams = useMemo(() => ({
     examId,
     classId,
-    institutionId: effectiveInstitutionId || null,
+    institutionId: isScoped ? null : institutionId || null,
     subjectId,
     search,
     rollFrom,
@@ -179,7 +181,7 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
     page,
     pageSize,
     sessionId: currentSession?.id,
-  }), [classId, currentSession?.id, effectiveInstitutionId, examId, page, pageSize, rollFrom, rollTo, search, subjectId]);
+  }), [classId, currentSession?.id, examId, institutionId, isScoped, page, pageSize, rollFrom, rollTo, search, subjectId]);
 
   const marksQuery = useMarksSheetPage(queryParams);
   const rows = marksQuery.data?.rows || EMPTY_ROWS;
@@ -706,7 +708,11 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
           <div className={chip}><BookOpen className="h-4 w-4" /></div>
           <div className="min-w-0 flex-1">
             <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("বিষয়ভিত্তিক নম্বর প্রবেশ", "Subject-first mark entry")}</h3>
-            <p className={`mt-0.5 text-[11px] ${mutedClass}`}>{bi("শুধু অনুমোদিত নিবন্ধনকারী শিক্ষার্থীদের নম্বর দেখা যাবে।", "Only approved registrations are eligible.")}</p>
+            <p className={`mt-0.5 text-[11px] ${mutedClass}`}>
+              {isScoped
+                ? bi("নিজ প্রতিষ্ঠানের শিক্ষার্থী বাদ — অন্য প্রতিষ্ঠানের কাগজের নম্বর দিন। শুধু অনুমোদিত নিবন্ধন।", "Your own institution's students are excluded — mark other institutions' papers. Approved registrations only.")
+                : bi("শুধু অনুমোদিত নিবন্ধনকারী শিক্ষার্থীদের নম্বর দেখা যাবে।", "Only approved registrations are eligible.")}
+            </p>
           </div>
           {examId && (
             <Button type="button" size="sm" variant="ghost" onClick={() => guardAction(bi("ফিল্টার রিসেট হবে", "Filters will reset"), resetFilters)}>
@@ -775,7 +781,9 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
                 id="marks-entry-search"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder={bi("নাম, নিবন্ধন, প্রতিষ্ঠান বা রোল", "Name, registration, institution, or roll")}
+                placeholder={isScoped
+                  ? bi("নাম, নিবন্ধন বা রোল", "Name, registration, or roll")
+                  : bi("নাম, নিবন্ধন, প্রতিষ্ঠান বা রোল", "Name, registration, institution, or roll")}
                 className={`pl-9 ${inputClass}`}
                 disabled={!subjectId}
               />
@@ -828,13 +836,13 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
       )}
 
       {subjectId && summary && (
-        <div className={`grid grid-cols-2 gap-3 lg:grid-cols-3 ${isScoped ? "xl:grid-cols-5" : "xl:grid-cols-6"}`}>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
           {[
             { icon: ClipboardList, label: bi("নির্বাচিত পরীক্ষা", "Exam"), value: selectedExamName },
             { icon: GraduationCap, label: bi("ক্লাস", "Class"), value: selectedClassName },
-            { icon: Building2, label: isScoped ? bi("প্রতিষ্ঠান", "Institution") : bi("প্রতিষ্ঠান ফিল্টার", "Institution filter"), value: scopedInstitutionName || selectedInstitutionName },
+            { icon: Building2, label: isScoped ? bi("নিজ প্রতিষ্ঠান বাদ", "Own institution excluded") : bi("প্রতিষ্ঠান ফিল্টার", "Institution filter"), value: isScoped ? (scopedInstitutionName || "—") : selectedInstitutionName },
             { icon: Users, label: bi("অনুমোদিত শিক্ষার্থী", "Approved students"), value: summary.totalCandidates },
-            ...(!isScoped ? [{ icon: Landmark, label: bi("প্রতিষ্ঠান", "Institutions"), value: summary.institutionsRepresented }] : []),
+            { icon: Landmark, label: bi("প্রতিষ্ঠান", "Institutions"), value: summary.institutionsRepresented },
             { icon: PencilLine, label: bi("প্রবেশ / অনুপস্থিত", "Entered / missing"), value: `${summary.enteredCount} / ${summary.missingCount}` },
           ].map((item) => (
             <div key={item.label} className={`${card} group flex items-center gap-3 px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>

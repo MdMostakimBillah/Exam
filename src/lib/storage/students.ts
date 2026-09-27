@@ -107,6 +107,33 @@ export async function fetchStudentsByInstitution(institutionId: string, sessionI
   return data.map(mapStudent);
 }
 
+/**
+ * ALL students of a session across every institution (pages past the 1000-row
+ * per-request cap), newest first. Used by the institution Students list: once
+ * rolls are generated an institution must be able to identify any paper, so it
+ * sees every institution's students and exam rolls, not just its own.
+ */
+export async function fetchAllStudents(sessionId?: string): Promise<Student[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const PAGE = 1000;
+  const all: Student[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(STUDENT_COLUMNS)
+      .eq('session_id', sid)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data.map(mapStudent));
+    if (data.length < PAGE) break;
+  }
+  return all;
+}
+
 export async function fetchStudentById(id: string): Promise<Student | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(STUDENT_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
@@ -297,6 +324,16 @@ export function useStudents(sessionId?: string, page?: number, pageSize?: number
   return useQuery({
     queryKey: ['students', sessionId, page, pageSize],
     queryFn: () => fetchStudents(sessionId, page, pageSize),
+    staleTime: 60 * 1000,
+  });
+}
+
+/** Every student of the session, all institutions (see fetchAllStudents). */
+export function useAllStudents(sessionId?: string) {
+  return useQuery({
+    queryKey: ['students', 'all', sessionId],
+    queryFn: () => fetchAllStudents(sessionId),
+    enabled: !!sessionId,
     staleTime: 60 * 1000,
   });
 }

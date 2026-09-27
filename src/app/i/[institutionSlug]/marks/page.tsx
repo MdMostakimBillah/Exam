@@ -9,11 +9,12 @@ import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 
 /**
- * Institution Mark Entry.
+ * Institution Mark Entry — blind marking.
  *
- * The sheet is pinned to this institution (scopedInstitutionId), so the
- * institution filter is hidden and the RPC ignores any other institution id.
- * Grade Scale setup and Results processing stay on the super-admin Marks page.
+ * Papers belong to OTHER institutions: this institution's own students are
+ * excluded server-side (migration 0030), so the institution filter is hidden
+ * and no institution id is sent with the query. Grade Scale setup and Results
+ * processing stay on the super-admin Marks page.
  */
 export default function InstitutionMarksPage() {
   const params = useParams();
@@ -79,8 +80,8 @@ export default function InstitutionMarksPage() {
             </h1>
             <p className={`mt-1 max-w-2xl text-sm ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
               {isBn
-                ? `${inst.name} এর অনুমোদিত শিক্ষার্থীদের নম্বর দিন। রোল রেঞ্জ দিয়ে ব্লক অনুযায়ী কাজ করুন।`
-                : `Enter marks for approved students of ${inst.name}. Use the roll range to work through a block of rolls.`}
+                ? `নিজ প্রতিষ্ঠানের শিক্ষার্থী বাদ — অন্য প্রতিষ্ঠানের অনুমোদিত শিক্ষার্থীর নম্বর দিন। রোল রেঞ্জ দিয়ে ব্লক অনুযায়ী কাজ করুন।`
+                : `Your own students are excluded — enter marks for approved students of other institutions. Use the roll range to work through a block of rolls.`}
             </p>
           </div>
         </div>
