@@ -52,13 +52,13 @@ import { DEFAULT_INSTRUCTIONS } from "@/lib/storage/admit-cards";
  * flex `gap` anywhere (html2canvas does not lay it out) — spacing is
  * margins/padding only. Every colour is a literal hex (accent resolved at
  * render time), so preview, PDF and print match pixel-wise. Typography:
- * Inter for English, Kalpurush/Tiro Bangla for Bengali.
+ * Inter for English, Noto Sans Bengali (Google Fonts) for Bengali.
  *
  * Language: all chrome follows `view.lang`; the root carries `lang="bn|en"`
  * so font fallback resolves identically in preview, PDF and print.
  */
 
-const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Kalpurush', 'Tiro Bangla', sans-serif";
+const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Kalpurush', 'Tiro Bangla', sans-serif";
 
 /** Print-safe ink palette — literal hex, identical in preview/PDF/print. */
 const INK = "#111111"; // structural rules + labels (dark in B&W)
@@ -148,9 +148,13 @@ function isWashoutColor(hex: string, threshold = 210): boolean {
   return 0.299 * r + 0.587 * g + 0.114 * b > threshold;
 }
 
-/** Big faded association watermark behind the card — the official seal.
+/** Big association watermark behind the card — the official seal.
  *  Uses the super-admin's uploaded image when set, otherwise the classic
- *  text crest built from the short/association names. */
+ *  text crest built from the short/association names.
+ *  Deliberately prominent: `size big` + 70% opacity so the seal is clearly
+ *  visible on screen AND in the printed PDF (a 5% seal vanished on print).
+ *  Card sections paint no white over it, so the seal reads as one continuous
+ *  graphic behind the whole page — content (z-index 1) still paints on top. */
 function Watermark({ brand }: { brand: BrandingSettings }) {
   if (brand.brandWatermark) {
     return (
@@ -162,7 +166,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           left: "50%",
           transform: "translate(-50%, -50%) rotate(-30deg)",
           zIndex: 0,
-          opacity: 0.05,
+          opacity: 0.7,
           pointerEvents: "none",
           userSelect: "none",
           lineHeight: 0,
@@ -173,7 +177,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           src={brand.brandWatermark}
           alt=""
           crossOrigin="anonymous"
-          style={{ width: "160mm", height: "auto", display: "block" }}
+          style={{ width: "200mm", height: "auto", display: "block" }}
         />
       </div>
     );
@@ -187,7 +191,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
         left: "50%",
         transform: "translate(-50%, -50%) rotate(-30deg)",
         zIndex: 0,
-        opacity: 0.05,
+        opacity: 0.7,
         textAlign: "center",
         pointerEvents: "none",
         whiteSpace: "nowrap",
@@ -196,20 +200,20 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
     >
       <div
         style={{
-          fontSize: "110px",
+          fontSize: "140px",
           fontWeight: 700,
-          letterSpacing: "12px",
+          letterSpacing: "14px",
           lineHeight: 1,
-          border: `6px solid ${BLACK}`,
-          padding: "14px 26px 10px",
+          border: `7px solid ${BLACK}`,
+          padding: "16px 30px 12px",
         }}
       >
         {brand.brandShort || "BMA"}
       </div>
-      <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "3px", marginTop: "10px" }}>
+      <div style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "3px", marginTop: "12px" }}>
         {(brand.brandName || "Bangladesh Madrasah Association").toUpperCase()}
       </div>
-      <div style={{ fontSize: "17px", letterSpacing: "2px", marginTop: "4px" }}>
+      <div style={{ fontSize: "21px", letterSpacing: "2px", marginTop: "5px" }}>
         {brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন"}
       </div>
     </div>
@@ -824,7 +828,8 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           margin: "0 11mm",
           border: RULE,
           boxSizing: "border-box",
-          background: "#ffffff",
+          // No white fill: the watermark must read continuously behind the
+          // whole card (text paints on top — z-index 1 keeps it legible).
           flexShrink: 0,
         }}
       >
@@ -849,7 +854,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             border: RULE,
             borderRadius: 0,
             overflow: "hidden",
-            background: "#ffffff",
+            // Transparent so the seal watermark shows through the table.
             boxSizing: "border-box",
           }}
         >
@@ -903,7 +908,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           display: "flex",
           border: RULE,
           boxSizing: "border-box",
-          background: "#ffffff",
+          // Transparent — watermark reads through, signature rules stay #111.
           flexShrink: 0,
         }}
       >

@@ -13,6 +13,11 @@ interface GeneratePdfOptions {
   companySubtitle?: string;
   /** Brand accent color (#hex) from Settings → Branding. Defaults to classic purple. */
   accent?: string;
+  /** Branding watermark image URL — drawn big, centred, 70% opacity behind
+   *  EVERY page (same asset the admit card uses). Empty → text watermark. */
+  watermark?: string;
+  /** Short crest text used when there is no watermark image (e.g. "BMA"). */
+  watermarkText?: string;
   /** Row-data key holding an image (data URL or URL) — rendered as a photo column. */
   imageKey?: string;
   /** Header label for the photo column. */
@@ -131,15 +136,21 @@ async function imageToPng(src: string): Promise<string | null> {
   }
 }
 
-// Kalpurush (Bangla) — base64 fetched once, but jsPDF's VFS/font state is PER
-// DOCUMENT: every generated doc must re-register the font itself. The old
+// Noto Sans Bengali (Google Fonts) — the Bangla family every PDF renders with.
+// The HTML/print side loads it from Google Fonts (@import in globals.css);
+// jsPDF cannot read CSS fonts, so the same family's TTF is embedded from
+// /public/fonts instead. Base64 is fetched once, but jsPDF's VFS/font state is
+// PER DOCUMENT: every generated doc must re-register the font itself. The old
 // module-level "loaded" flag left the 2nd+ PDF with no font at all, which came
 // out as garbage (¬¾¼…) after download.
 let fontBase64: string | null = null;
+const FONT_FILE = "/fonts/NotoSansBengali-Regular.ttf";
+const FONT_VFS = "NotoSansBengali-Regular.ttf";
+const FONT_NAME = "NotoSansBengali";
 
 async function loadFont(doc: any) {
   if (!fontBase64) {
-    const response = await fetch("/fonts/kalpurush.ttf");
+    const response = await fetch(FONT_FILE);
     const buffer = await response.arrayBuffer();
 
     const fontBytes = new Uint8Array(buffer);
@@ -150,11 +161,111 @@ async function loadFont(doc: any) {
     fontBase64 = btoa(binary);
   }
 
-  doc.addFileToVFS("kalpurush.ttf", fontBase64);
-  doc.addFont("kalpurush.ttf", "Kalpurush", "normal");
+  doc.addFileToVFS(FONT_VFS, fontBase64);
+  doc.addFont(FONT_VFS, FONT_NAME, "normal");
   // Titles and autotable headers request bold — register it too, otherwise
   // jsPDF silently falls back to Helvetica, which has no Bengali glyphs.
-  doc.addFont("kalpurush.ttf", "Kalpurush", "bold");
+  doc.addFont(FONT_VFS, FONT_NAME, "bold");
+}
+
+// ── Watermark ─────────────────────────────────────────────────────────────
+// Same rule as the admit card: BIG, centred, 70% opacity, under the content,
+// on every page of every PDF.
+const WM_OPACITY = 0.7;
+const WM_ANGLE = 30; // degrees, counter-clockwise — matches the card's -30deg tilt
+
+interface WmImage {
+  dataUrl: string;
+  /** height / width of the loaded bitmap. */
+  aspect: number;
+}
+
+/** jsPDF graphics-state alpha (works for text and images alike). */
+function setOpacity(doc: any, opacity: number) {
+  doc.setGState(new (doc as any).GState({ opacity }));
+}
+
+/** Load the branding watermark at full size as a PNG data URL (no crop —
+ *  a seal must keep its shape). CORS failure → null → text fallback. */
+async function loadWatermarkImage(src: string): Promise<WmImage | null> {
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("watermark load failed"));
+      img.src = src;
+    });
+    if (!img.naturalWidth || !img.naturalHeight) return null;
+    // jsPDF embeds PNG losslessly (alpha preserved) — cap size to keep PDFs small.
+    const maxSide = 1400;
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, w, h);
+    return { dataUrl: canvas.toDataURL("image/png"), aspect: h / w };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Draw the watermark — centred on the page, rotated 30°, 70% opacity.
+ * Must be called BEFORE the page's content so the seal sits behind it.
+ *
+ * jsPDF's rotated addImage anchors the rotation at the rect's bottom-left
+ * corner (x, y+h in PDF space), so x/y are solved for the rotated rect's
+ * centre to land exactly on the page centre:
+ *   centre = A + Rot(θ)·(w/2, h/2),  A = (x, H − y − h)
+ */
+function drawWatermark(
+  doc: any,
+  pageW: number,
+  pageH: number,
+  img: WmImage | null,
+  text: string
+) {
+  setOpacity(doc, WM_OPACITY);
+  try {
+    if (img) {
+      const rad = (WM_ANGLE * Math.PI) / 180;
+      const c = Math.cos(rad);
+      const s = Math.sin(rad);
+      const a = img.aspect; // h / w
+      // Largest rect whose ROTATED bounding box keeps a 4% page margin.
+      const w =
+        Math.min((0.92 * pageW) / (c + a * s), (0.92 * pageH) / (s + a * c));
+      const h = w * a;
+      const x = pageW / 2 - (w * c - h * s) / 2;
+      const y = pageH / 2 + (w * s + h * c) / 2 - h;
+      try {
+        doc.addImage(img.dataUrl, "PNG", x, y, w, h, undefined, "FAST", WM_ANGLE);
+      } catch {
+        // a broken bitmap never breaks the export
+      }
+    } else if (text) {
+      doc.setFont(FONT_NAME, "bold");
+      doc.setTextColor(0, 0, 0);
+      let size = 60;
+      doc.setFontSize(size);
+      const measured = doc.getTextWidth(text);
+      if (measured > 0) {
+        size = (size * (0.85 * Math.min(pageW, pageH))) / measured;
+        doc.setFontSize(size);
+      }
+      doc.text(text, pageW / 2, pageH / 2 + size * 0.13, {
+        angle: WM_ANGLE,
+        align: "center",
+      });
+    }
+  } finally {
+    setOpacity(doc, 1);
+  }
 }
 
 export async function generatePdf(options: GeneratePdfOptions) {
@@ -170,6 +281,8 @@ export async function generatePdf(options: GeneratePdfOptions) {
     companyName = "Bangladesh Madrasah Association",
     companySubtitle = "বাংলাদেশ মাদ্রাসা এসোসিয়েশন",
     accent,
+    watermark,
+    watermarkText,
     imageKey,
     imageHeader = "Photo",
   } = options;
@@ -180,12 +293,18 @@ export async function generatePdf(options: GeneratePdfOptions) {
 
   await loadFont(doc);
 
-  const FONT = "Kalpurush";
+  const FONT = FONT_NAME;
 
   const pal = accentPalette(accent);
   const primary = pal.rgb;
   const textDark: Rgb = [30, 30, 30];
   const textMuted: Rgb = [120, 120, 120];
+
+  // Watermark FIRST, so header band / title / table all paint on top of it.
+  // (Page 1 only — pages 2+ are drawn from the autotable willDrawPage hook.)
+  const wmImg = watermark ? await loadWatermarkImage(watermark) : null;
+  const wmText = wmImg ? "" : (watermarkText || companyName.split(/\s+/).map((w) => w[0]).join("").toUpperCase());
+  drawWatermark(doc, pageWidth, pageHeight, wmImg, wmText);
 
   doc.setFillColor(...primary);
   doc.rect(0, 0, pageWidth, 18, "F");
@@ -291,12 +410,15 @@ export async function generatePdf(options: GeneratePdfOptions) {
       halign: "center",
       valign: "middle",
     },
-    alternateRowStyles: {
-      fillColor: pal.tintRgb,
-    },
+    // No zebra fill on purpose: an opaque alternating fill would slice the
+    // 70%-opacity watermark into horizontal bands. Grid rules carry the rows.
     columnStyles,
     bodyStyles: { valign: "middle", ...(withImage ? { minCellHeight: 16 } : {}) },
     margin: { left: 14, right: 14 },
+    // Every new page: seal watermark first, then head/body rows paint over it.
+    willDrawPage: (data: any) => {
+      if (data.pageNumber > 1) drawWatermark(doc, pageWidth, pageHeight, wmImg, wmText);
+    },
     ...(withImage
       ? {
           didDrawCell: (data: any) => {

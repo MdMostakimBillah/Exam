@@ -1,4 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Tiro+Bangla:ital@0;1&display=swap');
+/* Bangla for printed documents (admit card preview / html2canvas PDF / print).
+   Noto Sans Bengali is the Google font the PDFs must render Bangla with — it
+   is what the print window and the html2canvas clone load too. */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap');
 
 @font-face {
   font-family: 'Kalpurush';
@@ -127,15 +131,16 @@ body.lang-bn button {
   font-weight: 400;
 }
 
-/* Admit card: modern sans — Inter for Latin, Kalpurush for Bangla.
-    Must beat `html.lang-bn *` so preview / html2canvas PDF / print all match.
-    html2canvas rasterises the DOM, so both families must be available as CSS fonts
-    (Tiro Bangla from Google Fonts, Kalpurush via @font-face above, Inter via import). */
+/* Admit card: modern sans — Inter for Latin, Noto Sans Bengali (Google Fonts)
+    for Bangla. Must beat `html.lang-bn *` so preview / html2canvas PDF / print
+    all match. html2canvas rasterises the DOM, so every family must be available
+    as a CSS font (Inter + Noto Sans Bengali via @import above, Kalpurush and
+    Tiro Bangla kept only as offline fallbacks). */
 html.lang-bn body .admit-card-page,
 html.lang-bn body .admit-card-page *,
 html body .admit-card-page,
 html body .admit-card-page * {
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Kalpurush', 'Tiro Bangla', sans-serif !important;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Kalpurush', 'Tiro Bangla', sans-serif !important;
 }
 
 @keyframes fadeIn {

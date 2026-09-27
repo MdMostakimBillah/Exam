@@ -36,6 +36,8 @@ async function waitForFonts(target: Document = document): Promise<void> {
       '700 14px Inter',
       '600 13px Inter',
       '400 11px Inter',
+      '400 14px "Noto Sans Bengali"',
+      '700 14px "Noto Sans Bengali"',
       '400 14px "Tiro Bangla"',
       '400 14px Kalpurush',
     ];
@@ -184,18 +186,28 @@ function timestamp(): string {
 
 /** Clone font-related styles into the html2canvas cloned document so text metrics match preview. */
 function injectFontsIntoClone(clonedDoc: Document) {
-  // 1) Copy external <link> stylesheets that contain Inter / Tiro Bangla
+  const seen = new Set<string>();
+  // 1) Copy external <link> stylesheets that contain Inter / Tiro Bangla /
+  //    Noto Sans Bengali (Bangla for the PDF) — deduped.
+  const addLink = (href: string) => {
+    if (!href || seen.has(href)) return;
+    seen.add(href);
+    const link = clonedDoc.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    clonedDoc.head.appendChild(link);
+  };
   Array.from(document.querySelectorAll('link[rel="stylesheet"]')).forEach((orig) => {
     const href = (orig as HTMLLinkElement).href;
-    if (!href) return;
-    if (href.includes("fonts.googleapis")) {
-      const link = clonedDoc.createElement("link");
-      link.rel = "stylesheet";
-      link.href = href;
-      clonedDoc.head.appendChild(link);
-    }
+    if (href && href.includes("fonts.googleapis")) addLink(href);
   });
-  // 2) Ensure Kalpurush @font-face is present in clone
+  // The app loads its Google fonts through globals.css @import (no <link> in
+  // <head>), so always request the card's families explicitly — otherwise the
+  // clone can rasterise Bangla with a fallback font.
+  addLink(
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&family=Tiro+Bangla&display=swap"
+  );
+  // 2) Ensure Kalpurush @font-face (offline Bangla fallback) is present in clone
   const style = clonedDoc.createElement("style");
   style.textContent =
     "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
@@ -333,14 +345,14 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
       lang +
       '"><head><meta charset="utf-8" />' +
       "<title>Admit Card</title>" +
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Tiro+Bangla&display=swap" />' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&family=Tiro+Bangla&display=swap" />' +
       "<style>" +
       "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
       "@page{size:210mm 297mm;margin:0}" +
       "html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
       ".admit-card-page{page-break-after:always;break-after:page}" +
       ".admit-card-page:last-child{page-break-after:auto;break-after:auto}" +
-      ".admit-card-page,.admit-card-page *{font-family:'Inter',system-ui,-apple-system,'Segoe UI','Kalpurush','Tiro Bangla',sans-serif!important}" +
+      ".admit-card-page,.admit-card-page *{font-family:'Inter',system-ui,-apple-system,'Segoe UI','Noto Sans Bengali','Kalpurush','Tiro Bangla',sans-serif!important}" +
       "</style></head><body>" +
       body +
       "</body></html>"

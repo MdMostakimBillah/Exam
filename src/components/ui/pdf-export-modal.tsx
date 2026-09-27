@@ -90,12 +90,15 @@ export function PdfExportModal({
       companyName,
       companySubtitle,
       accent: pal.hex,
+      watermark: branding?.brandWatermark || undefined,
+      watermarkText: branding?.brandShort || undefined,
       imageKey: withPhotos && photosAvailable ? imageKey : undefined,
       imageHeader: imageHeader || (isBn ? 'ছবি' : 'Photo'),
     });
     onClose();
   }, [title, activeColumns, data, orientation, companyName, companySubtitle, onClose,
-      pal.hex, withPhotos, photosAvailable, imageKey, imageHeader, isBn]);
+      pal.hex, withPhotos, photosAvailable, imageKey, imageHeader, isBn,
+      branding?.brandWatermark, branding?.brandShort]);
 
   if (!open) return null;
 
