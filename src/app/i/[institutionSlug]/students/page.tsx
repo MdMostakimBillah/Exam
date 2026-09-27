@@ -293,7 +293,7 @@ export default function InstitutionStudentsPage() {
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
                       <span>{student.roll || '-'}</span>
                       {student.examRoll && (
-                        <span className={`ml-1.5 font-mono ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{student.examRoll}</span>
+                        <span className={`ml-1.5 font-mono ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>· {student.examRoll}</span>
                       )}
                     </TableCell>
                     <TableCell><Badge status={getRegStatus(student.id) || student.status} /></TableCell>
