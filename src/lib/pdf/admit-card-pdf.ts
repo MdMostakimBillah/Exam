@@ -10,7 +10,8 @@
  * maintained. Fixes ensure fonts, images, dimensions and scaling are
  * deterministic so the downloaded PDF matches the browser preview.
  *
- * - 297×210mm landscape A4 (exact)
+ * - 210×297mm portrait A4 (exact)
+ * - content taller than the page is shrunk-to-fit as a whole (never cropped)
  * - explicit px dimensions at 96dpi + controlled scale
  * - document.fonts.ready before capture + cloned-doc font injection
  * - all <img> preloaded and remote sources inlined to data URLs to avoid
@@ -20,10 +21,10 @@
  */
 
 const PX_PER_MM = 96 / 25.4;
-const PAGE_W_MM = 297;
-const PAGE_H_MM = 210;
-const PAGE_W_PX = Math.round(PAGE_W_MM * PX_PER_MM); // 1123
-const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 794
+const PAGE_W_MM = 210;
+const PAGE_H_MM = 297;
+const PAGE_W_PX = Math.round(PAGE_W_MM * PX_PER_MM); // 794
+const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 1123
 const CAPTURE_SCALE = 2; // sharp, bounded memory — 2× at 96dpi = ~192dpi, JPEG keeps size sane
 
 async function waitForFonts(target: Document = document): Promise<void> {
@@ -75,19 +76,21 @@ export async function waitForImages(roots: Array<ParentNode>): Promise<void> {
 
 /**
  * Ensure student photos render pixel-identical in PDF by center-cropping
- * to the exact container size (124×156) before capture. html2canvas's
- * object-fit:cover has subtle DPI/scale differences vs the browser;
- * a pre-cropped data URL guarantees the PDF photo matches the preview.
+ * to the exact container size (88×112, the portrait-card photo box) before
+ * capture. html2canvas's object-fit:cover has subtle DPI/scale differences
+ * vs the browser; a pre-cropped data URL guarantees the PDF photo matches
+ * the preview.
  */
 async function prepareStudentPhotos(root: HTMLElement): Promise<void> {
-  const PHOTO_W = 124;
-  const PHOTO_H = 156;
+  const PHOTO_W = 88;
+  const PHOTO_H = 112;
   const imgs = Array.from(root.querySelectorAll('img[alt="Photo"], img[alt="ছবি"]')) as HTMLImageElement[];
   for (const img of imgs) {
     const src = img.getAttribute("src") || img.src;
     if (!src || src.startsWith("data:")) continue;
     const rect = img.getBoundingClientRect();
-    if (rect.width < 80 || rect.height < 80) continue;
+    // Portrait photo box is 88px wide — guard lowered so it still matches.
+    if (rect.width < 60 || rect.height < 60) continue;
     try {
       const image = new Image();
       image.crossOrigin = "anonymous";
@@ -196,7 +199,7 @@ function injectFontsIntoClone(clonedDoc: Document) {
   const style = clonedDoc.createElement("style");
   style.textContent =
     "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
-    "@page{size:297mm 210mm;margin:0}" +
+    "@page{size:210mm 297mm;margin:0}" +
     ".admit-card-page{page-break-after:avoid;break-after:avoid}" +
     // Force html2canvas to respect border-box and avoid viewport scaling quirks
     "html,body{margin:0;padding:0;background:#fff}";
@@ -239,7 +242,7 @@ function applyFontMetricsShim(): () => void {
   };
 }
 
-/** Capture each element and download a single multi-page PDF — one card per A4 landscape page. */
+/** Capture each element and download a single multi-page PDF — one card per A4 portrait page. */
 export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: string): Promise<void> {
   if (elements.length === 0) return;
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
@@ -251,15 +254,24 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
   for (const el of elements) await inlineRemoteImages(el);
   await waitForImages(elements);
 
-  const pdf = new jsPDF({ unit: "mm", format: [PAGE_W_MM, PAGE_H_MM], orientation: "landscape" });
+  const pdf = new jsPDF({ unit: "mm", format: [PAGE_W_MM, PAGE_H_MM], orientation: "portrait" });
   const releaseFontMetricsShim = applyFontMetricsShim();
 
   try {
     for (let i = 0; i < elements.length; i++) {
       const el = elements[i];
       const widthPx = el.offsetWidth || PAGE_W_PX;
-      const heightPx = el.offsetHeight || PAGE_H_PX;
-      const heightMm = Math.min(heightPx / PX_PER_MM, PAGE_H_MM);
+      // offsetHeight is floored at the card's 297mm min-height; scrollHeight
+      // exposes whatever the card's overflow:hidden would clip off the bottom.
+      const contentPx = Math.max(el.offsetHeight || PAGE_H_PX, el.scrollHeight || 0);
+      // Shrink-to-fit, never crop: content taller than the page is scaled
+      // down as a whole (uniform width+height) so the ID/footer line always
+      // survives — a 14-subject card prints at ~95% instead of losing 3cm.
+      const contentMm = contentPx / PX_PER_MM;
+      const fit = Math.min(1, PAGE_H_MM / contentMm);
+      const drawW = PAGE_W_MM * fit;
+      const heightMm = contentMm * fit;
+      const x = Math.max((PAGE_W_MM - drawW) / 2, 0);
       const y = Math.max((PAGE_H_MM - heightMm) / 2, 0);
 
       const canvas = await html2canvas(el, {
@@ -269,19 +281,27 @@ export async function exportAdmitCardsPdf(elements: HTMLElement[], filename: str
         backgroundColor: "#ffffff",
         logging: false,
         width: widthPx,
-        height: heightPx,
+        height: contentPx,
         windowWidth: widthPx,
-        windowHeight: heightPx,
+        windowHeight: contentPx,
         scrollX: 0,
         scrollY: 0,
         imageTimeout: 15000,
         onclone: (clonedDoc) => {
-          injectFontsIntoClone(clonedDoc as unknown as Document);
+          const doc = clonedDoc as unknown as Document;
+          injectFontsIntoClone(doc);
+          // Only when content overflows: drop the card's clip so the capture
+          // region below the 297mm floor actually contains the footer.
+          if (fit < 1) {
+            doc.querySelectorAll<HTMLElement>(".admit-card-page").forEach((card) => {
+              card.style.overflow = "visible";
+            });
+          }
         },
       });
       const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
-      if (i > 0) pdf.addPage([PAGE_W_MM, PAGE_H_MM], "landscape");
-      pdf.addImage(dataUrl, "JPEG", 0, y, PAGE_W_MM, heightMm, undefined, "FAST");
+      if (i > 0) pdf.addPage([PAGE_W_MM, PAGE_H_MM], "portrait");
+      pdf.addImage(dataUrl, "JPEG", x, y, drawW, heightMm, undefined, "FAST");
     }
   } finally {
     releaseFontMetricsShim();
@@ -293,9 +313,18 @@ export function openPrintWindow(): Window | null {
   return window.open("", "_blank");
 }
 
-/** Write the card clones into the pre-opened window, then print (A4 landscape, no margin). */
+/** Write the card clones into the pre-opened window, then print (A4 portrait, no margin). */
 export async function printAdmitCards(win: Window, elements: HTMLElement[]): Promise<void> {
-  const body = elements.map((el) => el.outerHTML).join("");
+  const body = elements
+    .map((el) => {
+      // Same shrink-to-fit rule as the PDF: an overflowing card scales down
+      // as a whole instead of spilling onto a second, half-empty page.
+      const contentPx = Math.max(el.offsetHeight || 0, el.scrollHeight || 0);
+      const fit = contentPx > 0 ? Math.min(1, PAGE_H_PX / contentPx) : 1;
+      const html = el.outerHTML;
+      return fit < 0.999 ? `<div style="zoom:${fit.toFixed(4)}">${html}</div>` : html;
+    })
+    .join("");
   const cardEl = elements[0]?.querySelector(".admit-card-page");
   const lang = cardEl?.getAttribute("lang") || "en";
   await waitForFonts(document);
@@ -307,7 +336,7 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Tiro+Bangla&display=swap" />' +
       "<style>" +
       "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
-      "@page{size:297mm 210mm;margin:0}" +
+      "@page{size:210mm 297mm;margin:0}" +
       "html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
       ".admit-card-page{page-break-after:always;break-after:page}" +
       ".admit-card-page:last-child{page-break-after:auto;break-after:auto}" +

@@ -5,60 +5,68 @@ import { useBranding, BRANDING_DEFAULTS, BrandingSettings } from "@/lib/storage/
 import { DEFAULT_INSTRUCTIONS } from "@/lib/storage/admit-cards";
 
 /**
- * Admit card — modern landscape redesign (Delta Science reference, 2026).
+ * Admit card — National-University-style PORTRAIT A4 (2026 redesign).
  *
- * Landscape A4 (297×210mm):
- *   1. Two-tier accent header — gold hairline, then the identity row
- *      (logo · association overline · institution · code/session meta |
- *      "ADMIT CARD" chip + gold exam code), a hairline, and the exam title
- *      row with its period on the right. The old washed-out "Admit Card"
- *      ribbon and the bottom notice strip are gone; their copy moved into
- *      the chip and the instructions panel.
- *   2. Photo + class/section badge beside a big examinee name over a
- *      2-column label/value grid (date/time and class/section were dropped
- *      here — the header and the badge already carry them).
- *   3. Bordered zebra subjects table.
- *   4. A minimal "Instructions" strip — three short columns (Before the Exam,
- *      Exam Hall Rules, Violation Warning) with no bottom note.
- *   5. Dashed perforation + QR verify stub with the three signature slots,
- *      and a gold security strip overlaying the right edge.
+ * Portrait A4 (210×297mm), black-on-white like the NU reference card:
+ *   1. White masthead — photo · logo | association overline, institution,
+ *      exam title & period | QR — then a centred bordered "Admit Card" pill
+ *      and a thin accent rule. No solid colour band: a filled header both
+ *      guzzles toner in B&W and only looks right when the accent happens to
+ *      print dark, so colour lives on the pill border / rule only.
+ *   2. Fully-bordered label/value grid: Exam Code/Roll · Name/Reg No ·
+ *      Father/Session · Mother/DOB · Class/Class Roll · College · Center.
+ *   3. "Subject Code & name" table — grey header row + two subject pairs
+ *      per row (code | name | code | name), every cell ruled #111. No
+ *      per-subject date/time column: the NU card has none, the masthead
+ *      already carries the exam period, and at 10 subjects those extra
+ *      ~100px of wrapping are what pushes the footer off a 297mm page.
+ *   4. ONE bordered signature box split in two: Seal & Signature of
+ *      Principal | Controller of Examinations (MD signature). The dashed
+ *      perforation and tear-off QR stub are gone — NU has neither.
+ *   5. Instructions to candidates as a NUMBERED list (1. / ১.) beside a
+ *      right-hand verify block (QR + Controller + date).
+ *   6. Footer: ID No + digital-signature note + Generated On line.
  *
- * VERTICAL BUDGET IS HARD: the exporter clamps each card to 210mm
+ * PRINT CONTRACT — one file serves BOTH modes (html2canvas PDF and the
+ * print window both clone this markup):
+ *   · B&W: every structural rule is #111 at 1.25–1.5px and every label is
+ *     #111 → dark, clean lines. The old #e2e8f0 rules / #94a3b8 labels are
+ *     gone — they printed as faint, broken grey.
+ *   · Colour: photo, principal seal/signature and the accent pill/rule keep
+ *     their colour; `accentInk` refuses a wash-out (near-white) accent so a
+ *     light brand colour can never vanish on paper, and the small numbered
+ *     list uses a stricter `numInk` so mid-tone accents still print dark.
+ *
+ * VERTICAL BUDGET IS HARD: the exporter clamps each card to 297mm
  * (`heightMm = Math.min(heightPx / PX_PER_MM, PAGE_H_MM)`), so anything that
- * overflows is silently cropped out of the PDF. The card is a flex column
- * with `minHeight: 210mm`; the perforation and the stub carry
- * `marginTop: "auto"` so leftover space is absorbed between the body and the
- * tear-off line instead of pushing content past the page — and a long subject
- * list (6 rows) or a custom instruction note still fits. Verified with a
- * worst-case probe (10 subjects, unpublished routine, long names, custom
- * note) at exactly 794px in both languages.
+ * overflows is silently cropped out of the PDF — the footer (ID No) must
+ * survive the worst case (10 subjects, unpublished routine, long names,
+ * custom note, no photo). Five `<Gap>` flex spacers (min 3mm) sit between
+ * the sections: they absorb ALL free space so the footer pins to the page
+ * bottom, and they collapse to 3mm before anything can clip. Verified at
+ * exactly 794px wide in both languages.
  *
  * Everything is styled INLINE on purpose: html2canvas rasterises the card
  * for the bulk PDF and the print window receives a plain outerHTML clone
- * with no stylesheet — Tailwind classes would render unstyled there. Every
- * color is a literal hex (accent resolved from branding at render time), so
- * preview, PDF and print match pixel-wise. Typography is modern sans:
+ * with no stylesheet — Tailwind classes would render unstyled there. No
+ * flex `gap` anywhere (html2canvas does not lay it out) — spacing is
+ * margins/padding only. Every colour is a literal hex (accent resolved at
+ * render time), so preview, PDF and print match pixel-wise. Typography:
  * Inter for English, Kalpurush/Tiro Bangla for Bengali.
  *
- * The card is 297mm wide (landscape) with content-driven height capped at
- * 210mm; the exporter measures each card and draws it centered on its A4
- * landscape page.
- *
  * Language: all chrome follows `view.lang`; the root carries `lang="bn|en"`
- * so font fallback (Inter / Kalpurush / Tiro Bangla) resolves identically in
- * preview, PDF and print. Institution name stays English; association
- * branding lives in the watermark.
+ * so font fallback resolves identically in preview, PDF and print.
  */
 
 const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Kalpurush', 'Tiro Bangla', sans-serif";
-/** Reference palette — light slate borders/grays (literal, PDF-safe). */
-const BORDER = "1px solid #e2e8f0";
-const SLATE_400 = "#94a3b8";
-const SLATE_500 = "#64748b";
-const SLATE_600 = "#475569";
-const SLATE_700 = "#334155";
-/** Mock's gold security-strip / exam-code accent. */
-const GOLD = "#d4af37";
+
+/** Print-safe ink palette — literal hex, identical in preview/PDF/print. */
+const INK = "#111111"; // structural rules + labels (dark in B&W)
+const BLACK = "#000000"; // values / headings
+const SHADE = "#f1f1f1"; // table header fill (light grey in both modes)
+const MUTE = "#333333"; // secondary text (dates, footnotes)
+const RULE = `1.5px solid ${INK}`; // outer frames
+const CELL = `1.25px solid ${INK}`; // internal grid rules
 
 export interface CardSubject {
   code: string; // "101", "102"… auto-numbered per class in routine order
@@ -76,7 +84,7 @@ export interface CardView {
   institutionCode?: string;
   institutionLogo?: string | null;
   examName: string;
-  /** Exam code, e.g. "SE-26" — shown in gold in the header (reference). */
+  /** Exam code, e.g. "SE-26" — printed as the Examination Code field. */
   examCode?: string;
   /** Exam start – end date, e.g. "Dec 31, 2026 – Jan 02, 2027". */
   examPeriod?: string;
@@ -97,21 +105,21 @@ export interface CardView {
   subjects: CardSubject[];
   qrDataUrl: string;
   /** Institution principal's signature image (Settings → Profile).
-   *  Empty → blank signature line above the label. */
+   *  Empty → blank signature area above the label. */
   principalSignature?: string | null;
   /** Institution-authored instruction blob — EN lines + BN lines. The shipped
    *  default is boilerplate the structured rules below now state properly, so
-   *  only a customised blob is printed (see noteLines). */
+   *  only a customised blob is printed (see instructionItems). */
   instructions?: string;
-  /** admit_cards.created_at — kept for provenance. */
+  /** admit_cards.created_at — printed as "Generated On". */
   createdAt: string;
 }
 
 const rootStyle: React.CSSProperties = {
-  width: "297mm",
-  minHeight: "210mm",
+  width: "210mm",
+  minHeight: "297mm",
   background: "#ffffff",
-  color: "#000000",
+  color: BLACK,
   fontFamily: FONT,
   fontSize: "11px",
   lineHeight: 1.4,
@@ -120,15 +128,29 @@ const rootStyle: React.CSSProperties = {
   flexDirection: "column",
   boxSizing: "border-box",
   position: "relative",
-  borderRadius: "10px",
   // Stacking context so the negative-z watermark paints above the white
   // background but behind all card content (and survives html2canvas).
   isolation: "isolate",
 };
 
-/** Big faded association watermark behind the card — the official
- *  watermark. Uses the super-admin's uploaded image when set, otherwise the
- *  classic text crest built from the short/association names. */
+/** True when a hex colour is too light to print on white (e.g. a white-ish
+ *  brand accent) — callers fall back to INK so the pill/rule stay visible.
+ *  `threshold` (default 210) can be tightened for small text: at 120 even a
+ *  mid-tone accent (which greyscales to ~50% grey) is refused, so the
+ *  instruction numbers always print dark and clean in B&W. */
+function isWashoutColor(hex: string, threshold = 210): boolean {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return false;
+  const v = parseInt(m[1], 16);
+  const r = (v >> 16) & 255;
+  const g = (v >> 8) & 255;
+  const b = v & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > threshold;
+}
+
+/** Big faded association watermark behind the card — the official seal.
+ *  Uses the super-admin's uploaded image when set, otherwise the classic
+ *  text crest built from the short/association names. */
 function Watermark({ brand }: { brand: BrandingSettings }) {
   if (brand.brandWatermark) {
     return (
@@ -140,7 +162,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           left: "50%",
           transform: "translate(-50%, -50%) rotate(-30deg)",
           zIndex: 0,
-          opacity: 0.06,
+          opacity: 0.05,
           pointerEvents: "none",
           userSelect: "none",
           lineHeight: 0,
@@ -151,7 +173,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           src={brand.brandWatermark}
           alt=""
           crossOrigin="anonymous"
-          style={{ width: "170mm", height: "auto", display: "block" }}
+          style={{ width: "160mm", height: "auto", display: "block" }}
         />
       </div>
     );
@@ -165,7 +187,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
         left: "50%",
         transform: "translate(-50%, -50%) rotate(-30deg)",
         zIndex: 0,
-        opacity: 0.06,
+        opacity: 0.05,
         textAlign: "center",
         pointerEvents: "none",
         whiteSpace: "nowrap",
@@ -174,111 +196,324 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
     >
       <div
         style={{
-          fontSize: "120px",
+          fontSize: "110px",
           fontWeight: 700,
           letterSpacing: "12px",
           lineHeight: 1,
-          border: "6px solid #000000",
+          border: `6px solid ${BLACK}`,
           padding: "14px 26px 10px",
         }}
       >
         {brand.brandShort || "BMA"}
       </div>
-      <div style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "3px", marginTop: "10px" }}>
+      <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "3px", marginTop: "10px" }}>
         {(brand.brandName || "Bangladesh Madrasah Association").toUpperCase()}
       </div>
-      <div style={{ fontSize: "18px", letterSpacing: "2px", marginTop: "4px" }}>
+      <div style={{ fontSize: "17px", letterSpacing: "2px", marginTop: "4px" }}>
         {brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন"}
       </div>
     </div>
   );
 }
 
-/** "Dec 31" (en) / "৩১ ডিসে" (bn) beside each subject. */
-function formatCardDate(iso: string, bn: boolean): string {
+/** Date of Birth grid value — "04 Jul 2005" / "০৪ জুল ২০০৫". */
+function formatDob(iso: string, bn: boolean): string {
+  if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString(bn ? "bn-BD" : "en-GB", {
       day: "2-digit",
       month: "short",
+      year: "numeric",
     });
   } catch {
     return iso;
   }
 }
 
-/**
- * Footer signature slot: optional signature image (uploaded in Settings)
- * sitting above an italic accent title, a 165px rule and the designation
- * below it. The footer bottom-aligns its children, so the image never
- * pushes the rule out of line with the neighbouring "Controller of
- * Examinations" slot (the stack under the image is identical).
- * Inline styles only — html2canvas must paint it exactly as the preview.
- */
-function FooterSignature({
+/** Instruction list numbers — "1." (en) / "১." (bn), like the NU card. */
+function listNumber(i: number, bn: boolean): string {
+  const n = String(i + 1);
+  return (bn ? n.replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]) : n) + ".";
+}
+
+/** "Thursday, 04 July 2024, 12:00" — footer Generated On line. */
+function formatGenerated(iso: string, bn: boolean): string {
+  try {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString(bn ? "bn-BD" : "en-GB", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const time = d.toLocaleTimeString(bn ? "bn-BD" : "en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    return `${date}, ${time}`;
+  } catch {
+    return iso;
+  }
+}
+
+/** "04.07.2024 12:00" — short stamp under the verify QR (Bengali digits in bn). */
+function formatStamp(iso: string, bn: boolean): string {
+  const bnDigits = (s: string) =>
+    bn ? s.replace(/\d/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]) : s;
+  try {
+    const d = new Date(iso);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return bnDigits(`${day}.${month}.${d.getFullYear()} ${hh}:${mm}`);
+  } catch {
+    return iso;
+  }
+}
+
+/** Bordered QR box — used top-right (masthead) and in the verify column. */
+function QrBox({ dataUrl, size }: { dataUrl: string; size: number }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${INK}`,
+        padding: "3px",
+        background: "#ffffff",
+        boxSizing: "border-box",
+        display: "inline-block",
+        lineHeight: 0,
+      }}
+    >
+      {dataUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={dataUrl}
+          alt="QR"
+          crossOrigin="anonymous"
+          style={{ width: `${size}px`, height: `${size}px`, display: "block" }}
+        />
+      ) : (
+        <div
+          style={{
+            width: `${size}px`,
+            height: `${size}px`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "11px",
+            color: MUTE,
+          }}
+        >
+          QR
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One row of the candidate grid: one or two (label, value) pairs.
+ *  Label cell is fixed 150px, value cells flex — all rules #111. */
+function GridRow({
+  pairs,
+  last,
+}: {
+  pairs: Array<{ label: string; value: string }>;
+  last?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "stretch",
+        borderBottom: last ? undefined : CELL,
+      }}
+    >
+      {pairs.map((p, i) => (
+        <React.Fragment key={`${p.label}-${i}`}>
+          <div
+            style={{
+              width: "142px",
+              flexShrink: 0,
+              boxSizing: "border-box",
+              padding: "4px 8px",
+              borderRight: CELL,
+              fontSize: "11px",
+              fontWeight: 700,
+              lineHeight: 1.3,
+              color: INK,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            {p.label}
+          </div>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              boxSizing: "border-box",
+              padding: "4px 8px",
+              borderRight: i < pairs.length - 1 ? CELL : undefined,
+              fontSize: "12px",
+              fontWeight: 600,
+              lineHeight: 1.35,
+              color: BLACK,
+              wordBreak: "break-word",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            {p.value}
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/** One row of the subject table — two (code | name) pairs, rules #111.
+ *  Code + name only (see header docblock): no date/time pinning.
+ *  `dense` tightens vertical padding on very long subject lists (>6 pairs)
+ *  so a 14-subject exam still fits the 297mm page at full size. */
+function SubjectRow({
+  a,
+  b,
+  last,
+  dense,
+}: {
+  a?: CardSubject;
+  b?: CardSubject;
+  last?: boolean;
+  dense?: boolean;
+}) {
+  const pad = dense ? "4px 8px" : "5px 8px";
+  const cellFor = (s?: CardSubject, right?: boolean) => {
+    return (
+      <React.Fragment>
+        {/* code */}
+        <div
+          style={{
+            width: "68px",
+            flexShrink: 0,
+            boxSizing: "border-box",
+            padding: pad,
+            borderRight: CELL,
+            fontSize: "12px",
+            fontWeight: 700,
+            lineHeight: 1.3,
+            color: BLACK,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+        >
+          {s?.code || ""}
+        </div>
+        {/* name */}
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            boxSizing: "border-box",
+            padding: dense ? "4px 9px" : "5px 9px",
+            borderRight: right ? CELL : undefined,
+            fontSize: "11px",
+            lineHeight: 1.35,
+            color: BLACK,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 0, textAlign: "left", wordBreak: "break-word" }}>
+            {s?.name || ""}
+          </span>
+        </div>
+      </React.Fragment>
+    );
+  };
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "stretch",
+        boxSizing: "border-box",
+        minHeight: "26px",
+        borderBottom: last ? undefined : CELL,
+      }}
+    >
+      {cellFor(a, true)}
+      {cellFor(b, false)}
+    </div>
+  );
+}
+
+/** One half of the signature box: signature/seal image, a 170px rule and
+ *  the caption (role + who signs). Footer bottom-aligns the image stack, so
+ *  both halves keep their rules on the same line. */
+function SignatureSlot({
   image,
   title,
   sub,
-  accent,
+  divide,
 }: {
   image?: string | null;
   title: string;
   sub: string;
-  accent: string;
+  /** true for the left half — draws the vertical divider. */
+  divide?: boolean;
 }) {
   return (
-    <div style={{ textAlign: "center", flexShrink: 0 }}>
-      {image ? (
-        <div
-          style={{
-            height: "26px",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            marginBottom: "3px",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        boxSizing: "border-box",
+        padding: "7px 12px 8px",
+        borderRight: divide ? CELL : undefined,
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          height: "32px",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          marginBottom: "3px",
+        }}
+      >
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={image}
             alt=""
             crossOrigin="anonymous"
-            style={{
-              maxHeight: "34px",
-              maxWidth: "165px",
-              objectFit: "contain",
-              display: "block",
-            }}
+            style={{ maxHeight: "32px", maxWidth: "170px", objectFit: "contain", display: "block" }}
           />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+      <div style={{ width: "170px", maxWidth: "88%", borderTop: `1px solid ${INK}`, margin: "0 auto" }} />
       <div
         style={{
-          fontSize: "13px",
-          fontStyle: "italic",
+          fontSize: "12px",
           fontWeight: 700,
-          color: accent,
-          lineHeight: 1.15,
+          color: BLACK,
+          marginTop: "5px",
+          lineHeight: 1.3,
         }}
       >
         {title}
       </div>
       <div
         style={{
-          width: "165px",
-          borderTop: `1px solid ${SLATE_400}`,
-          margin: "6px auto 3px",
-        }}
-      />
-      {/* Fixed 2-line box: the rule must sit on the same line as the
-       *  neighbouring slots even when this designation wraps. */}
-      <div
-        style={{
-          fontSize: "11px",
-          lineHeight: 1.45,
-          color: SLATE_500,
-          maxWidth: "165px",
+          fontSize: "10px",
+          color: MUTE,
+          marginTop: "2px",
+          lineHeight: 1.35,
           wordBreak: "break-word",
-          height: "32px",
         }}
       >
         {sub}
@@ -287,102 +522,11 @@ function FooterSignature({
   );
 }
 
-/** One half of a subject row: fixed code column + fluid name column.
- *  Uses deterministic centering (flex + text-align) that html2canvas
- *  renders identically to the browser preview — no gap/flexWrap quirks,
- *  explicit height on the row, inner cells fill row height. */
-function SubjectHalf({
-  subject,
-  bn,
-  divider,
-}: {
-  subject?: CardSubject;
-  bn: boolean;
-  /** true for the 2nd half of the row — draws the vertical divider. */
-  divider?: boolean;
-}) {
-  if (!subject) {
-    return (
-      <>
-        <div
-          style={{
-            width: "86px",
-            flexShrink: 0,
-            boxSizing: "border-box",
-            borderLeft: divider ? BORDER : undefined,
-            height: "100%",
-          }}
-        />
-        <div style={{ flex: 1, minWidth: 0, height: "100%" }} />
-      </>
-    );
-  }
-  const time =
-    subject.startTime && subject.endTime
-      ? `${subject.startTime}–${subject.endTime}`
-      : subject.startTime || subject.endTime || "";
-  const when = [subject.date ? formatCardDate(subject.date, bn) : "", time]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <>
-      <div
-        style={{
-          width: "86px",
-          flexShrink: 0,
-          boxSizing: "border-box",
-          padding: "4px 14px",
-          fontSize: "12px",
-          lineHeight: 1.35,
-          color: SLATE_500,
-          borderLeft: divider ? BORDER : undefined,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          height: "100%",
-        }}
-      >
-        {subject.code}
-      </div>
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          boxSizing: "border-box",
-          padding: "4px 14px",
-          fontSize: "13px",
-          lineHeight: 1.4,
-          color: SLATE_700,
-          wordBreak: "break-word",
-          display: "flex",
-          alignItems: "center",
-          // Subject sits left and takes the available width; date/time is
-          // pinned to the right edge of the cell (marginLeft, not gap —
-          // html2canvas 1.4.1 does not lay out flex gap).
-          justifyContent: "space-between",
-          textAlign: "left",
-          height: "100%",
-        }}
-      >
-        <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>{subject.name}</span>
-        {when ? (
-          <span
-            style={{
-              fontSize: "10px",
-              lineHeight: 1.2,
-              color: SLATE_500,
-              whiteSpace: "nowrap",
-              marginLeft: "8px",
-            }}
-          >
-            {when}
-          </span>
-        ) : null}
-      </div>
-    </>
-  );
+/** Flexible section gap: absorbs ALL free space (footer pins to the page
+ *  bottom) but never collapses below 3mm, so sections never touch even
+ *  when the worst-case content fills the 297mm page. */
+function Gap() {
+  return <div style={{ flex: "1 1 auto", minHeight: "3mm" }} />;
 }
 
 export function AdmitCardTemplate({ view }: { view: CardView }) {
@@ -394,75 +538,83 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
   const assocBn = brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন";
   const brandShort = brand.brandShort || "BMA";
 
-  /** Literal accent hex for the header / name / ribbon — resolved here
-   *  (never var(--brand-accent)) so the fill survives html2canvas AND the
-   *  print window, which receives a bare outerHTML clone with no
-   *  globals.css. Empty/invalid accent → near-black (light-theme default;
-   *  white would vanish on paper). */
+  /** Literal accent hex — resolved here (never var(--brand-accent)) so the
+   *  fill survives html2canvas AND the print window, which receives a bare
+   *  outerHTML clone with no globals.css. Invalid accent → near-black.
+   *  `accentInk` additionally refuses a wash-out accent for print. */
   const accentHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test((brand.accentColor || "").trim())
     ? brand.accentColor.trim()
     : "#18181b";
+  const accentInk = isWashoutColor(accentHex) ? INK : accentHex;
+  /** Small text (instruction numbers) needs a stricter, darker colour than a
+   *  2px rule: anything that greyscales lighter than ~50% becomes INK so the
+   *  numbered list stays black and clean on a B&W printer. */
+  const numInk = isWashoutColor(accentHex, 120) ? INK : accentHex;
 
   /** Chrome strings follow the active language. */
   const L = (en: string, b: string) => (bn ? b : en);
 
-  // Header meta line — "Institution Code X · Session Y" (reference layout).
-  const sessionLabel = view.sessionName || view.academicYear;
-  const headerMeta = [
-    view.institutionCode
-      ? `${L("Institution Code", "প্রতিষ্ঠানের কোড")} ${view.institutionCode}`
-      : "",
-    sessionLabel ? `${L("Session", "সেশন")} ${sessionLabel}` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const sessionLabel = view.sessionName || view.academicYear || "";
 
-  const hasRoutine = view.subjects.some((s) => s.date || s.startTime || s.endTime);
-
-  // Pair subjects up for the 2-column table; pad the last row when odd.
+  // Pair subjects up for the 2-pair table; pad the last row when odd.
   const subjectRows: Array<[CardSubject | undefined, CardSubject | undefined]> = [];
   for (let i = 0; i < view.subjects.length; i += 2) {
     subjectRows.push([view.subjects[i], view.subjects[i + 1]]);
   }
 
-  const centerText = [
-    view.centerCode ? `(${view.centerCode})` : "",
-    view.centerName || "—",
-  ]
+  const centerText = [view.centerCode ? `(${view.centerCode})` : "", view.centerName || "—"]
     .filter(Boolean)
     .join(" ");
+
+  const collegeText = view.institutionCode
+    ? `${view.institutionCode}-${view.institutionName}`
+    : view.institutionName || "—";
 
   const classNameFull = `${view.className}${
     view.section && view.section !== "—" ? ` / ${view.section}` : ""
   }`;
 
-  // 2-column label/value grid. "Date & Time" lives in the header tier and
-  // "Class / Section" in the badge under the photo — duplicating them here
-  // only cost a whole extra grid row of vertical budget.
-  const fields: Array<{ label: string; value: string }> = [
-    { label: L("Father's Name", "পিতার নাম"), value: view.fatherName || "—" },
-    { label: L("Mother's Name", "মাতার নাম"), value: view.motherName || "—" },
-    { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
-    { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
-    { label: L("Exam Center", "পরীক্ষার কেন্দ্র"), value: centerText },
-    { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
+  // ── Candidate grid — NU arrangement: label | value | label | value.
+  const gridRows: Array<Array<{ label: string; value: string }>> = [
+    [
+      { label: L("Examination Code", "পরীক্ষার কোড"), value: view.examCode || view.institutionCode || "—" },
+      { label: L("Roll No.", "রোল নম্বর"), value: view.examRoll || "—" },
+    ],
+    [
+      { label: L("Name of Examinee", "পরীক্ষার্থীর নাম"), value: view.studentName || "—" },
+      { label: L("Registration No.", "নিবন্ধন নম্বর"), value: view.registrationNumber || "—" },
+    ],
+    [
+      { label: L("Father's Name", "পিতার নাম"), value: view.fatherName || "—" },
+      { label: L("Session", "সেশন"), value: sessionLabel || "—" },
+    ],
+    [
+      { label: L("Mother's Name", "মাতার নাম"), value: view.motherName || "—" },
+      { label: L("Date of Birth", "জন্ম তারিখ"), value: formatDob(view.dob || "", bn) },
+    ],
+    [
+      { label: L("Class / Section", "শ্রেণি / সেকশন"), value: classNameFull || "—" },
+      { label: L("Class Roll", "ক্লাস রোল"), value: view.classRoll || "—" },
+    ],
+    [{ label: L("College Code & Name", "কলেজ কোড ও নাম"), value: collegeText }],
+    [{ label: L("Center Code & Name", "কেন্দ্র কোড ও নাম"), value: centerText }],
   ];
 
-  // ── Instructions to candidates — minimal, three short columns.
+  // ── Instructions — numbered list (structured rules + custom note).
   const prepRules = [
-    L("Report 30 minutes early.", "৩০ মিনিট আগে পৌঁছান।"),
-    L("Photo ID required.", "পরিচয়পত্র বাধ্যতামূলক।"),
-    L("Sit at your allotted seat.", "নির্ধারিত আসনে বসুন।"),
+    L("Report 30 minutes early with the admit card.", "প্রবেশপত্রসহ ৩০ মিনিট আগে পৌঁছান।"),
+    L("Photo ID is mandatory.", "পরিচয়পত্র আনা বাধ্যতামূলক।"),
+    L("Sit at your allotted seat only.", "নির্ধারিত আসনে বসুন।"),
   ];
   const hallRules = [
-    L("Mobile phones off.", "মোবাইল বন্ধ রাখুন।"),
-    L("Answer sheet only.", "নির্ধারিত কাগজে লিখুন।"),
-    L("No leaving without permission.", "অনুমতি ছাড়া বাইরে যাবেন না।"),
+    L("Switch off mobile phones and electronic devices.", "মোবাইল ও ইলেকট্রনিক যন্ত্র বন্ধ রাখুন।"),
+    L("Use only the supplied answer sheets.", "নির্ধারিত উত্তরপত্রে লিখুন।"),
+    L("Do not leave the hall without permission.", "অনুমতি ছাড়া কক্ষ ত্যাগ করবেন না।"),
   ];
   const violationRules = [
-    L("Malpractice cancels result.", "অসদুপায়ে ফলাফল বাতিল।"),
-    L("No re-sitting if caught.", "ধরা পড়লে পুনরায় নিষিদ্ধ।"),
-    L("Controller's decision final.", "পরীক্ষা নিয়ন্ত্রকের সিদ্ধান্ত চূড়ান্ত।"),
+    L("Malpractice cancels the result.", "অসদুপায়ে ফলাফল বাতিল হবে।"),
+    L("Caught candidates are barred from re-sitting.", "ধরা পড়লে পুনরায় পরীক্ষা নিষিদ্ধ।"),
+    L("The Controller's decision is final.", "পরীক্ষা নিয়ন্ত্রকের সিদ্ধান্ত চূড়ান্ত।"),
   ];
 
   // Institution-authored instruction blob — bilingual, one line per language.
@@ -479,116 +631,133 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
           .filter((s) => (bn ? /[\u0980-\u09ff]/.test(s) : !/[\u0980-\u09ff]/.test(s)))
       : [];
 
+  const instructionItems = [...prepRules, ...hallRules, ...violationRules, ...noteLines];
+  /** Long custom notes (12+ lines) tighten the list so the footer still
+   *  lands inside 297mm — font size stays 10px, only leading/margins trim. */
+  const denseInstructions = instructionItems.length > 11;
+
+  // Masthead logo: association logo first, else the institution's own logo.
+  const mastheadLogo = brand.brandLogo || view.institutionLogo || "";
+
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
       <Watermark brand={brand} />
 
-      {/* ── Header: theme-color full-bleed bar ───────────────────── */}
+      {/* ── 1. White masthead: photo · logo | names | QR ──────────── */}
       <div
         style={{
           position: "relative",
           zIndex: 1,
-          background: accentHex,
-          color: "#ffffff",
-          padding: "14px 36px 12px",
+          padding: "4mm 11mm 0",
+          flexShrink: 0,
         }}
       >
-        {/* Gold hairline across the top edge — the modern accent detail. */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
-            background: `linear-gradient(to right, ${GOLD} 0%, rgba(255,255,255,0.55) 50%, ${GOLD} 100%)`,
-          }}
-        />
-
-        {/* ── Tier 1: identity row ──────────────────────────────── */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: "18px",
           }}
         >
-        {/* Left: Association logo + overline + institution + code·session */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            minWidth: 0,
-            maxWidth: "64%",
-          }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-              boxSizing: "border-box",
-              background: brand.brandLogo ? "#ffffff" : "rgba(255,255,255,0.14)",
-              border: brand.brandLogo ? undefined : "1px solid rgba(255,255,255,0.35)",
-            }}
-          >
-            {brand.brandLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={brand.brandLogo}
-                alt=""
-                crossOrigin="anonymous"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  padding: "5px",
-                  boxSizing: "border-box",
-                }}
-              />
-            ) : (
-              <span
-                style={{
-                  fontSize: "18px",
-                  fontWeight: 800,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                {(brand.brandShort || "BMA").trim().slice(0, 3)}
-              </span>
-            )}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            {/* Overline — standard masthead order: body › institution › codes */}
+          {/* Left: photo + institution/association logo */}
+          <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
             <div
               style={{
-                fontSize: "9.5px",
+                boxSizing: "content-box",
+                width: "88px",
+                height: "112px",
+                border: RULE,
+                background: "#f4f4f5",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {view.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={view.photo}
+                  alt={L("Photo", "ছবি")}
+                  crossOrigin="anonymous"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center top",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: "11px", color: MUTE }}>{L("Photo", "ছবি")}</span>
+              )}
+            </div>
+            <div
+              style={{
+                marginLeft: "9px",
+                width: "46px",
+                height: "46px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+                boxSizing: "border-box",
+                flexShrink: 0,
+              }}
+            >
+              {mastheadLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={mastheadLogo}
+                  alt=""
+                  crossOrigin="anonymous"
+                  style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 800,
+                    color: BLACK,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    border: `1.5px solid ${INK}`,
+                    padding: "5px 6px",
+                    lineHeight: 1,
+                  }}
+                >
+                  {brandShort.trim().slice(0, 3)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Centre: association overline · institution · exam · period */}
+          <div style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "0 10px" }}>
+            <div
+              style={{
+                fontSize: "10px",
                 fontWeight: 700,
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.78)",
+                color: MUTE,
                 lineHeight: 1.2,
                 wordBreak: "break-word",
               }}
             >
-              {L(brand.brandName || "Bangladesh Madrasah Association", brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন")}
+              {L(
+                brand.brandName || "Bangladesh Madrasah Association",
+                brand.brandNameBn || assocBn
+              )}
             </div>
             <div
               style={{
-                fontSize: "15.5px",
+                fontSize: "21px",
                 fontWeight: 800,
-                lineHeight: 1.2,
+                color: BLACK,
+                lineHeight: 1.15,
                 letterSpacing: "0.2px",
-                marginTop: "2px",
+                marginTop: "3px",
                 wordBreak: "break-word",
               }}
             >
@@ -596,497 +765,269 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             </div>
             <div
               style={{
-                fontSize: "10px",
-                color: "rgba(255,255,255,0.75)",
-                marginTop: "2px",
+                fontSize: "12.5px",
+                fontWeight: 700,
+                color: INK,
+                lineHeight: 1.3,
+                marginTop: "4px",
                 wordBreak: "break-word",
               }}
             >
-              {headerMeta}
+              {view.examName}
             </div>
+            {view.examPeriod ? (
+              <div style={{ fontSize: "10.5px", color: MUTE, marginTop: "3px", lineHeight: 1.3 }}>
+                {view.examPeriod}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Right: verify QR (top-right, like NU) */}
+          <div style={{ flexShrink: 0 }}>
+            <QrBox dataUrl={view.qrDataUrl} size={84} />
           </div>
         </div>
 
-        {/* Right: the document chip + exam code */}
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div
+        {/* Centred "Admit Card" pill — bordered, never a filled band */}
+        <div style={{ textAlign: "center", marginTop: "8px" }}>
+          <span
             style={{
               display: "inline-block",
-              background: "rgba(255,255,255,0.16)",
-              border: "1px solid rgba(255,255,255,0.5)",
-              borderRadius: "4px",
-              padding: "5px 14px",
-              fontSize: "11px",
+              border: `1.5px solid ${accentInk}`,
+              borderRadius: "999px",
+              padding: "4px 20px",
+              fontSize: "12.5px",
               fontWeight: 800,
-              letterSpacing: "0.16em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
-              lineHeight: 1,
-              whiteSpace: "nowrap",
+              color: BLACK,
+              background: "#ffffff",
+              lineHeight: 1.2,
               boxSizing: "border-box",
             }}
           >
             {L("Admit Card", "প্রবেশপত্র")}
-          </div>
-          {view.examCode ? (
-            <div
-              style={{
-                marginTop: "5px",
-                fontSize: "10.5px",
-                fontWeight: 700,
-                letterSpacing: "0.14em",
-                color: GOLD,
-              }}
-            >
-              {view.examCode}
-            </div>
-          ) : null}
-        </div>
+          </span>
         </div>
 
-        {/* ── Tier 2: exam title row under a hairline ───────────── */}
-        <div style={{ height: "1px", background: "rgba(255,255,255,0.22)", margin: "8px 0 6px" }} />
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: "18px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "17px",
-              fontWeight: 800,
-              lineHeight: 1.2,
-              letterSpacing: "0.2px",
-              wordBreak: "break-word",
-              minWidth: 0,
-            }}
-          >
-            {view.examName}
-          </div>
-          {view.examPeriod ? (
-            <div
-              style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.85)",
-                lineHeight: 1.2,
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {view.examPeriod}
-            </div>
-          ) : null}
-        </div>
+        {/* Thin accent rule closes the masthead */}
+        <div style={{ height: "2px", background: accentInk, marginTop: "8px" }} />
       </div>
 
-      {/* ── Body: photo + badge | big name + 2-col fields ────────── */}
-      <div style={{ display: "flex", gap: "28px", padding: "15px 36px 0", position: "relative", zIndex: 1 }}>
-        <div
-          style={{
-            width: "128px",
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          <div
-            style={{
-              width: "124px",
-              height: "156px",
-              borderRadius: "8px",
-              border: BORDER,
-              background: "#f1f5f9",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-              boxSizing: "border-box",
-              position: "relative",
-            }}
-          >
-            {view.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={view.photo}
-                alt={L("Photo", "ছবি")}
-                crossOrigin="anonymous"
-                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }}
-              />
-            ) : (
-              <span style={{ fontSize: "12px", color: SLATE_400 }}>
-                {L("Photo", "ছবি")}
-              </span>
-            )}
-          </div>
-          {/* Candidate badge — class + section (the grid no longer repeats it) */}
-          {view.className ? (
-            <div
-              style={{
-                borderRadius: "999px",
-                background: "#ecfdf5",
-                border: "1px solid #a7f3d0",
-                color: "#047857",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-                padding: "2px 9px",
-                boxSizing: "border-box",
-                maxWidth: "100%",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {classNameFull}
-            </div>
-          ) : null}
-        </div>
+      <Gap />
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: "21px",
-              fontWeight: 700,
-              color: accentHex,
-              lineHeight: 1.2,
-              marginBottom: "10px",
-              wordBreak: "break-word",
-            }}
-          >
-            {view.studentName || "—"}
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              columnGap: "26px",
-              rowGap: "10px",
-            }}
-          >
-            {fields.map((f) => (
-              <div key={f.label} style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: 700,
-                    letterSpacing: "0.6px",
-                    textTransform: "uppercase",
-                    color: SLATE_400,
-                    marginBottom: "2px",
-                  }}
-                >
-                  {f.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: SLATE_700,
-                    lineHeight: 1.35,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {f.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* ── 2. Candidate details grid — fully bordered ─────────────── */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          margin: "0 11mm",
+          border: RULE,
+          boxSizing: "border-box",
+          background: "#ffffff",
+          flexShrink: 0,
+        }}
+      >
+        {gridRows.map((pairs, i) => (
+          <GridRow key={i} pairs={pairs} last={i === gridRows.length - 1} />
+        ))}
       </div>
 
-      {/* ── Subjects: label + bordered zebra table ───────────────── */}
-      <div style={{ padding: "11px 36px 0", position: "relative", zIndex: 1 }}>
+      <Gap />
+
+      {/* ── 3. Subjects — header row + 2 pairs per row ─────────────── */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          margin: "0 11mm",
+          flexShrink: 0,
+        }}
+      >
         <div
           style={{
-            fontSize: "12px",
-            fontWeight: 700,
-            letterSpacing: "0.6px",
-            textTransform: "uppercase",
-            color: SLATE_500,
-            marginBottom: "6px",
-          }}
-        >
-          {L("Subjects", "বিষয়সমূহ")}
-        </div>
-        <div
-          style={{
-            border: BORDER,
-            borderRadius: "8px",
+            border: RULE,
+            borderRadius: 0,
             overflow: "hidden",
             background: "#ffffff",
             boxSizing: "border-box",
           }}
         >
+          <div
+            style={{
+              padding: "5px 9px",
+              background: SHADE,
+              borderBottom: CELL,
+              textAlign: "center",
+              fontSize: "11.5px",
+              fontWeight: 800,
+              letterSpacing: "0.04em",
+              color: BLACK,
+            }}
+          >
+            {L("Subject Code & name", "বিষয় কোড ও নাম")}
+          </div>
           {view.subjects.length === 0 ? (
             <div
               style={{
                 padding: "14px",
                 textAlign: "center",
-                fontSize: "13px",
-                color: SLATE_500,
+                fontSize: "12px",
+                color: MUTE,
               }}
             >
-              {L(
-                "No subjects scheduled for this class.",
-                "এই শ্রেণির জন্য কোনো বিষয় নির্ধারিত হয়নি।"
-              )}
+              {L("No subjects scheduled for this class.", "এই শ্রেণির জন্য কোনো বিষয় নির্ধারিত হয়নি।")}
             </div>
           ) : (
             subjectRows.map(([a, b], i) => (
+              <SubjectRow
+                key={i}
+                a={a}
+                b={b}
+                last={i === subjectRows.length - 1}
+                dense={subjectRows.length > 6}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
+      <Gap />
+
+      {/* ── 4. Signature box — Principal | Controller ──────────────── */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          margin: "0 11mm",
+          display: "flex",
+          border: RULE,
+          boxSizing: "border-box",
+          background: "#ffffff",
+          flexShrink: 0,
+        }}
+      >
+        <SignatureSlot
+          image={view.principalSignature}
+          title={L("Seal & Signature of Principal", "অধ্যক্ষের সিল ও স্বাক্ষর")}
+          sub={view.institutionName}
+          divide
+        />
+        <SignatureSlot
+          image={brand.mdSignature}
+          title={L("Controller of Examinations", "পরীক্ষা নিয়ন্ত্রক")}
+          sub={L(
+            `Managing Director, ${brandShort} Association`,
+            `নির্বাহী পরিচালক, ${assocBn}`
+          )}
+        />
+      </div>
+
+      <Gap />
+
+      {/* ── 5. Instructions (numbered) + verify column ─────────────── */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          margin: "0 11mm",
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: "12px" }}>
+            <div
+              style={{
+                fontSize: "12px",
+                fontWeight: 800,
+                color: BLACK,
+                letterSpacing: "0.02em",
+                marginBottom: "5px",
+              }}
+            >
+              {L("Instructions to Candidates", "পরীক্ষার্থীদের জন্য নির্দেশনা")}
+            </div>
+            {instructionItems.map((t, i) => (
               <div
                 key={i}
                 style={{
                   display: "flex",
-                  alignItems: "stretch",
-                  boxSizing: "border-box",
-                  minHeight: "30px",
-                  background: i % 2 === 1 ? "#f8fafc" : "#ffffff",
-                  borderTop: i > 0 ? BORDER : undefined,
-                }}
-              >
-                <SubjectHalf subject={a} bn={bn} />
-                <SubjectHalf subject={b} bn={bn} divider />
-              </div>
-            ))
-          )}
-        </div>
-        {!hasRoutine && view.subjects.length > 0 ? (
-          <div style={{ fontSize: "9.5px", color: SLATE_500, marginTop: "4px" }}>
-            {L(
-              "Date / time of subjects will appear once the exam routine is published.",
-              "রুটিন প্রকাশের পর বিষয়ের তারিখ / সময় দেখাবে।"
-            )}
-          </div>
-        ) : null}
-      </div>
-
-      {/* ── Instructions: preparation · hall rules · violation warning ── */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          margin: "auto 36px 0",
-          padding: "9px 12px 9px",
-          boxSizing: "border-box",
-          background: "#ffffff",
-          border: BORDER,
-          borderRadius: "8px",
-        }}
-      >
-        {/* ── Instructions: minimal three-column strip ──────── */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "10px",
-              fontWeight: 800,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: accentHex,
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
-          >
-            {L("Instructions", "নির্দেশনা")}
-          </div>
-          <div style={{ flex: 1, height: "1px", background: "#e2e8f0", minWidth: 0 }} />
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            columnGap: "14px",
-            marginTop: "6px",
-          }}
-        >
-          {[
-            {
-              head: L("Before the Exam", "পরীক্ষার আগে"),
-              color: accentHex,
-              items: prepRules,
-            },
-            {
-              head: L("Exam Hall Rules", "পরীক্ষাকক্ষের নিয়ম"),
-              color: SLATE_700,
-              items: hallRules,
-            },
-            {
-              head: L("Violation Warning", "লঙ্ঘনের সতর্কতা"),
-              color: "#b45309",
-              items: violationRules,
-            },
-          ].map((col) => (
-            <div
-              key={col.head}
-              style={{
-                minWidth: 0,
-                borderTop: `2.5px solid ${col.color}`,
-                paddingTop: "4px",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "9px",
-                  fontWeight: 800,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: col.color,
-                  marginBottom: "4px",
+                  fontSize: "10px",
+                  lineHeight: denseInstructions ? 1.3 : 1.4,
+                  color: INK,
+                  marginBottom: denseInstructions ? "1px" : "1.5px",
                   wordBreak: "break-word",
                 }}
               >
-                {col.head}
+                <span style={{ width: "22px", flexShrink: 0, fontWeight: 700, color: numInk }}>
+                  {listNumber(i, bn)}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>{t}</span>
               </div>
-              {col.items.map((t, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontSize: "9px",
-                    lineHeight: 1.4,
-                    color: SLATE_600,
-                    marginBottom: "3px",
-                  }}
-                >
-                  <span style={{ color: col.color, marginRight: "4px" }}>•</span>
-                  {t}
-                </div>
-              ))}
+            ))}
+          </div>
+          {/* Right: verify QR + controller + date (NU bottom-right) */}
+          <div style={{ width: "130px", flexShrink: 0, textAlign: "center", paddingTop: "2px" }}>
+            <QrBox dataUrl={view.qrDataUrl} size={84} />
+            <div
+              style={{
+                fontSize: "9.5px",
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: BLACK,
+                marginTop: "6px",
+                lineHeight: 1.3,
+              }}
+            >
+              {L("Controller of Examinations", "পরীক্ষা নিয়ন্ত্রক")}
             </div>
-          ))}
+            <div style={{ fontSize: "9.5px", color: MUTE, marginTop: "2px" }}>
+              {formatStamp(view.createdAt, bn)}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Perforation — auto top margin pins the stub to the card foot ─ */}
-      <div style={{ margin: "auto 36px 0", borderTop: "1px dashed #cbd5e1" }} />
+      <Gap />
 
-      {/* ── Footer stub: QR + scan/ID | controller ────────────────── */}
+      {/* ── 6. Footer — ID No + note + Generated On ────────────────── */}
       <div
         style={{
           position: "relative",
           zIndex: 1,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          gap: "20px",
-          padding: "10px 36px 9px",
+          margin: "0 11mm",
+          padding: "3mm 0 5mm",
+          flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "14px", minWidth: 0 }}>
-          <div
-            style={{
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              padding: "3px",
-              background: "#ffffff",
-              boxSizing: "border-box",
-              flexShrink: 0,
-            }}
-          >
-            {view.qrDataUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={view.qrDataUrl}
-                alt="QR"
-                crossOrigin="anonymous"
-                style={{ width: "64px", height: "64px", display: "block" }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "11px",
-                  color: SLATE_400,
-                }}
-              >
-                QR
-              </div>
-            )}
-          </div>
-          <div style={{ fontSize: "11px", color: SLATE_500, lineHeight: 1.5, minWidth: 0 }}>
-            <div>{L("Scan to verify candidate", "যাচাই করতে স্ক্যান করুন")}</div>
-            <div>
-              {L("ID No:", "আইডি নং:")} {view.registrationNumber || view.key.slice(0, 8)}
-            </div>
-          </div>
+        <div style={{ fontSize: "11.5px", fontWeight: 800, color: BLACK }}>
+          {L("ID No", "আইডি নং")}: {view.registrationNumber || view.key.slice(0, 8)}
         </div>
-        {/* Right: MD + Principal + Controller signature slots */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "24px", flexShrink: 0 }}>
-          <FooterSignature
-            image={brand.mdSignature}
-            title={L("Managing Director", "নির্বাহী পরিচালক")}
-            sub={L(`${brandShort} Association`, assocBn)}
-            accent={accentHex}
-          />
-          <FooterSignature
-            image={view.principalSignature}
-            title={L("Principal", "অধ্যক্ষ")}
-            sub={view.institutionName}
-            accent={accentHex}
-          />
-          <div style={{ textAlign: "center", flexShrink: 0 }}>
-          <div
-            style={{
-              fontSize: "13px",
-              fontStyle: "italic",
-              fontWeight: 700,
-              color: accentHex,
-              lineHeight: 1.15,
-            }}
-          >
-            {L("Controller of Examinations", "পরীক্ষা নিয়ন্ত্রক")}
-          </div>
-          <div
-            style={{
-              width: "165px",
-              borderTop: `1px solid ${SLATE_400}`,
-              margin: "6px auto 3px",
-            }}
-          />
-          <div
-            style={{
-              fontSize: "11px",
-              lineHeight: 1.45,
-              color: SLATE_500,
-              maxWidth: "165px",
-              wordBreak: "break-word",
-              height: "32px",
-            }}
-          >
-            {L(`Secretary, ${brandShort} Association`, `সাধারণ সম্পাদক, ${assocBn}`)}
-          </div>
-          </div>
+        <div style={{ fontSize: "10px", color: INK, marginTop: "3px", lineHeight: 1.4 }}>
+          {L(
+            "Note: This document contains the digital signature of the Controller of Examinations.",
+            "নোট: এই নথিতে পরীক্ষা নিয়ন্ত্রকের ডিজিটাল স্বাক্ষর অন্তর্ভুক্ত।"
+          )}
+        </div>
+        <div style={{ borderTop: `1px solid ${INK}`, margin: "7px 0 5px" }} />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "9.5px",
+            color: MUTE,
+            lineHeight: 1.4,
+          }}
+        >
+          <span>
+            {L("Generated On", "তৈরি হয়েছে")}: {formatGenerated(view.createdAt, bn)}
+          </span>
+          <span>
+            {L("This is a computer-generated admit card.", "এটি কম্পিউটার-উৎপন্ন প্রবেশপত্র।")}
+          </span>
         </div>
       </div>
-
-      {/* ── Gold security strip — overlays the right edge ────────── */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "8px",
-          background:
-            "linear-gradient(to bottom, #d4af37 0%, #b8860b 55%, #8a6508 100%)",
-          zIndex: 3,
-        }}
-      />
     </div>
   );
 }

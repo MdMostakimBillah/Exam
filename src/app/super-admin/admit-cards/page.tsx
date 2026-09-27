@@ -72,6 +72,10 @@ export default function AdmitCardsPage() {
   /** Preview modal: fit the WHOLE A4 card into the visible body (no scrolling). */
   const previewBodyRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(0.6);
+  /** Shrink factor for an over-tall preview card (worst-case content): the
+   *  sheet keeps its A4 size and the card scales to fit — exactly what the
+   *  PDF/print exporters do, so preview never crops what print produces. */
+  const [previewFit, setPreviewFit] = useState(1);
   const [staging, setStaging] = useState<Staging | null>(null);
   const stagingRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const generateMutation = useGenerateAdmitCards();
@@ -266,7 +270,6 @@ export default function AdmitCardsPage() {
       createdAt: card.createdAt,
     };
   };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // ── Export orchestration (staging container renders the cards first) ──
   const startExport = (
@@ -327,19 +330,22 @@ export default function AdmitCardsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staging, toast]);
 
-  // Keep the preview card fully visible: scale = min(fit-width, fit-height) — landscape.
+  // Keep the preview card fully visible: scale = min(fit-width, fit-height) — portrait.
   useEffect(() => {
     if (!preview) return;
     const el = previewBodyRef.current;
     if (!el) return;
-    const CARD_W = 1122.5; // 297mm in CSS px (landscape width)
-    const CARD_H = 793.7; // 210mm in CSS px (landscape height, content-driven)
+    const CARD_W = 793.7; // 210mm in CSS px (portrait width)
+    const CARD_H = 1122.5; // 297mm in CSS px (portrait height)
     const compute = () => {
       const availW = el.clientWidth - 32;
       const availH = el.clientHeight - 32;
       if (availW <= 0 || availH <= 0) return;
       const s = Math.min(availW / CARD_W, availH / CARD_H);
       setPreviewScale(Math.max(0.15, Math.min(1, s)));
+      const card = el.querySelector<HTMLElement>(".admit-card-page");
+      const cardH = card ? Math.max(card.offsetHeight, card.scrollHeight) : CARD_H;
+      setPreviewFit(Math.min(1, CARD_H / cardH));
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -349,7 +355,8 @@ export default function AdmitCardsPage() {
       ro.disconnect();
       window.removeEventListener("resize", compute);
     };
-  }, [preview]);
+    // `lang` re-renders the card with different chrome — re-measure it.
+  }, [preview, lang]);
 
   // ── Row actions ──────────────────────────────────────────────────────
   const withView = async (card: AdmitCard, fn: (view: CardView) => void) => {
@@ -803,15 +810,20 @@ export default function AdmitCardsPage() {
               >
                 <div
                   style={{
-                    width: `calc(297mm * ${previewScale})`,
-                    height: `calc(210mm * ${previewScale})`,
+                    width: `calc(210mm * ${previewScale})`,
+                    height: `calc(297mm * ${previewScale})`,
                     overflow: "hidden",
                     boxShadow: "0 6px 30px rgba(0,0,0,.35)",
                     background: "#fff",
                     flexShrink: 0,
                   }}
                 >
-                  <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left" }}>
+                  <div
+                    style={{
+                      transform: `scale(${previewScale * previewFit})`,
+                      transformOrigin: "top left",
+                    }}
+                  >
                     {/* lang override → card chrome follows the live language, even
                         if the view was built before the user switched it */}
                     <AdmitCardTemplate view={{ ...preview, lang }} />
