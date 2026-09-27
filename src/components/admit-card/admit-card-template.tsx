@@ -177,7 +177,10 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           src={brand.brandWatermark}
           alt=""
           crossOrigin="anonymous"
-          style={{ width: "200mm", height: "auto", display: "block" }}
+          // maxWidth:none — Tailwind preflight's `img{max-width:100%}` would
+          // clamp this to the abs-wrapper's available width (~105mm) and the
+          // seal would never reach its full size.
+          style={{ width: "200mm", maxWidth: "none", height: "auto", display: "block" }}
         />
       </div>
     );

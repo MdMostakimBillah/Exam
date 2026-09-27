@@ -251,17 +251,22 @@ function drawWatermark(
     } else if (text) {
       doc.setFont(FONT_NAME, "bold");
       doc.setTextColor(0, 0, 0);
-      let size = 60;
-      doc.setFontSize(size);
-      const measured = doc.getTextWidth(text);
-      if (measured > 0) {
-        size = (size * (0.85 * Math.min(pageW, pageH))) / measured;
-        doc.setFontSize(size);
-      }
-      doc.text(text, pageW / 2, pageH / 2 + size * 0.13, {
-        angle: WM_ANGLE,
-        align: "center",
-      });
+      // Measure → scale so the crest spans 85% of the page's short side.
+      doc.setFontSize(60);
+      const measured = doc.getTextWidth(text); // mm at 60pt
+      if (measured > 0) doc.setFontSize((60 * (0.85 * Math.min(pageW, pageH))) / measured);
+      const sizePt = doc.getFontSize();
+      const sizeMm = (sizePt * 25.4) / 72;
+      const textW = doc.getTextWidth(text); // mm at the final size
+      const cap = 0.7 * sizeMm; // cap height — glyph body sits above the baseline
+      const c = Math.cos((WM_ANGLE * Math.PI) / 180);
+      const s = Math.sin((WM_ANGLE * Math.PI) / 180);
+      // jsPDF rotates around the anchor we pass (y-down doc units) and does NOT
+      // centre for us when `angle` is set, so solve the anchor from the rotated
+      // glyph box: centre = anchor + Rot(θ)·(w/2, cap/2) in PDF space (y-up).
+      const ax = pageW / 2 - (c * (textW / 2) - s * (cap / 2));
+      const ay = pageH / 2 - (s * (textW / 2) + c * (cap / 2));
+      doc.text(text, ax, pageH - ay, { angle: WM_ANGLE });
     }
   } finally {
     setOpacity(doc, 1);
@@ -401,6 +406,10 @@ export async function generatePdf(options: GeneratePdfOptions) {
       textColor: textDark,
       lineColor: pal.lightRgb,
       lineWidth: 0.2,
+      // Transparent cells — autotable defaults to OPAQUE WHITE fills, which
+      // would erase the watermark behind the table. The page is white anyway;
+      // grid rules carry the rows.
+      fillColor: false,
     },
     headStyles: {
       fillColor: primary,
