@@ -9,10 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { useAllStudents, useDeleteStudent } from "@/lib/storage/students";
+import { useStudentsByInstitution, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useCurrentSession } from "@/lib/storage/sessions";
-import { useAllRegistrations, normalizeRegistrationStatus } from "@/lib/storage/registrations";
+import { useAllRegistrationsByInstitution, normalizeRegistrationStatus } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -20,9 +20,6 @@ import { Users, Search, UserCheck, FileDown, Trash2, Eye, Camera } from "lucide-
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { cn } from "@/lib/utils/helpers";
 import { Student, Registration } from "@/lib/types";
-
-/** Row cap for the all-institutions list so a big session stays responsive. */
-const MAX_VISIBLE_ROWS = 300;
 
 /** Bilingual gender label (module-level so memos can depend on it safely). */
 function genderLabel(g: Student["gender"] | undefined, isBn: boolean): string {
@@ -55,11 +52,8 @@ export default function InstitutionStudentsPage() {
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
-  // Every student/registration of the session: once rolls are generated an
-  // institution must be able to identify any paper, so this list is not
-  // limited to its own institution. Writes (delete) stay own-institution only.
-  const { data: students = [] } = useAllStudents(currentSession?.id);
-  const { data: regs = [] } = useAllRegistrations(currentSession?.id);
+  const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: regs = [] } = useAllRegistrationsByInstitution(inst?.id || '', currentSession?.id);
   const deleteStudentMutation = useDeleteStudent();
 
   // Latest registration per student (used for Registration Number + status).
@@ -95,10 +89,6 @@ export default function InstitutionStudentsPage() {
     return matchesSearch && matchesClass && matchesGender && matchesStatus;
   }), [students, latestReg, search, classFilter, genderFilter, statusFilter, refreshKey]);
 
-  // Search/filter run over every institution's students; only the first
-  // MAX_VISIBLE_ROWS rows are rendered.
-  const visible = filtered.slice(0, MAX_VISIBLE_ROWS);
-
   const selection = useTableSelection(filtered);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
@@ -127,7 +117,7 @@ export default function InstitutionStudentsPage() {
       phone: s.phone || '-',
       gender: genderLabel(s.gender, isBn),
       class: s.class,
-      roll: s.roll || '-',
+      roll: [s.roll, s.examRoll].filter(Boolean).join(' · ') || '-',
       status: normalizeRegistrationStatus(latestReg.get(s.id)?.status) || s.status,
     })), [filtered, selection, latestReg, isBn]);
 
@@ -137,11 +127,6 @@ export default function InstitutionStudentsPage() {
 
   const handleDelete = async () => {
     if (!deletingStudent) return;
-    if (deletingStudent.institutionId !== inst?.id) {
-      toast('error', isBn ? 'শুধু নিজ প্রতিষ্ঠানের শিক্ষার্থী মোছা যায়' : 'You can only delete students of your own institution');
-      setDeletingStudent(null);
-      return;
-    }
     await deleteStudentMutation.mutateAsync(deletingStudent.id);
     toast("success", isBn ? "শিক্ষার্থী মুছে ফেলা হয়েছে" : "Student deleted");
     setDeletingStudent(null);
@@ -167,7 +152,7 @@ export default function InstitutionStudentsPage() {
             {isBn ? 'শিক্ষার্থী' : 'Students'}
           </h1>
           <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {isBn ? 'সব প্রতিষ্ঠানের শিক্ষার্থী ও রোল দেখুন — নিজ প্রতিষ্ঠানের শিক্ষার্থী পরিচালনা করুন' : "See every institution's students and exam rolls — manage your own institution's students"}
+            {isBn ? 'আপনার প্রতিষ্ঠানের শিক্ষার্থী দেখুন এবং পরিচালনা করুন' : 'View and manage your institution students'}
           </p>
         </div>
 
@@ -243,11 +228,6 @@ export default function InstitutionStudentsPage() {
                 {isBn ? 'শিক্ষার্থী তালিকা' : 'Students List'}
               </h3>
               <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>({filtered.length})</span>
-              {filtered.length > visible.length && (
-                <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
-                  {isBn ? `প্রথম ${visible.length}টি দেখানো হচ্ছে — অনুসন্ধান সংকুচিত করুন` : `showing first ${visible.length} — refine the search`}
-                </span>
-              )}
             </div>
           </div>
           {filtered.length === 0 ? (
@@ -279,7 +259,7 @@ export default function InstitutionStudentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visible.map((student, idx) => (
+                {filtered.map((student, idx) => (
                   <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(student.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(student.id)} onChange={() => selection.toggle(student.id)} />
@@ -310,18 +290,21 @@ export default function InstitutionStudentsPage() {
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.phone || '-'}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{genderLabel(student.gender, isBn)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll || '-'}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
+                      <span>{student.roll || '-'}</span>
+                      {student.examRoll && (
+                        <span className={`ml-1.5 font-mono ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{student.examRoll}</span>
+                      )}
+                    </TableCell>
                     <TableCell><Badge status={getRegStatus(student.id) || student.status} /></TableCell>
                     <TableCell>
                       <TableActionMenu id={student.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
                         <TableActionItem onClick={() => { setViewingStudent(student); setMenuOpenId(null); }} isDark={isDark}>
                           <Eye className="h-3.5 w-3.5" /> {isBn ? 'বিস্তারিত' : 'View Details'}
                         </TableActionItem>
-                        {student.institutionId === inst?.id && (
-                          <TableActionItem onClick={() => { setDeletingStudent(student); setMenuOpenId(null); }} isDark={isDark} variant="danger">
-                            <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
-                          </TableActionItem>
-                        )}
+                        <TableActionItem onClick={() => { setDeletingStudent(student); setMenuOpenId(null); }} isDark={isDark} variant="danger">
+                          <Trash2 className="h-3.5 w-3.5" /> {isBn ? 'মুছুন' : 'Delete'}
+                        </TableActionItem>
                       </TableActionMenu>
                     </TableCell>
                   </TableRow>
@@ -396,6 +379,7 @@ export default function InstitutionStudentsPage() {
                         { label: isBn ? "শ্রেণী" : "Class", value: viewingStudent.class },
                         viewingStudent.section ? { label: isBn ? "শাখা" : "Section", value: viewingStudent.section } : null,
                         viewingStudent.roll ? { label: isBn ? "রোল" : "Roll", value: viewingStudent.roll } : null,
+                        viewingStudent.examRoll ? { label: isBn ? "পরীক্ষার রোল" : "Exam Roll", value: viewingStudent.examRoll } : null,
                         viewingStudent.dateOfBirth ? { label: isBn ? "জন্ম তারিখ" : "Date of Birth", value: viewingStudent.dateOfBirth } : null,
                         viewingStudent.gender ? { label: isBn ? "লিঙ্গ" : "Gender", value: genderLabel } : null,
                       ] as { label: string; value: string }[]).filter(Boolean).map((item) => (

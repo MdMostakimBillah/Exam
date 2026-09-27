@@ -1,5 +1,4 @@
--- 0030 — Blind mark entry: institutions mark OTHER institutions' students,
---         plus every institution can read all rolls/students
+-- 0030 — Blind mark entry: an institution may only mark OTHER institutions' students
 --
 -- WHY
 --   Marking is blind: each institution receives random papers belonging to
@@ -7,11 +6,10 @@
 --   0029 did the opposite — it pinned the sheet to the caller's own
 --   institution — so an institution only ever saw itself, and could mark its
 --   own students (self-marking).
---   Separately, once rolls are generated an institution must be able to see
---   every institution's students and exam rolls (to identify a paper), not
---   only its own.
 --
--- WHAT CHANGES
+-- WHAT CHANGES — MARK ENTRY ONLY. Students, Registrations and Results keep
+-- showing an institution its own data; an institution still sees its own
+-- students' generated exam rolls on its Students list.
 --   * get_marks_sheet_page — non-super-admin callers are no longer pinned to
 --     their own institution: their own rows are EXCLUDED instead
 --     (p_institution_id is ignored), and the rows carry no institution id/name,
@@ -20,11 +18,12 @@
 --     unchanged, as is the 0029 roll-range filter.
 --   * save_exam_marks / clear_exam_mark — institution staff may only write rows
 --     belonging to ANOTHER institution; their own rows come back rejected.
---   * RLS on public.marks — own rows stay readable (results views keep
---     working) but writes are only allowed on other institutions' rows.
---   * RLS read-all (SELECT only) for institution staff on students,
---     registrations and institutions so the Students list can show every
---     institution's students and exam rolls. Writes stay own-institution only.
+--   * RLS on public.marks — institution staff get SELECT + DELETE on their own
+--     rows only (Results reads and the delete-student flow), so the marks table
+--     can no longer be written directly: every mark goes through
+--     save_exam_marks, which enforces the rule above.
+--   * No policy is added or dropped on public.students or public.registrations:
+--     those keep reading own-institution rows only.
 --   * Grade Scale setup (save_exam_mark_setup) and result processing stay
 --     super-admin only.
 --
@@ -687,11 +686,16 @@ END;
 $$;
 
 -- =====================================================================
--- 4. RLS on marks — own rows readable, OTHER institutions' rows writable
+-- 4. RLS on marks — own rows readable/deletable, never writable directly
 -- =====================================================================
--- Read: an institution still reads its own students' marks (Results and
--- dashboard views), and may read the foreign rows it is marking.
+-- An institution keeps SELECT + DELETE on marks of its own registrations
+-- (Results views and the delete-student flow). There is deliberately NO
+-- INSERT/UPDATE policy for institution staff: every mark has to go through the
+-- save_exam_marks RPC, which is what enforces "never mark your own students".
+-- Foreign rows are not readable here either — the mark-entry sheet reads them
+-- through that same SECURITY DEFINER RPC.
 DROP POLICY IF EXISTS "Institution admin own marks" ON public.marks;
+DROP POLICY IF EXISTS "Institution admin own marks delete" ON public.marks;
 DROP POLICY IF EXISTS "Institution admin foreign marks" ON public.marks;
 CREATE POLICY "Institution admin own marks"
   ON public.marks
@@ -704,61 +708,14 @@ CREATE POLICY "Institution admin own marks"
         AND r.institution_id = public.get_user_institution_id()
     )
   );
-
--- Write: blind marking — INSERT/UPDATE/DELETE only on registrations that do
--- NOT belong to the caller's own institution. Accounts without an institution
--- (students, service role) never satisfy this policy.
-CREATE POLICY "Institution admin foreign marks"
+CREATE POLICY "Institution admin own marks delete"
   ON public.marks
-  FOR ALL
+  FOR DELETE
   USING (
     public.get_user_institution_id() IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM public.registrations r
       WHERE r.id = public.marks.registration_id
-        AND r.institution_id IS DISTINCT FROM public.get_user_institution_id()
-    )
-  )
-  WITH CHECK (
-    public.get_user_institution_id() IS NOT NULL
-    AND EXISTS (
-      SELECT 1 FROM public.registrations r
-      WHERE r.id = public.marks.registration_id
-        AND r.institution_id IS DISTINCT FROM public.get_user_institution_id()
+        AND r.institution_id = public.get_user_institution_id()
     )
   );
-
--- =====================================================================
--- 5. RLS read-all — institution staff can see every institution's students
--- =====================================================================
--- Once rolls are generated an institution must be able to identify a paper,
--- so its Students list shows every institution's students and exam rolls, not
--- just its own. SELECT only: every write policy on public.students and
--- public.registrations stays own-institution. A linked institution is required,
--- so an account with a staff role but no institution reads nothing.
-CREATE OR REPLACE FUNCTION public.is_institution_staff()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid()
-      AND institution_id IS NOT NULL
-      AND role IN ('institution_admin', 'staff', 'viewer')
-  );
-$$;
-
-DROP POLICY IF EXISTS "Institution staff read all students" ON public.students;
-CREATE POLICY "Institution staff read all students"
-  ON public.students
-  FOR SELECT
-  USING (public.is_institution_staff());
-
-DROP POLICY IF EXISTS "Institution staff read all registrations" ON public.registrations;
-CREATE POLICY "Institution staff read all registrations"
-  ON public.registrations
-  FOR SELECT
-  USING (public.is_institution_staff());
