@@ -73,6 +73,13 @@ export default function InstitutionResultsPage() {
     const allowedIds = [className, classRecord?.id, classRecord?.code].filter(Boolean) as string[];
     return selectedExamForModal.subjects.filter((subject) => !subject.classId || allowedIds.includes(subject.classId));
   }, [allClasses, editingResult, registrations, selectedExamForModal, selectedRegistration]);
+
+  /** Class name → classes.id, so scholarship categories scoped to classes can apply. */
+  const resolveClassId = (className: string): string | null => {
+    if (!className) return null;
+    const record = allClasses.find((item) => item.name === className || item.code === className || item.id === className);
+    return record?.id || null;
+  };
   const createResultMutation = useCreateResult();
   const updateResultMutation = useUpdateResult();
   const deleteResultMutation = useDeleteResult();
@@ -213,7 +220,7 @@ export default function InstitutionResultsPage() {
             percentage,
             grade: calculateGradeForSetup(calculatedPercentage, selectedExamSetup.gradeBands),
             pass: calculatePassForSetup(calculatedPercentage, selectedExamSetup.passPercent),
-            scholarshipStatus: calculateScholarshipForSetup(calculatedPercentage, selectedExamSetup.scholarshipCategories),
+            scholarshipStatus: calculateScholarshipForSetup(calculatedPercentage, selectedExamSetup.scholarshipCategories, resolveClassId(editingResult.className)),
             markSetupVersion: selectedExamSetup.version,
           },
         });
@@ -249,7 +256,7 @@ export default function InstitutionResultsPage() {
           grade: calculateGradeForSetup(calculatedPercentage, selectedExamSetup.gradeBands),
           position,
           pass: calculatePassForSetup(calculatedPercentage, selectedExamSetup.passPercent),
-          scholarshipStatus: calculateScholarshipForSetup(calculatedPercentage, selectedExamSetup.scholarshipCategories),
+          scholarshipStatus: calculateScholarshipForSetup(calculatedPercentage, selectedExamSetup.scholarshipCategories, resolveClassId(registration.className)),
           status: "DRAFT",
           markSetupVersion: selectedExamSetup.version,
         });

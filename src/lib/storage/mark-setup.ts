@@ -80,6 +80,11 @@ function normalizeGradeBands(gradeBands: MarkGradeBand[]): MarkGradeBand[] {
   }));
 }
 
+function normalizeClassIds(classIds?: string[] | null): string[] {
+  if (!Array.isArray(classIds)) return [];
+  return [...new Set(classIds.map((classId) => String(classId).trim()).filter(Boolean))];
+}
+
 function normalizeScholarshipCategories(categories: ScholarshipCategoryRange[]): ScholarshipCategoryRange[] {
   return categories.map((category) => ({
     ...category,
@@ -87,6 +92,7 @@ function normalizeScholarshipCategories(categories: ScholarshipCategoryRange[]):
     name: category.name.trim(),
     minPercent: Number(category.minPercent),
     maxPercent: Number(category.maxPercent),
+    classIds: normalizeClassIds(category.classIds),
   }));
 }
 
@@ -145,6 +151,57 @@ function validateRanges(
       errors.push("Grade coverage has a gap");
     }
     fieldErrors[current.id] = errors;
+  }
+}
+
+/** Two categories may repeat percentages when they target disjoint classes. */
+function sharesClassScope(a: ScholarshipCategoryRange, b: ScholarshipCategoryRange): boolean {
+  const scopeA = a.classIds || [];
+  const scopeB = b.classIds || [];
+  if (scopeA.length === 0 || scopeB.length === 0) return true;
+  return scopeA.some((classId) => scopeB.includes(classId));
+}
+
+function validateScholarshipRanges(
+  rows: ScholarshipCategoryRange[],
+  fieldErrors: Record<string, string[]>,
+) {
+  rows.forEach((row, index) => {
+    const key = row.id || `scholarship_${index}`;
+    const errors = [...(fieldErrors[key] || [])];
+    if (!Number.isFinite(row.minPercent) || !Number.isFinite(row.maxPercent)) {
+      errors.push("Range bounds must be numbers");
+    } else {
+      if (row.minPercent < 0 || row.maxPercent > 100) {
+        errors.push("Range must stay between 0 and 100");
+      }
+      if (row.minPercent > row.maxPercent) {
+        errors.push("Minimum must not exceed maximum");
+      }
+      if (!hasTwoDecimalPlaces(row.minPercent) || !hasTwoDecimalPlaces(row.maxPercent)) {
+        errors.push("Ranges support at most two decimal places");
+      }
+    }
+    if ((row.classIds || []).some((classId) => classId.length > 120)) {
+      errors.push("Class reference is too long");
+    }
+    fieldErrors[key] = errors;
+  });
+
+  const ordered = [...rows].sort((a, b) => a.minPercent - b.minPercent);
+  for (let i = 0; i < ordered.length; i += 1) {
+    for (let j = i + 1; j < ordered.length; j += 1) {
+      const earlier = ordered[i];
+      const later = ordered[j];
+      if (later.minPercent > earlier.maxPercent) continue;
+      if (!sharesClassScope(earlier, later)) continue;
+      const key = later.id || `scholarship_${rows.indexOf(later)}`;
+      const errors = fieldErrors[key] || [];
+      if (!errors.includes("Range overlaps another category for the same classes")) {
+        errors.push("Range overlaps another category for the same classes");
+      }
+      fieldErrors[key] = errors;
+    }
   }
 }
 
@@ -261,7 +318,7 @@ export function validateExamMarkSetup(
     seenScholarshipNames.add(normalizedName);
     scholarshipErrors[key] = messages;
   });
-  validateRanges(setup.scholarshipCategories, false, scholarshipErrors);
+  validateScholarshipRanges(setup.scholarshipCategories, scholarshipErrors);
 
   if (!Number.isFinite(setup.passPercent) || setup.passPercent < 0 || setup.passPercent > 100) {
     passPercentError = "Pass percentage must be between 0 and 100";
@@ -306,8 +363,14 @@ export function calculateGradePointForSetup(
 export function calculateScholarshipForSetup(
   percentage: number,
   categories: ScholarshipCategoryRange[],
+  classId?: string | null,
 ): string {
-  const match = [...categories]
+  const applicable = categories.filter((category) => {
+    const scope = category.classIds || [];
+    if (scope.length === 0) return true;
+    return Boolean(classId) && scope.includes(classId as string);
+  });
+  const match = [...applicable]
     .sort((a, b) => b.minPercent - a.minPercent)
     .find((category) => percentage >= category.minPercent && percentage <= category.maxPercent);
   return match?.name || "NOT_ELIGIBLE";

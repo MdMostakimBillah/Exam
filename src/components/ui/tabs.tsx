@@ -70,7 +70,7 @@ function TabsTrigger({ value, children, className }: { value: string; children: 
       }}
       onClick={() => setActiveTab(value)}
       className={cn(
-        'px-5 py-3 text-sm font-medium transition-all duration-200 border-b-2 -mb-px relative',
+        'px-5 py-3 text-sm font-medium transition-all duration-200 border-b-2 -mb-px relative inline-flex items-center gap-1.5',
         activeTab === value
           ? isDark ? 'border-white text-zinc-100' : 'border-zinc-900 text-zinc-900'
           : isDark ? 'border-transparent text-zinc-500 hover:text-zinc-300' : 'border-transparent text-zinc-500 hover:text-zinc-700',

@@ -168,6 +168,8 @@ export interface ScholarshipCategoryRange {
   name: string;
   minPercent: number;
   maxPercent: number;
+  /** Classes this category applies to (classes.id). Empty/missing = every class. */
+  classIds?: string[];
 }
 
 export interface ExamMarkSetup {

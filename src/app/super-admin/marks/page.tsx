@@ -149,10 +149,10 @@ export default function MarksPage() {
         <Tabs defaultValue="setup" value={activeTab} onValueChange={(value) => requestTab(value as MarksTab)}>
           <TabsList className="overflow-x-auto">
             <TabsTrigger value="setup" className={activeTab === "setup" ? "font-semibold text-brand-accent" : undefined}>
-              <Settings2 className="mr-1.5 h-4 w-4" /> {bi("গ্রেড স্কেল", "Grade Scale")}
+              <Settings2 className="h-4 w-4" /> {bi("গ্রেড স্কেল", "Grade Scale")}
             </TabsTrigger>
             <TabsTrigger value="entry" className={activeTab === "entry" ? "font-semibold text-brand-accent" : undefined}>
-              <ListChecks className="mr-1.5 h-4 w-4" /> {bi("মার্ক এন্ট্রি", "Mark Entry")}
+              <ListChecks className="h-4 w-4" /> {bi("মার্ক এন্ট্রি", "Mark Entry")}
             </TabsTrigger>
           </TabsList>
 
