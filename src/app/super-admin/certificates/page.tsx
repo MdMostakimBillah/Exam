@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useCertificates } from "@/lib/storage/certificates";
+import { useInstitutionName } from "@/lib/storage/institutions";
 import { Award, Search, Download, QrCode, FileDown } from "lucide-react";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -18,6 +19,8 @@ export default function CertificatesPage() {
   const { lang: language, t } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Institution names: stored Bangla value renders as name_en in English.
+  const instName = useInstitutionName();
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -26,10 +29,11 @@ export default function CertificatesPage() {
   const { data: certificates = [] } = useCertificates();
   const years = useMemo(() => [...new Set(certificates.map(c => c.examYear))], [certificates]);
   const filtered = useMemo(() => certificates.filter(c => {
-    const matchesSearch = c.studentName.toLowerCase().includes(search.toLowerCase()) || c.certificateNumber.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = c.studentName.toLowerCase().includes(search.toLowerCase()) || c.certificateNumber.toLowerCase().includes(search.toLowerCase()) ||
+      instName(c.institutionName, c.institutionId).toLowerCase().includes(search.toLowerCase());
     const matchesYear = !yearFilter || c.examYear === yearFilter;
     return matchesSearch && matchesYear;
-  }), [certificates, search, yearFilter]);
+  }), [certificates, search, yearFilter, instName]);
 
   const selection = useTableSelection(filtered);
 
@@ -46,12 +50,12 @@ export default function CertificatesPage() {
   const pdfData = useMemo(() => filtered.map(c => ({
     certificateNumber: c.certificateNumber,
     studentName: c.studentName,
-    institutionName: c.institutionName,
+    institutionName: instName(c.institutionName, c.institutionId),
     examName: c.examName,
     position: `#${c.position}`,
     issueDate: formatDate(c.issueDate),
     status: c.status,
-  })), [filtered]);
+  })), [filtered, instName]);
 
   const verifiedCount = useMemo(() => certificates.filter(c => c.status === 'VERIFIED').length, [certificates]);
   const year2026Count = useMemo(() => certificates.filter(c => c.examYear === '2026').length, [certificates]);
@@ -157,7 +161,7 @@ export default function CertificatesPage() {
                       </div>
                     </TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{cert.studentName}</TableCell>
-                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{cert.institutionName}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instName(cert.institutionName, cert.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{cert.examName}</TableCell>
                     <TableCell>
                       <span className={`text-[11px] font-bold ${isDark ? "text-amber-400" : "text-amber-600"}`}>#{cert.position}</span>

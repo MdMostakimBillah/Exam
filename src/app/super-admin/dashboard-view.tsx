@@ -13,6 +13,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { useDashboardStats, useDashboardInstitutions, useDashboardRegistrations, useDashboardPayments } from "@/lib/storage/dashboard";
+import { useInstitutionName } from "@/lib/storage/institutions";
 import type { DashboardStats } from "@/lib/data/dashboard";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
@@ -118,6 +119,8 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
 
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Institution names localise to `name_en` in English (same rule as sidebar).
+  const instName = useInstitutionName();
 
   // ---- Live data (auto-refresh: stats every 30s, lists every 60s + on focus) ----
   const sessionQuery = useCurrentSession();
@@ -309,7 +312,7 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{r.studentName}</p>
-                            <p className={`text-[11px] truncate ${subtext}`}>{r.institutionName} · {r.className}</p>
+                            <p className={`text-[11px] truncate ${subtext}`}>{instName(r.institutionName, r.institutionId)} · {r.className}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(Number(r.paymentAmount || 0))}</p>
@@ -351,10 +354,10 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                           className={`w-full text-left flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
                         >
                           <div className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
-                            {p.institutionName.charAt(0)}
+                            {instName(p.institutionName, p.institutionId).charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{p.institutionName}</p>
+                            <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{instName(p.institutionName, p.institutionId)}</p>
                             <p className={`text-[11px] truncate ${subtext}`}>
                               {p.paymentMethod === 'BKASH' ? 'bKash' : 'Cash'} · {p.studentCount} {isBn ? 'জন' : 'student(s)'} · {formatDate(p.date)}
                             </p>
@@ -389,10 +392,10 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                     {[...institutions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((inst) => (
                       <div key={inst.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
                         <div className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
-                          {inst.name.charAt(0)}
+                          {instName(inst.name, inst.id).charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{inst.name}</p>
+                          <p className={`text-sm font-medium truncate ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>{instName(inst.name, inst.id)}</p>
                           <p className={`text-[11px] truncate ${subtext}`}>{inst.address}</p>
                         </div>
                         <Badge status={inst.status} />

@@ -123,6 +123,40 @@ export interface PublicResultLookup {
   result?: Result | null;
 }
 
+/**
+ * The institution's English name for a stored Bangla `institution_name`.
+ * Public pages (result / certificate verification) are English-first, so we
+ * resolve `name_en` here once per lookup instead of shipping it on every row.
+ * Never throws — the field is optional and only used as a display fallback.
+ */
+async function resolveInstitutionNameEn(id: unknown): Promise<string> {
+  if (!id) return "";
+  try {
+    const { data } = await supabaseAdmin
+      .from("institutions")
+      .select("name_en")
+      .eq("id", String(id))
+      .maybeSingle();
+    return String((data as { name_en?: string } | null)?.name_en || "");
+  } catch {
+    return "";
+  }
+}
+
+/** mapResult + the English institution name. */
+async function resultWithEn(row: Record<string, unknown>): Promise<Result> {
+  const mapped = mapResult(row);
+  mapped.institutionNameEn = await resolveInstitutionNameEn(row.institution_id);
+  return mapped;
+}
+
+/** mapCertificate + the English institution name. */
+async function certificateWithEn(row: Record<string, unknown>): Promise<Certificate> {
+  const mapped = mapCertificate(row);
+  mapped.institutionNameEn = await resolveInstitutionNameEn(row.institution_id);
+  return mapped;
+}
+
 export async function searchPublicResults(input: {
   registrationNumber: string;
   mode: "dob" | "roll";
@@ -180,7 +214,7 @@ export async function searchPublicResults(input: {
 
     if (mode === "roll") {
       const match = rows.find((r) => String(r.roll ?? "") === roll);
-      return { ok: true, result: match ? mapResult(match) : null };
+      return { ok: true, result: match ? await resultWithEn(match) : null };
     }
 
     const studentIds = rows.map((r) => r.student_id).filter(Boolean);
@@ -192,7 +226,7 @@ export async function searchPublicResults(input: {
       (students || []).map((s) => [s.id, s.date_of_birth ? String(s.date_of_birth).slice(0, 10) : ""])
     );
     const match = rows.find((r) => dobById.get(r.student_id as string) === dob);
-    return { ok: true, result: match ? mapResult(match) : null };
+    return { ok: true, result: match ? await resultWithEn(match) : null };
   } catch {
     return { ok: false, error: "Lookup failed. Please try again." };
   }
@@ -225,7 +259,7 @@ export async function lookupCertificate(
       .limit(1);
     if (error) return { ok: false, error: "Lookup failed. Please try again." };
     const row = (data || [])[0] as Record<string, unknown> | undefined;
-    return { ok: true, certificate: row ? mapCertificate(row) : null };
+    return { ok: true, certificate: row ? await certificateWithEn(row) : null };
   } catch {
     return { ok: false, error: "Lookup failed. Please try again." };
   }

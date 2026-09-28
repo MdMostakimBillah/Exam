@@ -38,7 +38,7 @@ import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 import { useClasses } from "@/lib/storage/classes";
 import { useExamsFull } from "@/lib/storage/exams";
-import { useInstitutions } from "@/lib/storage/institutions";
+import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
 import { calculateGradeForSetup, useExamMarkSetup } from "@/lib/storage/mark-setup";
 import {
   clearExamMark,
@@ -110,6 +110,8 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   const { data: exams = [] } = useExamsFull();
   const { data: allClasses = [] } = useClasses();
   const { data: institutions = [] } = useInstitutions();
+  // Institution filter labels follow the active language (English → name_en).
+  const instName = useInstitutionName();
 
   const [examId, setExamId] = useState("");
   const [classId, setClassId] = useState("");
@@ -686,7 +688,7 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   const selectedExamName = exam?.name || "—";
   const selectedClassName = classEntries.find((item) => item.id === classId)?.name || "—";
   const selectedInstitutionName = institutionId
-    ? institutions.find((institution) => institution.id === institutionId)?.name || "—"
+    ? instName(institutions.find((institution) => institution.id === institutionId)?.name, institutionId) || "—"
     : bi("সব প্রতিষ্ঠান", "All institutions");
 
   const card = isDark
@@ -754,7 +756,7 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
                 onChange={(event) => changeInstitution(event.target.value)}
                 options={[
                   { label: bi("সব প্রতিষ্ঠান", "All institutions"), value: "" },
-                  ...institutions.filter((item) => item.status === "ACTIVE").map((item) => ({ label: item.name, value: item.id })),
+                  ...institutions.filter((item) => item.status === "ACTIVE").map((item) => ({ label: instName(item.name, item.id), value: item.id })),
                 ]}
                 className={inputClass}
                 disabled={!classId}

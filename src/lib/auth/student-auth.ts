@@ -12,6 +12,8 @@ export interface StudentSession {
   phone: string;
   institutionId: string;
   institutionName: string;
+  /** Institution's English name (name_en) — used when the UI is English. */
+  institutionNameEn?: string;
   class: string;
   section: string;
   roll: string;
@@ -38,7 +40,7 @@ export async function getStudentSession(): Promise<StudentSession | null> {
 
   const { data: student } = await supabase
     .from("students")
-    .select("*, institutions(name)")
+    .select("*, institutions(name,name_en)")
     .eq("user_id", user.id)
     .single();
 
@@ -53,6 +55,7 @@ export async function getStudentSession(): Promise<StudentSession | null> {
     phone: student.phone || "",
     institutionId: student.institution_id,
     institutionName: student.institutions?.name || "",
+    institutionNameEn: student.institutions?.name_en || "",
     class: student.class,
     section: student.section || "",
     roll: student.roll || "",

@@ -13,7 +13,7 @@ interface GeneratePdfOptions {
   companySubtitle?: string;
   /** Brand accent color (#hex) from Settings → Branding. Defaults to classic purple. */
   accent?: string;
-  /** Branding watermark image URL — drawn big, centred, 70% opacity behind
+  /** Branding watermark image URL — drawn big, centred, 40% opacity behind
    *  EVERY page (same asset the admit card uses). Empty → text watermark. */
   watermark?: string;
   /** Short crest text used when there is no watermark image (e.g. "BMA"). */
@@ -169,9 +169,9 @@ async function loadFont(doc: any) {
 }
 
 // ── Watermark ─────────────────────────────────────────────────────────────
-// Same rule as the admit card: BIG, centred, 70% opacity, under the content,
+// Same rule as the admit card: BIG, centred, 40% opacity, under the content,
 // on every page of every PDF.
-const WM_OPACITY = 0.7;
+const WM_OPACITY = 0.4;
 const WM_ANGLE = 30; // degrees, counter-clockwise — matches the card's -30deg tilt
 
 interface WmImage {
@@ -215,7 +215,7 @@ async function loadWatermarkImage(src: string): Promise<WmImage | null> {
 }
 
 /**
- * Draw the watermark — centred on the page, rotated 30°, 70% opacity.
+ * Draw the watermark — centred on the page, rotated 30°, 40% opacity.
  * Must be called BEFORE the page's content so the seal sits behind it.
  *
  * jsPDF's rotated addImage anchors the rotation at the rect's bottom-left
@@ -317,10 +317,14 @@ export async function generatePdf(options: GeneratePdfOptions) {
   doc.setTextColor(...pal.onRgb);
   doc.setFont(FONT, "bold");
   doc.setFontSize(14);
-  doc.text(companyName, 14, 10);
-  doc.setFontSize(8);
-  doc.setFont(FONT, "normal");
-  doc.text(companySubtitle, 14, 15);
+  // English documents pass an empty subtitle — keep the single line centred
+  // in the band instead of leaving it top-aligned.
+  doc.text(companyName, 14, companySubtitle ? 10 : 11.5);
+  if (companySubtitle) {
+    doc.setFontSize(8);
+    doc.setFont(FONT, "normal");
+    doc.text(companySubtitle, 14, 15);
+  }
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -420,7 +424,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
       valign: "middle",
     },
     // No zebra fill on purpose: an opaque alternating fill would slice the
-    // 70%-opacity watermark into horizontal bands. Grid rules carry the rows.
+    // 40%-opacity watermark into horizontal bands. Grid rules carry the rows.
     columnStyles,
     bodyStyles: { valign: "middle", ...(withImage ? { minCellHeight: 16 } : {}) },
     margin: { left: 14, right: 14 },

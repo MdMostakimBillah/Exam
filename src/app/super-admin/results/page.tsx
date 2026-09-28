@@ -8,6 +8,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useResults } from "@/lib/storage/results";
+import { useInstitutionName } from "@/lib/storage/institutions";
 import { useExamsFull } from "@/lib/storage/exams";
 import { Award, Download, FileDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
@@ -19,6 +20,8 @@ export default function ResultsPage() {
   const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Institution names: stored Bangla value renders as name_en in English.
+  const instName = useInstitutionName();
   const [mounted, setMounted] = useState(false);
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
@@ -48,13 +51,13 @@ export default function ResultsPage() {
   const pdfData = useMemo(() => filtered.map(r => ({
     position: `#${r.position}`,
     studentName: r.studentName,
-    institutionName: r.institutionName,
+    institutionName: instName(r.institutionName, r.institutionId),
     className: r.className,
     total: `${r.totalMarks}/${r.totalFullMarks}`,
     percentage: `${r.percentage.toFixed(1)}%`,
     grade: r.grade,
     scholarshipStatus: r.scholarshipStatus,
-  })), [filtered]);
+  })), [filtered, instName]);
 
   const examOptions = useMemo(() => [{ label: isBn ? 'সব পরীক্ষা' : 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))], [exams, isBn]);
 
@@ -176,7 +179,7 @@ export default function ResultsPage() {
                       </span>
                     </TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{result.studentName}</TableCell>
-                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{result.institutionName}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instName(result.institutionName, result.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{result.className}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{result.totalMarks}/{result.totalFullMarks}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{result.percentage.toFixed(1)}%</TableCell>

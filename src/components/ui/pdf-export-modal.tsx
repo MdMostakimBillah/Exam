@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo } from "react";
 import { X, FileDown, Eye, LayoutTemplate, RotateCcw, Check } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { useBranding } from "@/lib/storage/branding";
+import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import { accentPalette, PDF_CENTER_KEYS } from "@/lib/utils/generate-pdf";
 
 export interface PdfColumn {
@@ -43,6 +43,15 @@ export function PdfExportModal({
   const isBn = lang === "bn";
   const { data: branding } = useBranding();
   const pal = accentPalette((branding?.accentColor || "").trim());
+
+  // Document header follows the active language — English UI prints the
+  // English institution/association name (name_en), Bangla UI prints the
+  // Bangla name with the English one underneath. Explicit props win.
+  const brand = useMemo(() => ({ ...BRANDING_DEFAULTS, ...(branding ?? {}) }), [branding]);
+  const resolvedCompany = companyName || (isBn ? (brand.brandNameBn || brand.brandName) : brand.brandName);
+  const resolvedSubtitle = companySubtitle !== undefined
+    ? companySubtitle
+    : (isBn ? brand.brandName : "");
 
   const [title, setTitle] = useState(defaultTitle);
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
@@ -87,8 +96,8 @@ export function PdfExportModal({
       columns: activeColumns.map((c) => ({ header: c.header, key: c.key })),
       data,
       orientation,
-      companyName,
-      companySubtitle,
+      companyName: resolvedCompany,
+      companySubtitle: resolvedSubtitle,
       accent: pal.hex,
       watermark: branding?.brandWatermark || undefined,
       watermarkText: branding?.brandShort || undefined,
@@ -96,7 +105,7 @@ export function PdfExportModal({
       imageHeader: imageHeader || (isBn ? 'ছবি' : 'Photo'),
     });
     onClose();
-  }, [title, activeColumns, data, orientation, companyName, companySubtitle, onClose,
+  }, [title, activeColumns, data, orientation, resolvedCompany, resolvedSubtitle, onClose,
       pal.hex, withPhotos, photosAvailable, imageKey, imageHeader, isBn,
       branding?.brandWatermark, branding?.brandShort]);
 
@@ -264,8 +273,8 @@ export function PdfExportModal({
                 columns={activeColumns}
                 data={data}
                 orientation={orientation}
-                companyName={companyName}
-                companySubtitle={companySubtitle}
+                companyName={resolvedCompany}
+                companySubtitle={resolvedSubtitle}
                 pal={pal}
                 imageKey={withPhotos && photosAvailable ? imageKey : undefined}
                 imageHeader={imageHeader || (isBn ? 'ছবি' : 'Photo')}
@@ -317,7 +326,8 @@ function PdfPreview({
   imageHeader?: string;
 }) {
   const company = companyName || "Bangladesh Madrasah Association";
-  const companySub = companySubtitle || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন";
+  // Subtitle is optional — English documents print the single English line.
+  const companySub = companySubtitle || "";
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -327,7 +337,7 @@ function PdfPreview({
       <div className="text-white px-3 py-2 rounded-t-sm flex justify-between items-start" style={{ backgroundColor: pal.hex }}>
         <div>
           <div className="text-[10px] font-bold">{company}</div>
-          <div className="text-[7px] opacity-80">{companySub}</div>
+          {companySub ? <div className="text-[7px] opacity-80">{companySub}</div> : null}
         </div>
         <div className="text-right text-[7px] opacity-80">
           <div>Printed: {dateStr}</div>

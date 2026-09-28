@@ -197,7 +197,7 @@ export default function PaymentSubmitPage() {
     // (fire-and-forget — never blocks the submission)
     notifySuperAdmins(
       isBn ? 'শিক্ষার্থীর পেমেন্ট জমা' : 'Student payment submitted',
-      `${student.firstName} ${student.lastName} · ৳${Number(amount).toLocaleString()} · ${student.institutionName}`,
+      `${student.firstName} ${student.lastName} · ৳${Number(amount).toLocaleString()} · ${isBn ? student.institutionName : (student.institutionNameEn || student.institutionName)}`,
       'success',
       '/super-admin/payments'
     ).catch((e) => console.error('[payment-notification] failed (run migration 0008):', e));

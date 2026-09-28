@@ -273,7 +273,7 @@ export default function InstitutionRegistrationsPage() {
       // (fire-and-forget — never blocks the submission)
       notifySuperAdmins(
         isBn ? 'নতুন নিবন্ধন আবেদন' : 'New registration application',
-        `${newStudent.firstName} ${newStudent.lastName} · ${exam.name} · ${inst!.name}`,
+        `${newStudent.firstName} ${newStudent.lastName} · ${exam.name} · ${isBn ? inst!.name : (inst!.nameEn || inst!.name)}`,
         'warning',
         '/super-admin/registrations'
       ).catch((e) => console.error('[registration-notification] failed (run migration 0008):', e));
@@ -736,7 +736,7 @@ export default function InstitutionRegistrationsPage() {
                 </div>
                 <h3 className={`text-base font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{viewingReg.studentName}</h3>
                 {student?.firstNameBn && <p className={`text-[12px] mt-0.5 ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{student.firstNameBn}</p>}
-                <p className={`text-[11px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{viewingReg.className} &middot; {viewingReg.institutionName}</p>
+                <p className={`text-[11px] mt-0.5 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{viewingReg.className} &middot; {isBn ? viewingReg.institutionName : (inst?.nameEn || viewingReg.institutionName)}</p>
               </div>
 
               {/* Status Badges */}

@@ -1,6 +1,8 @@
+import { useCallback } from 'react';
 import { Institution } from '../types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLang } from '@/contexts/language-context';
 import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/auth/institution-actions';
 
 const SUPABASE_TABLE = 'institutions';
@@ -182,6 +184,37 @@ export async function deleteInstitution(id: string): Promise<DeleteInstitutionRe
 }
 
 export function useInstitutions() { return useQuery({ queryKey: ['institutions'], queryFn: fetchInstitutions, staleTime: INSTITUTIONS_STALE_TIME }); }
+
+/**
+ * Language-aware institution name, same rule as the sidebar / topbar:
+ * English UI → `name_en`, Bangla UI → `name`.
+ *
+ * Records (registrations, payments, results, certificates, students …) carry
+ * the Bangla `institution_name`, so pass that string — or the institution id
+ * when you have it — and get the localised label back. Unknown names are
+ * returned unchanged, so nothing is ever blanked out while the list loads.
+ *
+ *   const instName = useInstitutionName();
+ *   <TableCell>{instName(r.institutionName, r.institutionId)}</TableCell>
+ */
+export function useInstitutionName() {
+  const { lang } = useLang();
+  const { data: institutions = [] } = useInstitutions();
+  const bn = lang === 'bn';
+  return useCallback((value?: string | null, id?: string) => {
+    const raw = String(value ?? '').trim();
+    const inst =
+      (id ? institutions.find((i) => i.id === id) : undefined) ||
+      (raw
+        ? institutions.find(
+            (i) => (i.name || '').trim() === raw || (i.nameEn || '').trim() === raw
+          )
+        : undefined);
+    if (!inst) return raw;
+    if (bn) return raw || inst.name;
+    return inst.nameEn || raw || inst.name;
+  }, [institutions, bn]);
+}
 export function useInstitutionById(id: string) { return useQuery({ queryKey: ['institutions', id], queryFn: () => fetchInstitutionById(id), enabled: !!id, staleTime: INSTITUTIONS_STALE_TIME }); }
 export function useInstitutionBySlug(slug: string) { return useQuery({ queryKey: ['institutions', 'slug', slug], queryFn: () => fetchInstitutionBySlug(slug), enabled: !!slug, staleTime: INSTITUTIONS_STALE_TIME }); }
 

@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { useInstitutions, useCreateInstitution, useUpdateInstitution, useDeleteInstitution } from "@/lib/storage/institutions";
+import { useInstitutions, useCreateInstitution, useUpdateInstitution, useDeleteInstitution, useInstitutionName } from "@/lib/storage/institutions";
 import { useInstitutionStudentCounts } from "@/lib/storage/students";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Institution } from "@/lib/types";
@@ -50,8 +50,12 @@ export default function InstitutionsPage() {
   const { data: studentCounts, isSuccess: countsLoaded } = useInstitutionStudentCounts(currentSession?.id);
   const liveStudentCount = (i: Institution) =>
     countsLoaded ? (studentCounts?.[i.id] ?? 0) : i.totalStudents;
+  // Institution names follow the active language (English UI → name_en) in
+  // the table, the search box and the exported PDF.
+  const instName = useInstitutionName();
   const filtered = useMemo(() => institutions.filter(i => {
-    const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.code.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = i.name.toLowerCase().includes(q) || (i.nameEn || "").toLowerCase().includes(q) || i.code.toLowerCase().includes(q);
     const matchesStatus = !statusFilter || i.status === statusFilter;
     return matchesSearch && matchesStatus;
   }), [institutions, search, statusFilter]);
@@ -70,13 +74,13 @@ export default function InstitutionsPage() {
   const pdfData = useMemo(() => filtered
     .filter((i) => selection.isSelected(i.id))
     .map((i) => ({
-      name: i.name,
+      name: instName(i.name, i.id),
       code: i.code,
       email: i.email,
       phone: i.phone,
       totalStudents: liveStudentCount(i),
       status: i.status,
-    })), [filtered, selection, studentCounts, countsLoaded]);
+    })), [filtered, selection, studentCounts, countsLoaded, instName]);
 
   const activeCount = useMemo(() => institutions.filter(i => i.status === 'ACTIVE').length, [institutions]);
   const pendingCount = useMemo(() => institutions.filter(i => i.status === 'PENDING').length, [institutions]);
@@ -109,7 +113,7 @@ export default function InstitutionsPage() {
 
   const handleDelete = async (id: string) => {
     const inst = institutions.find(i => i.id === id);
-    const name = inst?.name || '';
+    const name = inst ? instName(inst.name, inst.id) : '';
     const confirmed = confirm(isBn
       ? `"${name}" মুছে ফেলবেন?\n\nএর সব শিক্ষার্থী, নিবন্ধন, পেমেন্ট, ফলাফল, সার্টিফিকেট, ছবি ও লগইন অ্যাকাউন্ট সব সেশন থেকে স্থায়ীভাবে মুছে যাবে। এটি ফেরানো যাবে না।`
       : `Delete "${name}"?\n\nALL of its students, registrations, payments, results, certificates, images and login accounts will be permanently removed from every session. This cannot be undone.`);
@@ -279,16 +283,16 @@ export default function InstitutionsPage() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={inst.logo}
-                            alt={inst.name}
+                            alt={instName(inst.name, inst.id)}
                             className={`h-8 w-8 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1 ${isDark ? 'ring-white/15' : 'ring-black/10'}`}
                           />
                         ) : (
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                            {inst.name.charAt(0)}
+                            {instName(inst.name, inst.id).charAt(0)}
                           </div>
                         )}
                         <div>
-                          <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{inst.name}</p>
+                          <p className={`text-sm font-medium ${isDark ? 'text-zinc-100' : 'text-zinc-800'}`}>{instName(inst.name, inst.id)}</p>
                           <p className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{inst.address}</p>
                         </div>
                       </div>

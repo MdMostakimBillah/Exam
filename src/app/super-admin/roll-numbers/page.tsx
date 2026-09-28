@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils/helpers";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { useStudentsByClass } from "@/lib/storage/students";
 import { useClassRollSummaries, useGenerateExamRolls, getRollPrefix, type ClassRollSummary } from "@/lib/storage/exam-rolls";
-import { useInstitutions } from "@/lib/storage/institutions";
+import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
 import { useClasses } from "@/lib/storage/classes";
 import { useAllRegistrations } from "@/lib/storage/registrations";
 import { formatDate } from "@/lib/storage/storage";
@@ -55,9 +55,10 @@ export default function RollNumbersPage() {
     return map;
   }, [allClasses]);
 
+  const instName = useInstitutionName();
   const institutionMap = useMemo(
-    () => new Map(institutions.map(i => [i.id, i.name])),
-    [institutions]
+    () => new Map(institutions.map(i => [i.id, instName(i.name, i.id)])),
+    [institutions, instName]
   );
 
   // Earliest registration per student — the exact order the generator

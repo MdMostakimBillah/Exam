@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { getUsers, createUser, updateUser, deleteUser } from "@/lib/storage/users";
-import { useInstitutions } from "@/lib/storage/institutions";
+import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
 import { User } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -82,7 +82,8 @@ export default function UsersPage() {
   const superAdminCount = useMemo(() => users.filter((u) => u.role === "SUPER_ADMIN").length, [users]);
   const instAdminCount = useMemo(() => users.filter((u) => u.role === "INSTITUTION_ADMIN").length, [users]);
 
-  const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
+  const instName = useInstitutionName();
+  const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, instName(i.name, i.id)])), [institutions, instName]);
 
   const getInstitutionName = useCallback((id?: string) => {
     if (!id) return "—";
@@ -454,7 +455,7 @@ export default function UsersPage() {
               <Select
                 options={[
                   { label: isBn ? "প্রতিষ্ঠান নির্বাচন করুন" : "Select institution", value: "" },
-                  ...institutions.map((i) => ({ label: i.name, value: i.id })),
+                  ...institutions.map((i) => ({ label: instName(i.name, i.id), value: i.id })),
                 ]}
                 value={addForm.institutionId}
                 onChange={(e) => setAddForm({ ...addForm, institutionId: e.target.value })}
@@ -528,7 +529,7 @@ export default function UsersPage() {
               <Select
                 options={[
                   { label: isBn ? "প্রতিষ্ঠান নির্বাচন করুন" : "Select institution", value: "" },
-                  ...institutions.map((i) => ({ label: i.name, value: i.id })),
+                  ...institutions.map((i) => ({ label: instName(i.name, i.id), value: i.id })),
                 ]}
                 value={editForm.institutionId}
                 onChange={(e) => setEditForm({ ...editForm, institutionId: e.target.value })}

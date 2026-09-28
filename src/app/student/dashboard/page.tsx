@@ -104,7 +104,7 @@ export default function StudentDashboardPage() {
           {isBn ? `স্বাগতম, ${student.firstName}` : `Welcome, ${student.firstName}`}
         </h1>
         <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-          {student.institutionName} &middot; {student.class} {student.section && `- ${student.section}`}
+          {isBn ? student.institutionName : (student.institutionNameEn || student.institutionName)} &middot; {student.class} {student.section && `- ${student.section}`}
         </p>
       </div>
 

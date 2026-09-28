@@ -309,6 +309,9 @@ export interface Result {
   studentName: string;
   institutionId: string;
   institutionName: string;
+  /** Institution's English name (name_en) — filled by public lookups so the
+   *  English /result page can show it; internal rows keep the Bangla name. */
+  institutionNameEn?: string;
   examId: string;
   examName: string;
   className: string;
@@ -336,6 +339,8 @@ export interface Certificate {
   studentName: string;
   institutionId: string;
   institutionName: string;
+  /** Institution's English name (name_en) — see Result.institutionNameEn. */
+  institutionNameEn?: string;
   examId: string;
   examName: string;
   className: string;
@@ -394,6 +399,34 @@ export interface Notification {
   createdAt: string;
   /** Optional route opened when the notification is clicked */
   link?: string;
+}
+
+/** Problem categories accepted on the public Help & Support page. */
+export type SupportCategory = 'login' | 'registration' | 'payment' | 'exam' | 'results' | 'certificates' | 'other';
+
+/** Lifecycle of a reported website/functional problem. */
+export type SupportStatus = 'open' | 'in_progress' | 'resolved';
+
+/**
+ * A website problem reported from the /help page. Only the super admin
+ * reads all of them; a reporter only ever sees their own rows (RLS).
+ */
+export interface SupportReport {
+  id: string;
+  userId?: string;
+  institutionId?: string;
+  institutionName?: string;
+  reporterName: string;
+  reporterEmail?: string;
+  reporterPhone?: string;
+  category: SupportCategory;
+  subject: string;
+  message: string;
+  status: SupportStatus;
+  /** Super admin's reply, shown back to the reporter. */
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditLog {

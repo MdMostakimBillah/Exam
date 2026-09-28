@@ -111,7 +111,7 @@ export default function VerifyCertificatePage() {
               <div className="space-y-3">
                 {[
                   { label: 'Student', value: certificate.studentName },
-                  { label: 'Institution', value: certificate.institutionName },
+                  { label: 'Institution', value: certificate.institutionNameEn || certificate.institutionName },
                   { label: 'Exam', value: certificate.examName },
                   { label: 'Year', value: certificate.examYear },
                   { label: 'Position', value: `#${certificate.position}` },

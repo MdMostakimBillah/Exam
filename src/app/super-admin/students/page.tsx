@@ -9,7 +9,7 @@ import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useStudents, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
-import { useInstitutions } from "@/lib/storage/institutions";
+import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
 import { useAllRegistrations, normalizeRegistrationStatus } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
@@ -54,7 +54,8 @@ export default function StudentsPage() {
   const updateStudentMutation = useUpdateStudent();
   const deleteStudentMutation = useDeleteStudent();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
-  const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, i.name])), [institutions]);
+  const instName = useInstitutionName();
+  const institutionMap = useMemo(() => new Map(institutions.map(i => [i.id, instName(i.name, i.id)])), [institutions, instName]);
   const getInstitutionName = useCallback((id: string) => institutionMap.get(id) || 'Unknown', [institutionMap]);
 
   // Latest registration per student (used for Registration Number + status).
@@ -228,7 +229,7 @@ export default function StudentsPage() {
               className={`w-full sm:w-36 ${inputCls}`}
             />
             <Select
-              options={[{ label: isBn ? 'সব প্রতিষ্ঠান' : 'All Institutions', value: '' }, ...institutions.map(i => ({ label: i.name, value: i.id }))]}
+              options={[{ label: isBn ? 'সব প্রতিষ্ঠান' : 'All Institutions', value: '' }, ...institutions.map(i => ({ label: instName(i.name, i.id), value: i.id }))]}
               value={institutionFilter}
               onChange={(e) => setInstitutionFilter(e.target.value)}
               className={`w-full sm:w-48 ${inputCls}`}

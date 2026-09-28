@@ -91,7 +91,7 @@ export default function InstitutionDetailPage() {
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{inst.name}</h1>
+              <h1 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{isBn ? inst.name : (inst.nameEn || inst.name)}</h1>
               <Badge status={inst.status} />
             </div>
             <p className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{inst.code} · {inst.city}, {inst.district}</p>

@@ -9,6 +9,7 @@ import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useRegistrations, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
+import { useInstitutionName } from "@/lib/storage/institutions";
 import { useToast } from "@/components/ui/toast";
 import { LoadingBar } from "@/components/ui/loading-bar";
 import { ClipboardList, Search, Download, FileDown, Edit, Trash2, CheckCircle } from "lucide-react";
@@ -24,6 +25,8 @@ export default function RegistrationsPage() {
   const { lang: language, t } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Institution names: Bangla column values render as name_en in English.
+  const instName = useInstitutionName();
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -44,23 +47,24 @@ export default function RegistrationsPage() {
 
   const filtered = useMemo(() => registrations.filter(r => {
     const q = search.toLowerCase();
-    const matchesSearch = r.studentName.toLowerCase().includes(q) || r.registrationNumber.toLowerCase().includes(q);
+    const matchesSearch = r.studentName.toLowerCase().includes(q) || r.registrationNumber.toLowerCase().includes(q) ||
+      instName(r.institutionName, r.institutionId).toLowerCase().includes(q);
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesInstitution = !instFilter || r.institutionId === instFilter;
     return matchesSearch && matchesStatus && matchesInstitution;
-  }), [registrations, search, statusFilter, instFilter]);
+  }), [registrations, search, statusFilter, instFilter, instName]);
 
   // Unique institutions present in the current registrations
   const institutionOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    registrations.forEach(r => { if (r.institutionId && !seen.has(r.institutionId)) seen.set(r.institutionId, r.institutionName); });
+    registrations.forEach(r => { if (r.institutionId && !seen.has(r.institutionId)) seen.set(r.institutionId, instName(r.institutionName, r.institutionId)); });
     return [
       { label: isBn ? 'সব প্রতিষ্ঠান' : 'All Institutions', value: '' },
       ...Array.from(seen.entries())
         .map(([value, label]) => ({ label, value }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     ];
-  }, [registrations, isBn]);
+  }, [registrations, isBn, instName]);
 
   const selection = useTableSelection(filtered);
 
@@ -76,11 +80,11 @@ export default function RegistrationsPage() {
   const pdfData = useMemo(() => filtered.map(r => ({
     registrationNumber: r.registrationNumber,
     studentName: r.studentName,
-    institutionName: r.institutionName,
+    institutionName: instName(r.institutionName, r.institutionId),
     examName: r.examName,
     date: formatDate(r.createdAt),
     status: r.status,
-  })), [filtered]);
+  })), [filtered, instName]);
 
   const statusCounts = useMemo(() => ({
     all: registrations.length,
@@ -282,7 +286,7 @@ export default function RegistrationsPage() {
                     </TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
-                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.institutionName}</TableCell>
+                    <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instName(reg.institutionName, reg.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{formatDate(reg.createdAt)}</TableCell>
                     <TableCell><Badge status={reg.status} /></TableCell>
@@ -329,7 +333,7 @@ export default function RegistrationsPage() {
                 </div>
                 <div>
                   <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</label>
-                  <Input value={editingReg.institutionName} disabled className={cn("opacity-60", inputCls)} />
+                  <Input value={instName(editingReg.institutionName, editingReg.institutionId)} disabled className={cn("opacity-60", inputCls)} />
                 </div>
               </div>
               <div>

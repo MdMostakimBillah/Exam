@@ -146,7 +146,7 @@ export default function ResultPage() {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'Student Name', value: foundResult.studentName },
-                  { label: 'Institution', value: foundResult.institutionName },
+                  { label: 'Institution', value: foundResult.institutionNameEn || foundResult.institutionName },
                   { label: 'Class', value: foundResult.className },
                   { label: 'Exam', value: foundResult.examName },
                   { label: 'Roll', value: foundResult.roll },

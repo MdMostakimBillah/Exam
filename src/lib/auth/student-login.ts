@@ -84,7 +84,11 @@ async function recordAttempt(key: string, ip: string, ua: string, success: boole
   }
 }
 
-function newSession(student: Record<string, unknown>, institutionName: string): StudentSession {
+function newSession(
+  student: Record<string, unknown>,
+  institutionName: string,
+  institutionNameEn = ""
+): StudentSession {
   return {
     id: student.id as string,
     studentId: student.student_id as string,
@@ -94,6 +98,7 @@ function newSession(student: Record<string, unknown>, institutionName: string): 
     phone: (student.phone as string) || "",
     institutionId: student.institution_id as string,
     institutionName,
+    institutionNameEn,
     class: student.class as string,
     section: (student.section as string) || "",
     roll: (student.roll as string) || "",
@@ -135,7 +140,7 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
   const { data: student, error: studentError } = await supabaseAdmin
     .from("students")
     .select(
-      "id,student_id,first_name,last_name,email,phone,institution_id,class,section,roll,photo_url,user_id,institutions(name)"
+      "id,student_id,first_name,last_name,email,phone,institution_id,class,section,roll,photo_url,user_id,institutions(name,name_en)"
     )
     .eq("student_id", rawId)
     .maybeSingle();
@@ -192,7 +197,8 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
         success: true,
         student: newSession(
           { ...student, user_id: authUserId },
-          (student.institutions as { name?: string } | null)?.name || ""
+          (student.institutions as { name?: string } | null)?.name || "",
+          (student.institutions as { name_en?: string } | null)?.name_en || ""
         ),
       };
     }
@@ -212,7 +218,11 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
 
   return {
     success: true,
-    student: newSession(student, (student.institutions as { name?: string } | null)?.name || ""),
+    student: newSession(
+      student,
+      (student.institutions as { name?: string } | null)?.name || "",
+      (student.institutions as { name_en?: string } | null)?.name_en || ""
+    ),
   };
 }
 

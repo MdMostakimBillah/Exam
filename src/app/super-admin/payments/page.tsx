@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useAllPayments, useUpdatePayment, computeDue } from "@/lib/storage/payments";
+import { useInstitutionName } from "@/lib/storage/institutions";
 import { useUpdateRegistration, useAllRegistrations, useAllRegistrationsByInstitution } from "@/lib/storage/registrations";
 import { Payment, Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
@@ -35,6 +36,8 @@ export default function PaymentsPage() {
   const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Stored rows carry the Bangla institution name — English UI shows name_en.
+  const instName = useInstitutionName();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
@@ -65,12 +68,12 @@ export default function PaymentsPage() {
 
   const filtered = useMemo(() => payments.filter(p => {
     const q = search.toLowerCase();
-    const matchesSearch = p.institutionName.toLowerCase().includes(q) || p.transactionId.toLowerCase().includes(q) ||
+    const matchesSearch = instName(p.institutionName, p.institutionId).toLowerCase().includes(q) || p.transactionId.toLowerCase().includes(q) ||
       (p.reference && p.reference.toLowerCase().includes(q)) || p.studentName?.toLowerCase().includes(q);
     const matchesStatus = !statusFilter ||
       (statusFilter === "STUDENT_SUBMITTED" ? p.submittedByStudent && p.status === "PENDING" : p.status === statusFilter);
     return matchesSearch && matchesStatus;
-  }), [payments, search, statusFilter]);
+  }), [payments, search, statusFilter, instName]);
 
   // Due = all student fees − approved (PAID) payments
   const totalFees = useMemo(() => registrations.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0), [registrations]);
@@ -124,13 +127,13 @@ export default function PaymentsPage() {
 
   const pdfData = useMemo(() => filtered.map(p => ({
     studentName: p.studentName || "-",
-    institutionName: p.institutionName,
+    institutionName: instName(p.institutionName, p.institutionId),
     invoice: p.reference || p.receiptNumber || p.transactionId,
     amount: formatCurrency(p.amount),
     paymentMethod: p.paymentMethod,
     paymentDate: formatDate(p.paymentDate || p.date),
     status: p.status,
-  })), [filtered]);
+  })), [filtered, instName]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -348,7 +351,7 @@ export default function PaymentsPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{payment.institutionName}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instName(payment.institutionName, payment.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{payment.reference || payment.receiptNumber || payment.transactionId}</TableCell>
                     <TableCell className={`text-[11px] font-mono font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{formatCurrency(payment.amount)}</TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{payment.paymentMethod}</TableCell>
@@ -388,7 +391,7 @@ export default function PaymentsPage() {
                 <span className={`text-[11px] font-medium ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reviewingPayment.studentName ? (isBn ? "শিক্ষার্থী তথ্য" : "Student Info") : (isBn ? "প্রতিষ্ঠান তথ্য" : "Institution Info")}</span>
               </div>
               <p className={`text-sm font-medium ${isDark ? "text-white" : "text-zinc-900"}`}>{reviewingPayment.studentName || (isBn ? "প্রতিষ্ঠান পেমেন্ট" : "Institution Payment")}</p>
-              <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{reviewingPayment.institutionName}</p>
+              <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{instName(reviewingPayment.institutionName, reviewingPayment.institutionId)}</p>
             </div>
 
             {/* Payment Details */}
@@ -452,8 +455,8 @@ export default function PaymentsPage() {
           <div className="space-y-4">
             <p className={`text-sm ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
               {confirmAction.type === "approve"
-                ? (isBn ? `"${confirmAction.payment.institutionName}" এর ৳${confirmAction.payment.amount.toLocaleString()} পেমেন্ট অনুমোদন হবে। নিচ থেকে যেসব শিক্ষার্থী অনুমোদিত হবে নির্বাচন করুন।` : `"${confirmAction.payment.institutionName}"'s ৳${confirmAction.payment.amount.toLocaleString()} payment will be approved. Select which students to approve below.`)
-                : (isBn ? `"${confirmAction.payment.institutionName}" এর পেমেন্ট প্রত্যাখ্যাত হবে।` : `"${confirmAction.payment.institutionName}"'s payment will be rejected.`)}
+                ? (isBn ? `"${confirmAction.payment.institutionName}" এর ৳${confirmAction.payment.amount.toLocaleString()} পেমেন্ট অনুমোদন হবে। নিচ থেকে যেসব শিক্ষার্থী অনুমোদিত হবে নির্বাচন করুন।` : `"${instName(confirmAction.payment.institutionName, confirmAction.payment.institutionId)}"'s ৳${confirmAction.payment.amount.toLocaleString()} payment will be approved. Select which students to approve below.`)
+                : (isBn ? `"${confirmAction.payment.institutionName}" এর পেমেন্ট প্রত্যাখ্যাত হবে।` : `"${instName(confirmAction.payment.institutionName, confirmAction.payment.institutionId)}"'s payment will be rejected.`)}
             </p>
 
             {confirmAction.type === "approve" && (

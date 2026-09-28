@@ -151,7 +151,7 @@ function isWashoutColor(hex: string, threshold = 210): boolean {
 /** Big association watermark behind the card — the official seal.
  *  Uses the super-admin's uploaded image when set, otherwise the classic
  *  text crest built from the short/association names.
- *  Deliberately prominent: `size big` + 70% opacity so the seal is clearly
+ *  Deliberately prominent: `size big` + 40% opacity so the seal is clearly
  *  visible on screen AND in the printed PDF (a 5% seal vanished on print).
  *  Card sections paint no white over it, so the seal reads as one continuous
  *  graphic behind the whole page — content (z-index 1) still paints on top. */
@@ -166,7 +166,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           left: "50%",
           transform: "translate(-50%, -50%) rotate(-30deg)",
           zIndex: 0,
-          opacity: 0.7,
+          opacity: 0.4,
           pointerEvents: "none",
           userSelect: "none",
           lineHeight: 0,
@@ -194,7 +194,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
         left: "50%",
         transform: "translate(-50%, -50%) rotate(-30deg)",
         zIndex: 0,
-        opacity: 0.7,
+        opacity: 0.4,
         textAlign: "center",
         pointerEvents: "none",
         whiteSpace: "nowrap",

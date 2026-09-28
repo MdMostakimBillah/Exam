@@ -167,7 +167,7 @@ export default function InstitutionPaymentsPage() {
     // a notification failure must never block the submission itself)
     notifySuperAdmins(
       isBn ? 'নতুন পেমেন্ট জমা হয়েছে' : 'Payment submitted',
-      `${inst!.name} · ${formatCurrency(amount)} · ${isBn ? 'ইনভয়েস' : 'Invoice'} ${formData.invoiceNumber.trim()}`,
+      `${isBn ? inst!.name : (inst!.nameEn || inst!.name)} · ${formatCurrency(amount)} · ${isBn ? 'ইনভয়েস' : 'Invoice'} ${formData.invoiceNumber.trim()}`,
       'success',
       '/super-admin/payments'
     ).catch((e) => console.error('[payment-notification] notify super-admins failed (run migration 0008):', e));

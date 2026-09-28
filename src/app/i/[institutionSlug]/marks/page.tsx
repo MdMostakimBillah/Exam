@@ -89,7 +89,7 @@ export default function InstitutionMarksPage() {
         <MarksEntryPanel
           onPendingChange={setPending}
           scopedInstitutionId={inst.id}
-          scopedInstitutionName={inst.name}
+          scopedInstitutionName={isBn ? inst.name : (inst.nameEn || inst.name)}
         />
       </div>
     </div>
