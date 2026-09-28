@@ -155,7 +155,7 @@ function isWashoutColor(hex: string, threshold = 210): boolean {
  *  Uses the super-admin's uploaded image when set, otherwise the classic
  *  text crest built from the short/association names.
  *  Sized DOWN on request: 130mm wide (was 200mm — the seal ran off both
- *  page edges) at 40% opacity, so content stays the focus while the seal
+ *  page edges) at 35% opacity, so content stays the focus while the seal
  *  still reads on screen AND in the printed PDF (a 5% seal vanished on
  *  print). Card sections paint no white over it, so the seal reads as one
  *  continuous graphic behind the whole page — content (z-index 1) still
@@ -171,7 +171,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           left: "50%",
           transform: "translate(-50%, -50%) rotate(-30deg)",
           zIndex: 0,
-          opacity: 0.4,
+          opacity: 0.35,
           pointerEvents: "none",
           userSelect: "none",
           lineHeight: 0,
@@ -199,7 +199,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
         left: "50%",
         transform: "translate(-50%, -50%) rotate(-30deg)",
         zIndex: 0,
-        opacity: 0.4,
+        opacity: 0.35,
         textAlign: "center",
         pointerEvents: "none",
         whiteSpace: "nowrap",
