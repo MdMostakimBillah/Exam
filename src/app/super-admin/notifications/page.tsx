@@ -6,8 +6,8 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
-import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useCreateNotification, getNotifications } from "@/lib/storage/notifications";
-import { getCurrentUser } from "@/lib/auth/auth";
+import { useMarkNotificationRead, useMarkAllNotificationsRead, useCreateNotification, getNotifications } from "@/lib/storage/notifications";
+import { useAuth } from "@/lib/auth/auth";
 import { Notification } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
@@ -31,7 +31,9 @@ export default function NotificationsPage() {
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<Notification["type"]>("info");
 
-  const user = useMemo(() => getCurrentUser(), []);
+  // getCurrentUser() is a stub that always returns null (auth is async) —
+  // the hook is the real source, otherwise this page never loads anything.
+  const { user } = useAuth();
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   const readCount = useMemo(() => notifications.length - unreadCount, [notifications.length, unreadCount]);
 
@@ -70,16 +72,13 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     const loadNotifications = async () => {
-      if (mounted) {
-        const user = getCurrentUser();
-        if (user) {
-          const notifications = await getNotifications(user.id);
-          setNotifications(notifications);
-        }
+      if (mounted && user) {
+        const notifications = await getNotifications(user.id);
+        setNotifications(notifications);
       }
     };
     loadNotifications();
-  }, [mounted, refreshKey]);
+  }, [mounted, refreshKey, user]);
 
   if (!mounted) return <NotificationsSkeleton isDark={isDark} />;
 

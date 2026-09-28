@@ -267,6 +267,7 @@ export default function HomePage() {
             <a href="#features" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.features")}</a>
             <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.platform")}</a>
             <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.workflow")}</a>
+            <Link href="/apply" className={`text-sm font-medium transition-colors ${textNav}`}>{t("nav.apply")}</Link>
             <Link href="/result" className={`text-sm transition-colors ${textNav}`}>{t("nav.results")}</Link>
             <Link href="/verify-certificate" className={`text-sm transition-colors ${textNav}`}>{t("nav.verify")}</Link>
           </nav>
@@ -298,6 +299,8 @@ export default function HomePage() {
               <a href="#features" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.features")}</a>
               <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.platform")}</a>
               <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.workflow")}</a>
+              <Link href="/apply" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.apply")}</Link>
+              <Link href="/status" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.track")}</Link>
               <Link href="/result" className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.results")}</Link>
               <Link href="/verify-certificate" className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.verify")}</Link>
             </div>
@@ -333,14 +336,23 @@ export default function HomePage() {
 
               <p className={`text-base sm:text-lg max-w-lg leading-relaxed ${textSec}`}>{heroSubtitle}</p>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <Link href="/register" className={`inline-flex items-center gap-2 px-8 py-4 rounded-md text-sm font-medium transition-all hover:scale-105 ${btnPrimary}`}>
-                  {t("hero.ctaRegister")} <ArrowRight className="h-4 w-4" />
+              <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
+                <Link href="/apply" className={`inline-flex items-center gap-2 px-5 py-4 rounded-md text-sm font-medium whitespace-nowrap transition-all hover:scale-105 ${btnPrimary}`}>
+                  {t("hero.ctaApply")} <ArrowRight className="h-4 w-4" />
                 </Link>
-                <a href="#platform" className={`inline-flex items-center gap-2 px-8 py-4 rounded-md text-sm font-medium transition-all hover:scale-105 ${btnSecondary}`}>
+                <Link href="/register" className={`inline-flex items-center gap-2 px-5 py-4 rounded-md text-sm font-medium whitespace-nowrap transition-all hover:scale-105 ${btnSecondary}`}>
+                  {t("hero.ctaRegister")}
+                </Link>
+                <a href="#platform" className={`inline-flex items-center gap-2 px-5 py-4 rounded-md text-sm font-medium whitespace-nowrap transition-all hover:scale-105 ${btnSecondary}`}>
                   {t("hero.ctaExplore")}
                 </a>
               </div>
+
+              <p className={`text-xs -mt-4 ${textSec}`}>
+                <Link href="/status" className="hover:underline text-brand-accent">
+                  {t("hero.trackLink")}
+                </Link>
+              </p>
 
               <div className="flex items-center gap-4 pt-2">
                 <div className="flex -space-x-2">
@@ -587,6 +599,8 @@ export default function HomePage() {
               <ul className="space-y-2.5">
                 <li><a href="#features" className={`text-xs transition-colors ${textNav}`}>Features</a></li>
                 <li><a href="#platform" className={`text-xs transition-colors ${textNav}`}>Platform</a></li>
+                <li><Link href="/apply" className={`text-xs transition-colors ${textNav}`}>Apply for Exam</Link></li>
+                <li><Link href="/status" className={`text-xs transition-colors ${textNav}`}>Track Application</Link></li>
                 <li><Link href="/pricing" className={`text-xs transition-colors ${textNav}`}>Pricing</Link></li>
               </ul>
             </div>

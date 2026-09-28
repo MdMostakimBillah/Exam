@@ -30,7 +30,9 @@
     "register": { "en": "Register", "bn": "নিবন্ধন" },
     "registerInstitution": { "en": "Register Institution", "bn": "প্রতিষ্ঠান নিবন্ধন" },
     "checkResult": { "en": "Check Result", "bn": "ফলাফল দেখুন" },
-    "verifyCertificate": { "en": "Verify Certificate", "bn": "সার্টিফিকেট যাচাই" }
+    "verifyCertificate": { "en": "Verify Certificate", "bn": "সার্টিফিকেট যাচাই" },
+    "apply": { "en": "Apply", "bn": "আবেদন" },
+    "track": { "en": "Track", "bn": "অবস্থা" }
   },
   "hero": {
     "badge": { "en": "New · Scholarship Examination 2026 is now open →", "bn": "নতুন · ২০২৬ সালের বৃত্তি পরীক্ষা এখন খোলা →" },
@@ -38,7 +40,9 @@
     "title2": { "en": "Simplified.", "bn": "সহজ করা হয়েছে।" },
     "subtitle": { "en": "A complete platform for institutions to register students, manage scholarship examinations, publish results, and generate official certificates.", "bn": "ছাত্র নিবন্ধন, বৃত্তি পরীক্ষা পরিচালনা, ফলাফল প্রকাশ এবং আনুষ্ঠানিক সার্টিফিকেট তৈরির জন্য প্রতিষ্ঠানগুলোর জন্য একটি সম্পূর্ণ প্ল্যাটফর্ম।" },
     "ctaRegister": { "en": "Register Institution", "bn": "প্রতিষ্ঠান নিবন্ধন" },
-    "ctaExplore": { "en": "Explore Platform", "bn": "প্ল্যাটফর্ম অনুসন্ধান" }
+    "ctaExplore": { "en": "Explore Platform", "bn": "প্ল্যাটফর্ম অনুসন্ধান" },
+    "ctaApply": { "en": "Apply for Examination", "bn": "পরীক্ষায় আবেদন করুন" },
+    "trackLink": { "en": "Already applied? Track your application →", "bn": "আবেদন করেছেন? আবেদনের অবস্থা দেখুন →" }
   },
   "dashboard": {
     "previewLabel": { "en": "Dashboard Preview", "bn": "ড্যাশবোর্ড পূর্বরূপ" },
