@@ -172,7 +172,9 @@ async function loadFont(doc: any) {
 // Same rule as the admit card: BIG, centred, 35% opacity, under the content,
 // on every page of every PDF.
 const WM_OPACITY = 0.35;
-const WM_ANGLE = 30; // degrees, counter-clockwise — matches the card's -30deg tilt
+const WM_ANGLE = 0; // degrees — flat/horizontal, matching the card's un-rotated
+// watermark (was 30° counter-clockwise). The centring math below works for any
+// angle, so only this constant changes if the tilt ever comes back.
 
 interface WmImage {
   dataUrl: string;
@@ -215,7 +217,7 @@ async function loadWatermarkImage(src: string): Promise<WmImage | null> {
 }
 
 /**
- * Draw the watermark — centred on the page, rotated 30°, 35% opacity.
+ * Draw the watermark — centred on the page, un-rotated, 35% opacity.
  * Must be called BEFORE the page's content so the seal sits behind it.
  *
  * jsPDF's rotated addImage anchors the rotation at the rect's bottom-left
