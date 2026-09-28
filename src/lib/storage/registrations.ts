@@ -170,10 +170,11 @@ export function useAllRegistrationsByInstitution(institutionId: string, sessionI
   });
 }
 
-export function useAllRegistrations(sessionId?: string) {
+export function useAllRegistrations(sessionId?: string, enabled = true) {
   return useQuery({
     queryKey: ['registrations', 'all', sessionId],
     queryFn: () => fetchAllRegistrations(sessionId),
+    enabled,
     staleTime: 30 * 1000,
   });
 }

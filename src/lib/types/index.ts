@@ -71,6 +71,9 @@ export interface Institution {
   logo?: string;
   /** Principal's signature image URL — shown on the admit-card footer. */
   principalSignature?: string;
+  /** Super-admin permission (migration 0033): this institution may open the
+   *  Admit Cards page and download ITS OWN cards. Off until granted. */
+  allowAdmitCardDownload?: boolean;
   totalStudents: number;
   totalApplications: number;
   createdAt: string;

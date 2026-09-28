@@ -30,16 +30,26 @@ function mapAdmitCard(data: any): AdmitCard {
   };
 }
 
-export async function fetchAdmitCards(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<AdmitCard[]> {
+export async function fetchAdmitCards(
+  sessionId?: string,
+  page: number = 1,
+  pageSize: number = DEFAULT_PAGE_SIZE,
+  /** Institution scope — the Admit Cards page of a single institution.
+   *  RLS already hides foreign rows; this adds the indexed equality so a
+   *  super admin opening the same page sees only that institution too. */
+  institutionId?: string
+): Promise<AdmitCard[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const { data, error } = await supabase
+  let query = supabase
     .from(SUPABASE_TABLE)
     .select(ADMIT_CARD_COLUMNS)
-    .eq('session_id', sid)
+    .eq('session_id', sid);
+  if (institutionId) query = query.eq('institution_id', institutionId);
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .range(from, to);
   if (error || !data) return [];
@@ -83,10 +93,10 @@ export async function deleteAdmitCard(id: string): Promise<boolean> {
   return !error;
 }
 
-export function useAdmitCards(sessionId?: string, page?: number, pageSize?: number) {
+export function useAdmitCards(sessionId?: string, page?: number, pageSize?: number, institutionId?: string) {
   return useQuery({
-    queryKey: ['admit_cards', sessionId, page, pageSize],
-    queryFn: () => fetchAdmitCards(sessionId, page, pageSize),
+    queryKey: ['admit_cards', sessionId, page, pageSize, institutionId],
+    queryFn: () => fetchAdmitCards(sessionId, page, pageSize, institutionId),
     staleTime: 60 * 1000,
   });
 }
@@ -226,20 +236,51 @@ export async function generateAdmitCards(input: GenerateAdmitCardsInput): Promis
       exam_center: centerText,
       qr_code: `/result?reg=${reg.registrationNumber}`,
       instructions: DEFAULT_INSTRUCTIONS,
+      // Scope column (migration 0033): lets each institution's page fetch
+      // only its own cards. Stripped by the retry below while the
+      // migration is still pending, so generation never breaks.
+      institution_id: reg.institutionId || null,
     });
   }
 
   // Bulk insert; on a race (unique violation) fall back to row-by-row.
   let created = 0;
-  if (rows.length > 0) {
-    const { error } = await supabase.from('admit_cards').insert(rows);
-    if (!error) created = rows.length;
-    else if (error.code === '23505') {
-      for (const row of rows) {
+  const insertRows = async (data: Record<string, unknown>[]): Promise<number> => {
+    const { error } = await supabase.from('admit_cards').insert(data);
+    if (!error) return data.length;
+    if (error.code === '23505') {
+      let n = 0;
+      for (const row of data) {
         const { error: rowError } = await supabase.from('admit_cards').insert(row);
-        if (!rowError) created++;
+        if (!rowError) n++;
       }
-    } else throw error;
+      return n;
+    }
+    throw error;
+  };
+  if (rows.length > 0) {
+    try {
+      created = await insertRows(rows);
+    } catch (err) {
+      // The scope column is new (migration 0033) — while it is pending,
+      // PostgREST refuses the payload (PGRST204 "Could not find the
+      // 'institution_id' column …") and Postgres refuses the query
+      // (42703 undefined_column). Generation must keep working either way.
+      const e = err as { code?: string; message?: string };
+      const missingScope =
+        e.code === 'PGRST204'
+          ? /'institution_id' column/.test(e.message ?? '')
+          : e.code === '42703' && /institution_id/.test(e.message ?? '');
+      if (missingScope) {
+        created = await insertRows(
+          rows.map((r) => {
+            const copy = { ...r };
+            delete copy.institution_id;
+            return copy;
+          })
+        );
+      } else throw err;
+    }
   }
 
   // Seat accounting for the centers we handed out this run.

@@ -7,18 +7,30 @@ import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/aut
 
 const SUPABASE_TABLE = 'institutions';
 
-const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,total_students,total_applications,created_at,updated_at';
+const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,allow_admit_card_download,total_students,total_applications,created_at,updated_at';
 
 /**
- * Same list without migration 0022's column. PostgREST rejects an unknown
- * column in the WHOLE select, so while 0022 is still pending every read
- * (and any profile save) would fail — retry once with this list instead so
- * the app keeps working until the SQL has been applied.
+ * Same list without the columns added by migrations 0022 and 0033.
+ * PostgREST rejects an unknown column in the WHOLE select, so while either
+ * is still pending every read (and any profile save) would fail — retry once
+ * with this list instead so the app keeps working until the SQL is applied.
  */
-const LEGACY_INSTITUTION_COLUMNS = INSTITUTION_COLUMNS.replace(',principal_signature_url', '');
+const LEGACY_INSTITUTION_COLUMNS = INSTITUTION_COLUMNS
+  .replace(',principal_signature_url', '')
+  .replace(',allow_admit_card_download', '');
 
 const isPreMigrationError = (error: unknown): boolean =>
-  /principal_signature_url/.test(String((error as { message?: string })?.message ?? ''));
+  /(principal_signature_url|allow_admit_card_download)/.test(
+    String((error as { message?: string })?.message ?? '')
+  );
+
+/** Which not-yet-applied column the failed statement complained about. */
+const missingLegacyColumn = (error: unknown): string | null => {
+  const msg = String((error as { message?: string })?.message ?? '');
+  if (/allow_admit_card_download/.test(msg)) return 'allow_admit_card_download';
+  if (/principal_signature_url/.test(msg)) return 'principal_signature_url';
+  return null;
+};
 
 const INSTITUTIONS_STALE_TIME = 60 * 1000; // 1 min (was 5 min) - keeps lists fresh after RLS or data fixes
 
@@ -40,6 +52,7 @@ function mapInstitution(data: any): Institution {
     status: data.status,
     logo: data.logo_url,
     principalSignature: data.principal_signature_url ?? '',
+    allowAdmitCardDownload: data.allow_admit_card_download ?? false,
     totalStudents: data.total_students,
     totalApplications: data.total_applications,
     createdAt: data.created_at,
@@ -156,16 +169,29 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   if (data.status !== undefined) u.status = data.status;
   if (data.logo !== undefined) u.logo_url = data.logo;
   if (data.principalSignature !== undefined) u.principal_signature_url = data.principalSignature;
+  if (data.allowAdmitCardDownload !== undefined) u.allow_admit_card_download = data.allowAdmitCardDownload;
   let { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(INSTITUTION_COLUMNS).single();
-  if (error && isPreMigrationError(error)) {
-    // 0022 not applied yet: drop the new column and retry (the failed
+  const missingColumn = error && isPreMigrationError(error) ? missingLegacyColumn(error) : null;
+  if (missingColumn) {
+    // 0022/0033 not applied yet: drop the new column and retry (the failed
     // statement changed nothing, so this is not a partial save).
     delete u.principal_signature_url;
+    delete u.allow_admit_card_download;
     ({ data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(LEGACY_INSTITUTION_COLUMNS).single());
   }
   if (error) {
     console.error("[updateInstitution] Supabase error:", error.message, error.code, error.details);
     throw error;
+  }
+  // The caller asked for a column the database does not have yet: the other
+  // fields saved, but this one silently didn't — say so instead of lying.
+  if (
+    missingColumn === 'allow_admit_card_download' &&
+    data.allowAdmitCardDownload !== undefined
+  ) {
+    throw new Error(
+      'Migration 0033 not applied yet — run supabase/migrations/0033_admit_card_download_permission.sql in the Supabase SQL Editor'
+    );
   }
   return mapInstitution(result);
 }

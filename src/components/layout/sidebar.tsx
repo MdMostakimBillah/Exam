@@ -87,6 +87,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
     { label: 'Dashboard', labelBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, href: `/i/${slug}` },
     { label: 'Registrations', labelBn: 'নিবন্ধন', icon: ClipboardList, href: `/i/${slug}/registrations` },
     { label: 'Students', labelBn: 'শিক্ষার্থী', icon: Users, href: `/i/${slug}/students` },
+    { label: 'Admit Cards', labelBn: 'প্রবেশপত্র', icon: FileCheck, href: `/i/${slug}/admit-cards` },
     { label: 'Marks', labelBn: 'নম্বর', icon: BookOpen, href: `/i/${slug}/marks` },
     { label: 'Results', labelBn: 'ফলাফল', icon: Award, href: `/i/${slug}/results` },
     { label: 'Certificates', labelBn: 'সার্টিফিকেট', icon: GraduationCap, href: `/i/${slug}/certificates` },
