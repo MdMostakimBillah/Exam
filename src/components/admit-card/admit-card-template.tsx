@@ -8,18 +8,21 @@ import { DEFAULT_INSTRUCTIONS } from "@/lib/storage/admit-cards";
  * Admit card — National-University-style PORTRAIT A4 (2026 redesign).
  *
  * Portrait A4 (210×297mm), black-on-white like the NU reference card:
- *   1. White masthead — photo · logo | association overline, institution,
+ *   1. White masthead — photo | association overline, institution,
  *      exam title & period | QR — then a centred bordered "Admit Card" pill
  *      and a thin accent rule. No solid colour band: a filled header both
  *      guzzles toner in B&W and only looks right when the accent happens to
- *      print dark, so colour lives on the pill border / rule only.
+ *      print dark, so colour lives on the pill border / rule only. The
+ *      masthead logo image was removed on request — the card carries the
+ *      institution's name in type, the photo box already anchors the left.
  *   2. Fully-bordered label/value grid: Exam Code/Roll · Name/Reg No ·
  *      Father/Session · Mother/DOB · Class/Class Roll · College · Center.
  *   3. "Subject Code & name" table — grey header row + two subject pairs
- *      per row (code | name | code | name), every cell ruled #111. No
- *      per-subject date/time column: the NU card has none, the masthead
- *      already carries the exam period, and at 10 subjects those extra
- *      ~100px of wrapping are what pushes the footer off a 297mm page.
+ *      per row (code | name | code | name), every cell ruled #111, with the
+ *      subject's exam time pinned to the RIGHT corner of its name cell
+ *      ("10:00–13:00", from the routine; blank when unscheduled). Time only,
+ *      never wrapped — it rides inside the existing row so the 297mm
+ *      vertical budget is untouched.
  *   4. ONE bordered signature box split in two: Seal & Signature of
  *      Principal | Controller of Examinations (MD signature). The dashed
  *      perforation and tear-off QR stub are gone — NU has neither.
@@ -151,10 +154,12 @@ function isWashoutColor(hex: string, threshold = 210): boolean {
 /** Big association watermark behind the card — the official seal.
  *  Uses the super-admin's uploaded image when set, otherwise the classic
  *  text crest built from the short/association names.
- *  Deliberately prominent: `size big` + 40% opacity so the seal is clearly
- *  visible on screen AND in the printed PDF (a 5% seal vanished on print).
- *  Card sections paint no white over it, so the seal reads as one continuous
- *  graphic behind the whole page — content (z-index 1) still paints on top. */
+ *  Sized DOWN on request: 130mm wide (was 200mm — the seal ran off both
+ *  page edges) at 40% opacity, so content stays the focus while the seal
+ *  still reads on screen AND in the printed PDF (a 5% seal vanished on
+ *  print). Card sections paint no white over it, so the seal reads as one
+ *  continuous graphic behind the whole page — content (z-index 1) still
+ *  paints on top. The text-crest fallback is scaled to match (90px). */
 function Watermark({ brand }: { brand: BrandingSettings }) {
   if (brand.brandWatermark) {
     return (
@@ -180,7 +185,7 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
           // maxWidth:none — Tailwind preflight's `img{max-width:100%}` would
           // clamp this to the abs-wrapper's available width (~105mm) and the
           // seal would never reach its full size.
-          style={{ width: "200mm", maxWidth: "none", height: "auto", display: "block" }}
+          style={{ width: "130mm", maxWidth: "none", height: "auto", display: "block" }}
         />
       </div>
     );
@@ -203,20 +208,20 @@ function Watermark({ brand }: { brand: BrandingSettings }) {
     >
       <div
         style={{
-          fontSize: "140px",
+          fontSize: "90px",
           fontWeight: 700,
-          letterSpacing: "14px",
+          letterSpacing: "9px",
           lineHeight: 1,
-          border: `7px solid ${BLACK}`,
-          padding: "16px 30px 12px",
+          border: `5px solid ${BLACK}`,
+          padding: "12px 22px 9px",
         }}
       >
         {brand.brandShort || "BMA"}
       </div>
-      <div style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "3px", marginTop: "12px" }}>
+      <div style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "2px", marginTop: "8px" }}>
         {(brand.brandName || "Bangladesh Madrasah Association").toUpperCase()}
       </div>
-      <div style={{ fontSize: "21px", letterSpacing: "2px", marginTop: "5px" }}>
+      <div style={{ fontSize: "14px", letterSpacing: "1.5px", marginTop: "4px" }}>
         {brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন"}
       </div>
     </div>
@@ -280,26 +285,33 @@ function formatStamp(iso: string, bn: boolean): string {
   }
 }
 
-/** Bordered QR box — used top-right (masthead) and in the verify column. */
+/** Bordered QR box — used top-right (masthead) and in the verify column.
+ *
+ *  PRINT CONTRACT: the frame (border + padding + white fill) lives on the
+ *  INNER element, never on an `inline-block` wrapper. html2canvas 1.4.1
+ *  silently skips an <img> whose direct parent is `inline-block` WITH a
+ *  painted background/border — which is exactly why both QRs rendered in
+ *  the preview but came out as empty boxes in every downloaded PDF, while
+ *  the flex/block-framed images (photo, logo, watermark) printed fine.
+ *  Wrapper keeps only `display:inline-block` + `line-height:0` so the box
+ *  still hugs the QR. `content-box` is explicit because Tailwind preflight
+ *  would otherwise make the frame eat into the 84px image. */
 function QrBox({ dataUrl, size }: { dataUrl: string; size: number }) {
+  const frame: React.CSSProperties = {
+    boxSizing: "content-box",
+    border: `1px solid ${INK}`,
+    padding: "3px",
+    background: "#ffffff",
+  };
   return (
-    <div
-      style={{
-        border: `1px solid ${INK}`,
-        padding: "3px",
-        background: "#ffffff",
-        boxSizing: "border-box",
-        display: "inline-block",
-        lineHeight: 0,
-      }}
-    >
+    <div style={{ display: "inline-block", lineHeight: 0 }}>
       {dataUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={dataUrl}
           alt="QR"
           crossOrigin="anonymous"
-          style={{ width: `${size}px`, height: `${size}px`, display: "block" }}
+          style={{ width: `${size}px`, height: `${size}px`, display: "block", ...frame }}
         />
       ) : (
         <div
@@ -311,6 +323,7 @@ function QrBox({ dataUrl, size }: { dataUrl: string; size: number }) {
             justifyContent: "center",
             fontSize: "11px",
             color: MUTE,
+            ...frame,
           }}
         >
           QR
@@ -380,8 +393,11 @@ function GridRow({
   );
 }
 
-/** One row of the subject table — two (code | name) pairs, rules #111.
- *  Code + name only (see header docblock): no date/time pinning.
+/** One row of the subject table — two (code | name · time) pairs, rules #111.
+ *  The subject's exam time ("10:00–13:00", from the routine) is pinned to the
+ *  RIGHT corner of its name cell; blank when the subject has no routine slot.
+ *  Time only (never a date, never wrapped) — it rides inside the existing row
+ *  so the 297mm vertical budget is untouched.
  *  `dense` tightens vertical padding on very long subject lists (>6 pairs)
  *  so a 14-subject exam still fits the 297mm page at full size. */
 function SubjectRow({
@@ -397,6 +413,11 @@ function SubjectRow({
 }) {
   const pad = dense ? "4px 8px" : "5px 8px";
   const cellFor = (s?: CardSubject, right?: boolean) => {
+    // Routine slot: "10:00–13:00" — one side only falls back to that side.
+    const time =
+      s?.startTime && s?.endTime
+        ? `${s.startTime}–${s.endTime}`
+        : s?.startTime || s?.endTime || "";
     return (
       <React.Fragment>
         {/* code */}
@@ -437,6 +458,21 @@ function SubjectRow({
           <span style={{ flex: 1, minWidth: 0, textAlign: "left", wordBreak: "break-word" }}>
             {s?.name || ""}
           </span>
+          {/* Exam time pinned to the right corner of the cell (marginLeft,
+              not gap — html2canvas 1.4.1 does not lay out flex gap). */}
+          {time ? (
+            <span
+              style={{
+                fontSize: "10px",
+                lineHeight: 1.2,
+                color: MUTE,
+                whiteSpace: "nowrap",
+                marginLeft: "8px",
+              }}
+            >
+              {time}
+            </span>
+          ) : null}
         </div>
       </React.Fragment>
     );
@@ -643,14 +679,14 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
    *  lands inside 297mm — font size stays 10px, only leading/margins trim. */
   const denseInstructions = instructionItems.length > 11;
 
-  // Masthead logo: association logo first, else the institution's own logo.
-  const mastheadLogo = brand.brandLogo || view.institutionLogo || "";
+  // Masthead logo removed on request — the institution's name is set in type
+  // at the centre of the masthead and the photo box anchors the left edge.
 
   return (
     <div lang={view.lang} className="admit-card-page" style={rootStyle}>
       <Watermark brand={brand} />
 
-      {/* ── 1. White masthead: photo · logo | names | QR ──────────── */}
+      {/* ── 1. White masthead: photo | names | QR ─────────────────── */}
       <div
         style={{
           position: "relative",
@@ -666,7 +702,7 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
             justifyContent: "space-between",
           }}
         >
-          {/* Left: photo + institution/association logo */}
+          {/* Left: student photo box (logo removed on request) */}
           <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
             <div
               style={{
@@ -697,44 +733,6 @@ export function AdmitCardTemplate({ view }: { view: CardView }) {
                 />
               ) : (
                 <span style={{ fontSize: "11px", color: MUTE }}>{L("Photo", "ছবি")}</span>
-              )}
-            </div>
-            <div
-              style={{
-                marginLeft: "9px",
-                width: "46px",
-                height: "46px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-                boxSizing: "border-box",
-                flexShrink: 0,
-              }}
-            >
-              {mastheadLogo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={mastheadLogo}
-                  alt=""
-                  crossOrigin="anonymous"
-                  style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-                />
-              ) : (
-                <span
-                  style={{
-                    fontSize: "15px",
-                    fontWeight: 800,
-                    color: BLACK,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                    border: `1.5px solid ${INK}`,
-                    padding: "5px 6px",
-                    lineHeight: 1,
-                  }}
-                >
-                  {brandShort.trim().slice(0, 3)}
-                </span>
               )}
             </div>
           </div>
