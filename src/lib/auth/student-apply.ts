@@ -117,21 +117,34 @@ async function currentSession(): Promise<{ id: string; name: string } | null> {
 }
 
 /**
- * The exam public applications attach to: an OPEN exam if one exists,
- * otherwise the most recently created exam of the current session.
- * (The institution wizard also lets staff pick any exam of the session.)
+ * The exam public applications attach to: an exam whose status is OPEN.
+ * Students may only apply while the exam is open — there is deliberately
+ * NO fallback to a closed/draft exam.
  */
-async function pickExam(sessionId: string): Promise<ExamRow | null> {
+async function pickOpenExam(sessionId: string): Promise<ExamRow | null> {
   const { data, error } = await supabaseAdmin
     .from("exams")
     .select(
       "id,name,status,registration_fee,registration_start_date,registration_end_date,exam_date,classes"
     )
     .eq("session_id", sessionId)
+    .eq("status", "OPEN")
     .order("created_at", { ascending: true });
   if (error || !data || data.length === 0) return null;
-  const exams = data as ExamRow[];
-  return exams.find((e) => e.status === "OPEN") ?? exams[exams.length - 1];
+  return (data as ExamRow[])[0];
+}
+
+/** Most recent exam of the session — only used to report WHY applying is closed. */
+async function latestExam(
+  sessionId: string
+): Promise<{ name: string; status: string } | null> {
+  const { data } = await supabaseAdmin
+    .from("exams")
+    .select("name,status")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return (data as { name: string; status: string }[] | null)?.[0] ?? null;
 }
 
 /** Max STU-YYYY-NNNN for an institution+session, next in sequence. */
@@ -165,10 +178,15 @@ function exactIlike(value: string): string {
 export interface ApplyOptions {
   ok: boolean;
   error?: string;
+  /** Set when no exam is OPEN: lets the UI explain the block bilingually. */
+  examName?: string;
+  examStatus?: string;
   sessionName?: string;
   exam?: {
     id: string;
     name: string;
+    /** Live exam status — only "OPEN" ever reaches the form. */
+    status: string;
     fee: number;
     startDate: string | null;
     endDate: string | null;
@@ -191,11 +209,14 @@ export async function getApplyFormOptions(): Promise<ApplyOptions> {
         error: "No active academic session. Please try again later.",
       };
     }
-    const exam = await pickExam(session.id);
+    const exam = await pickOpenExam(session.id);
     if (!exam) {
+      // Students may only apply while the exam status is OPEN.
+      const latest = await latestExam(session.id);
       return {
         ok: false,
         error: "Registration is not open right now. Please check back later.",
+        ...(latest ? { examName: latest.name, examStatus: latest.status } : {}),
       };
     }
 
@@ -238,6 +259,7 @@ export async function getApplyFormOptions(): Promise<ApplyOptions> {
       exam: {
         id: exam.id,
         name: exam.name,
+        status: exam.status,
         fee: Number(exam.registration_fee ?? 0),
         startDate: exam.registration_start_date,
         endDate: exam.registration_end_date,
@@ -358,14 +380,18 @@ export async function submitStudentApplication(
       };
     }
 
-    /* ---- current session + exam ---- */
+    /* ---- current session + exam (apply only while the exam is OPEN) ---- */
     const session = await currentSession();
     if (!session) {
       return { ok: false, error: "No active academic session." };
     }
-    const exam = await pickExam(session.id);
+    const exam = await pickOpenExam(session.id);
     if (!exam) {
-      return { ok: false, error: "Registration is not open right now." };
+      return {
+        ok: false,
+        error:
+          "Registration is not open. You can only apply while the examination status is Open.",
+      };
     }
     if (exam.classes && exam.classes.length > 0 && !exam.classes.includes(classId)) {
       return { ok: false, error: "This class is not offered in the current examination." };

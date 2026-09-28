@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import {
@@ -25,6 +26,17 @@ import {
 const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M} .'’\-]{1,59}$/u;
 const PHONE_RE = /^[0-9+][0-9+\-() ]{5,19}$/;
 const GENDERS = ["MALE", "FEMALE", "OTHER"] as const;
+
+/** Bilingual exam-status labels (tracking shown on /apply and /status). */
+const EXAM_STATUS_LABELS: Record<string, { en: string; bn: string }> = {
+  DRAFT: { en: "Being prepared", bn: "প্রস্তুতি চলছে" },
+  OPEN: { en: "Registration open", bn: "নিবন্ধন খোলা" },
+  CLOSED: { en: "Registration closed", bn: "নিবন্ধন বন্ধ" },
+  EXAM_COMPLETED: { en: "Exam completed", bn: "পরীক্ষা সম্পন্ন" },
+  RESULT_PROCESSING: { en: "Result processing", bn: "ফলাফল প্রক্রিয়ায়" },
+  PUBLISHED: { en: "Result published", bn: "ফলাফল প্রকাশিত" },
+  ARCHIVED: { en: "Archived", bn: "সংরক্ষিত" },
+};
 
 type Step = 1 | 2 | 3;
 
@@ -47,6 +59,10 @@ export default function ApplyPage() {
   const { t, lang } = useLang();
   const isDark = theme === "dark";
   const L = useCallback((en: string, bn: string) => (lang === "bn" ? bn : en), [lang]);
+  const exLabel = (status: string) => {
+    const entry = EXAM_STATUS_LABELS[status];
+    return entry ? (lang === "bn" ? entry.bn : entry.en) : status;
+  };
 
   const [options, setOptions] = useState<ApplyOptions | null>(null);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -349,13 +365,28 @@ export default function ApplyPage() {
 
         {!optionsLoading && optionsError && (
           <Card>
-            <CardContent className="p-6 text-center">
-              <p className={`text-sm ${isDark ? "text-amber-300" : "text-amber-700"}`}>{optionsError}</p>
-              <Link href="/">
-                <Button variant="secondary" className="mt-4">
-                  {L("Back to Home", "হোমে ফিরুন")}
-                </Button>
-              </Link>
+            <CardContent className="p-6 text-center space-y-3">
+              <p className={`text-sm ${isDark ? "text-amber-300" : "text-amber-700"}`}>
+                {options?.examStatus && options.examName
+                  ? L(
+                      `Registration is not open right now. The examination "${options.examName}" has status "${exLabel(options.examStatus)}" — students can only apply while the exam status is Open.`,
+                      `এখন নিবন্ধন খোলা নেই। "${options.examName}"পরীক্ষার বর্তমান স্ট্যাটাস "${exLabel(options.examStatus)}" — পরীক্ষার স্ট্যাটাস খোলা থাকলে তবেই শিক্ষার্থীরা আবেদন করতে পারবে।`
+                    )
+                  : optionsError}
+              </p>
+              {options?.examStatus && (
+                <div className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs ${isDark ? "border-white/10 bg-white/5 text-zinc-300" : "border-gray-200 bg-gray-50 text-gray-700"}`}>
+                  <span className="font-medium">{options.examName}</span>
+                  <Badge status={options.examStatus}>{exLabel(options.examStatus)}</Badge>
+                </div>
+              )}
+              <div>
+                <Link href="/">
+                  <Button variant="secondary">
+                    {L("Back to Home", "হোমে ফিরুন")}
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -370,6 +401,11 @@ export default function ApplyPage() {
                     {options.exam?.name}
                   </span>
                   {options.sessionName && <span className="opacity-70"> · {options.sessionName}</span>}
+                  {options.exam?.status && (
+                    <Badge status={options.exam.status} className="ml-2 align-middle">
+                      {exLabel(options.exam.status)}
+                    </Badge>
+                  )}
                 </span>
                 <span>
                   {L("Fee", "ফি")}: <span className={`font-semibold ${isDark ? "text-zinc-100" : "text-gray-900"}`}>৳{options.exam?.fee}</span>

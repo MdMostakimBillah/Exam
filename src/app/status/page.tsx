@@ -299,13 +299,23 @@ export default function StatusPage() {
               L("Examination", "পরীক্ষা"),
               <Badge status={status.exam.status}>{label(EXAM_LABELS, status.exam.status)}</Badge>,
               <>
-                {status.exam.name}
-                {status.exam.examDate && (
-                  <>
-                    {" · "}
-                    {L("Exam day", "পরীক্ষার দিন")}:{" "}
-                    {new Date(status.exam.examDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
-                  </>
+                <div>
+                  {status.exam.name}
+                  {status.exam.examDate && (
+                    <>
+                      {" · "}
+                      {L("Exam day", "পরীক্ষার দিন")}:{" "}
+                      {new Date(status.exam.examDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
+                    </>
+                  )}
+                </div>
+                {status.exam.startDate && status.exam.endDate && (
+                  <div>
+                    {L("Registration window", "নিবন্ধনের সময়")}:{" "}
+                    {new Date(status.exam.startDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
+                    {" – "}
+                    {new Date(status.exam.endDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
+                  </div>
                 )}
               </>
             )}
