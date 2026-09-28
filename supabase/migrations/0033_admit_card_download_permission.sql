@@ -57,6 +57,15 @@ CREATE TRIGGER protect_admit_card_permission
   EXECUTE FUNCTION public.protect_admit_card_permission();
 
 -- ── 3. RLS — own cards, permission on ─────────────────────────────────
+-- fix-all.sql / fix-rls.sql left "Authenticated read admit_cards"
+-- (USING auth.role() = 'authenticated') behind: every signed-in user could
+-- read every institution's cards, which makes the permission below
+-- meaningless. 0021 — the migration that drops it — has never been applied,
+-- so drop it here. Nothing in the app reads cards through it (the student
+-- portal has no admit-card query; the super admin and the institution each
+-- have their own policy).
+DROP POLICY IF EXISTS "Authenticated read admit_cards" ON public.admit_cards;
+
 DROP POLICY IF EXISTS "Institution admin own admit_cards" ON public.admit_cards;
 
 CREATE POLICY "Institution admin own admit_cards" ON public.admit_cards
