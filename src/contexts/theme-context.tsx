@@ -1,8 +1,13 @@
 "use client";
 import * as React from "react";
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useLayoutEffect, ReactNode } from "react";
 import { useAuth } from "@/lib/auth/auth";
 import { createClient } from "@/lib/supabase/client";
+
+// Runs before the browser paints on the client, is a plain effect during SSR
+// (no "useLayoutEffect does nothing on the server" warning).
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type Theme = "light" | "dark";
 
@@ -13,6 +18,10 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+/** Signed-out choice (login / landing page toggle). Same `scholarx-theme-`
+ *  prefix getInitialTheme() scans, so a guest pick survives reloads. */
+const GUEST_STORAGE_KEY = "scholarx-theme-guest";
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -48,11 +57,19 @@ function getInitialTheme(): Theme {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  // SSR can't see localStorage, so the server always renders dark — the
+  // FIRST client render must be dark too, or every page hydrates with a
+  // theme mismatch (React regenerates the whole tree: console error + a
+  // duplicate render on each load). The stored preference is applied in a
+  // layout effect below, which runs BEFORE the first paint, so a light
+  // theme still appears instantly with no flash.
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   // Apply theme immediately on mount
-  useEffect(() => {
-    applyTheme(theme);
+  useIsomorphicLayoutEffect(() => {
+    const stored = getInitialTheme();
+    setThemeState(stored);
+    applyTheme(stored);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load theme when user changes (login/logout)
@@ -78,9 +95,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           });
       }
     } else {
-      // Not logged in: use default
-      setThemeState("dark");
-      applyTheme("dark");
+      // Not logged in: default dark, but keep the guest's explicit choice —
+      // the login/landing theme toggle must stick across reloads instead of
+      // being stomped back to dark on every auth-state change.
+      const guest = getInitialTheme();
+      setThemeState(guest);
+      applyTheme(guest);
     }
   }, [user, authLoading]);
 
@@ -95,6 +115,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         // Persist to Supabase
         const supabase = createClient();
         supabase.from("profiles").update({ theme: newTheme }).eq("id", user.id).then();
+      } else {
+        localStorage.setItem(GUEST_STORAGE_KEY, newTheme);
       }
 
       return newTheme;
@@ -110,6 +132,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(storageKey, t);
       const supabase = createClient();
       supabase.from("profiles").update({ theme: t }).eq("id", user.id).then();
+    } else {
+      localStorage.setItem(GUEST_STORAGE_KEY, t);
     }
   }, [user]);
 
