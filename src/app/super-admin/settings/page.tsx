@@ -102,7 +102,7 @@ export default function SuperAdminSettingsPage() {
   const { data: brandingData } = useBranding();
   const saveBranding = useSaveBranding();
   const [brandForm, setBrandForm] = useState<BrandingSettings | null>(null);
-  const [uploadKind, setUploadKind] = useState<"" | "logo" | "watermark" | "md-signature">("");
+  const [uploadKind, setUploadKind] = useState<"" | "logo" | "favicon" | "watermark" | "md-signature">("");
 
   // Seed the form once — later background refetches must not clobber edits.
   useEffect(() => {
@@ -278,10 +278,13 @@ export default function SuperAdminSettingsPage() {
     toast("success", isBn ? "পেমেন্ট তথ্য সংরক্ষিত হয়েছে!" : "Payment details saved!");
   };
 
-  const handleBrandFile = async (kind: "logo" | "watermark" | "md-signature", file?: File | null) => {
+  const handleBrandFile = async (kind: "logo" | "favicon" | "watermark" | "md-signature", file?: File | null) => {
     if (!file || !brandForm) return;
     // Raster only — SVGs can silently fail to rasterise in html2canvas (PDF).
-    const allowed = ["image/png", "image/jpeg", "image/webp"];
+    // Favicons additionally accept .ico (they never reach the PDF pipeline).
+    const allowed = kind === "favicon"
+      ? ["image/png", "image/jpeg", "image/webp", "image/x-icon", "image/vnd.microsoft.icon"]
+      : ["image/png", "image/jpeg", "image/webp"];
     if (!allowed.includes(file.type)) {
       toast("error", isBn ? "শুধু PNG, JPG বা WEBP ছবি আপলোড করুন" : "Only PNG, JPG or WEBP images are allowed");
       return;
@@ -296,6 +299,7 @@ export default function SuperAdminSettingsPage() {
     try {
       const url = await uploadBrandingImage(file, kind);
       if (kind === "logo") setBrandForm({ ...brandForm, brandLogo: url });
+      else if (kind === "favicon") setBrandForm({ ...brandForm, brandFavicon: url });
       else if (kind === "watermark") setBrandForm({ ...brandForm, brandWatermark: url });
       else setBrandForm({ ...brandForm, mdSignature: url });
       toast("success", isBn ? "ইমেজ আপলোড হয়েছে — এখন সংরক্ষণ করুন" : "Image uploaded — click Save Changes to apply");
@@ -449,6 +453,40 @@ export default function SuperAdminSettingsPage() {
                           )}
                         </div>
                         <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'হেডার, ফুটার ও প্রবেশপত্রের ক্রেস্টে দেখানো হবে' : 'Shown in the landing header, footer and admit-card crest'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Favicon (browser-tab icon) ── */}
+                  <div className={`pt-5 border-t ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                    <label className={`block text-[13px] mb-2 font-medium ${labelCls}`}>{isBn ? 'ফেভিকন (ব্রাউজার ট্যাব আইকন)' : 'Favicon (browser tab icon)'}</label>
+                    <div className="flex items-center gap-4">
+                      <div className={cn("h-12 w-12 rounded-md flex items-center justify-center overflow-hidden shrink-0", isDark ? "bg-white/[0.04] border border-white/[0.08]" : "bg-zinc-50 border border-zinc-200")}>
+                        {brandForm.brandFavicon ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={brandForm.brandFavicon} alt="Favicon" className="h-full w-full object-contain p-1" />
+                        ) : (
+                          <span className={`text-[10px] font-bold ${labelCls}`}>ICO</span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                          <label className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium transition-all cursor-pointer",
+                            isDark ? "bg-white/10 text-white hover:bg-white/20" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
+                            uploadKind === "favicon" && "opacity-60 pointer-events-none")}>
+                            <Upload className="h-4 w-4" />
+                            {uploadKind === "favicon" ? (isBn ? 'আপলোড হচ্ছে…' : 'Uploading…') : (isBn ? 'ফেভিকন আপলোড' : 'Upload Favicon')}
+                            <input type="file" accept="image/png,image/jpeg,image/webp,image/x-icon" className="hidden" disabled={uploadKind === "favicon"}
+                              onChange={(e) => { handleBrandFile("favicon", e.target.files?.[0]); e.target.value = ""; }} />
+                          </label>
+                          {brandForm.brandFavicon && (
+                            <button onClick={() => setBrandForm({ ...brandForm, brandFavicon: "" })}
+                              className={cn("px-4 py-2 rounded-md text-[13px] font-medium transition-all", isDark ? "text-zinc-400 hover:text-red-400" : "text-zinc-500 hover:text-red-600")}>
+                              {isBn ? 'সরান' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                        <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'ব্রাউজার ট্যাবে দেখানো হবে — বর্গাকার PNG/ICO (32×32 বা 64×64) সবচেয়ে ভালো; প্রবেশপত্র ও পিডিএফে প্রভাব ফেলবে না' : 'Shown in the browser tab — a square PNG/ICO (32×32 or 64×64) works best; never used on admit cards or PDFs'}</p>
                       </div>
                     </div>
                   </div>

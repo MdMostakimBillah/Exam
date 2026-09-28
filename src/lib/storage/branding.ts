@@ -18,6 +18,9 @@ export interface BrandingSettings {
   brandShort: string;
   /** Logo image URL — landing header/footer + admit-card crest fallback. */
   brandLogo: string;
+  /** Favicon image URL (browser-tab icon). Empty → the app's built-in
+   *  /favicon.ico. Never used on PDFs or admit cards. */
+  brandFavicon: string;
   /** Watermark image URL for PDFs/admit cards; empty → text watermark. */
   brandWatermark: string;
   /** Managing Director's signature image — shown on the admit-card footer. */
@@ -44,6 +47,7 @@ export const BRANDING_DEFAULTS: BrandingSettings = {
   brandNameBn: "বাংলাদেশ মাদ্রাসা এসোসিয়েশন",
   brandShort: "BMA",
   brandLogo: "",
+  brandFavicon: "",
   brandWatermark: "",
   mdSignature: "",
   heroTitle1: "",
@@ -103,7 +107,7 @@ export function useSaveBranding() {
       const { data: prevRows } = await supabase
         .from("system_settings")
         .select("key,value")
-        .in("key", ["brandLogo", "brandWatermark", "mdSignature"]);
+        .in("key", ["brandLogo", "brandFavicon", "brandWatermark", "mdSignature"]);
       const rows = BRANDING_KEYS.map((k) => ({
         key: k,
         value: values[k] ?? "",
@@ -118,6 +122,7 @@ export function useSaveBranding() {
       );
       // Best-effort: drop old storage objects that were replaced or removed.
       await removeBrandingObject(prev.brandLogo, values.brandLogo);
+      await removeBrandingObject(prev.brandFavicon, values.brandFavicon);
       await removeBrandingObject(prev.brandWatermark, values.brandWatermark);
       await removeBrandingObject(prev.mdSignature, values.mdSignature);
       return values;
@@ -154,10 +159,10 @@ async function removeBrandingObject(oldUrl?: string, newUrl?: string): Promise<v
   }
 }
 
-/** Upload a branding image (logo / watermark / MD signature) to the public bucket. */
+/** Upload a branding image (logo / favicon / watermark / MD signature) to the public bucket. */
 export async function uploadBrandingImage(
   file: File,
-  kind: "logo" | "watermark" | "md-signature"
+  kind: "logo" | "favicon" | "watermark" | "md-signature"
 ): Promise<string> {
   const supabase = createClient();
   const ext =

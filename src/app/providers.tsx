@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { AuthProvider, useAuth } from "@/lib/auth/auth-provider";
 import { QueryProvider } from "@/lib/query-provider";
 import { AccentColor } from "@/components/branding/accent-color";
+import { SiteFavicon } from "@/components/branding/site-favicon";
 import { useExamsRealtimeSync } from "@/lib/storage/exams";
 
 /** App-wide live exam sync: status changes made by the super admin appear
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
       <AccentColor />
+      <SiteFavicon />
       <AuthProvider>
         <ExamsLiveSync />
         <ThemeProvider>
