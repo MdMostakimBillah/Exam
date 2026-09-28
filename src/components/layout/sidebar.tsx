@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Building2, Users, FileText, Award,
   CreditCard, BarChart3, Bell, Settings,
   ClipboardList, FileCheck, School, BookOpen,
-  CalendarDays, GraduationCap, LogOut, ChevronRight, BookMarked, Hash, X
+  CalendarDays, GraduationCap, LogOut, ChevronRight, BookMarked, Hash, X,
+  LifeBuoy
 } from "lucide-react";
 import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
@@ -47,6 +48,7 @@ const superAdminNav: NavItem[] = [
   { label: 'Payments', labelBn: 'পেমেন্ট', icon: CreditCard, href: '/super-admin/payments' },
   { label: 'Reports', labelBn: 'রিপোর্ট', icon: BarChart3, href: '/super-admin/reports' },
   { label: 'Notifications', labelBn: 'বিজ্ঞপ্তি', icon: Bell, href: '/super-admin/notifications' },
+  { label: 'Support', labelBn: 'সাপোর্ট', icon: LifeBuoy, href: '/super-admin/support' },
   { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: '/super-admin/settings' },
 ];
 
@@ -90,6 +92,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
     { label: 'Certificates', labelBn: 'সার্টিফিকেট', icon: GraduationCap, href: `/i/${slug}/certificates` },
     { label: 'Payments', labelBn: 'পেমেন্ট', icon: CreditCard, href: `/i/${slug}/payments` },
     { label: 'Reports', labelBn: 'রিপোর্ট', icon: BarChart3, href: `/i/${slug}/reports` },
+    { label: 'Help & Support', labelBn: 'সাহায্য', icon: LifeBuoy, href: '/help' },
     { label: 'Settings', labelBn: 'সেটিংস', icon: Settings, href: `/i/${slug}/settings` },
   ], [slug]);
 

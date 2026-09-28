@@ -595,7 +595,7 @@ export default function HomePage() {
               <ul className="space-y-2.5">
                 <li><a href="#" className={`text-xs transition-colors ${textNav}`}>Documentation</a></li>
                 <li><a href="#" className={`text-xs transition-colors ${textNav}`}>Guides</a></li>
-                <li><a href="#" className={`text-xs transition-colors ${textNav}`}>Support</a></li>
+                <li><Link href="/help" className={`text-xs transition-colors ${textNav}`}>Help &amp; Support</Link></li>
               </ul>
             </div>
             <div>

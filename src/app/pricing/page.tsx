@@ -46,6 +46,7 @@ export default function PricingPage() {
             <Link href="/features" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Features</Link>
             <Link href="/pricing" className="text-sm text-zinc-300">Pricing</Link>
             <Link href="/contact" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Contact</Link>
+            <Link href="/help" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Help</Link>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors px-3 py-1.5">Sign in</Link>
