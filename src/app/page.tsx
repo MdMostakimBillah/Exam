@@ -340,9 +340,6 @@ export default function HomePage() {
                 <Link href="/apply" className={`inline-flex items-center gap-2 px-5 py-4 rounded-md text-sm font-medium whitespace-nowrap transition-all hover:scale-105 ${btnPrimary}`}>
                   {t("hero.ctaApply")} <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/register" className={`inline-flex items-center gap-2 px-5 py-4 rounded-md text-sm font-medium whitespace-nowrap transition-all hover:scale-105 ${btnSecondary}`}>
-                  {t("hero.ctaRegister")}
-                </Link>
                 <a href="#platform" className={`inline-flex items-center gap-2 px-5 py-4 rounded-md text-sm font-medium whitespace-nowrap transition-all hover:scale-105 ${btnSecondary}`}>
                   {t("hero.ctaExplore")}
                 </a>
