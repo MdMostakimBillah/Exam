@@ -581,6 +581,8 @@ export interface ApplicationStatus {
   institutionNameEn: string;
   className: string;
   roll: string;
+  /** Applicant photo (data URL or storage URL) — shown on /status when set. */
+  photoUrl: string;
   appliedAt: string;
   /** Registration / application approval status. */
   applicationStatus: string;
@@ -649,7 +651,7 @@ export async function lookupStudentApplicationStatus(input: {
 
     const studentRes = await supabaseAdmin
       .from("students")
-      .select("id,date_of_birth,first_name,first_name_bn,status,roll")
+      .select("id,date_of_birth,first_name,first_name_bn,status,roll,photo_url")
       .eq("id", String(registration.student_id))
       .eq("date_of_birth", dob) // ownership proof: must match the caller
       .limit(1);
@@ -703,6 +705,7 @@ export async function lookupStudentApplicationStatus(input: {
       institutionNameEn: String(inst?.name_en || ""),
       className: String(registration.class_name || ""),
       roll: String(student.roll || ""),
+      photoUrl: String(student.photo_url || ""),
       appliedAt: String(registration.created_at || ""),
       applicationStatus: String(registration.status || "PENDING"),
       paymentStatus: regPaymentStatus,

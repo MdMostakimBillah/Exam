@@ -1,23 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { lookupStudentApplicationStatus } from "@/lib/auth/student-apply";
 import type { ApplicationStatus } from "@/lib/auth/student-apply";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import {
   Award,
   CalendarClock,
+  Check,
+  Globe,
   Loader2,
+  Moon,
   Search,
+  SearchX,
+  Sun,
   UserCheck,
   Wallet,
-  XCircle,
+  X,
 } from "lucide-react";
 
 const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9 _\-/:.]{2,39}$/;
@@ -47,11 +53,60 @@ const EXAM_LABELS: Record<string, { en: string; bn: string }> = {
   ARCHIVED: { en: "Archived", bn: "সংরক্ষিত" },
 };
 
+/** Journey-stepper labels: Applied → Payment → Approval → Exam → Result. */
+const STAGE_LABELS: { en: string; bn: string }[] = [
+  { en: "Applied", bn: "আবেদন" },
+  { en: "Payment", bn: "পেমেন্ট" },
+  { en: "Approval", bn: "অনুমোদন" },
+  { en: "Exam", bn: "পরীক্ষা" },
+  { en: "Result", bn: "ফলাফল" },
+];
+
+type StageState = "done" | "current" | "todo" | "error";
+
+/** Map the lookup payload onto the five journey stages. */
+function stageStates(s: ApplicationStatus): StageState[] {
+  // The Approval stage tracks the *application* status (mirrors the badge in
+  // the identity card) — an ACTIVE student record alone is not an approval.
+  const approved = s.applicationStatus === "APPROVED";
+  const rejected = s.applicationStatus === "REJECTED";
+  const examDone = ["EXAM_COMPLETED", "RESULT_PROCESSING", "PUBLISHED", "ARCHIVED"].includes(
+    s.exam.status
+  );
+  const resultDone = s.result?.status === "PUBLISHED";
+  const defs: { done: boolean; error?: boolean }[] = [
+    { done: true },
+    { done: s.paid },
+    { done: approved, error: rejected },
+    { done: examDone },
+    { done: resultDone },
+  ];
+  let currentAssigned = false;
+  return defs.map((d) => {
+    if (d.done) return "done";
+    if (d.error) {
+      currentAssigned = true; // a rejection stops the journey — nothing after it is "next"
+      return "error";
+    }
+    if (!currentAssigned) {
+      currentAssigned = true;
+      return "current";
+    }
+    return "todo";
+  });
+}
+
 export default function StatusPage() {
-  const { theme } = useTheme();
-  const { t, lang } = useLang();
+  const { theme, toggleTheme } = useTheme();
+  const { t, lang, setLang } = useLang();
   const isDark = theme === "dark";
   const L = useCallback((en: string, bn: string) => (lang === "bn" ? bn : en), [lang]);
+
+  // Super-admin branding — the top bar shows the real logo/name (same as /apply).
+  const { data: brandData } = useBranding();
+  const b = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
+  const brandName = (lang === "bn" ? b.brandNameBn : b.brandName) || t("brand");
+  const brandLetter = brandName.trim().charAt(0).toUpperCase() || "B";
 
   const [regNumber, setRegNumber] = useState("");
   const [dob, setDob] = useState("");
@@ -59,6 +114,7 @@ export default function StatusPage() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [status, setStatus] = useState<ApplicationStatus | null>(null);
+  const outcomeRef = useRef<HTMLDivElement>(null);
 
   // /status?reg=REGNO from the apply success screen.
   useEffect(() => {
@@ -104,8 +160,36 @@ export default function StatusPage() {
     }
   }, [regNumber, dob, L]);
 
-  const labelCls = `block text-xs mb-1 ${isDark ? "text-zinc-500" : "text-gray-500"}`;
-  const sectionIconCls = `flex h-8 w-8 items-center justify-center rounded-md`;
+  // Bring a fresh outcome into view (after commit — a rAF inside the handler
+  // can fire before React paints the new cards).
+  useEffect(() => {
+    if (!status) return;
+    const id = requestAnimationFrame(() =>
+      outcomeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    );
+    return () => cancelAnimationFrame(id);
+  }, [status]);
+
+  const dateFmt = (value: string) =>
+    value ? new Date(value).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB") : "—";
+
+  /* Polished field chrome (same as /apply): taller inputs, brand focus ring. */
+  const labelCls = `flex items-center gap-1 text-[13px] font-medium mb-1.5 ${
+    isDark ? "text-zinc-300" : "text-gray-700"
+  }`;
+  const fieldCls = `h-11 rounded-lg focus-visible:ring-[color:var(--brand-accent)] focus-visible:border-transparent hover:border-zinc-400/70 ${
+    isDark ? "dark:hover:border-white/25" : ""
+  }`;
+  const navPill = isDark
+    ? "text-zinc-400 hover:text-white hover:bg-white/[0.07]"
+    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100";
+  const iconPill = isDark
+    ? "text-zinc-400 hover:text-white hover:bg-white/[0.07]"
+    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100";
+  const panelCls = isDark ? "border-white/10 bg-white/[0.03]" : "border-gray-200 bg-white";
+  const sectionIconCls = `flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+    isDark ? "bg-white/[0.06]" : "bg-gray-100"
+  }`;
 
   const statusRow = (
     icon: React.ReactNode,
@@ -113,45 +197,152 @@ export default function StatusPage() {
     valueBadge: React.ReactNode,
     detail?: React.ReactNode
   ) => (
-    <div className={`flex items-start gap-3 rounded-lg border p-4 ${isDark ? "border-white/10 bg-white/[0.03]" : "border-gray-200 bg-white"}`}>
-      <div className={sectionIconCls}>
-        {icon}
-      </div>
+    <div className={`flex items-start gap-3 rounded-lg border p-4 ${panelCls}`}>
+      <div className={sectionIconCls}>{icon}</div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-xs font-medium ${isDark ? "text-zinc-400" : "text-gray-600"}`}>{title}</span>
+          <span className={`text-xs font-medium ${isDark ? "text-zinc-400" : "text-gray-600"}`}>
+            {title}
+          </span>
           {valueBadge}
         </div>
-        {detail && <div className={`mt-1 text-xs ${isDark ? "text-zinc-500" : "text-gray-500"}`}>{detail}</div>}
+        {detail && (
+          <div className={`mt-1 text-xs ${isDark ? "text-zinc-500" : "text-gray-500"}`}>{detail}</div>
+        )}
       </div>
     </div>
   );
 
+  const stages = status ? stageStates(status) : [];
+
+  const stageCircle = (state: StageState, index: number) => {
+    if (state === "done")
+      return (
+        <div data-state={state} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500 text-white">
+          <Check className="h-4 w-4" strokeWidth={3} />
+        </div>
+      );
+    if (state === "error")
+      return (
+        <div data-state={state} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500 text-white">
+          <X className="h-4 w-4" strokeWidth={3} />
+        </div>
+      );
+    if (state === "current")
+      return (
+        <div data-state={state} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-accent text-brand-accent-fg ring-4 ring-brand-accent/20">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-current" />
+        </div>
+      );
+    return (
+      <div
+        data-state={state}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium ${
+          isDark
+            ? "border-white/15 bg-zinc-900 text-zinc-500"
+            : "border-gray-200 bg-white text-gray-400"
+        }`}
+      >
+        {index + 1}
+      </div>
+    );
+  };
+
+  const stageTextCls = (state: StageState) =>
+    state === "done"
+      ? isDark
+        ? "text-green-400"
+        : "text-green-600"
+      : state === "error"
+        ? "text-red-500"
+        : state === "current"
+          ? isDark
+            ? "text-zinc-100"
+            : "text-gray-900"
+          : isDark
+            ? "text-zinc-600"
+            : "text-gray-400";
+
+  const published = status?.result?.status === "PUBLISHED";
+  const scholarship = status?.result?.scholarshipStatus ?? "";
+  const awarded = Boolean(scholarship && scholarship !== "NOT_ELIGIBLE" && scholarship !== "PENDING");
+
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#080808]" : "bg-gray-50"}`}>
-      <header className={`border-b backdrop-blur-xl ${isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"}`}>
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
-            <span className={`text-sm font-semibold ${isDark ? "text-zinc-100" : "text-gray-900"}`}>{t("brand")}</span>
+      <header
+        className={`sticky top-0 z-50 border-b backdrop-blur-xl ${
+          isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          <Link href="/" className="group flex min-w-0 items-center gap-2.5">
+            {b.brandLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={b.brandLogo}
+                alt={brandName}
+                className={`h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-full object-contain bg-white/90 ring-1 ${
+                  isDark ? "ring-white/15" : "ring-zinc-200"
+                }`}
+              />
+            ) : (
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-brand-accent text-brand-accent-fg text-sm font-bold">
+                {brandLetter}
+              </div>
+            )}
+            <span
+              className={`truncate text-sm font-semibold transition-opacity group-hover:opacity-75 max-w-[45vw] sm:max-w-[320px] ${
+                isDark ? "text-zinc-100" : "text-gray-900"
+              }`}
+            >
+              {brandName}
+            </span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/apply" className={`text-xs ${isDark ? "text-zinc-500 hover:text-zinc-300" : "text-gray-500 hover:text-gray-900"}`}>
+
+          <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+            <Link
+              href="/apply"
+              className={`hidden sm:inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${navPill}`}
+            >
               {L("Apply", "আবেদন")}
             </Link>
-            <Link href="/result" className={`text-xs ${isDark ? "text-zinc-500 hover:text-zinc-300" : "text-gray-500 hover:text-gray-900"}`}>
+            <Link
+              href="/result"
+              className={`hidden md:inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${navPill}`}
+            >
               {t("nav.results")}
             </Link>
-            <Link href="/login" className={`text-xs ${isDark ? "text-zinc-500 hover:text-zinc-300" : "text-gray-500 hover:text-gray-900"}`}>
+            <button
+              type="button"
+              onClick={() => setLang(lang === "en" ? "bn" : "en")}
+              aria-label={lang === "bn" ? "Switch to English" : "বাংলায় দেখুন"}
+              className={`rounded-md p-2 transition-colors ${iconPill}`}
+            >
+              <Globe className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Light mode" : "Dark mode"}
+              className={`rounded-md p-2 transition-colors ${iconPill}`}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <Link
+              href="/login"
+              className="inline-flex h-9 items-center rounded-md px-3 sm:px-4 text-xs font-medium transition-all hover:opacity-90 bg-brand-accent text-brand-accent-fg"
+            >
               {t("nav.signIn")}
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-16">
-        <div className="text-center mb-8">
-          <h1 className={`text-2xl font-bold tracking-tight mb-2 ${isDark ? "text-zinc-100" : "text-gray-900"}`}>
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+        <div className="text-center mb-6">
+          <h1
+            className={`text-2xl font-bold tracking-tight mb-2 ${isDark ? "text-zinc-100" : "text-gray-900"}`}
+          >
             {L("Track Application Status", "আবেদনের অবস্থা দেখুন")}
           </h1>
           <p className={`text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
@@ -163,32 +354,53 @@ export default function StatusPage() {
         </div>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="space-y-3">
-              <div>
-                <label className={labelCls} htmlFor="status-reg">
-                  {L("Registration Number", "রেজিস্ট্রেশন নম্বর")}
-                </label>
-                <Input
-                  id="status-reg"
-                  value={regNumber}
-                  onChange={(e) => setRegNumber(e.target.value)}
-                  placeholder="e.g. 2026000012"
-                  maxLength={40}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </div>
-              <div>
-                <label className={labelCls} htmlFor="status-dob">
-                  {L("Date of Birth", "জন্মতারিখ")}
-                </label>
-                <Input id="status-dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+          <CardContent className="p-5 sm:p-6">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearch();
+              }}
+              className="space-y-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls} htmlFor="status-reg">
+                    {L("Registration Number", "রেজিস্ট্রেশন নম্বর")}{" "}
+                    <span className="text-red-500" aria-hidden="true">
+                      *
+                    </span>
+                  </label>
+                  <Input
+                    id="status-reg"
+                    className={fieldCls}
+                    value={regNumber}
+                    onChange={(e) => setRegNumber(e.target.value)}
+                    placeholder="e.g. 2026000012"
+                    maxLength={40}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls} htmlFor="status-dob">
+                    {L("Date of Birth", "জন্মতারিখ")}{" "}
+                    <span className="text-red-500" aria-hidden="true">
+                      *
+                    </span>
+                  </label>
+                  <Input
+                    id="status-dob"
+                    className={`${fieldCls} pr-9`}
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                  />
+                </div>
               </div>
               <Button
-                onClick={handleSearch}
+                type="submit"
+                className="w-full h-11"
                 disabled={loading || !SAFE_KEY.test(regNumber.trim()) || !dob}
-                className="w-full"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -197,57 +409,140 @@ export default function StatusPage() {
                 )}
                 {loading ? L("Checking…", "যাচাই হচ্ছে…") : L("Check Status", "অবস্থা দেখুন")}
               </Button>
-            </div>
+            </form>
           </CardContent>
         </Card>
 
         {searched && !loading && error && !status && (
-          <div className="mt-6 text-center py-8">
-            <XCircle className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-            <p className={`text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>{error}</p>
-          </div>
+          <Card className="mt-6">
+            <CardContent className="p-8 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <SearchX className="h-6 w-6 text-red-500" />
+              </div>
+              <p className={`text-sm ${isDark ? "text-zinc-400" : "text-gray-600"}`}>{error}</p>
+              <p className={`mt-2 text-xs ${isDark ? "text-zinc-600" : "text-gray-400"}`}>
+                {L(
+                  "Both fields must exactly match your application. Need help? Contact your institution.",
+                  "উভয় ঘর আপনার আবেদনের সঙ্গে মিলতে হবে। সাহায্য দরকার? আপনার প্রতিষ্ঠানের সঙ্গে যোগাযোগ করুন।"
+                )}
+              </p>
+            </CardContent>
+          </Card>
         )}
 
         {status && (
-          <div className="mt-6 space-y-4">
+          <div ref={outcomeRef} className="mt-6 scroll-mt-20 space-y-4">
+            {/* Journey stepper */}
+            <Card>
+              <CardContent className="p-5 sm:p-6">
+                <div className="grid grid-cols-5 gap-1">
+                  {stages.map((state, i) => {
+                    const leftFilled = i > 0 && stages[i - 1] === "done";
+                    const rightFilled = i < stages.length - 1 && state === "done";
+                    const lineCls = (filled: boolean) =>
+                      `h-0.5 flex-1 rounded-full ${
+                        filled
+                          ? "bg-green-500"
+                          : isDark
+                            ? "bg-white/10"
+                            : "bg-gray-200"
+                      }`;
+                    return (
+                      <div key={STAGE_LABELS[i].en} className="flex flex-col items-center gap-2">
+                        <div className="flex w-full items-center">
+                          <div
+                            className={`${lineCls(leftFilled)} ${i === 0 ? "opacity-0" : ""}`}
+                          />
+                          {stageCircle(state, i)}
+                          <div
+                            className={`${lineCls(rightFilled)} ${
+                              i === stages.length - 1 ? "opacity-0" : ""
+                            }`}
+                          />
+                        </div>
+                        <span
+                          className={`text-center text-[10px] font-medium leading-tight ${stageTextCls(state)}`}
+                        >
+                          {lang === "bn" ? STAGE_LABELS[i].bn : STAGE_LABELS[i].en}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Identity card */}
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="truncate">
-                    {lang === "bn" && status.studentNameBn ? status.studentNameBn : status.studentName}
-                  </CardTitle>
-                  <Badge status={status.applicationStatus}>
-                    {label(REG_LABELS, status.applicationStatus)}
-                  </Badge>
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex items-center gap-4">
+                  {status.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={status.photoUrl}
+                      alt={
+                        lang === "bn" && status.studentNameBn
+                          ? status.studentNameBn
+                          : status.studentName
+                      }
+                      className={`h-14 w-14 shrink-0 rounded-full object-cover ring-1 ${
+                        isDark ? "ring-white/15" : "ring-zinc-200"
+                      }`}
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-accent text-brand-accent-fg text-lg font-bold">
+                      {(lang === "bn" && status.studentNameBn
+                        ? status.studentNameBn
+                        : status.studentName
+                      )
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase() || "?"}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2
+                        className={`truncate text-lg font-semibold ${
+                          isDark ? "text-zinc-100" : "text-gray-900"
+                        }`}
+                      >
+                        {lang === "bn" && status.studentNameBn ? status.studentNameBn : status.studentName}
+                      </h2>
+                      <Badge status={status.applicationStatus}>
+                        {label(REG_LABELS, status.applicationStatus)}
+                      </Badge>
+                    </div>
+                    <p className={`truncate text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+                      {lang === "bn"
+                        ? status.institutionName
+                        : status.institutionNameEn || status.institutionName}
+                      {" · "}
+                      {status.className}
+                    </p>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    {
-                      label: L("Institution", "প্রতিষ্ঠান"),
-                      value:
-                        lang === "bn"
-                          ? status.institutionName
-                          : status.institutionNameEn || status.institutionName,
-                    },
-                    { label: L("Class", "শ্রেণি"), value: status.className },
-                    { label: L("Exam", "পরীক্ষা"), value: status.exam.name },
                     { label: L("Registration No", "রেজিস্ট্রেশন নম্বর"), value: status.registrationNumber },
                     { label: L("Roll", "রোল"), value: status.roll || "—" },
-                    {
-                      label: L("Applied", "আবেদনের তারিখ"),
-                      value: status.appliedAt
-                        ? new Date(status.appliedAt).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")
-                        : "—",
-                    },
+                    { label: L("Exam", "পরীক্ষা"), value: status.exam.name || "—" },
+                    { label: L("Applied", "আবেদনের তারিখ"), value: dateFmt(status.appliedAt) },
                   ].map((item) => (
                     <div key={item.label}>
-                      <span className={`text-[10px] uppercase tracking-wider ${isDark ? "text-zinc-600" : "text-gray-400"}`}>
+                      <span
+                        className={`text-[10px] uppercase tracking-wider ${
+                          isDark ? "text-zinc-600" : "text-gray-400"
+                        }`}
+                      >
                         {item.label}
                       </span>
-                      <p className={`text-sm mt-0.5 break-words ${isDark ? "text-zinc-200" : "text-gray-800"}`}>
+                      <p
+                        className={`text-sm mt-0.5 break-words ${
+                          isDark ? "text-zinc-200" : "text-gray-800"
+                        }`}
+                      >
                         {item.value || "—"}
                       </p>
                     </div>
@@ -258,7 +553,9 @@ export default function StatusPage() {
 
             {/* Status sections */}
             {statusRow(
-              <Wallet className={`h-4 w-4 ${status.paid ? "text-green-500" : "text-amber-500"}`} />,
+              <Wallet
+                className={`h-4 w-4 ${status.paid ? "text-green-500" : "text-amber-500"}`}
+              />,
               L("Registration Fee Payment", "রেজিস্ট্রেশন ফি পেমেন্ট"),
               status.paid ? (
                 <Badge status="PAID">{L("Paid", "পরিশোধিত")}</Badge>
@@ -268,9 +565,7 @@ export default function StatusPage() {
               status.paid ? (
                 <>
                   ৳{status.paidAmount ?? status.expectedFee}
-                  {status.paidAt && (
-                    <> · {new Date(status.paidAt).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}</>
-                  )}
+                  {status.paidAt && <> · {dateFmt(status.paidAt)}</>}
                 </>
               ) : (
                 <>
@@ -283,7 +578,15 @@ export default function StatusPage() {
             )}
 
             {statusRow(
-              <UserCheck className={`h-4 w-4 ${status.studentStatus === "ACTIVE" ? "text-green-500" : isDark ? "text-zinc-400" : "text-gray-500"}`} />,
+              <UserCheck
+                className={`h-4 w-4 ${
+                  status.studentStatus === "ACTIVE"
+                    ? "text-green-500"
+                    : isDark
+                      ? "text-zinc-400"
+                      : "text-gray-500"
+                }`}
+              />,
               L("Student Record", "শিক্ষার্থী রেকর্ড"),
               <Badge status={status.studentStatus}>{label(STUDENT_LABELS, status.studentStatus)}</Badge>,
               status.studentStatus === "ACTIVE"
@@ -304,52 +607,149 @@ export default function StatusPage() {
                   {status.exam.examDate && (
                     <>
                       {" · "}
-                      {L("Exam day", "পরীক্ষার দিন")}:{" "}
-                      {new Date(status.exam.examDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
+                      {L("Exam day", "পরীক্ষার দিন")}: {dateFmt(status.exam.examDate)}
                     </>
                   )}
                 </div>
                 {status.exam.startDate && status.exam.endDate && (
                   <div>
-                    {L("Registration window", "নিবন্ধনের সময়")}:{" "}
-                    {new Date(status.exam.startDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
-                    {" – "}
-                    {new Date(status.exam.endDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
+                    {L("Registration window", "নিবন্ধনের সময়")}: {dateFmt(status.exam.startDate)} –{" "}
+                    {dateFmt(status.exam.endDate)}
                   </div>
                 )}
               </>
             )}
 
-            {statusRow(
-              <Award className={`h-4 w-4 ${status.result?.status === "PUBLISHED" ? "text-green-500" : isDark ? "text-zinc-400" : "text-gray-500"}`} />,
-              L("Result", "ফলাফল"),
-              status.result ? (
-                <Badge status={status.result.status}>
-                  {status.result.status === "PUBLISHED" ? L("Published", "প্রকাশিত") : L("Processing", "প্রক্রিয়ায়")}
-                </Badge>
-              ) : (
-                <Badge status="DRAFT">{L("Not published", "প্রকাশিত হয়নি")}</Badge>
-              ),
-              status.result?.status === "PUBLISHED" ? (
-                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className={`font-medium ${isDark ? "text-zinc-200" : "text-gray-800"}`}>
-                    {L("Grade", "গ্রেড")}: {status.result.grade || "—"}
-                  </span>
-                  <span>
-                    {L("Total", "মোট")}: {status.result.totalMarks}/{status.result.totalFullMarks}
-                  </span>
-                  <span>{status.result.percentage.toFixed(1)}%</span>
-                  {status.result.position > 0 && <span>{L("Position", "অবস্থান")}: {status.result.position}</span>}
-                  <Link href={`/result?reg=${encodeURIComponent(status.registrationNumber)}`} className="text-brand-accent hover:underline">
-                    {L("View full result →", "সম্পূর্ণ ফলাফল →")}
-                  </Link>
-                </span>
-              ) : status.result ? (
-                L("Marks entry / result processing is in progress.", "নম্বর প্রবেশ / ফলাফল প্রক্রিয়া চলছে।")
-              ) : (
-                L("The result has not been published yet. Check back later.", "ফলাফল এখনো প্রকাশিত হয়নি। পরে আবার দেখুন।")
-              )
-            )}
+            {/* Result — the payoff card */}
+            <Card className={panelCls}>
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className={sectionIconCls}>
+                      <Award
+                        className={`h-4 w-4 ${
+                          published
+                            ? "text-brand-accent"
+                            : isDark
+                              ? "text-zinc-400"
+                              : "text-gray-500"
+                        }`}
+                      />
+                    </div>
+                    <span
+                      className={`text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}
+                    >
+                      {L("Result", "ফলাফল")}
+                    </span>
+                  </div>
+                  {status.result ? (
+                    <Badge status={status.result.status}>
+                      {published ? L("Published", "প্রকাশিত") : L("Processing", "প্রক্রিয়ায়")}
+                    </Badge>
+                  ) : (
+                    <Badge status="DRAFT">{L("Not published", "প্রকাশিত হয়নি")}</Badge>
+                  )}
+                </div>
+
+                {published && status.result ? (
+                  <>
+                    <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
+                      <div>
+                        <div
+                          className={`text-[10px] uppercase tracking-wider ${
+                            isDark ? "text-zinc-600" : "text-gray-400"
+                          }`}
+                        >
+                          {L("Grade", "গ্রেড")}
+                        </div>
+                        <div className="mt-1 text-4xl font-bold leading-none text-brand-accent">
+                          {status.result.grade || "—"}
+                        </div>
+                      </div>
+                      {[
+                        {
+                          label: L("Total", "মোট"),
+                          value: `${status.result.totalMarks}/${status.result.totalFullMarks}`,
+                        },
+                        {
+                          label: L("Percentage", "শতকরা"),
+                          value: `${status.result.percentage.toFixed(1)}%`,
+                        },
+                        ...(status.result.position > 0
+                          ? [
+                              {
+                                label: L("Position", "অবস্থান"),
+                                value: String(status.result.position),
+                              },
+                            ]
+                          : []),
+                      ].map((stat) => (
+                        <div key={stat.label}>
+                          <div
+                            className={`text-[10px] uppercase tracking-wider ${
+                              isDark ? "text-zinc-600" : "text-gray-400"
+                            }`}
+                          >
+                            {stat.label}
+                          </div>
+                          <div
+                            className={`mt-1 text-lg font-semibold ${
+                              isDark ? "text-zinc-100" : "text-gray-900"
+                            }`}
+                          >
+                            {stat.value}
+                          </div>
+                        </div>
+                      ))}
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
+                          status.result.pass
+                            ? "border-green-500/20 bg-green-500/10 text-green-500"
+                            : "border-red-500/20 bg-red-500/10 text-red-500"
+                        }`}
+                      >
+                        {status.result.pass ? L("Pass", "উত্তীর্ণ") : L("Fail", "উত্তীর্ণ নয়")}
+                      </span>
+                    </div>
+
+                    {awarded && (
+                      <div className="mt-4 flex items-start gap-2 rounded-lg border border-green-500/20 bg-green-500/10 p-3">
+                        <Award className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          {L(
+                            `Congratulations! You are eligible for the ${scholarship} scholarship.`,
+                            `অভিনন্দন! আপনি ${scholarship} বৃত্তির জন্য যোগ্য।`
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
+                      <Link
+                        href={`/result?reg=${encodeURIComponent(status.registrationNumber)}`}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-brand-accent hover:underline"
+                      >
+                        {L("View full result →", "সম্পূর্ণ ফলাফল →")}
+                      </Link>
+                    </div>
+                  </>
+                ) : status.result ? (
+                  <p className={`mt-3 text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+                    {L(
+                      "Marks entry / result processing is in progress. Your result will appear here once published.",
+                      "নম্বর প্রবেশ / ফলাফল প্রক্রিয়া চলছে। প্রকাশিত হলে ফলাফল এখানে দেখা যাবে।"
+                    )}
+                  </p>
+                ) : (
+                  <p className={`mt-3 text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+                    {L(
+                      "The result has not been published yet. Check back later — you can search again with the same details.",
+                      "ফলাফল এখনো প্রকাশিত হয়নি। পরে আবার দেখুন — একই তথ্য দিয়ে আবার যাচাই করতে পারেন।"
+                    )}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </main>
