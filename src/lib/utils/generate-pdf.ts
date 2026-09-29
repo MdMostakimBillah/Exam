@@ -176,6 +176,18 @@ const WM_ANGLE = 0; // degrees — flat/horizontal, matching the card's un-rotat
 // watermark (was 30° counter-clockwise). The centring math below works for any
 // angle, so only this constant changes if the tilt ever comes back.
 
+// Admit-card parity: the card's seal is a fixed 130mm wide on the 210mm-wide
+// A4 page (admit-card-template: `width: "130mm"`). Scale off the page's SHORT
+// side so portrait AND landscape A4 print the seal at the identical physical
+// size the admit card does — instead of the old fit-to-92%-of-page, which made
+// the watermark noticeably bigger than the card's.
+const WM_IMAGE_RATIO = 130 / 210; // ≈ 0.619 of the short side → 130mm on A4
+
+// Text-crest fallback (no uploaded seal): the admit card's bordered initials
+// box is ~70mm wide on A4 (90px glyphs + letter-spacing + padding), so size
+// the plain text to roughly that rather than stretching it across the page.
+const WM_TEXT_RATIO = 0.3; // ≈ 63mm of the 210mm short side
+
 interface WmImage {
   dataUrl: string;
   /** height / width of the loaded bitmap. */
@@ -239,9 +251,10 @@ function drawWatermark(
       const c = Math.cos(rad);
       const s = Math.sin(rad);
       const a = img.aspect; // h / w
-      // Largest rect whose ROTATED bounding box keeps a 4% page margin.
-      const w =
-        Math.min((0.92 * pageW) / (c + a * s), (0.92 * pageH) / (s + a * c));
+      // Fixed seal size — exactly the admit card's 130mm on A4 (a square
+      // seal is 130×130mm, comfortably inside both portrait 297mm and
+      // landscape 210mm page heights). Centring below works for any angle.
+      const w = Math.min(pageW, pageH) * WM_IMAGE_RATIO;
       const h = w * a;
       const x = pageW / 2 - (w * c - h * s) / 2;
       const y = pageH / 2 + (w * s + h * c) / 2 - h;
@@ -253,10 +266,12 @@ function drawWatermark(
     } else if (text) {
       doc.setFont(FONT_NAME, "bold");
       doc.setTextColor(0, 0, 0);
-      // Measure → scale so the crest spans 85% of the page's short side.
+      // Measure → scale so the crest matches the admit card's ~70mm box
+      // (WM_TEXT_RATIO of the short side) instead of spanning the page.
       doc.setFontSize(60);
       const measured = doc.getTextWidth(text); // mm at 60pt
-      if (measured > 0) doc.setFontSize((60 * (0.85 * Math.min(pageW, pageH))) / measured);
+      if (measured > 0)
+        doc.setFontSize((60 * (WM_TEXT_RATIO * Math.min(pageW, pageH))) / measured);
       const sizePt = doc.getFontSize();
       const sizeMm = (sizePt * 25.4) / 72;
       const textW = doc.getTextWidth(text); // mm at the final size
