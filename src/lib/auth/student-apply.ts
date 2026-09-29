@@ -290,7 +290,18 @@ export interface ApplyInput {
   phone: string;
   address: string;
   roll?: string;
+  /** Optional applicant photo — a base64 data URL ≤ 350KB (same cap the
+   *  institution "Add Register" wizard enforces), stored in students.photo_url. */
+  photo?: string;
 }
+
+/** Keep in sync with MAX_IMAGE_SIZE in src/lib/utils/helpers.ts — duplicated
+ *  here so this server file never pulls client-only modules into the action. */
+const MAX_PHOTO_BYTES = 350 * 1024;
+/** base64 grows a payload by ~4/3; allow the data-URL prefix + padding. */
+const MAX_PHOTO_CHARS = Math.ceil((MAX_PHOTO_BYTES * 4) / 3) + 64;
+const PHOTO_DATA_URL_RE =
+  /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 
 export interface ApplyResult {
   ok: boolean;
@@ -361,6 +372,13 @@ export async function submitStudentApplication(
   }
   if (roll && !/^\d{1,6}$/.test(roll)) {
     return { ok: false, error: "Please enter a valid roll number." };
+  }
+  const photo = String(input?.photo ?? "").trim();
+  if (photo && (photo.length > MAX_PHOTO_CHARS || !PHOTO_DATA_URL_RE.test(photo))) {
+    return {
+      ok: false,
+      error: "The photo must be a JPG, PNG or WebP image under 350KB.",
+    };
   }
 
   try {
@@ -467,6 +485,7 @@ export async function submitStudentApplication(
       mother_name: motherName,
       phone,
       address,
+      photo_url: photo || null,
       status: "ACTIVE",
     };
     let studentInsert = await supabaseAdmin
