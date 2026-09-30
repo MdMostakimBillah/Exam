@@ -12,11 +12,8 @@ import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 import { useExamsFull } from "@/lib/storage/exams";
 import { useExamMarkSetup } from "@/lib/storage/mark-setup";
-import {
-  useProcessExamResults,
-  useResultsByExam,
-  type ProcessExamResultsResult,
-} from "@/lib/storage/results";
+import { useProcessExamResults, useResultsByExam, type ProcessExamResultsResult } from "@/lib/storage/results";
+import { useExamClassNames } from "@/lib/storage/registrations";
 import { useCurrentSession } from "@/lib/storage/sessions";
 
 export function MarksProcessPanel() {
@@ -27,26 +24,49 @@ export function MarksProcessPanel() {
   const isDark = theme === "dark";
   const bi = (bn: string, en: string) => (isBn ? bn : en);
   const [examId, setExamId] = useState("");
+  const [className, setClassName] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lastRun, setLastRun] = useState<ProcessExamResultsResult | null>(null);
   const { data: exams = [] } = useExamsFull();
   const { data: currentSession } = useCurrentSession();
   const { data: setup } = useExamMarkSetup(examId);
+  const { data: classNames = [] } = useExamClassNames(examId);
   const { data: results = [], isLoading, error: resultsError } = useResultsByExam(examId, currentSession?.id);
   const processResults = useProcessExamResults();
   const exam = useMemo(() => exams.find((item) => item.id === examId), [examId, exams]);
 
+  // Class-wise scope: with a class selected, the preview table only shows
+  // that class's stored results, mirroring what a scoped run will touch.
+  const visibleResults = useMemo(
+    () => (className ? results.filter((item) => item.className === className) : results),
+    [className, results],
+  );
+
   const handleProcess = async () => {
     if (!examId) return;
     try {
-      const result = await processResults.mutateAsync(examId);
+      const result = await processResults.mutateAsync({ examId, className: className || undefined });
       setLastRun(result);
       setConfirmOpen(false);
+      if (result.totalUniqueStudents === 0) {
+        toast(
+          "warning",
+          className
+            ? bi(
+              `${className} শ্রেণিতে কোনো অনুমোদিত নিবন্ধন পাওয়া যায়নি`,
+              `No approved registrations found for class ${className}`,
+            )
+            : bi("কোনো অনুমোদিত নিবন্ধন পাওয়া যায়নি", "No approved registrations found"),
+        );
+        return;
+      }
+      const scopeBn = className ? ` (${className} শ্রেণি)` : "";
+      const scopeEn = className ? ` (class ${className})` : "";
       toast(
         "success",
         bi(
-          `${result.processed} জন শিক্ষার্থীর ফলাফল প্রক্রিয়া হয়েছে`,
-          `${result.processed} student results processed`,
+          `${result.processed} জন শিক্ষার্থীর ফলাফল প্রক্রিয়া হয়েছে${scopeBn}`,
+          `${result.processed} student results processed${scopeEn}`,
         ),
       );
     } catch (error) {
@@ -72,7 +92,7 @@ export function MarksProcessPanel() {
           <Play className="h-4 w-4 text-brand-accent" />
           <div>
             <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("পরীক্ষার ফলাফল প্রক্রিয়া", "Process exam results")}</h3>
-            <p className={`mt-0.5 text-[11px] ${mutedClass}`}>{bi("এটি স্পষ্টভাবে চালানোর পরেই নতুন নিয়ম ফলাফলে প্রযোগ হবে।", "New rules affect results only after this explicit action.")}</p>
+            <p className={`mt-0.5 text-[11px] ${mutedClass}`}>{bi("নতুন নিয়ম প্রয়োগ হবে শুধু এটি স্পষ্টভাবে চালানোর পরে। শ্রেণি নির্বাচন করে একটি করে ফলাফল প্রক্রিয়া করা যায়।", "New rules apply only after this explicit run. Select a class to process one class at a time.")}</p>
           </div>
         </div>
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end">
@@ -83,10 +103,26 @@ export function MarksProcessPanel() {
             <Select
               id="process-results-exam"
               value={examId}
-              onChange={(event) => { setExamId(event.target.value); setLastRun(null); }}
+              onChange={(event) => { setExamId(event.target.value); setClassName(""); setLastRun(null); }}
               options={[
                 { label: bi("পরীক্ষা নির্বাচন করুন", "Select exam"), value: "" },
                 ...exams.map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id })),
+              ]}
+              className={inputClass}
+            />
+          </div>
+          <div className="flex-1">
+            <label className={`mb-1.5 block text-[11px] font-medium ${labelClass}`} htmlFor="process-results-class">
+              {bi("শ্রেণি", "Class")}
+            </label>
+            <Select
+              id="process-results-class"
+              value={className}
+              onChange={(event) => { setClassName(event.target.value); setLastRun(null); }}
+              disabled={!examId}
+              options={[
+                { label: bi("সব শ্রেণি", "All classes"), value: "" },
+                ...classNames.map((name) => ({ label: name, value: name })),
               ]}
               className={inputClass}
             />
@@ -142,6 +178,11 @@ export function MarksProcessPanel() {
 
           {lastRun && (
             <div className={`rounded-md border p-4 text-xs ${lastRun.skipped > 0 ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}>
+              <p className="mb-1 font-semibold">
+                {lastRun.className
+                  ? bi(`পরিধি: ${lastRun.className} শ্রেণি`, `Scope: class ${lastRun.className}`)
+                  : bi("পরিধি: সব শ্রেণি", "Scope: all classes")}
+              </p>
               {lastRun.skipped > 0
                 ? bi(
                   `${lastRun.missingIncomplete} জনের কিছু বিষয় অনুপস্থিত এবং ${lastRun.withoutRequiredSubjects} জনের কোনো প্রযোজ্য বিষয় নেই। তাদের পুরোনো ফলাফল অপরিবর্তিত আছে।`,
@@ -156,7 +197,9 @@ export function MarksProcessPanel() {
               <div>
                 <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("সংরক্ষিত ফলাফল", "Stored results")}</h3>
                 <p className={`mt-0.5 text-[11px] ${mutedClass}`}>
-                  {exam ? `${exam.name} · ` : ""}{Math.min(results.length, 50)} {bi("টি প্রিভিউ", "previewed")}
+                  {exam ? `${exam.name} · ` : ""}
+                  {className ? `${className} · ` : ""}
+                  {Math.min(visibleResults.length, 50)} {bi("টি প্রিভিউ", "previewed")}
                 </p>
               </div>
               {setup?.version !== undefined && <Badge variant="outline">v{setup.version}</Badge>}
@@ -165,13 +208,18 @@ export function MarksProcessPanel() {
               <div className={`p-8 text-center text-sm ${mutedClass}`}>{bi("ফলাফল লোড হচ্ছে...", "Loading results...")}</div>
             ) : resultsError ? (
               <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">{resultsError.message}</div>
-            ) : results.length === 0 ? (
-              <div className={`p-8 text-center text-sm ${mutedClass}`}>{bi("এই পরীক্ষার কোনো ফলাফল এখনও নেই।", "No results exist for this exam yet.")}</div>
+            ) : visibleResults.length === 0 ? (
+              <div className={`p-8 text-center text-sm ${mutedClass}`}>
+                {className
+                  ? bi(`${className} শ্রেণির কোনো ফলাফল এখনও নেই।`, `No results for class ${className} yet.`)
+                  : bi("এই পরীক্ষার কোনো ফলাফল এখনও নেই।", "No results exist for this exam yet.")}
+              </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className={isDark ? "border-white/[0.04] hover:bg-transparent" : "border-zinc-100 hover:bg-transparent"}>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("শিক্ষার্থী", "Student")}</TableHead>
+                    <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("শ্রেণি", "Class")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("গ্রেড", "Grade")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("শতাংশ", "%")}</TableHead>
                     <TableHead className={isDark ? "text-zinc-400" : "text-zinc-500"}>{bi("ফলাফল", "Result")}</TableHead>
@@ -181,9 +229,10 @@ export function MarksProcessPanel() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {results.slice(0, 50).map((result) => (
+                  {visibleResults.slice(0, 50).map((result) => (
                     <TableRow key={result.id} className={isDark ? "border-white/[0.04]" : "border-zinc-100"}>
                       <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{result.studentName}</TableCell>
+                      <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{result.className || "—"}</TableCell>
                       <TableCell><Badge>{result.grade}</Badge></TableCell>
                       <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{result.percentage.toFixed(1)}%</TableCell>
                       <TableCell><Badge status={result.pass ? "APPROVED" : "REJECTED"}>{result.pass ? bi("পাস", "Pass") : bi("ফেল", "Fail")}</Badge></TableCell>
@@ -203,11 +252,25 @@ export function MarksProcessPanel() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         title={bi("ফলাফল পুনরায় প্রক্রিয়া করবেন?", "Process results now?")}
-        description={exam ? `${exam.name} · ${bi("গ্রেড স্কেল", "Grade Scale")} v${setup?.version || 0}` : ""}
+        description={
+          exam
+            ? `${exam.name} · ${className || bi("সব শ্রেণি", "All classes")} · ${bi("গ্রেড স্কেল", "Grade Scale")} v${setup?.version || 0}`
+            : ""
+        }
         maxWidth="max-w-md"
       >
         <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-          <p>{bi("শুধু সব প্রয়োজনীয় বিষয়ের নম্বর পাওয়া শিক্ষার্থীদের ফলাফল তৈরি বা আপডেট হবে।", "Only students with marks for every required subject will be created or updated.")}</p>
+          <p>
+            {className
+              ? bi(
+                `শুধু ${className} শ্রেণির সব প্রয়োজনীয় বিষয়ের নম্বর পাওয়া শিক্ষার্থীদের ফলাফল তৈরি বা আপডেট হবে। অন্য শ্রেণির ফলাফল অপরিবর্তিত থাকবে।`,
+                `Only ${className} students with marks for every required subject will be created or updated. Other classes are left unchanged.`,
+              )
+              : bi(
+                "শুধু সব প্রয়োজনীয় বিষয়ের নম্বর পাওয়া শিক্ষার্থীদের ফলাফল তৈরি বা আপডেট হবে।",
+                "Only students with marks for every required subject will be created or updated.",
+              )}
+          </p>
           <p>{bi("আগে প্রক্রিয়াকৃত ফলাফল স্পষ্টভাবে পুনরায় প্রক্রিয়া করলে DRAFT অবস্থায় ফিরবে।", "Explicit reprocessing resets previously processed rows to DRAFT.")}</p>
         </div>
         <ModalFooter>

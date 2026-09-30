@@ -97,6 +97,45 @@ export async function fetchRegistrationsByExam(examId: string, sessionId?: strin
 }
 
 /**
+ * Distinct class names among APPROVED registrations for an exam, sorted.
+ *
+ * The Process Results panel uses this to offer class-wise processing. Only
+ * `class_name` is selected and rows are read in pages, so a large exam never
+ * hides a class behind PostgREST's response row cap.
+ */
+export async function fetchExamClassNames(examId: string): Promise<string[]> {
+  const supabase = createClient();
+  const names = new Set<string>();
+  const pageSize = 1000;
+  for (let page = 0; page < 10; page += 1) {
+    const from = page * pageSize;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select('class_name')
+      .eq('exam_id', examId)
+      .eq('status', 'APPROVED')
+      .order('class_name', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error || !data) break;
+    for (const row of data) {
+      const name = typeof row.class_name === 'string' ? row.class_name.trim() : '';
+      if (name) names.add(name);
+    }
+    if (data.length < pageSize) break;
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+export function useExamClassNames(examId: string) {
+  return useQuery({
+    queryKey: ['registration-class-names', examId],
+    queryFn: () => fetchExamClassNames(examId),
+    enabled: !!examId,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
  * Normalize a registration status for filtering/counting.
  * APPROVED and VERIFIED both count as APPROVED; returns '' when unknown.
  */

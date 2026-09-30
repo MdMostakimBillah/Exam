@@ -276,11 +276,25 @@ export interface ProcessExamResultsResult {
   totalRegistrations: number;
   totalUniqueStudents: number;
   setupVersion: number;
+  /** Class the run was scoped to, or null when the whole exam was processed. */
+  className: string | null;
 }
 
-export async function processExamResults(examId: string): Promise<ProcessExamResultsResult> {
+/**
+ * Run the result-generation RPC.
+ *
+ * `className` scopes the run to a single class (class-wise processing, so
+ * marks do not have to be complete for every class first); omitting it keeps
+ * the original whole-exam behaviour. Other classes' stored results are never
+ * touched by a scoped run.
+ */
+export async function processExamResults(examId: string, className?: string): Promise<ProcessExamResultsResult> {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc('process_exam_results', { p_exam_id: examId });
+  const scopedClass = className?.trim() ? className.trim() : null;
+  const { data, error } = await supabase.rpc('process_exam_results', {
+    p_exam_id: examId,
+    p_class_name: scopedClass,
+  });
   if (error) throw error;
   const result = (data || {}) as Record<string, any>;
   return {
@@ -291,13 +305,15 @@ export async function processExamResults(examId: string): Promise<ProcessExamRes
     totalRegistrations: Number(result.total_registrations || 0),
     totalUniqueStudents: Number(result.total_unique_students || 0),
     setupVersion: Number(result.setup_version || 0),
+    className: typeof result.class_name === 'string' && result.class_name ? result.class_name : null,
   };
 }
 
 export function useProcessExamResults() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (examId: string) => processExamResults(examId),
+    mutationFn: ({ examId, className }: { examId: string; className?: string }) =>
+      processExamResults(examId, className),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
     },
