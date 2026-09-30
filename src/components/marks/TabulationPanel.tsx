@@ -26,12 +26,17 @@ import type { ExamSubject, Result } from "@/lib/types";
 /**
  * Super-admin Marks page → "Tabulation" tab.
  *
- * Shows the class-wise tabulation mark sheet: roll, reg no, student,
- * institution, every subject's marks, GPA and class position. The position
- * comes from `results.position`, which process_exam_results ranks across the
- * SAME class in ALL institutions (RANK() PARTITION BY class_name) — so
- * student X's rank competes with every institution's class, not just their
- * own. The Download button exports a PDF with every class's sheet.
+ * ONE table per class: student, roll, reg no, every subject in its own
+ * column, then BOTH positions side by side —
+ *   • Position (All Institutions): `results.position`, which
+ *     process_exam_results ranks across the SAME class in ALL institutions
+ *     (RANK() PARTITION BY class_name ORDER BY total_marks DESC)
+ *   • Institution Position: the same competition ranking restricted to the
+ *     student's own institution (RANK() PARTITION BY class_name,
+ *     institution_id) — recomputed here from the class's results so it
+ *     always matches the stored overall rank's tie semantics (ties share a
+ *     rank, the next rank is skipped).
+ * The Download button exports the per-class PDF sheets (unchanged).
  */
 export function TabulationPanel() {
   const { lang } = useLang();
@@ -74,9 +79,7 @@ export function TabulationPanel() {
   }, [classEntries, classId]);
 
   const { data: results = [], isLoading: resultsLoading } = useResultsByExamFull(examId, currentSession?.id);
-  // isPending → the grade scale is still loading; the GPA cell shows a
-  // neutral "…" during that window instead of a misleading "—".
-  const { data: setup, isPending: setupPending } = useExamMarkSetup(examId);
+  const { data: setup } = useExamMarkSetup(examId);
 
   const className = classEntries.find((item) => item.id === classId)?.name || "";
 
@@ -98,19 +101,59 @@ export function TabulationPanel() {
     return Math.round((sum / result.subjectMarks.length) * 100) / 100;
   };
 
-  /** Position first (unranked last), then total marks as the visible tie order. */
+  /**
+   * Position first (unranked last), then total marks as the visible tie
+   * order. Ties on BOTH position and total get a stable registration-number
+   * tie-break — otherwise two equal students would swap rows between loads
+   * (and between PDF exports), since SQL's insert order for equal ranks is
+   * not guaranteed.
+   */
   const byPosition = (list: Result[]) =>
     [...list].sort((a, b) => {
       const pa = a.position > 0 ? a.position : Number.MAX_SAFE_INTEGER;
       const pb = b.position > 0 ? b.position : Number.MAX_SAFE_INTEGER;
       if (pa !== pb) return pa - pb;
-      return b.totalMarks - a.totalMarks;
+      if (a.totalMarks !== b.totalMarks) return b.totalMarks - a.totalMarks;
+      const ra = a.registrationNumber || "";
+      const rb = b.registrationNumber || "";
+      if (ra !== rb) return ra.localeCompare(rb);
+      return (a.studentName || "").localeCompare(b.studentName || "");
     });
 
   const classResults = useMemo(
     () => byPosition(results.filter((item) => item.className === className)),
     [className, results],
   );
+
+  /**
+   * Rank inside the student's OWN institution — RANK() PARTITION BY
+   * class_name, institution_id ORDER BY total_marks DESC, mirrored in JS so
+   * ties behave exactly like the stored `position` (shared rank, skipped
+   * next). Keyed by result id.
+   */
+  const instPositionByResult = useMemo(() => {
+    const map = new Map<string, number>();
+    const groups = new Map<string, Result[]>();
+    for (const result of classResults) {
+      const key = result.institutionId || result.institutionName || "";
+      const list = groups.get(key);
+      if (list) list.push(result);
+      else groups.set(key, [result]);
+    }
+    for (const list of groups.values()) {
+      const sorted = [...list].sort((a, b) => b.totalMarks - a.totalMarks);
+      let rank = 0;
+      let prevTotal: number | null = null;
+      sorted.forEach((result, index) => {
+        if (prevTotal === null || result.totalMarks !== prevTotal) {
+          rank = index + 1;
+          prevTotal = result.totalMarks;
+        }
+        map.set(result.id, rank);
+      });
+    }
+    return map;
+  }, [classResults]);
 
   const examOptions = useMemo(
     () => exams.map((item) => ({ label: item.name, value: item.id })),
@@ -283,8 +326,8 @@ export function TabulationPanel() {
         <span className="inline-flex items-center gap-1.5">
           <Table2 className="h-3.5 w-3.5" />
           {bi(
-            "অবস্থান = একই ক্লাসের সব প্রতিষ্ঠানের মধ্যে র‍্যাঙ্ক",
-            "Position = rank within this class across all institutions",
+            "অবস্থান = একই ক্লাসের সব প্রতিষ্ঠানের মধ্যে র‍্যাঙ্ক · প্রতিষ্ঠান অবস্থান = নিজ প্রতিষ্ঠানের একই ক্লাসের মধ্যে র‍্যাঙ্ক",
+            "Position = rank in this class across all institutions · Institution Position = rank within the student's own institution",
           )}
         </span>
         <span>
@@ -327,11 +370,9 @@ export function TabulationPanel() {
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? "border-white/[0.06]" : "border-zinc-200"}>
-                  <TableHead className={`w-10 text-center ${thCls}`}>#</TableHead>
+                  <TableHead className={thCls}>{bi("শিক্ষার্থী", "Student")}</TableHead>
                   <TableHead className={`text-center ${thCls}`}>{bi("রোল", "Roll")}</TableHead>
                   <TableHead className={`text-center ${thCls}`}>{bi("রেজি. নং", "Reg. No")}</TableHead>
-                  <TableHead className={thCls}>{bi("শিক্ষার্থী", "Student")}</TableHead>
-                  <TableHead className={thCls}>{bi("প্রতিষ্ঠান", "Institution")}</TableHead>
                   {subjects.map((subject) => (
                     <TableHead key={subject.id} className={`text-center ${thCls}`}>
                       <span className="flex flex-col leading-tight">
@@ -342,34 +383,37 @@ export function TabulationPanel() {
                       </span>
                     </TableHead>
                   ))}
-                  <TableHead className={`text-center ${thCls}`}>{bi("মোট", "Total")}</TableHead>
-                  <TableHead className={`text-center font-semibold ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>GPA</TableHead>
                   <TableHead className={`text-center font-semibold ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>
-                    {bi("অবস্থান", "Position")}
+                    {bi("অবস্থান (সব প্রতিষ্ঠান)", "Position (All Institutions)")}
+                  </TableHead>
+                  <TableHead className={`text-center font-semibold ${isDark ? "text-zinc-200" : "text-zinc-700"}`}>
+                    {bi("প্রতিষ্ঠান অবস্থান", "Institution Position")}
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {classResults.map((result, index) => {
-                  const gpa = gpaFor(result);
+                {classResults.map((result) => {
                   const position = result.position > 0 ? result.position : 0;
+                  const instPosition = instPositionByResult.get(result.id) ?? 0;
+                  const rankCls = (rank: number) =>
+                    rank > 0 && rank <= 3
+                      ? "font-bold text-brand-accent"
+                      : rank > 0
+                        ? isDark ? "text-zinc-300" : "text-zinc-700"
+                        : mutedCls;
                   return (
                     <TableRow
                       key={result.id}
                       className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/60"}`}
                     >
-                      <TableCell className={`text-center text-[11px] ${mutedCls}`}>{index + 1}</TableCell>
+                      <TableCell className={`text-[12px] font-medium ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>
+                        {result.studentName}
+                      </TableCell>
                       <TableCell className={`text-center text-xs ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
                         {result.roll || "—"}
                       </TableCell>
                       <TableCell className={`text-center text-xs ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
                         {result.registrationNumber || "—"}
-                      </TableCell>
-                      <TableCell className={`text-[12px] font-medium ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>
-                        {result.studentName}
-                      </TableCell>
-                      <TableCell className={`text-[12px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
-                        {instName(result.institutionName, result.institutionId)}
                       </TableCell>
                       {subjects.map((subject) => {
                         const mark = result.subjectMarks.find((item) => item.subjectId === subject.id)?.marks;
@@ -389,26 +433,11 @@ export function TabulationPanel() {
                           </TableCell>
                         );
                       })}
-                      <TableCell className={`text-center text-xs tabular-nums ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
-                        {result.totalMarks}/{result.totalFullMarks}
-                      </TableCell>
-                      <TableCell
-                        className={`text-center text-xs font-semibold tabular-nums ${
-                          gpa === null ? mutedCls : isDark ? "text-zinc-100" : "text-zinc-900"
-                        }`}
-                      >
-                        {setupPending ? "…" : gpa === null ? "—" : gpa.toFixed(2)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-center text-xs ${
-                          position > 0 && position <= 3
-                            ? "font-bold text-brand-accent"
-                            : position > 0
-                              ? isDark ? "text-zinc-300" : "text-zinc-700"
-                              : mutedCls
-                        }`}
-                      >
+                      <TableCell className={`text-center text-xs tabular-nums ${rankCls(position)}`}>
                         {position > 0 ? position : "—"}
+                      </TableCell>
+                      <TableCell className={`text-center text-xs tabular-nums ${rankCls(instPosition)}`}>
+                        {instPosition > 0 ? instPosition : "—"}
                       </TableCell>
                     </TableRow>
                   );
