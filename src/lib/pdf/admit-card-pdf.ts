@@ -27,7 +27,7 @@ const PAGE_W_PX = Math.round(PAGE_W_MM * PX_PER_MM); // 794
 const PAGE_H_PX = Math.round(PAGE_H_MM * PX_PER_MM); // 1123
 const CAPTURE_SCALE = 2; // sharp, bounded memory — 2× at 96dpi = ~192dpi, JPEG keeps size sane
 
-async function waitForFonts(target: Document = document): Promise<void> {
+export async function waitForFonts(target: Document = document): Promise<void> {
   const fonts: FontFaceSet | undefined = (target as any).fonts;
   if (!fonts) return;
   try {
