@@ -146,9 +146,11 @@ async function imageToPng(src: string): Promise<string | null> {
 let fontBase64: string | null = null;
 const FONT_FILE = "/fonts/NotoSansBengali-Regular.ttf";
 const FONT_VFS = "NotoSansBengali-Regular.ttf";
-const FONT_NAME = "NotoSansBengali";
+/** Embedded Bangla font family — exported so sibling PDF generators
+ *  (tabulation sheets) render with the same face. */
+export const FONT_NAME = "NotoSansBengali";
 
-async function loadFont(doc: any) {
+export async function loadFont(doc: any) {
   if (!fontBase64) {
     const response = await fetch(FONT_FILE);
     const buffer = await response.arrayBuffer();
@@ -193,6 +195,8 @@ interface WmImage {
   /** height / width of the loaded bitmap. */
   aspect: number;
 }
+/** Exported for sibling PDF generators (tabulation sheets). */
+export type { WmImage };
 
 /** jsPDF graphics-state alpha (works for text and images alike). */
 function setOpacity(doc: any, opacity: number) {
@@ -200,8 +204,9 @@ function setOpacity(doc: any, opacity: number) {
 }
 
 /** Load the branding watermark at full size as a PNG data URL (no crop —
- *  a seal must keep its shape). CORS failure → null → text fallback. */
-async function loadWatermarkImage(src: string): Promise<WmImage | null> {
+ *  a seal must keep its shape). CORS failure → null → text fallback.
+ *  Exported for sibling PDF generators (tabulation sheets). */
+export async function loadWatermarkImage(src: string): Promise<WmImage | null> {
   try {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -237,7 +242,7 @@ async function loadWatermarkImage(src: string): Promise<WmImage | null> {
  * centre to land exactly on the page centre:
  *   centre = A + Rot(θ)·(w/2, h/2),  A = (x, H − y − h)
  */
-function drawWatermark(
+export function drawWatermark(
   doc: any,
   pageW: number,
   pageH: number,

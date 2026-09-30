@@ -1,17 +1,18 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { BarChart3, BookOpen, ChevronRight, ListChecks, Settings2, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpen, ChevronRight, ListChecks, Settings2, Table2, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { MarksEntryPanel } from "@/components/marks/MarksEntryPanel";
 import { MarksSetupPanel } from "@/components/marks/MarksSetupPanel";
+import { TabulationPanel } from "@/components/marks/TabulationPanel";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 
-type MarksTab = "setup" | "entry";
+type MarksTab = "setup" | "entry" | "tabulation";
 
 export default function MarksPage() {
   const { lang } = useLang();
@@ -28,7 +29,8 @@ export default function MarksPage() {
 
   const requestTab = (nextTab: MarksTab) => {
     if (nextTab === activeTab) return;
-    const activeTabProtected = activeTab === "setup" ? setupDirty : marksPending;
+    const activeTabProtected =
+      activeTab === "setup" ? setupDirty : activeTab === "entry" ? marksPending : false;
     if (activeTabProtected) {
       setPendingTab(nextTab);
       return;
@@ -92,6 +94,7 @@ export default function MarksPage() {
   const steps: { icon: LucideIcon; label: string; tab?: MarksTab; href?: string }[] = [
     { icon: Settings2, label: bi("গ্রেড স্কেল", "Grade Scale"), tab: "setup" },
     { icon: ListChecks, label: bi("মার্ক এন্ট্রি", "Mark Entry"), tab: "entry" },
+    { icon: Table2, label: bi("ট্যাবুলেশন", "Tabulation"), tab: "tabulation" },
     { icon: BarChart3, label: bi("ফলাফল", "Results"), href: "/super-admin/results" },
   ];
 
@@ -154,6 +157,9 @@ export default function MarksPage() {
             <TabsTrigger value="entry" className={activeTab === "entry" ? "font-semibold text-brand-accent" : undefined}>
               <ListChecks className="h-4 w-4" /> {bi("মার্ক এন্ট্রি", "Mark Entry")}
             </TabsTrigger>
+            <TabsTrigger value="tabulation" className={activeTab === "tabulation" ? "font-semibold text-brand-accent" : undefined}>
+              <Table2 className="h-4 w-4" /> {bi("ট্যাবুলেশন", "Tabulation")}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="setup" keepMounted>
@@ -161,6 +167,9 @@ export default function MarksPage() {
           </TabsContent>
           <TabsContent value="entry" keepMounted>
             <MarksEntryPanel onPendingChange={setMarksPending} />
+          </TabsContent>
+          <TabsContent value="tabulation">
+            <TabulationPanel />
           </TabsContent>
         </Tabs>
       </div>

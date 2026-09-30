@@ -92,6 +92,36 @@ export async function fetchResultsByExam(examId: string, sessionId?: string, pag
   return (data || []).map(mapResult);
 }
 
+/**
+ * Every result of an exam WITH subject_marks — pages through the table until
+ * exhausted so the tabulation sheet export always covers all candidates.
+ * (The list variant intentionally omits the heavy subject_marks JSONB.)
+ */
+export async function fetchResultsByExamFull(examId: string, sessionId?: string, pageSize: number = 500): Promise<Result[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const all: Result[] = [];
+  for (let page = 0; ; page++) {
+    const from = page * pageSize;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(RESULT_FULL_COLUMNS)
+      .eq('session_id', sid)
+      .eq('exam_id', examId)
+      // id as a stable tie-breaker: processed rows share created_at, and an
+      // unstable order would duplicate/drop rows across range pages.
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = (data || []).map(mapResult);
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return all;
+}
+
 export async function fetchResultById(id: string): Promise<Result | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(RESULT_FULL_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
@@ -192,6 +222,15 @@ export function useResultsByExam(examId: string, sessionId?: string, page?: numb
   return useQuery({
     queryKey: ['results', 'exam', examId, sessionId, page || 1, pageSize || EXAM_RESULTS_PAGE_SIZE],
     queryFn: () => fetchResultsByExam(examId, sessionId, page, pageSize),
+    enabled: !!examId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useResultsByExamFull(examId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['results', 'exam-full', examId, sessionId],
+    queryFn: () => fetchResultsByExamFull(examId, sessionId),
     enabled: !!examId,
     staleTime: 60 * 1000,
   });
