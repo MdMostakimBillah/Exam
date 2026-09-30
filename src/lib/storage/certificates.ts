@@ -9,6 +9,33 @@ const CERTIFICATE_COLUMNS = 'id,session_id,certificate_number,student_id,student
 
 const DEFAULT_PAGE_SIZE = 20;
 
+/**
+ * Next sequential `CERT-<year>-NNNN` number for a NEW certificate.
+ *
+ * Deliberately a dedicated query (max number for the year, whole table)
+ * instead of scanning whatever page of certificates the list hooks happen to
+ * have loaded — batch generation from a 20-row page would otherwise collide
+ * on the UNIQUE certificate_number and abort mid-batch.
+ */
+export async function fetchNextCertificateNumber(
+  year: number = new Date().getFullYear(),
+  prefix = "CERT"
+): Promise<string> {
+  const head = `${prefix}-${year}-`;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select("certificate_number")
+    .like("certificate_number", `${head}%`)
+    .order("certificate_number", { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  const top = data?.[0]?.certificate_number as string | undefined;
+  const last = top ? parseInt(top.slice(head.length), 10) : NaN;
+  const next = Number.isNaN(last) ? 1 : last + 1;
+  return `${head}${String(next).padStart(4, "0")}`;
+}
+
 function mapCertificate(data: any): Certificate {
   return {
     id: data.id,

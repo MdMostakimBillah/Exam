@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { lookupCertificate } from "@/lib/auth/public-lookup";
 import { Certificate } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, CheckCircle, ShieldCheck, XCircle } from "lucide-react";
+import { Search, CheckCircle, ShieldCheck, XCircle, ShieldAlert } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -23,14 +23,15 @@ export default function VerifyCertificatePage() {
 
   const isButtonLoading = searchLoading;
 
-  const handleSearch = useCallback(async () => {
-    if (!certNumber.trim()) return;
+  const runLookup = useCallback(async (value: string) => {
+    const key = value.trim();
+    if (!key) return;
     setSearched(true);
     setCertificate(null);
     setLookupError("");
     setSearchLoading(true);
     try {
-      const res = await lookupCertificate(certNumber);
+      const res = await lookupCertificate(key);
       if (res.ok) setCertificate(res.certificate ?? null);
       else setLookupError(res.error || "Lookup failed. Please try again.");
     } catch {
@@ -38,7 +39,23 @@ export default function VerifyCertificatePage() {
     } finally {
       setSearchLoading(false);
     }
-  }, [certNumber]);
+  }, []);
+
+  const handleSearch = useCallback(() => runLookup(certNumber), [runLookup, certNumber]);
+
+  // QR / link deep support: /verify-certificate?number=CERT-2026-0001
+  // auto-verifies on arrival — the QR printed on every certificate encodes
+  // exactly this URL, so scanning it shows the result with no typing.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const number = (params.get("number") || params.get("n") || "").trim();
+    if (number) {
+      setCertNumber(number);
+      runLookup(number);
+    }
+  }, [runLookup]);
+
+  const isRevoked = certificate?.status === "DRAFT";
 
   const bg = isDark ? "bg-[#080808]" : "bg-gray-50";
   const text = isDark ? "text-zinc-100" : "text-gray-900";
@@ -76,7 +93,8 @@ export default function VerifyCertificatePage() {
                 <Input
                   value={certNumber}
                   onChange={(e) => setCertNumber(e.target.value)}
-                  placeholder="e.g. SCX-2026-000001"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                  placeholder="e.g. CERT-2026-0001"
                   maxLength={40}
                   autoComplete="off"
                   spellCheck={false}
@@ -99,15 +117,27 @@ export default function VerifyCertificatePage() {
         )}
 
         {certificate && (
-          <Card className="mt-6 border-emerald-500/20">
+          <Card className={`mt-6 ${isRevoked ? "border-amber-500/20" : "border-emerald-500/20"}`}>
             <CardContent className="p-6">
-              <div className="flex items-center gap-3 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-4 mb-6">
-                <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-emerald-300">Certificate Verified</p>
-                  <p className="text-xs text-emerald-400/60">This certificate is authentic and issued by ScholarX.</p>
+              {isRevoked ? (
+                <div className="flex items-center gap-3 rounded-md bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
+                  <ShieldAlert className="h-5 w-5 text-amber-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-300">Certificate Not Active</p>
+                    <p className="text-xs text-amber-400/70">
+                      This certificate exists but has been revoked or not yet issued, so it does not pass verification.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-4 mb-6">
+                  <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-300">Certificate Verified</p>
+                    <p className="text-xs text-emerald-400/60">This certificate is authentic and issued by ScholarX.</p>
+                  </div>
+                </div>
+              )}
               <div className="space-y-3">
                 {[
                   { label: 'Student', value: certificate.studentName },
