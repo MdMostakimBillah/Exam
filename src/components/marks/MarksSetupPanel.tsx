@@ -267,6 +267,17 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
     ? "group rounded-xl border border-white/[0.06] bg-[#17171a] p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.12] hover:shadow-lg hover:shadow-black/30"
     : "group rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md";
 
+  const focusExamSelect = () => {
+    const el = document.getElementById("grade-scale-exam") as (HTMLSelectElement & { showPicker?: () => void }) | null;
+    if (!el) return;
+    el.focus();
+    try {
+      el.showPicker?.();
+    } catch {
+      // browsers without user-gesture showPicker just get focus
+    }
+  };
+
   return (
     <div className="space-y-6">
       <fieldset disabled={saveSetup.isPending} className="contents">
@@ -279,18 +290,26 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
               </div>
               <Select id="grade-scale-exam" value={examId} onChange={(event) => requestExamChange(event.target.value)} options={[{ label: bi("পরীক্ষা নির্বাচন করুন", "Select exam"), value: "" }, ...exams.map((item) => ({ label: `${item.name} · ${item.code}`, value: item.id }))]} className={isDark ? "bg-white/[0.04] border-white/[0.08]" : "bg-zinc-50 border-zinc-200"} />
             </div>
-            {setup && <div className="flex items-center gap-2 pb-1"><Badge variant="outline">{bi("সংস্করণ", "Version")} {setup.version}</Badge>{dirty ? <Badge className="border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">{bi("অসংরক্ষিত পরিবর্তন", "Unsaved changes")}</Badge> : <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">{bi("সংরক্ষিত", "Saved")}</Badge>}</div>}
+            {setup ? <div className="flex items-center gap-2 pb-1"><Badge variant="outline">{bi("সংস্করণ", "Version")} {setup.version}</Badge>{dirty ? <Badge className="border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">{bi("অসংরক্ষিত পরিবর্তন", "Unsaved changes")}</Badge> : <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">{bi("সংরক্ষিত", "Saved")}</Badge>}</div>
+              : (!examsLoading && exams.length > 0 && (
+                <Badge variant="outline" className={isDark ? "text-zinc-400" : undefined}>
+                  {bi(`${exams.length} টি পরীক্ষা`, `${exams.length} exam${exams.length === 1 ? "" : "s"} available`)}
+                </Badge>
+              ))}
           </div>
           {setup && <div className={`flex flex-col gap-3 px-5 py-3 text-[11px] sm:flex-row sm:items-center sm:justify-between ${mutedClass} ${softClass}`}><span>{bi("সর্বশেষ সংরক্ষণ", "Last saved")}: {new Date(setup.updatedAt).toLocaleString()}</span><span>{bi("বিষয় ও নম্বর Exams পাতায় থাকে", "Subjects and marks are managed on the Exams page")}</span></div>}
         </div>
 
         {!examId && !examsLoading && (
           <div className={`${card} px-6 py-14 text-center`}>
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? "bg-white/[0.06]" : "bg-zinc-100"}`}>
-              <Settings2 className={`h-7 w-7 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-accent-soft text-brand-accent">
+              <Settings2 className="h-7 w-7" />
             </div>
             <p className={`text-sm font-semibold ${headingClass}`}>{bi("একটি পরীক্ষা নির্বাচন করুন", "Select an exam to configure Grade Scale")}</p>
             <p className={`mx-auto mt-1.5 max-w-sm text-xs leading-relaxed ${mutedClass}`}>{bi("গ্রেড, পয়েন্ট, পাস এবং বৃত্তির নিয়ম এখানে সেট করুন।", "Configure grades, points, pass rules, and scholarships here.")}</p>
+            <Button type="button" size="sm" className="mt-5" onClick={focusExamSelect}>
+              <Settings2 className="mr-1.5 h-3.5 w-3.5" /> {bi("পরীক্ষা নির্বাচন করুন", "Select an exam")}
+            </Button>
           </div>
         )}
         {setupError && examId && <div className="rounded-md border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">{setupError.message}</div>}

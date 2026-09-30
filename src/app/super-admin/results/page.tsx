@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useResults } from "@/lib/storage/results";
 import { useInstitutionName } from "@/lib/storage/institutions";
 import { useExamsFull } from "@/lib/storage/exams";
-import { Award, Download, FileDown } from "lucide-react";
+import { Award, BarChart3, Download, FileDown, TrendingUp, Users } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { LoadingBar } from "@/components/ui/loading-bar";
@@ -25,6 +25,7 @@ export default function ResultsPage() {
   const [mounted, setMounted] = useState(false);
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [exportScope, setExportScope] = useState<"all" | "selected">("all");
 
   const { data: results = [], isFetching, error: resultsError } = useResults(undefined, 1, 200);
   const { data: exams = [] } = useExamsFull();
@@ -48,7 +49,10 @@ export default function ResultsPage() {
     { header: isBn ? 'বৃত্তি' : 'Scholarship', key: "scholarshipStatus" },
   ], [isBn]);
 
-  const pdfData = useMemo(() => filtered.map(r => ({
+  const pdfData = useMemo(() => (exportScope === "selected"
+    ? filtered.filter(r => selection.isSelected(r.id))
+    : filtered
+  ).map(r => ({
     position: `#${r.position}`,
     studentName: r.studentName,
     institutionName: instName(r.institutionName, r.institutionId),
@@ -57,7 +61,7 @@ export default function ResultsPage() {
     percentage: `${r.percentage.toFixed(1)}%`,
     grade: r.grade,
     scholarshipStatus: r.scholarshipStatus,
-  })), [filtered, instName]);
+  })), [filtered, exportScope, selection, instName]);
 
   const examOptions = useMemo(() => [{ label: isBn ? 'সব পরীক্ষা' : 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))], [exams, isBn]);
 
@@ -68,7 +72,6 @@ export default function ResultsPage() {
   const card = isDark
     ? "bg-[#141416] border border-white/[0.06] rounded-md"
     : "bg-white border border-zinc-200 rounded-md shadow-sm";
-  const iconBg = "bg-brand-accent-soft";
   const iconColor = "text-brand-accent";
 
   return (
@@ -76,13 +79,18 @@ export default function ResultsPage() {
       <LoadingBar isLoading={isFetching} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-            {isBn ? 'ফলাফল' : 'Results'}
-          </h1>
-          <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {isBn ? 'পরীক্ষার ফলাফল দেখুন' : 'View examination results'}
-          </p>
+        <div className="mb-8 flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-accent text-brand-accent-fg shadow-lg shadow-black/10">
+            <Award className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+              {isBn ? 'ফলাফল' : 'Results'}
+            </h1>
+            <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+              {isBn ? 'পরীক্ষার ফলাফল দেখুন' : 'View examination results'}
+            </p>
+          </div>
         </div>
         <div className="mb-6">
           <MarksProcessPanel />
@@ -90,14 +98,14 @@ export default function ResultsPage() {
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { label: isBn ? 'মোট প্রার্থী' : 'Total Candidates', value: totalCandidates },
-            { label: isBn ? 'পাসের হার' : 'Pass Rate', value: `${totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%` },
-            { label: isBn ? 'বৃত্তিপ্রাপ্ত' : 'Scholarship', value: scholarshipWinners },
-            { label: isBn ? 'গড় স্কোর' : 'Avg Score', value: `${avgScore}%` },
+            { label: isBn ? 'মোট প্রার্থী' : 'Total Candidates', value: totalCandidates, icon: Users, tile: 'bg-sky-500/10 text-sky-500' },
+            { label: isBn ? 'পাসের হার' : 'Pass Rate', value: `${totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%`, icon: TrendingUp, tile: 'bg-emerald-500/10 text-emerald-500' },
+            { label: isBn ? 'বৃত্তিপ্রাপ্ত' : 'Scholarship', value: scholarshipWinners, icon: Award, tile: 'bg-amber-500/10 text-amber-500' },
+            { label: isBn ? 'গড় স্কোর' : 'Avg Score', value: `${avgScore}%`, icon: BarChart3, tile: 'bg-violet-500/10 text-violet-500' },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
-                <Award className={`h-5 w-5 ${iconColor}`} />
+              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${s.tile}`}>
+                <s.icon className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
@@ -120,7 +128,12 @@ export default function ResultsPage() {
               />
             </div>
             <div className="flex items-end">
-              <button className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
+              <button
+                type="button"
+                disabled={filtered.length === 0}
+                onClick={() => { setExportScope("all"); setShowPdfModal(true); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}
+              >
                 <Download className="h-3.5 w-3.5" /> {isBn ? 'ফলাফল এক্সপোর্ট' : 'Export Results'}
               </button>
             </div>
@@ -203,14 +216,22 @@ export default function ResultsPage() {
             <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
               {selection.selectedCount} {isBn ? 'টি নির্বাচিত' : 'selected'}
             </span>
-            <button onClick={() => setShowPdfModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors">
+            <button onClick={() => { setExportScope("selected"); setShowPdfModal(true); }} className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors">
               <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
             </button>
           </div>
         </div>
       )}
 
-      <PdfExportModal open={showPdfModal} onClose={() => setShowPdfModal(false)} title={isBn ? 'ফলাফল তালিকা' : 'Results List'} columns={pdfColumns} data={pdfData} />
+      <PdfExportModal
+        open={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        title={exportScope === "selected"
+          ? `${isBn ? 'নির্বাচিত ফলাফল' : 'Selected results'} (${pdfData.length})`
+          : (isBn ? 'ফলাফল তালিকা' : 'Results List')}
+        columns={pdfColumns}
+        data={pdfData}
+      />
     </div>
   );
 }

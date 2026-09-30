@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Play, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Inbox, Play, RefreshCw, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalFooter } from "@/components/ui/modal";
@@ -99,12 +99,22 @@ export function MarksProcessPanel() {
   return (
     <div className="space-y-5">
       <section className={card}>
-        <div className={`flex items-center gap-2 border-b px-5 py-4 ${borderClass}`}>
-          <Play className="h-4 w-4 text-brand-accent" />
-          <div>
-            <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("পরীক্ষার ফলাফল প্রক্রিয়া", "Process exam results")}</h3>
-            <p className={`mt-0.5 text-[11px] ${mutedClass}`}>{bi("নতুন নিয়ম প্রয়োগ হবে শুধু এটি স্পষ্টভাবে চালানোর পরে। শ্রেণি নির্বাচন করে একটি করে ফলাফল প্রক্রিয়া করা যায়।", "New rules apply only after this explicit run. Select a class to process one class at a time.")}</p>
+        <div className={`flex items-center justify-between gap-3 border-b px-5 py-4 ${borderClass}`}>
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-accent-soft text-brand-accent">
+              <Play className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("পরীক্ষার ফলাফল প্রক্রিয়া", "Process exam results")}</h3>
+              <p className={`mt-0.5 text-[11px] ${mutedClass}`}>{bi("নতুন নিয়ম প্রয়োগ হবে শুধু এটি স্পষ্টভাবে চালানোর পরে। শ্রেণি নির্বাচন করে একটি করে ফলাফল প্রক্রিয়া করা যায়।", "New rules apply only after this explicit run. Select a class to process one class at a time.")}</p>
+            </div>
           </div>
+          {examId && (
+            <span className={`hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold sm:inline-flex ${isDark ? "border-white/[0.08] bg-white/[0.04] text-zinc-300" : "border-zinc-200 bg-zinc-50 text-zinc-600"}`}>
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-accent" />
+              {className ? bi(`পরিধি: ${className} শ্রেণি`, `Scope: class ${className}`) : bi("পরিধি: সব শ্রেণি", "Scope: all classes")}
+            </span>
+          )}
         </div>
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end">
           <div className="flex-1">
@@ -139,9 +149,10 @@ export function MarksProcessPanel() {
             />
           </div>
           {setup && (
-            <div className="flex items-center gap-2 pb-1 text-[11px]">
-              <Badge variant="outline">{bi("গ্রেড স্কেল", "Grade Scale")} v{setup.version}</Badge>
-              <span className={mutedClass}>{bi("পাস", "Pass")} {setup.passPercent}%</span>
+            <div className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-[7px] text-[11px] ${isDark ? "border-white/[0.08] bg-white/[0.04] text-zinc-400" : "border-zinc-200 bg-zinc-50 text-zinc-600"}`}>
+              <span className={`font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{bi("গ্রেড স্কেল", "Grade Scale")} v{setup.version}</span>
+              <span className={isDark ? "text-zinc-600" : "text-zinc-300"}>·</span>
+              <span>{bi("পাস", "Pass")} {setup.passPercent}%</span>
             </div>
           )}
           <Button type="button" onClick={() => setConfirmOpen(true)} disabled={!examId || processResults.isPending} isLoading={processResults.isPending}>
@@ -158,28 +169,32 @@ export function MarksProcessPanel() {
                 icon: Users,
                 label: bi("অনুমোদিত শিক্ষার্থী", "Approved students"),
                 value: lastRun?.totalUniqueStudents,
+                tile: isDark ? "bg-sky-500/10 text-sky-400" : "bg-sky-500/10 text-sky-600",
               },
               {
                 icon: CheckCircle2,
                 label: bi("প্রক্রিয়াকৃত", "Processed"),
                 value: lastRun?.processed,
+                tile: isDark ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-500/10 text-emerald-600",
               },
               {
                 icon: AlertTriangle,
                 label: bi("অসম্পূর্ণ", "Missing / incomplete"),
                 value: lastRun?.missingIncomplete,
+                tile: isDark ? "bg-amber-500/10 text-amber-400" : "bg-amber-500/10 text-amber-600",
               },
               {
                 icon: RefreshCw,
                 label: bi("সর্বমোট এড়িয়ে যাওয়া", "Total skipped"),
                 value: lastRun?.skipped,
+                tile: isDark ? "bg-violet-500/10 text-violet-400" : "bg-violet-500/10 text-violet-600",
               },
             ].map((item) => (
               <div key={item.label} className={`${card} px-4 py-3`}>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-brand-accent-soft p-2 text-brand-accent"><item.icon className="h-4 w-4" /></div>
+                  <div className={`rounded-md p-2 ${item.tile}`}><item.icon className="h-4 w-4" /></div>
                   <div>
-                    <p className={`text-lg font-bold leading-none ${headingClass}`}>{item.value ?? "—"}</p>
+                    <p className={`text-lg font-bold leading-none ${item.value !== undefined ? headingClass : isDark ? "text-zinc-600" : "text-zinc-300"}`}>{item.value ?? "—"}</p>
                     <p className={`mt-1 text-[10px] ${mutedClass}`}>{item.label}</p>
                   </div>
                 </div>
@@ -187,19 +202,33 @@ export function MarksProcessPanel() {
             ))}
           </div>
 
+          {!lastRun && (
+            <p className={`flex items-center gap-1.5 text-[11px] ${mutedClass}`}>
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              {bi("ফলাফল প্রক্রিয়া করার পর এখানে পরিসংখ্যান দেখা যাবে।", "Statistics appear here after you process results.")}
+            </p>
+          )}
+
           {lastRun && (
-            <div className={`rounded-md border p-4 text-xs ${lastRun.skipped > 0 ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}>
-              <p className="mb-1 font-semibold">
-                {lastRun.className
-                  ? bi(`পরিধি: ${lastRun.className} শ্রেণি`, `Scope: class ${lastRun.className}`)
-                  : bi("পরিধি: সব শ্রেণি", "Scope: all classes")}
-              </p>
+            <div className={`flex items-start gap-2.5 rounded-md border p-4 text-xs ${lastRun.skipped > 0 ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}>
               {lastRun.skipped > 0
-                ? bi(
-                  `${lastRun.missingIncomplete} জনের কিছু বিষয় অনুপস্থিত এবং ${lastRun.withoutRequiredSubjects} জনের কোনো প্রযোজ্য বিষয় নেই। তাদের পুরোনো ফলাফল অপরিবর্তিত আছে।`,
-                  `${lastRun.missingIncomplete} students have missing marks and ${lastRun.withoutRequiredSubjects} have no required subjects. Their existing results were left unchanged.`,
-                )
-                : bi("সব অনুমোদিত শিক্ষার্থীর প্রয়োজনীয় নম্বর সম্পূর্ণ।", "All approved students have complete required marks.")}
+                ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+              <div>
+                <p className="font-semibold">
+                  {lastRun.className
+                    ? bi(`পরিধি: ${lastRun.className} শ্রেণি`, `Scope: class ${lastRun.className}`)
+                    : bi("পরিধি: সব শ্রেণি", "Scope: all classes")}
+                </p>
+                <p className="mt-0.5">
+                  {lastRun.skipped > 0
+                    ? bi(
+                      `${lastRun.missingIncomplete} জনের কিছু বিষয় অনুপস্থিত এবং ${lastRun.withoutRequiredSubjects} জনের কোনো প্রযোজ্য বিষয় নেই। তাদের পুরোনো ফলাফল অপরিবর্তিত আছে।`,
+                      `${lastRun.missingIncomplete} students have missing marks and ${lastRun.withoutRequiredSubjects} have no required subjects. Their existing results were left unchanged.`,
+                    )
+                    : bi("সব অনুমোদিত শিক্ষার্থীর প্রয়োজনীয় নম্বর সম্পূর্ণ।", "All approved students have complete required marks.")}
+                </p>
+              </div>
             </div>
           )}
 
@@ -220,10 +249,18 @@ export function MarksProcessPanel() {
             ) : resultsError ? (
               <div className="p-8 text-center text-sm text-red-600 dark:text-red-400">{resultsError.message}</div>
             ) : visibleResults.length === 0 ? (
-              <div className={`p-8 text-center text-sm ${mutedClass}`}>
-                {className
-                  ? bi(`${className} শ্রেণির কোনো ফলাফল এখনও নেই।`, `No results for class ${className} yet.`)
-                  : bi("এই পরীক্ষার কোনো ফলাফল এখনও নেই।", "No results exist for this exam yet.")}
+              <div className="px-6 py-12 text-center">
+                <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${isDark ? "bg-white/[0.06]" : "bg-zinc-100"}`}>
+                  <Inbox className={`h-6 w-6 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
+                </div>
+                <p className={`text-sm font-semibold ${headingClass}`}>
+                  {className
+                    ? bi(`${className} শ্রেণির কোনো ফলাফল এখনও নেই।`, `No results for class ${className} yet.`)
+                    : bi("এই পরীক্ষার কোনো ফলাফল এখনও নেই।", "No results exist for this exam yet.")}
+                </p>
+                <p className={`mx-auto mt-1 max-w-sm text-xs ${mutedClass}`}>
+                  {bi("উপরে ফলাফল প্রক্রিয়া করলে তৈরি ফলাফল এখানে দেখা যাবে।", "Results you generate above will appear here.")}
+                </p>
               </div>
             ) : (
               <Table>
