@@ -62,6 +62,17 @@ export function MarksProcessPanel() {
       }
       const scopeBn = className ? ` (${className} শ্রেণি)` : "";
       const scopeEn = className ? ` (class ${className})` : "";
+      if (result.processed === 0) {
+        const n = result.skipped;
+        toast(
+          "warning",
+          bi(
+            `কোনো নতুন ফলাফল তৈরি হয়নি${scopeBn} — ${n} জনের নম্বর অসম্পূর্ণ`,
+            `No new results generated${scopeEn} — ${n} student${n === 1 ? "" : "s"} ha${n === 1 ? "s" : "ve"} incomplete marks`,
+          ),
+        );
+        return;
+      }
       toast(
         "success",
         bi(
