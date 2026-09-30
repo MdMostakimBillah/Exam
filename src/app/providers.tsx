@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/lib/auth/auth-provider";
 import { QueryProvider } from "@/lib/query-provider";
 import { AccentColor } from "@/components/branding/accent-color";
 import { SiteFavicon } from "@/components/branding/site-favicon";
+import { PwaInstaller } from "@/components/pwa/pwa";
 import { useExamsRealtimeSync } from "@/lib/storage/exams";
 
 /** App-wide live exam sync: status changes made by the super admin appear
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryProvider>
       <AccentColor />
       <SiteFavicon />
+      <PwaInstaller />
       <AuthProvider>
         <ExamsLiveSync />
         <ThemeProvider>

@@ -74,6 +74,10 @@ export interface Institution {
   /** Super-admin permission (migration 0033): this institution may open the
    *  Admit Cards page and download ITS OWN cards. Off until granted. */
   allowAdmitCardDownload?: boolean;
+  /** Super admin: students of this institution see the Marksheet section. */
+  allowMarksheetDownload?: boolean;
+  /** Super admin: students see the Certificates section. */
+  allowCertificateDownload?: boolean;
   totalStudents: number;
   totalApplications: number;
   createdAt: string;

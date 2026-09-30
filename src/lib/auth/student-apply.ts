@@ -195,6 +195,55 @@ export interface ApplyOptions {
   };
   institutions?: { id: string; name: string; nameEn: string; district: string }[];
   classes?: { id: string; name: string }[];
+  /**
+   * Super-admin visibility toggles (system_settings, category "visibility")
+   * controlling WHICH exam details the public /apply page shows. Absent =
+   * show everything (the historical behaviour).
+   */
+  visibility?: ApplyVisibility;
+}
+
+/** What the public apply page may show: fee, last registration date, exam date. */
+export interface ApplyVisibility {
+  fee: boolean;
+  regEndDate: boolean;
+  examDate: boolean;
+}
+
+/** system_settings keys behind the toggles (default: visible). */
+const VISIBILITY_KEYS = {
+  fee: "applyShowFee",
+  regEndDate: "applyShowRegEndDate",
+  examDate: "applyShowExamDate",
+} as const;
+
+/** Settings values are text ('true'/'false') but tolerate real booleans. */
+function boolOr(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value === "true") return true;
+    if (value === "false") return false;
+  }
+  return fallback;
+}
+
+/** The three visibility flags, read straight from system_settings. */
+async function applyVisibility(): Promise<ApplyVisibility> {
+  const { data } = await supabaseAdmin
+    .from("system_settings")
+    .select("key,value")
+    .in("key", Object.values(VISIBILITY_KEYS));
+  const map = Object.fromEntries(
+    ((data as { key: string; value: unknown }[] | null) ?? []).map((r) => [
+      r.key,
+      r.value,
+    ])
+  );
+  return {
+    fee: boolOr(map[VISIBILITY_KEYS.fee], true),
+    regEndDate: boolOr(map[VISIBILITY_KEYS.regEndDate], true),
+    examDate: boolOr(map[VISIBILITY_KEYS.examDate], true),
+  };
 }
 
 export async function getApplyFormOptions(): Promise<ApplyOptions> {
@@ -220,7 +269,7 @@ export async function getApplyFormOptions(): Promise<ApplyOptions> {
       };
     }
 
-    const [classesRes, instRes] = await Promise.all([
+    const [classesRes, instRes, visibility] = await Promise.all([
       supabaseAdmin
         .from("classes")
         .select("id,name")
@@ -232,6 +281,7 @@ export async function getApplyFormOptions(): Promise<ApplyOptions> {
         .eq("status", "ACTIVE")
         .order("name", { ascending: true })
         .limit(500),
+      applyVisibility(),
     ]);
 
     let classes = (classesRes.data as { id: string; name: string }[] | null) ?? [];
@@ -268,6 +318,7 @@ export async function getApplyFormOptions(): Promise<ApplyOptions> {
       },
       institutions,
       classes,
+      visibility,
     };
   } catch {
     return { ok: false, error: "Could not load the application form. Please try again." };

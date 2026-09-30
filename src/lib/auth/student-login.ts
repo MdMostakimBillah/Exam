@@ -89,6 +89,10 @@ function newSession(
   institutionName: string,
   institutionNameEn = ""
 ): StudentSession {
+  const inst = (student.institutions ?? {}) as {
+    allow_marksheet_download?: boolean;
+    allow_certificate_download?: boolean;
+  };
   return {
     id: student.id as string,
     studentId: student.student_id as string,
@@ -99,6 +103,8 @@ function newSession(
     institutionId: student.institution_id as string,
     institutionName,
     institutionNameEn,
+    allowMarksheetDownload: !!inst.allow_marksheet_download,
+    allowCertificateDownload: !!inst.allow_certificate_download,
     class: student.class as string,
     section: (student.section as string) || "",
     roll: (student.roll as string) || "",
@@ -137,22 +143,44 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
   };
 
   // 1. Verify the claimed identity against the database (service role).
-  const { data: student, error: studentError } = await supabaseAdmin
+  //    student_id repeats across classes in real data (Ten and Two both use
+  //    STU-2026-0001), so fetch EVERY row with that id — maybeSingle() would
+  //    error with "The result contains 2 rows" — and pick the one the
+  //    submitted phone/email belongs to. The identity stays (student id +
+  //    phone/email); only the lookup shape changed.
+  let { data: matches, error: studentError } = await supabaseAdmin
     .from("students")
     .select(
-      "id,student_id,first_name,last_name,email,phone,institution_id,class,section,roll,photo_url,user_id,institutions(name,name_en)"
+      "id,student_id,first_name,last_name,email,phone,institution_id,class,section,roll,photo_url,user_id,institutions(name,name_en,allow_marksheet_download,allow_certificate_download)"
     )
-    .eq("student_id", rawId)
-    .maybeSingle();
+    .eq("student_id", rawId);
 
-  if (studentError || !student) return fail("student not found");
+  if (studentError && /allow_marksheet_download|allow_certificate_download/.test(studentError.message || "")) {
+    // 0038 not applied yet — PostgREST rejects the whole select for an
+    // unknown column, so retry without the two flags (they read as off).
+    ({ data: matches, error: studentError } = await supabaseAdmin
+      .from("students")
+      .select(
+        "id,student_id,first_name,last_name,email,phone,institution_id,class,section,roll,photo_url,user_id,institutions(name,name_en)"
+      )
+      .eq("student_id", rawId));
+  }
 
-  const phoneMatch = String(student.phone || "").trim().toLowerCase() === rawIdentifier;
-  const emailMatch = String(student.email || "").trim().toLowerCase() === rawIdentifier;
-  if (!phoneMatch && !emailMatch) return fail("identifier mismatch");
+  if (studentError || !matches || matches.length === 0) return fail("student not found");
+
+  const student =
+    matches.find((row) => {
+      const phone = String(row.phone || "").trim().toLowerCase();
+      const email = String(row.email || "").trim().toLowerCase();
+      return (!!phone && phone === rawIdentifier) || (!!email && email === rawIdentifier);
+    }) || null;
+  if (!student) return fail("identifier mismatch");
 
   // 2. Ensure there is an auth account, with a password nobody can predict.
-  const authEmail = `student_${rawId}@scholarx.local`;
+  //    The address must be unique per STUDENT ROW: student_id alone repeats
+  //    across classes, and a shared account would break getStudentSession's
+  //    `.single()` lookup (two rows with the same user_id).
+  const authEmail = `student_${student.id}@scholarx.local`;
   const freshPassword = `${randomBytes(24).toString("base64url")}!7Kq`;
   let authUserId = (student.user_id as string) || null;
 
@@ -175,13 +203,23 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
     if (createErr) {
       // Account already exists but is not linked to this student row (legacy
       // flow): sign in with the legacy derived credential once, then rotate it.
+      // Older deployments created the account under `student_<student_id>@…`;
+      // try that address too before giving up.
       const legacyPassword = `student_${rawId}_${phoneOrEmail}`;
+      const legacyEmail = `student_${rawId}@scholarx.local`;
       const supabase = await createServerClient();
-      const { data: legacy, error: legacyErr } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: legacyPassword,
-      });
-      if (legacyErr || !legacy.user) return fail("no auth account");
+      let legacy = null;
+      let legacyErr: { message?: string } | null = null;
+      for (const address of authEmail === legacyEmail ? [authEmail] : [authEmail, legacyEmail]) {
+        const attempt = await supabase.auth.signInWithPassword({ email: address, password: legacyPassword });
+        if (!attempt.error && attempt.data.user) {
+          legacy = attempt.data;
+          legacyErr = null;
+          break;
+        }
+        legacyErr = attempt.error;
+      }
+      if (legacyErr || !legacy?.user) return fail("no auth account");
       authUserId = legacy.user.id;
       await supabaseAdmin.auth.admin.updateUserById(authUserId, {
         password: freshPassword,

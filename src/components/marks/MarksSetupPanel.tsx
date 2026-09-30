@@ -279,7 +279,7 @@ export function MarksSetupPanel({ onDirtyChange }: MarksSetupPanelProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <fieldset disabled={saveSetup.isPending} className="contents">
         <div className={card}>
           <div className={`flex flex-col gap-4 border-b px-5 py-4 sm:flex-row sm:items-end sm:justify-between ${borderClass}`}>

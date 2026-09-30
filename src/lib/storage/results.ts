@@ -122,6 +122,24 @@ export async function fetchResultsByExamFull(examId: string, sessionId?: string,
   return all;
 }
 
+/**
+ * One student's OWN result rows for the student-portal Marksheet. Filtered
+ * by student_id only: RLS already restricts a student to their own rows
+ * (migration 0038), so there is no session filter to depend on.
+ */
+export async function fetchResultsByStudent(studentId: string, pageSize: number = 100): Promise<Result[]> {
+  const supabase = createClient();
+  if (!studentId) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(RESULT_FULL_COLUMNS)
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+    .limit(pageSize);
+  if (error) throw error;
+  return (data || []).map(mapResult);
+}
+
 export async function fetchResultById(id: string): Promise<Result | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(RESULT_FULL_COLUMNS).eq('id', id).single();
   if (error || !data) return undefined;
@@ -241,6 +259,15 @@ export function useResultById(id: string) {
     queryKey: ['results', id],
     queryFn: () => fetchResultById(id),
     enabled: !!id,
+  });
+}
+
+export function useResultsByStudent(studentId: string) {
+  return useQuery({
+    queryKey: ['results', 'student', studentId],
+    queryFn: () => fetchResultsByStudent(studentId),
+    enabled: !!studentId,
+    staleTime: 60 * 1000,
   });
 }
 

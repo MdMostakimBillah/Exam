@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   getApplyFormOptions,
   submitStudentApplication,
 } from "@/lib/auth/student-apply";
-import type { ApplyOptions, ApplyResult } from "@/lib/auth/student-apply";
+import type { ApplyOptions, ApplyResult, ApplyVisibility } from "@/lib/auth/student-apply";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -347,6 +347,43 @@ export default function ApplyPage() {
   );
   const selectedClass = options?.classes?.find((c) => c.id === form.classId);
 
+  // Super-admin visibility toggles — which exam details the public banner /
+  // review may show (missing payload = show everything, as before).
+  const vis: ApplyVisibility = {
+    fee: true,
+    regEndDate: true,
+    examDate: true,
+    ...(options?.visibility ?? {}),
+  };
+  const dateFmt = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB");
+  const feeCls = `font-semibold ${isDark ? "text-zinc-100" : "text-gray-900"}`;
+  const dimCls = "opacity-70";
+
+  // Exam facts for the banner, in display order, each gated by its toggle.
+  const bannerParts: ReactNode[] = [];
+  if (vis.fee) {
+    bannerParts.push(
+      <span key="fee">
+        {L("Fee", "ফি")}: <span className={feeCls}>৳{options?.exam?.fee}</span>
+      </span>
+    );
+  }
+  if (vis.regEndDate && options?.exam?.endDate) {
+    bannerParts.push(
+      <span key="reg-end" className={dimCls}>
+        {L("Register by", "নিবন্ধনের শেষ তারিখ")}: {dateFmt(options.exam.endDate)}
+      </span>
+    );
+  }
+  if (vis.examDate && options?.exam?.examDate) {
+    bannerParts.push(
+      <span key="exam-date" className={dimCls}>
+        {L("Exam", "পরীক্ষা")}: {dateFmt(options.exam.examDate)}
+      </span>
+    );
+  }
+
   /* ---------------------------------------------------------------- */
   /* Success screen                                                    */
   /* ---------------------------------------------------------------- */
@@ -616,15 +653,16 @@ export default function ApplyPage() {
                     </Badge>
                   )}
                 </span>
-                <span>
-                  {L("Fee", "ফি")}: <span className={`font-semibold ${isDark ? "text-zinc-100" : "text-gray-900"}`}>৳{options.exam?.fee}</span>
-                  {options.exam?.examDate && (
-                    <span className="opacity-70">
-                      {" · "}
-                      {L("Exam", "পরীক্ষা")}: {new Date(options.exam.examDate).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
-                    </span>
-                  )}
-                </span>
+                {bannerParts.length > 0 && (
+                  <span className="flex flex-wrap items-center gap-x-1.5">
+                    {bannerParts.map((part, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && <span className={dimCls}>·</span>}
+                        {part}
+                      </Fragment>
+                    ))}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -957,7 +995,15 @@ export default function ApplyPage() {
                         { label: L("Phone", "ফোন"), value: form.phone.trim() },
                         { label: L("Class Roll", "ক্লাস রোল"), value: form.roll.trim() || "—" },
                         { label: L("Address", "ঠিকানা"), value: form.address.trim() },
-                        { label: L("Examination Fee", "রেজিস্ট্রেশন ফি"), value: `৳${options.exam?.fee ?? 0}` },
+                        ...(vis.fee
+                          ? [{ label: L("Examination Fee", "রেজিস্ট্রেশন ফি"), value: `৳${options.exam?.fee ?? 0}` }]
+                          : []),
+                        ...(vis.regEndDate && options.exam?.endDate
+                          ? [{ label: L("Register by", "নিবন্ধনের শেষ তারিখ"), value: dateFmt(options.exam.endDate) }]
+                          : []),
+                        ...(vis.examDate && options.exam?.examDate
+                          ? [{ label: L("Exam Date", "পরীক্ষার তারিখ"), value: dateFmt(options.exam.examDate) }]
+                          : []),
                       ].map((item) => (
                         <div
                           key={item.label}

@@ -6,7 +6,7 @@ import { clearStudentSession, getStudentSession, type StudentSession } from "@/l
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { LogOut, LayoutDashboard, CreditCard, ChevronRight } from "lucide-react";
+import { LogOut, LayoutDashboard, CreditCard, ChevronRight, FileText, Award } from "lucide-react";
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -60,6 +60,14 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   const navItems = [
     { label: isBn ? "ড্যাশবোর্ড" : "Dashboard", icon: LayoutDashboard, href: "/student/dashboard" },
+    // Student-facing download sections — visible only when the super admin
+    // granted the institution the matching permission (migration 0038).
+    ...(student.allowMarksheetDownload
+      ? [{ label: isBn ? "মার্কশিট" : "Marksheet", icon: FileText, href: "/student/marksheet" }]
+      : []),
+    ...(student.allowCertificateDownload
+      ? [{ label: isBn ? "সার্টিফিকেট" : "Certificates", icon: Award, href: "/student/certificates" }]
+      : []),
     { label: isBn ? "পেমেন্ট" : "Payments", icon: CreditCard, href: "/student/payments" },
   ];
 

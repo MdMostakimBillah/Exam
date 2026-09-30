@@ -18,6 +18,10 @@ export interface StudentSession {
   section: string;
   roll: string;
   photo?: string;
+  /** Super admin granted this institution's students the Marksheet section. */
+  allowMarksheetDownload: boolean;
+  /** Super admin granted this institution's students the Certificates section. */
+  allowCertificateDownload: boolean;
 }
 
 export interface StudentLoginResult {
@@ -38,11 +42,21 @@ export async function getStudentSession(): Promise<StudentSession | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: student } = await supabase
+  let { data: student, error: studentError } = await supabase
     .from("students")
-    .select("*, institutions(name,name_en)")
+    .select("*, institutions(name,name_en,allow_marksheet_download,allow_certificate_download)")
     .eq("user_id", user.id)
     .single();
+
+  if (studentError) {
+    // 0038 not applied yet: PostgREST rejects the whole select for an
+    // unknown column — retry without the two flags (they read as off).
+    ({ data: student } = await supabase
+      .from("students")
+      .select("*, institutions(name,name_en)")
+      .eq("user_id", user.id)
+      .single());
+  }
 
   if (!student) return null;
 
@@ -60,6 +74,8 @@ export async function getStudentSession(): Promise<StudentSession | null> {
     section: student.section || "",
     roll: student.roll || "",
     photo: student.photo_url,
+    allowMarksheetDownload: !!student.institutions?.allow_marksheet_download,
+    allowCertificateDownload: !!student.institutions?.allow_certificate_download,
   };
 }
 

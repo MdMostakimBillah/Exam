@@ -169,25 +169,25 @@ export function MarksProcessPanel() {
                 icon: Users,
                 label: bi("অনুমোদিত শিক্ষার্থী", "Approved students"),
                 value: lastRun?.totalUniqueStudents,
-                tile: isDark ? "bg-sky-500/10 text-sky-400" : "bg-sky-500/10 text-sky-600",
+                tile: "bg-brand-accent-soft text-brand-accent",
               },
               {
                 icon: CheckCircle2,
                 label: bi("প্রক্রিয়াকৃত", "Processed"),
                 value: lastRun?.processed,
-                tile: isDark ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-500/10 text-emerald-600",
+                tile: "bg-brand-accent-soft text-brand-accent",
               },
               {
                 icon: AlertTriangle,
                 label: bi("অসম্পূর্ণ", "Missing / incomplete"),
                 value: lastRun?.missingIncomplete,
-                tile: isDark ? "bg-amber-500/10 text-amber-400" : "bg-amber-500/10 text-amber-600",
+                tile: "bg-brand-accent-soft text-brand-accent",
               },
               {
                 icon: RefreshCw,
                 label: bi("সর্বমোট এড়িয়ে যাওয়া", "Total skipped"),
                 value: lastRun?.skipped,
-                tile: isDark ? "bg-violet-500/10 text-violet-400" : "bg-violet-500/10 text-violet-600",
+                tile: "bg-brand-accent-soft text-brand-accent",
               },
             ].map((item) => (
               <div key={item.label} className={`${card} px-4 py-3`}>

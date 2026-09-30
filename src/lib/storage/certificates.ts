@@ -99,6 +99,26 @@ export async function fetchCertificateById(id: string): Promise<Certificate | un
   return mapCertificate(data);
 }
 
+/**
+ * One student's OWN issued certificates for the student-portal section.
+ * Revoked certificates (status DRAFT) stay hidden — they offer no
+ * download either. No session filter: a student's rows span whichever
+ * session they were generated in and RLS limits them to own rows anyway.
+ */
+export async function fetchCertificatesByStudent(studentId: string): Promise<Certificate[]> {
+  const supabase = createClient();
+  if (!studentId) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select(CERTIFICATE_COLUMNS)
+    .eq('student_id', studentId)
+    .in('status', ['GENERATED', 'VERIFIED'])
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error || !data) return [];
+  return data.map(mapCertificate);
+}
+
 export async function fetchCertificateByNumber(certificateNumber: string): Promise<Certificate | undefined> {
   const { data, error } = await createClient().from(SUPABASE_TABLE).select(CERTIFICATE_COLUMNS).eq('certificate_number', certificateNumber).single();
   if (error || !data) return undefined;
@@ -185,6 +205,15 @@ export function useCertificateById(id: string) {
     queryKey: ['certificates', id],
     queryFn: () => fetchCertificateById(id),
     enabled: !!id,
+  });
+}
+
+export function useCertificatesByStudent(studentId: string) {
+  return useQuery({
+    queryKey: ['certificates', 'student', studentId],
+    queryFn: () => fetchCertificatesByStudent(studentId),
+    enabled: !!studentId,
+    staleTime: 60 * 1000,
   });
 }
 

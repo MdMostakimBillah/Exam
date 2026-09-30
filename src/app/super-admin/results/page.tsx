@@ -98,10 +98,10 @@ export default function ResultsPage() {
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { label: isBn ? 'মোট প্রার্থী' : 'Total Candidates', value: totalCandidates, icon: Users, tile: 'bg-sky-500/10 text-sky-500' },
-            { label: isBn ? 'পাসের হার' : 'Pass Rate', value: `${totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%`, icon: TrendingUp, tile: 'bg-emerald-500/10 text-emerald-500' },
-            { label: isBn ? 'বৃত্তিপ্রাপ্ত' : 'Scholarship', value: scholarshipWinners, icon: Award, tile: 'bg-amber-500/10 text-amber-500' },
-            { label: isBn ? 'গড় স্কোর' : 'Avg Score', value: `${avgScore}%`, icon: BarChart3, tile: 'bg-violet-500/10 text-violet-500' },
+            { label: isBn ? 'মোট প্রার্থী' : 'Total Candidates', value: totalCandidates, icon: Users, tile: 'bg-brand-accent-soft text-brand-accent' },
+            { label: isBn ? 'পাসের হার' : 'Pass Rate', value: `${totalCandidates > 0 ? Math.round((passed / totalCandidates) * 100) : 0}%`, icon: TrendingUp, tile: 'bg-brand-accent-soft text-brand-accent' },
+            { label: isBn ? 'বৃত্তিপ্রাপ্ত' : 'Scholarship', value: scholarshipWinners, icon: Award, tile: 'bg-brand-accent-soft text-brand-accent' },
+            { label: isBn ? 'গড় স্কোর' : 'Avg Score', value: `${avgScore}%`, icon: BarChart3, tile: 'bg-brand-accent-soft text-brand-accent' },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${s.tile}`}>

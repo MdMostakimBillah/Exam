@@ -15,7 +15,7 @@ import { useBranding, useSaveBranding, uploadBrandingImage, BRANDING_DEFAULTS, B
 import { accentFg } from "@/components/branding/accent-color";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
-type Tab = "profile" | "branding" | "account" | "password" | "notifications" | "sessions" | "payment";
+type Tab = "profile" | "branding" | "account" | "password" | "notifications" | "sessions" | "payment" | "apply";
 
 interface PlatformSettings {
   platformName: string;
@@ -98,6 +98,12 @@ export default function SuperAdminSettingsPage() {
   const [paymentCashAddress, setPaymentCashAddress] = useState("");
   const [paymentInstructions, setPaymentInstructions] = useState("");
 
+  // Public /apply page visibility — which exam details applicants may see
+  // (system_settings, category "visibility"). Defaults: everything visible.
+  const [applyShowFee, setApplyShowFee] = useState(true);
+  const [applyShowRegEndDate, setApplyShowRegEndDate] = useState(true);
+  const [applyShowExamDate, setApplyShowExamDate] = useState(true);
+
   // Branding (logo, association names, landing-page copy, PDF watermark)
   const { data: brandingData } = useBranding();
   const saveBranding = useSaveBranding();
@@ -117,7 +123,7 @@ export default function SuperAdminSettingsPage() {
       const { data } = await supabase
         .from('system_settings')
         .select('key, value')
-        .in('key', ['platformName', 'contactEmail', 'supportPhone', 'address', 'emailNotifications', 'registrationAlerts', 'resultAlerts', 'paymentAlerts', 'paymentBkashNumber', 'paymentBkashName', 'paymentCashAddress', 'paymentInstructions']);
+        .in('key', ['platformName', 'contactEmail', 'supportPhone', 'address', 'emailNotifications', 'registrationAlerts', 'resultAlerts', 'paymentAlerts', 'paymentBkashNumber', 'paymentBkashName', 'paymentCashAddress', 'paymentInstructions', 'applyShowFee', 'applyShowRegEndDate', 'applyShowExamDate']);
       
       if (data) {
         const settingsMap = Object.fromEntries(data.map((s: any) => [s.key, s.value]));
@@ -133,6 +139,9 @@ export default function SuperAdminSettingsPage() {
         if (settingsMap.paymentBkashName) setPaymentBkashName(settingsMap.paymentBkashName);
         if (settingsMap.paymentCashAddress) setPaymentCashAddress(settingsMap.paymentCashAddress);
         if (settingsMap.paymentInstructions) setPaymentInstructions(settingsMap.paymentInstructions);
+        if (settingsMap.applyShowFee !== undefined) setApplyShowFee(settingsMap.applyShowFee === 'true');
+        if (settingsMap.applyShowRegEndDate !== undefined) setApplyShowRegEndDate(settingsMap.applyShowRegEndDate === 'true');
+        if (settingsMap.applyShowExamDate !== undefined) setApplyShowExamDate(settingsMap.applyShowExamDate === 'true');
       }
     };
     loadSettings();
@@ -152,6 +161,7 @@ export default function SuperAdminSettingsPage() {
     { id: "password", label: "Password", labelBn: "পাসওয়ার্ড", icon: <Lock className="h-4 w-4" /> },
     { id: "sessions", label: "Academic Sessions", labelBn: "একাডেমিক সেশন", icon: <Calendar className="h-4 w-4" /> },
     { id: "payment", label: "Payment", labelBn: "পেমেন্ট", icon: <CreditCard className="h-4 w-4" /> },
+    { id: "apply", label: "Apply Page", labelBn: "আবেদন পেজ", icon: <Eye className="h-4 w-4" /> },
     { id: "notifications", label: "Notifications", labelBn: "বিজ্ঞপ্তি", icon: <Bell className="h-4 w-4" /> },
   ], []);
 
@@ -276,6 +286,27 @@ export default function SuperAdminSettingsPage() {
     setSaving(false);
     if (saveError) { settingsErrorToast(saveError); return; }
     toast("success", isBn ? "পেমেন্ট তথ্য সংরক্ষিত হয়েছে!" : "Payment details saved!");
+  };
+
+  /** Persist which exam details the public /apply page shows. */
+  const handleSaveApplyVisibility = async () => {
+    setSaving(true);
+    const supabase = createClient();
+    const settings = [
+      { key: 'applyShowFee', value: String(applyShowFee), category: 'visibility' },
+      { key: 'applyShowRegEndDate', value: String(applyShowRegEndDate), category: 'visibility' },
+      { key: 'applyShowExamDate', value: String(applyShowExamDate), category: 'visibility' },
+    ];
+    let saveError: any = null;
+    for (const setting of settings) {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert(setting, { onConflict: 'key' });
+      if (error) { saveError = error; break; }
+    }
+    setSaving(false);
+    if (saveError) { settingsErrorToast(saveError); return; }
+    toast("success", isBn ? "আবেদন পেজের দৃশ্যমানতা সংরক্ষিত হয়েছে!" : "Apply-page visibility saved!");
   };
 
   const handleBrandFile = async (kind: "logo" | "favicon" | "watermark" | "md-signature", file?: File | null) => {
@@ -920,6 +951,63 @@ export default function SuperAdminSettingsPage() {
                 </div>
                 <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
                   <button onClick={handleSavePayment} disabled={saving}
+                    className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
+                      "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
+                    )}>
+                    {saving ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isBn ? 'সংরক্ষণ করুন' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Apply Page Tab — which exam details the public form shows */}
+            {activeTab === "apply" && (
+              <div className={`${card} p-6`}>
+                <div className="mb-6">
+                  <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'আবেদন পেজের দৃশ্যমানতা' : 'Apply Page Visibility'}</h2>
+                  <p className={`text-sm mt-1 ${subtextCls}`}>{isBn ? 'আবেদন পেজে (/apply) পরীক্ষার কোন তথ্য শিক্ষার্থীদের দেখাবেন তা নির্বাচন করুন' : 'Choose which examination details applicants see on the public apply page (/apply)'}</p>
+                </div>
+                <div className={`overflow-hidden rounded-lg border ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+                  {[
+                    { icon: CreditCard, label: "রেজিস্ট্রেশন ফি দেখান", labelEn: "Show registration fee", desc: "ফি পরিমাণ (৳) আবেদন পেজে দেখানো হবে", descEn: "The fee amount (৳) is shown in the banner and review step", value: applyShowFee, setter: setApplyShowFee },
+                    { icon: Calendar, label: "নিবন্ধনের শেষ তারিখ দেখান", labelEn: "Show last registration date", desc: "নিবন্ধনের শেষ তারিখ আবেদন পেজে দেখানো হবে", descEn: "The registration deadline is shown on the apply page", value: applyShowRegEndDate, setter: setApplyShowRegEndDate },
+                    { icon: Trophy, label: "পরীক্ষার তারিখ দেখান", labelEn: "Show exam date", desc: "পরীক্ষার তারিখ আবেদন পেজে দেখানো হবে", descEn: "The exam date is shown on the apply page", value: applyShowExamDate, setter: setApplyShowExamDate },
+                  ].map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <Switch
+                        key={i}
+                        checked={item.value}
+                        onCheckedChange={item.setter}
+                        disabled={saving}
+                        label={isBn ? item.label : item.labelEn}
+                        className={cn(
+                          "w-full px-4 py-3.5 transition-colors",
+                          isDark ? "hover:bg-white/[0.03]" : "hover:bg-zinc-50",
+                          i > 0 && `border-t ${isDark ? "border-white/[0.05]" : "border-zinc-100"}`
+                        )}
+                      >
+                        <span className="flex min-w-0 items-center gap-3.5">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-accent-soft text-brand-accent">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0">
+                            <span className={`block text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>{isBn ? item.label : item.labelEn}</span>
+                            <span className={`mt-0.5 block text-xs ${subtextCls}`}>{isBn ? item.desc : item.descEn}</span>
+                          </span>
+                        </span>
+                      </Switch>
+                    );
+                  })}
+                </div>
+                <p className={`text-[11px] mt-3 ${subtextCls}`}>
+                  {isBn
+                    ? 'বন্ধ করলে সেই তথ্যটি আবেদন পেজে লুকানো থাকবে — পরীক্ষা, প্রতিষ্ঠান ও শিক্ষার্থীর ড্যাশবোর্ডে তথ্য অবিকল থাকবে।'
+                    : 'Turning one off hides it from the apply page only — exams, institutions and student dashboards keep the same data.'}
+                </p>
+                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                  <button onClick={handleSaveApplyVisibility} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
                     )}>

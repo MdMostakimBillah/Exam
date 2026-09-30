@@ -12,7 +12,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { BRANDING_DEFAULTS, useBranding } from "@/lib/storage/branding";
 import { useClasses } from "@/lib/storage/classes";
 import { useExamsFull } from "@/lib/storage/exams";
-import { useInstitutionName } from "@/lib/storage/institutions";
+import { useInstitutionName, useInstitutions } from "@/lib/storage/institutions";
 import { calculateGradePointForSetup, useExamMarkSetup } from "@/lib/storage/mark-setup";
 import { useResultsByExamFull } from "@/lib/storage/results";
 import { useCurrentSession } from "@/lib/storage/sessions";
@@ -53,7 +53,10 @@ export function TabulationPanel() {
 
   const [examId, setExamId] = useState("");
   const [classId, setClassId] = useState("");
+  /** Optional institution scope — narrows the sheet to ONE institution's rows. */
+  const [institutionId, setInstitutionId] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const { data: institutions = [] } = useInstitutions();
 
   // Default to the first exam (and its first class) so the sheet is visible
   // without hunting through selects.
@@ -126,6 +129,16 @@ export function TabulationPanel() {
   );
 
   /**
+   * Rows shown on screen (and in the PDF) after the optional institution
+   * scope. Positions are NOT recomputed: the cross-institution `position`
+   * stays the class-wide rank so filtering only hides rows.
+   */
+  const visibleClassResults = useMemo(
+    () => (institutionId ? classResults.filter((item) => item.institutionId === institutionId) : classResults),
+    [classResults, institutionId],
+  );
+
+  /**
    * Rank inside the student's OWN institution — RANK() PARTITION BY
    * class_name, institution_id ORDER BY total_marks DESC, mirrored in JS so
    * ties behave exactly like the stored `position` (shared rank, skipped
@@ -163,6 +176,13 @@ export function TabulationPanel() {
     () => classEntries.map((item) => ({ label: item.name, value: item.id })),
     [classEntries],
   );
+  const institutionOptions = useMemo(
+    () => [
+      { label: isBn ? "সব প্রতিষ্ঠান" : "All institutions", value: "" },
+      ...institutions.map((item) => ({ label: instName(item.name, item.id), value: item.id })),
+    ],
+    [institutions, instName, isBn],
+  );
 
   const subjectsForClass = (name: string) => {
     const entry = classEntries.find((item) => item.name === name);
@@ -196,9 +216,17 @@ export function TabulationPanel() {
     setDownloading(true);
     try {
       // One sheet per class — every class that has processed results, in the
-      // exam's class order first, then any stragglers alphabetically.
+      // exam's class order first, then any stragglers alphabetically. An
+      // institution scope narrows every sheet to that institution's rows.
+      const source = institutionId
+        ? results.filter((item) => item.institutionId === institutionId)
+        : results;
+      if (source.length === 0) {
+        toast("error", bi("এই প্রতিষ্ঠানের জন্য কোন ফলাফল নেই", "No results for this institution"));
+        return;
+      }
       const byClass = new Map<string, Result[]>();
-      for (const result of results) {
+      for (const result of source) {
         const list = byClass.get(result.className) || [];
         list.push(result);
         byClass.set(result.className, list);
@@ -300,13 +328,25 @@ export function TabulationPanel() {
             className={selectCls}
           />
         </div>
+        <div className="flex-1 min-w-[180px]">
+          <label className={labelCls} htmlFor="tab-institution">{bi("প্রতিষ্ঠান", "Institution")}</label>
+          <Select
+            id="tab-institution"
+            options={institutionOptions}
+            value={institutionId}
+            onChange={(e) => setInstitutionId(e.target.value)}
+            className={selectCls}
+          />
+        </div>
         <div className="flex items-center gap-3 lg:pb-1">
           <div className={`hidden items-center gap-1.5 text-[11px] sm:flex ${mutedCls}`}>
             <Users className="h-3.5 w-3.5" />
             <span>
               {resultsLoading
                 ? bi("লোড হচ্ছে...", "Loading...")
-                : `${results.length} ${bi("ফলাফল", "results")}`}
+                : institutionId
+                  ? `${visibleClassResults.length} / ${classResults.length} ${bi("ফলাফল", "results")}`
+                  : `${results.length} ${bi("ফলাফল", "results")}`}
             </span>
           </div>
           <Button
@@ -357,12 +397,17 @@ export function TabulationPanel() {
             </Button>
           </Link>
         </div>
-      ) : classResults.length === 0 ? (
+      ) : visibleClassResults.length === 0 ? (
         <div className={`${card} p-8 text-center text-sm ${mutedCls}`}>
-          {bi(
-            "এই ক্লাসে কোনো প্রসেসকৃত ফলাফল নেই।",
-            "No processed results for this class yet.",
-          )}
+          {classResults.length > 0
+            ? bi(
+                "এই প্রতিষ্ঠানের জন্য এই ক্লাসে কোনো ফলাফল নেই।",
+                "No results for this institution in this class.",
+              )
+            : bi(
+                "এই ক্লাসে কোনো প্রসেসকৃত ফলাফল নেই।",
+                "No processed results for this class yet.",
+              )}
         </div>
       ) : (
         <div className={`${card} overflow-hidden`}>
@@ -392,7 +437,7 @@ export function TabulationPanel() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {classResults.map((result) => {
+                {visibleClassResults.map((result) => {
                   const position = result.position > 0 ? result.position : 0;
                   const instPosition = instPositionByResult.get(result.id) ?? 0;
                   const rankCls = (rank: number) =>

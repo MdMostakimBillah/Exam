@@ -45,3 +45,14 @@ CREATE POLICY "Institution admin own certificates" ON public.certificates
   FOR ALL
   USING (institution_id = public.get_user_institution_id())
   WITH CHECK (institution_id = public.get_user_institution_id());
+
+-- Students read their OWN certificates — the student portal's Certificates
+-- section (permission-gated in the UI by allow_certificate_download).
+-- 0021, the migration that defines this, has never been applied.
+CREATE POLICY "Students read own certificates" ON public.certificates
+  FOR SELECT
+  USING (
+    student_id IN (
+      SELECT id FROM public.students WHERE user_id = auth.uid()
+    )
+  );
