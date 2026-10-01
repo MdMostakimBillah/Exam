@@ -24,6 +24,9 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   useEffect(() => {
     setMounted(true);
+    // The login page is public: no session read, no redirect scheduling —
+    // pushing to the current URL every 500ms would refetch while typing.
+    if (pathname === "/student/login") return;
     // The timer used to be created inside .then() and "cleaned up" by
     // returning from that callback — nothing ever called the returned
     // function, so a redirect could fire after the layout unmounted.
@@ -56,7 +59,17 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     router.push("/student/login");
   };
 
-  if (!mounted || !student) return null;
+  if (!mounted) return null;
+
+  // /student/login lives under this layout but must work SIGNED OUT —
+  // without this branch the auth guard below returns null and the login
+  // form never renders (blank page forever). Render the bare page: no
+  // chrome, no nav (they all read `student`), no auth redirect.
+  if (pathname === "/student/login") {
+    return <>{children}</>;
+  }
+
+  if (!student) return null;
 
   const navItems = [
     { label: isBn ? "ড্যাশবোর্ড" : "Dashboard", icon: LayoutDashboard, href: "/student/dashboard" },

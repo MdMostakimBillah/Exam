@@ -158,12 +158,14 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
   if (studentError && /allow_marksheet_download|allow_certificate_download/.test(studentError.message || "")) {
     // 0038 not applied yet — PostgREST rejects the whole select for an
     // unknown column, so retry without the two flags (they read as off).
-    ({ data: matches, error: studentError } = await supabaseAdmin
+    const retry = await supabaseAdmin
       .from("students")
       .select(
         "id,student_id,first_name,last_name,email,phone,institution_id,class,section,roll,photo_url,user_id,institutions(name,name_en)"
       )
-      .eq("student_id", rawId));
+      .eq("student_id", rawId);
+    matches = retry.data as typeof matches;
+    studentError = retry.error;
   }
 
   if (studentError || !matches || matches.length === 0) return fail("student not found");
@@ -208,25 +210,24 @@ export async function loginStudent(studentId: string, phoneOrEmail: string): Pro
       const legacyPassword = `student_${rawId}_${phoneOrEmail}`;
       const legacyEmail = `student_${rawId}@scholarx.local`;
       const supabase = await createServerClient();
-      let legacy = null;
-      let legacyErr: { message?: string } | null = null;
+      let legacyUser: { id: string } | null = null;
+      let signedInAt = "";
       for (const address of authEmail === legacyEmail ? [authEmail] : [authEmail, legacyEmail]) {
         const attempt = await supabase.auth.signInWithPassword({ email: address, password: legacyPassword });
         if (!attempt.error && attempt.data.user) {
-          legacy = attempt.data;
-          legacyErr = null;
+          legacyUser = attempt.data.user;
+          signedInAt = address;
           break;
         }
-        legacyErr = attempt.error;
       }
-      if (legacyErr || !legacy?.user) return fail("no auth account");
-      authUserId = legacy.user.id;
+      if (!legacyUser) return fail("no auth account");
+      authUserId = legacyUser.id;
       await supabaseAdmin.auth.admin.updateUserById(authUserId, {
         password: freshPassword,
         email_confirm: true,
       });
       const { error: relinkErr } = await supabase.auth.signInWithPassword({
-        email: authEmail,
+        email: signedInAt,
         password: freshPassword,
       });
       if (relinkErr) return fail("re-login after rotation");
