@@ -422,6 +422,7 @@ export default function MarksheetPage() {
                     sessionName: marksheet.sessionName,
                     examDate: marksheet.examDate,
                     generatedAt: marksheet.generatedAt,
+                    scholarshipCategories: marksheet.scholarshipCategories,
                   }}
                   lang={lang === "bn" ? "bn" : "en"}
                   brandName={brandName}

@@ -26,6 +26,16 @@ export const MARKSHEET_H_PX = 1123;
 const FONT =
   "'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
 
+/**
+ * Heading face — a real serif (the scanned-board look: institution name,
+ * ACADEMIC TRANSCRIPT, exam title). Body/table stays in FONT; the Bengali
+ * fallbacks at the end keep Bangla headings on a readable face when no serif
+ * Bengali font is installed. html2canvas resolves this per-glyph, so mixed
+ * "BMA — একাডেমিক ট্রান্সক্রিপ্ট" strings are safe to print.
+ */
+const SERIF =
+  "'Times New Roman', 'Liberation Serif', 'Nimbus Roman', Georgia, 'Noto Serif Bengali', 'Noto Sans Bengali', serif";
+
 const INK = "#18181b";
 const MUTED = "#71717a";
 const LINE = "#a1a1aa";
@@ -117,6 +127,11 @@ export interface MarksheetSheetData {
   examDate?: string | null;
   /** Super admin's generation moment (0040) — printed as the publication date. */
   generatedAt?: string | null;
+  /**
+   * The exam's scholarship ranges, so the sheet can print the qualifying
+   * % band next to the awarded category name (name alone is opaque on paper).
+   */
+  scholarshipCategories?: { name: string; minPercent: number; maxPercent: number }[];
 }
 
 export interface MarksheetSheetProps {
@@ -154,6 +169,23 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
       rows.length > 0
         ? Math.round((rows.reduce((sum, r) => sum + r.point, 0) / rows.length) * 100) / 100
         : 0;
+
+    // ── Scholarship: result.scholarshipStatus carries the awarded CATEGORY
+    //    NAME (whatever the exam's ranges were set up as, e.g. TALENT_POOL-2),
+    //    or NOT_ELIGIBLE / PENDING. Print it under the marks with the
+    //    qualifying % band so the paper says why it was awarded.
+    const scholarshipRaw = (result.scholarshipStatus || "").trim();
+    const scholarshipAwarded =
+      !!scholarshipRaw && scholarshipRaw !== "NOT_ELIGIBLE" && scholarshipRaw !== "PENDING";
+    const scholarshipRange = scholarshipAwarded
+      ? (data.scholarshipCategories || []).find((c) => c.name === scholarshipRaw)
+      : undefined;
+    const scholarshipLabel = scholarshipAwarded
+      ? scholarshipRaw
+      : scholarshipRaw === "PENDING"
+        ? L("Pending", "অপেক্ষমাণ")
+        : L("Not eligible", "যোগ্য নয়");
+    const overallGrade = result.grade || bandFor(result.percentage, gradeBands)?.grade || "—";
 
     // The top-right grade scale — one row per band, high → low.
     const scale = [...gradeBands]
@@ -236,22 +268,53 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 )}
               </div>
 
-              <div style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "2px 10px 0" }}>
-                <div style={{ fontSize: 17, fontWeight: 700, color: INK, lineHeight: 1.25 }}>
+              <div style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "0 8px 0" }}>
+                <div
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 21,
+                    fontWeight: 700,
+                    color: INK,
+                    lineHeight: 1.18,
+                    letterSpacing: "0.01em",
+                  }}
+                >
                   {brandName}
                 </div>
                 <div
                   style={{
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    letterSpacing: "0.16em",
+                    fontFamily: SERIF,
+                    fontSize: 11.5,
                     color: INK,
-                    marginTop: 5,
+                    letterSpacing: "0.26em",
+                    paddingLeft: "0.26em",
+                    marginTop: 4,
+                  }}
+                >
+                  {L("Bangladesh", "বাংলাদেশ")}
+                </div>
+                <div
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.24em",
+                    paddingLeft: "0.24em",
+                    color: INK,
+                    marginTop: 11,
                   }}
                 >
                   {cap("Academic Transcript", "একাডেমিক ট্রান্সক্রিপ্ট")}
                 </div>
-                <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>
+                <div
+                  style={{
+                    fontFamily: SERIF,
+                    fontSize: 11,
+                    fontStyle: "italic",
+                    color: MUTED,
+                    marginTop: 4,
+                  }}
+                >
                   {L("Statement of Marks", "গ্রেড ও নম্বরের বিবরণী")}
                 </div>
               </div>
@@ -295,13 +358,16 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
             <div style={{ textAlign: "center", marginTop: 18, marginBottom: 14 }}>
               <div
                 style={{
-                  fontSize: 15,
+                  fontFamily: SERIF,
+                  fontSize: 18.5,
                   fontWeight: 700,
-                  letterSpacing: "0.05em",
+                  letterSpacing: "0.03em",
                   color: INK,
                 }}
               >
-                {cap(result.examName, result.examName)}
+                {/* Board style: title case (not shouted), serif — matches the
+                    reference transcript's "… Examination - 2019". */}
+                {result.examName}
                 {examYear ? ` - ${examYear}` : ""}
               </div>
               {data.sessionName && (
@@ -468,6 +534,90 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                     ({L("pass mark", "পাস মার্ক")} {passPercent}%)
                   </span>
                 ) : null}
+              </div>
+            </div>
+
+            {/* ── Scholarship category band — awarded from marks + percentage ── */}
+            <div
+              style={{
+                display: "flex",
+                marginTop: 10,
+                border: `1px solid ${LINE}`,
+                background: "#ffffff",
+              }}
+            >
+              <div
+                style={{
+                  width: 176,
+                  flexShrink: 0,
+                  background: SOFT,
+                  borderRight: `1px solid ${LINE}`,
+                  padding: "9px 10px",
+                  display: "flex",
+                  alignItems: "center",
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  letterSpacing: "0.09em",
+                  color: MUTED,
+                  lineHeight: 1.3,
+                }}
+              >
+                {cap("Scholarship Category", "বৃত্তির ক্যাটাগরি")}
+              </div>
+
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: "9px 12px",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: scholarshipAwarded ? INK : MUTED,
+                  display: "flex",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  lineHeight: 1.3,
+                }}
+              >
+                {scholarshipLabel}
+                {scholarshipRange && (
+                  <span style={{ fontSize: 11, fontWeight: 500, color: MUTED, paddingLeft: 8 }}>
+                    {L("marks", "নম্বর")} {Math.round(scholarshipRange.minPercent)}–
+                    {Math.round(scholarshipRange.maxPercent)}%
+                  </span>
+                )}
+              </div>
+
+              <div
+                style={{
+                  width: 232,
+                  flexShrink: 0,
+                  borderLeft: `1px solid ${LINE}`,
+                  background: SOFT,
+                  padding: "9px 12px",
+                  fontSize: 12,
+                  color: INK,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  lineHeight: 1.3,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.09em",
+                    color: MUTED,
+                  }}
+                >
+                  {cap("Overall", "সারসংক্ষেপ")}
+                </span>
+                <span style={{ fontWeight: 700, textAlign: "right" }}>
+                  {L("Grade", "গ্রেড")} {overallGrade}
+                  <span style={{ color: LINE, fontWeight: 500 }}>{" · "}</span>
+                  GPA {gpa.toFixed(2)}
+                </span>
               </div>
             </div>
 

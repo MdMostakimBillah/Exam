@@ -170,6 +170,7 @@ export function MarksheetViewer({
               sessionName: currentSession?.name || "",
               examDate: exams.find((item) => item.id === result.examId)?.examDate || "",
               generatedAt: transcript.marksheetGeneratedAt,
+              scholarshipCategories: examSetup?.scholarshipCategories ?? [],
             }}
             lang={lang}
             brandName={(lang === "bn" ? brand.brandNameBn : brand.brandName) || t("brand")}

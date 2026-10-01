@@ -286,6 +286,8 @@ export interface MarksheetData {
   /** Exam grade bands — letter + point per subject; defaults if unset. */
   gradeBands: { id: string; grade: string; points: number; minPercent: number; maxPercent: number }[];
   passPercent: number;
+  /** Scholarship ranges, so the sheet can print the qualifying % next to the name. */
+  scholarshipCategories: { name: string; minPercent: number; maxPercent: number }[];
 }
 
 export interface MarksheetLookup {
@@ -307,6 +309,12 @@ const FALLBACK_BANDS = [
   { id: "grade_c", grade: "C", points: 2, minPercent: 40, maxPercent: 49.99 },
   { id: "grade_d", grade: "D", points: 1, minPercent: 33, maxPercent: 39.99 },
   { id: "grade_f", grade: "F", points: 0, minPercent: 0, maxPercent: 32.99 },
+];
+
+/** Mirrors DEFAULT_SCHOLARSHIP_CATEGORIES in storage/mark-setup.ts. */
+const FALLBACK_SCHOLARSHIPS = [
+  { name: "TALENT_POOL", minPercent: 90, maxPercent: 100 },
+  { name: "GENERAL", minPercent: 80, maxPercent: 89.99 },
 ];
 
 /**
@@ -387,7 +395,7 @@ export async function lookupPublicMarksheet(input: {
       supabaseAdmin.from("academic_sessions").select("name").eq("id", result.sessionId).limit(1),
       supabaseAdmin
         .from("exam_mark_configs")
-        .select("grade_bands,pass_percent")
+        .select("grade_bands,scholarship_categories,pass_percent")
         .eq("exam_id", result.examId)
         .limit(1),
     ]);
@@ -411,6 +419,9 @@ export async function lookupPublicMarksheet(input: {
         generatedAt,
         gradeBands: bands,
         passPercent: Number(config?.pass_percent ?? 33),
+        scholarshipCategories: Array.isArray(config?.scholarship_categories)
+          ? (config.scholarship_categories as MarksheetData["scholarshipCategories"])
+          : FALLBACK_SCHOLARSHIPS,
       },
     };
   } catch {
