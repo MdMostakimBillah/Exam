@@ -23,7 +23,7 @@ const supabaseAdmin = createClient(
 );
 
 const RESULT_COLUMNS =
-  "id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,subject_marks,created_at,updated_at";
+  "id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,marksheet_generated_at,subject_marks,created_at,updated_at";
 
 const CERTIFICATE_COLUMNS =
   "id,session_id,certificate_number,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,position,total_marks,exam_year,issue_date,result_id,qr_code,status,created_at,updated_at";
@@ -88,6 +88,7 @@ function mapResult(data: Record<string, unknown>): Result {
     markSetupVersion: data.mark_setup_version === null || data.mark_setup_version === undefined
       ? null
       : Number(data.mark_setup_version),
+    marksheetGeneratedAt: data.marksheet_generated_at ? String(data.marksheet_generated_at) : null,
     createdAt: data.created_at as string,
     updatedAt: data.updated_at as string,
   };
@@ -260,6 +261,158 @@ export async function lookupCertificate(
     if (error) return { ok: false, error: "Lookup failed. Please try again." };
     const row = (data || [])[0] as Record<string, unknown> | undefined;
     return { ok: true, certificate: row ? await certificateWithEn(row) : null };
+  } catch {
+    return { ok: false, error: "Lookup failed. Please try again." };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Public marksheet lookup (/marksheet)                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Everything the A4 transcript needs that the result row does not carry.
+ * `generatedAt` is the super admin's generation moment (0040) and is printed
+ * as the date of publication of results.
+ */
+export interface MarksheetData {
+  result: Result;
+  fatherName: string;
+  motherName: string;
+  photoUrl: string;
+  sessionName: string;
+  examDate: string | null;
+  generatedAt: string;
+  /** Exam grade bands — letter + point per subject; defaults if unset. */
+  gradeBands: { id: string; grade: string; points: number; minPercent: number; maxPercent: number }[];
+  passPercent: number;
+}
+
+export interface MarksheetLookup {
+  ok: boolean;
+  error?: string;
+  /** null = nothing matches roll + registration + date of birth. */
+  marksheet?: MarksheetData | null;
+  /** Identity proved, but the super admin has not generated the marksheet yet. */
+  notGenerated?: boolean;
+}
+
+/** Mirrors DEFAULT_GRADE_BANDS in storage/mark-setup.ts (kept literal so this
+ *  server file never imports the client-side supabase module). */
+const FALLBACK_BANDS = [
+  { id: "grade_a_plus", grade: "A+", points: 5, minPercent: 80, maxPercent: 100 },
+  { id: "grade_a", grade: "A", points: 4, minPercent: 70, maxPercent: 79.99 },
+  { id: "grade_a_minus", grade: "A-", points: 3.5, minPercent: 60, maxPercent: 69.99 },
+  { id: "grade_b", grade: "B", points: 3, minPercent: 50, maxPercent: 59.99 },
+  { id: "grade_c", grade: "C", points: 2, minPercent: 40, maxPercent: 49.99 },
+  { id: "grade_d", grade: "D", points: 1, minPercent: 33, maxPercent: 39.99 },
+  { id: "grade_f", grade: "F", points: 0, minPercent: 0, maxPercent: 32.99 },
+];
+
+/**
+ * Roll + registration number + date of birth → the student's transcript.
+ *
+ * All three are required: the registration number finds the row, the roll
+ * narrows it (student ids repeat across classes) and the date of birth is
+ * the ownership proof, exactly like /result. The transcript is returned only
+ * when the super admin has generated it — a proved caller who is too early
+ * gets `notGenerated` instead of a bare "not found", since they already
+ * demonstrated they own the record.
+ */
+export async function lookupPublicMarksheet(input: {
+  registrationNumber: string;
+  roll: string;
+  dob: string;
+}): Promise<MarksheetLookup> {
+  const ip = await clientKey();
+  if (!allow(ip)) {
+    return { ok: false, error: "Too many attempts. Please wait a minute and try again." };
+  }
+
+  const reg = String(input.registrationNumber || "").trim();
+  const roll = String(input.roll || "").trim();
+  const dob = String(input.dob || "").trim();
+
+  if (!SAFE_KEY.test(reg)) return { ok: false, error: "Please enter a valid registration number." };
+  if (!SAFE_ROLL.test(roll)) return { ok: false, error: "Please enter a valid roll number." };
+  if (!SAFE_DATE.test(dob)) return { ok: false, error: "Please enter a valid date of birth." };
+  const parsedDob = new Date(dob);
+  if (Number.isNaN(parsedDob.getTime()) || parsedDob.toISOString().slice(0, 10) !== dob) {
+    return { ok: false, error: "Please enter a valid date of birth." };
+  }
+
+  try {
+    const selectRows = () =>
+      supabaseAdmin
+        .from("results")
+        .select(RESULT_COLUMNS)
+        .eq("status", "PUBLISHED")
+        .eq("registration_number", reg)
+        .limit(10);
+
+    const { data } = await selectRows();
+    let rows = (data as Record<string, unknown>[]) || [];
+
+    if (rows.length === 0) {
+      const escaped = reg.replace(/[\\%_]/g, (m) => `\\${m}`);
+      const loose = await supabaseAdmin
+        .from("results")
+        .select(RESULT_COLUMNS)
+        .eq("status", "PUBLISHED")
+        .ilike("registration_number", escaped)
+        .limit(10);
+      rows = (loose.data as Record<string, unknown>[]) || [];
+    }
+
+    const byRoll = rows.find((r) => String(r.roll ?? "") === roll);
+    if (!byRoll) return { ok: true, marksheet: null };
+
+    // Ownership proof: the entered DOB must be the student's.
+    const studentRes = await supabaseAdmin
+      .from("students")
+      .select("id,date_of_birth,father_name,mother_name,photo_url")
+      .eq("id", String(byRoll.student_id))
+      .limit(1);
+    const student = (studentRes.data as Record<string, unknown>[] | null)?.[0];
+    const studentDob = student?.date_of_birth ? String(student.date_of_birth).slice(0, 10) : "";
+    if (!student || studentDob !== dob) return { ok: true, marksheet: null };
+
+    const generatedAt = byRoll.marksheet_generated_at ? String(byRoll.marksheet_generated_at) : "";
+    if (!generatedAt) return { ok: true, marksheet: null, notGenerated: true };
+
+    const result = await resultWithEn(byRoll);
+
+    const [examRes, sessionRes, configRes] = await Promise.all([
+      supabaseAdmin.from("exams").select("exam_date").eq("id", result.examId).limit(1),
+      supabaseAdmin.from("academic_sessions").select("name").eq("id", result.sessionId).limit(1),
+      supabaseAdmin
+        .from("exam_mark_configs")
+        .select("grade_bands,pass_percent")
+        .eq("exam_id", result.examId)
+        .limit(1),
+    ]);
+
+    const exam = (examRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
+    const session = (sessionRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
+    const config = (configRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
+    const bands = Array.isArray(config?.grade_bands) && config.grade_bands.length
+      ? (config.grade_bands as MarksheetData["gradeBands"])
+      : FALLBACK_BANDS;
+
+    return {
+      ok: true,
+      marksheet: {
+        result,
+        fatherName: String(student.father_name || ""),
+        motherName: String(student.mother_name || ""),
+        photoUrl: String(student.photo_url || ""),
+        sessionName: String(session?.name || ""),
+        examDate: exam?.exam_date ? String(exam.exam_date) : null,
+        generatedAt,
+        gradeBands: bands,
+        passPercent: Number(config?.pass_percent ?? 33),
+      },
+    };
   } catch {
     return { ok: false, error: "Lookup failed. Please try again." };
   }

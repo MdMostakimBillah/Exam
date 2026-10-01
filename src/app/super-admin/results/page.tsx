@@ -7,10 +7,12 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useResults } from "@/lib/storage/results";
+import { useToast } from "@/components/ui/toast";
+import { useResults, useGenerateMarksheets } from "@/lib/storage/results";
 import { useInstitutionName } from "@/lib/storage/institutions";
 import { useExamsFull } from "@/lib/storage/exams";
-import { Award, BarChart3, Download, FileDown, TrendingUp, Users } from "lucide-react";
+import { useClasses } from "@/lib/storage/classes";
+import { Award, BarChart3, Download, FileDown, ScrollText, TrendingUp, Users } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { LoadingBar } from "@/components/ui/loading-bar";
@@ -26,6 +28,12 @@ export default function ResultsPage() {
   const [examFilter, setExamFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [exportScope, setExportScope] = useState<"all" | "selected">("all");
+
+  // Marksheet release (0040): exam (from the filter above) + optional class.
+  const { toast } = useToast();
+  const generateMarksheets = useGenerateMarksheets();
+  const { data: allClasses = [] } = useClasses();
+  const [genClass, setGenClass] = useState("");
 
   const { data: results = [], isFetching, error: resultsError } = useResults(undefined, 1, 200);
   const { data: exams = [] } = useExamsFull();
@@ -64,6 +72,61 @@ export default function ResultsPage() {
   })), [filtered, exportScope, selection, instName]);
 
   const examOptions = useMemo(() => [{ label: isBn ? 'সব পরীক্ষা' : 'All Exams', value: '' }, ...exams.map(e => ({ label: e.name, value: e.id }))], [exams, isBn]);
+
+  // The exam chosen in the filter above is the one the marksheet generates for.
+  const selectedExam = useMemo(() => exams.find(e => e.id === examFilter), [exams, examFilter]);
+
+  /** That exam's classes, resolved to display names (refs store ids or codes). */
+  const genClassOptions = useMemo(() => {
+    const byId = new Map(allClasses.map(c => [c.id, c.name]));
+    const byCode = new Map(allClasses.map(c => [c.code, c.name]));
+    const names = (selectedExam?.classes || [])
+      .map(ref => byId.get(ref) || byCode.get(ref) || ref)
+      .filter((name, i, arr) => arr.indexOf(name) === i);
+    return [
+      { label: isBn ? 'সব শ্রেণি' : 'All classes', value: '' },
+      ...names.map(name => ({ label: name, value: name })),
+    ];
+  }, [allClasses, selectedExam, isBn]);
+
+  // Switching exams must not keep a class that the new exam does not run.
+  useEffect(() => { setGenClass(""); }, [examFilter]);
+
+  /** Results in the generation scope (selected exam + optional class). */
+  const scopeResults = useMemo(
+    () => (genClass ? filtered.filter(r => r.className === genClass) : filtered),
+    [filtered, genClass],
+  );
+  const scopeGenerated = scopeResults.filter(r => r.marksheetGeneratedAt).length;
+
+  /**
+   * Release step (0040): stamp marksheet_generated_at on this exam's results
+   * (optionally one class). Until then /marksheet tells students the sheet is
+   * not generated yet — results can be processed and reviewed in between.
+   */
+  const handleGenerateMarksheet = async () => {
+    if (!examFilter || generateMarksheets.isPending) return;
+    const scope = genClass
+      ? `${selectedExam?.name} — ${genClass}`
+      : selectedExam?.name || "";
+    const okToProceed = typeof window === "undefined" || window.confirm(
+      isBn
+        ? `"${scope}" এর জন্য মার্কশিট তৈরি করবেন? এরপর শিক্ষার্থীরা /marksheet থেকে দেখতে ও ডাউনলোড করতে পারবে।`
+        : `Generate the marksheet for "${scope}"? Students will then see and download it on /marksheet.`
+    );
+    if (!okToProceed) return;
+    try {
+      const count = await generateMarksheets.mutateAsync({
+        examId: examFilter,
+        className: genClass || undefined,
+      });
+      toast("success", isBn
+        ? `${count} টি ফলাফলের মার্কশিট তৈরি হয়েছে — এখন শিক্ষার্থীরা দেখতে পারবে।`
+        : `Marksheet generated for ${count} result(s) — students can now view it.`);
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : (isBn ? "মার্কশিট তৈরি করা যায়নি" : "Could not generate the marksheet"));
+    }
+  };
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -138,6 +201,55 @@ export default function ResultsPage() {
               </button>
             </div>
           </div>
+
+          {/* Marksheet release (0040) — the exam comes from the filter above */}
+          <div className={`mt-4 pt-4 border-t flex flex-col sm:flex-row gap-3 ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`}>
+            <div className="flex items-center gap-2 sm:self-center">
+              <ScrollText className={`h-4 w-4 ${iconColor}`} />
+              <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                {isBn ? 'মার্কশিট প্রকাশ' : 'Marksheet release'}
+              </span>
+            </div>
+            <div className="flex-1">
+              <label className={`block text-[11px] mb-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শ্রেণি' : 'Class'}</label>
+              <Select
+                options={genClassOptions}
+                value={genClass}
+                onChange={(e) => setGenClass(e.target.value)}
+                className={isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                disabled={!examFilter || generateMarksheets.isPending}
+                onClick={handleGenerateMarksheet}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? "bg-white text-zinc-900 hover:bg-zinc-200" : "bg-zinc-900 text-white hover:bg-zinc-700"}`}
+              >
+                {generateMarksheets.isPending
+                  ? <span className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  : <ScrollText className="h-3.5 w-3.5" />}
+                {isBn ? 'মার্কশিট তৈরি করুন' : 'Generate marksheet'}
+              </button>
+            </div>
+          </div>
+          <p className={`mt-2 text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            {examFilter
+              ? (
+                <>
+                  <span className={`font-semibold ${scopeGenerated === scopeResults.length ? 'text-emerald-500' : 'text-amber-500'}`}>
+                    {scopeGenerated}/{scopeResults.length}
+                  </span>
+                  {' '}
+                  {isBn ? 'টি ফলাফলের মার্কশিট তৈরি হয়েছে' : 'results have a generated marksheet'}
+                  {' · '}
+                  {isBn
+                    ? 'তৈরি করলেই শিক্ষার্থীরা /marksheet পেজে রোল, রেজিস্ট্রেশন ও জন্মতারিখ দিয়ে দেখতে ও ডাউনলোড করতে পারবে।'
+                    : 'once generated, students view and download it on /marksheet with roll, registration number and date of birth.'}
+                </>
+              )
+              : (isBn ? 'মার্কশিট তৈরি করতে উপরে একটি পরীক্ষা নির্বাচন করুন।' : 'Select an exam above to generate its marksheet.')}
+            </p>
         </div>
 
         {/* Table */}

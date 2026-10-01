@@ -218,6 +218,12 @@ export default function ResultPage() {
 
           <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
             <Link
+              href="/marksheet"
+              className={`hidden sm:inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${navPill}`}
+            >
+              {t("nav.marksheet")}
+            </Link>
+            <Link
               href="/status"
               className={`hidden sm:inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${navPill}`}
             >

@@ -5,7 +5,7 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'results';
 
-const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,created_at,updated_at';
+const RESULT_LIST_COLUMNS = 'id,session_id,student_id,student_name,institution_id,institution_name,exam_id,exam_name,class_name,roll,registration_number,total_marks,total_full_marks,percentage,grade,position,pass,scholarship_status,status,mark_setup_version,marksheet_generated_at,created_at,updated_at';
 
 const RESULT_FULL_COLUMNS = RESULT_LIST_COLUMNS + ',subject_marks';
 
@@ -37,6 +37,7 @@ function mapResult(data: any): Result {
     markSetupVersion: data.mark_setup_version === null || data.mark_setup_version === undefined
       ? null
       : Number(data.mark_setup_version),
+    marksheetGeneratedAt: data.marksheet_generated_at ?? null,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -343,6 +344,39 @@ export function useProcessExamResults() {
       processExamResults(examId, className),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
+    },
+  });
+}
+
+/**
+ * Release the marksheet for an exam — or one class of it (0040).
+ *
+ * Stamps `marksheet_generated_at` on every matching result row; only then
+ * does the public /marksheet lookup return a transcript. Re-running simply
+ * refreshes the timestamp (the button says so, no harm in a second pass).
+ * Returns the number of rows released so the caller can report it.
+ */
+export async function generateMarksheets(examId: string, className?: string): Promise<number> {
+  const supabase = createClient();
+  const scopedClass = className?.trim() ? className.trim() : null;
+  let query = supabase
+    .from(SUPABASE_TABLE)
+    .update({ marksheet_generated_at: new Date().toISOString() })
+    .eq('exam_id', examId);
+  if (scopedClass) query = query.eq('class_name', scopedClass);
+  const { data, error } = await query.select('id');
+  if (error) throw error;
+  return (data || []).length;
+}
+
+export function useGenerateMarksheets() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ examId, className }: { examId: string; className?: string }) =>
+      generateMarksheets(examId, className),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+      queryClient.invalidateQueries({ queryKey: ['marksheets'] });
     },
   });
 }

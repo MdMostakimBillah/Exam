@@ -336,6 +336,9 @@ export interface Result {
   scholarshipStatus: string;
   status: ResultStatus;
   markSetupVersion: number | null;
+  /** Moment the super admin generated the marksheet for this row (0040).
+   *  null / undefined = not released — the public lookup ignores it. */
+  marksheetGeneratedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

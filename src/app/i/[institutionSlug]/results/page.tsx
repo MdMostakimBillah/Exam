@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,10 @@ import { useStudentsByInstitution } from "@/lib/storage/students";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import type { Result } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
-import { Award, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown } from "lucide-react";
+import { MarksheetSheet } from "@/components/marksheet/marksheet-sheet";
+import { downloadMarksheetPdf, openMarksheetPrintWindow, printMarksheet } from "@/lib/pdf/marksheet-pdf";
+import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
+import { Award, Plus, Edit, Trash2, CheckCircle2, XCircle, BarChart3, TrendingUp, FileDown, ScrollText, Download, Printer, Loader2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
@@ -24,7 +27,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
-import { calculateGradeForSetup, calculatePassForSetup, calculateScholarshipForSetup, useExamMarkSetup } from "@/lib/storage/mark-setup";
+import { calculateGradeForSetup, calculatePassForSetup, calculateScholarshipForSetup, useExamMarkSetup, DEFAULT_GRADE_BANDS } from "@/lib/storage/mark-setup";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
 export default function InstitutionResultsPage() {
@@ -45,6 +48,15 @@ export default function InstitutionResultsPage() {
   const [selectedRegistration, setSelectedRegistration] = useState("");
   const [marksInput, setMarksInput] = useState<Record<string, string>>({});
   const [showPdfModal, setShowPdfModal] = useState(false);
+
+  // Marksheet viewer: transcript of one student's result (A4, download/print).
+  const [marksheetResult, setMarksheetResult] = useState<Result | null>(null);
+  const [marksheetBusy, setMarksheetBusy] = useState<"" | "pdf" | "print">("");
+  const [marksheetError, setMarksheetError] = useState("");
+  const marksheetRef = useRef<HTMLDivElement>(null);
+  const { data: marksheetSetup } = useExamMarkSetup(marksheetResult?.examId || "");
+  const { data: brandData } = useBranding();
+  const brand = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -169,6 +181,44 @@ export default function InstitutionResultsPage() {
       await updateResultMutation.mutateAsync({ id: r.id, data: { status: "PUBLISHED" } });
     }
     toast("success", isBn ? `${unpublished.length}টি ফলাফল প্রকাশিত হয়েছে` : `${unpublished.length} results published`);
+  };
+
+  const handleMarksheetClose = () => {
+    setMarksheetResult(null);
+    setMarksheetError("");
+  };
+
+  const handleMarksheetDownload = async () => {
+    if (!marksheetRef.current || marksheetBusy) return;
+    setMarksheetError("");
+    setMarksheetBusy("pdf");
+    try {
+      await downloadMarksheetPdf(marksheetRef.current, `marksheet-${marksheetResult?.registrationNumber || "sheet"}.pdf`);
+    } catch {
+      setMarksheetError(isBn ? "PDF তৈরি করা যায়নি। আবার চেষ্টা করুন।" : "Could not build the PDF. Please try again.");
+    } finally {
+      setMarksheetBusy("");
+    }
+  };
+
+  const handleMarksheetPrint = async () => {
+    if (!marksheetRef.current || marksheetBusy) return;
+    setMarksheetError("");
+    // Must open synchronously inside the click gesture or popups get blocked.
+    const win = openMarksheetPrintWindow();
+    if (!win) {
+      setMarksheetError(isBn ? "পপআপ ব্লক হয়েছে — প্রিন্ট করতে সাইটটির পপআপ অনুমোদন দিন।" : "Pop-up blocked — allow pop-ups for this site to print.");
+      return;
+    }
+    setMarksheetBusy("print");
+    try {
+      await printMarksheet(win, marksheetRef.current);
+    } catch {
+      win.close?.();
+      setMarksheetError(isBn ? "প্রিন্ট ব্যর্থ। আবার চেষ্টা করুন।" : "Print failed. Please try again.");
+    } finally {
+      setMarksheetBusy("");
+    }
   };
 
   const handleSave = async () => {
@@ -410,6 +460,9 @@ export default function InstitutionResultsPage() {
                         <TableActionItem onClick={() => handleEdit(result)} isDark={isDark}>
                           <Edit className="h-3.5 w-3.5" /> {isBn ? "সম্পাদনা" : "Edit"}
                         </TableActionItem>
+                        <TableActionItem onClick={() => { setMarksheetResult(result); setMenuOpenId(null); }} isDark={isDark}>
+                          <ScrollText className="h-3.5 w-3.5" /> {isBn ? "মার্কশিট" : "Marksheet"}
+                        </TableActionItem>
                         <TableActionItem onClick={() => { handleTogglePublish(result); setMenuOpenId(null); }} isDark={isDark}>
                           {result.status === "PUBLISHED" ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                           {result.status === "PUBLISHED" ? (isBn ? "খসড়ায়" : "Unpublish") : (isBn ? "প্রকাশ করুন" : "Publish")}
@@ -490,6 +543,71 @@ export default function InstitutionResultsPage() {
           <button onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="px-4 py-2 rounded-md text-[13px] font-medium transition-all bg-red-600 text-white hover:bg-red-700">{isBn ? "মুছুন" : "Delete"}</button>
         </ModalFooter>
       </Modal>
+
+      {/* Marksheet viewer — the A4 transcript for one result, download/print */}
+      {marksheetResult && (
+        <Modal
+          open
+          onClose={handleMarksheetClose}
+          title={isBn ? `মার্কশিট — ${marksheetResult.studentName}` : `Marksheet — ${marksheetResult.studentName}`}
+          description={marksheetResult.examName}
+          maxWidth="max-w-[900px]"
+          maxHeight="max-h-[92vh]"
+        >
+          <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
+            <div className={`text-[11px] ${marksheetResult.marksheetGeneratedAt ? (isDark ? "text-zinc-500" : "text-zinc-500") : "text-amber-500"}`}>
+              {marksheetResult.marksheetGeneratedAt
+                ? (isBn ? "শিক্ষার্থীরা /marksheet পেজ থেকে এটি দেখতে ও ডাউনলোড করতে পারে" : "Students can view and download this on /marksheet")
+                : (isBn ? "এখনও জেনারেট করা হয়নি — সুপার অ্যাডমিনের জেনারেট করার পর /marksheet-এ দেখা যাবে" : "Not generated yet — super admin must generate it first for /marksheet")}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleMarksheetDownload}
+                disabled={!!marksheetBusy}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors disabled:opacity-60 ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}
+              >
+                {marksheetBusy === "pdf" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                {isBn ? "PDF ডাউনলোড" : "Download PDF"}
+              </button>
+              <button
+                type="button"
+                onClick={handleMarksheetPrint}
+                disabled={!!marksheetBusy}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors disabled:opacity-60 ${isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}
+              >
+                {marksheetBusy === "print" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
+                {isBn ? "প্রিন্ট" : "Print"}
+              </button>
+            </div>
+          </div>
+          {marksheetError && <p className="mb-2 text-xs text-red-500">{marksheetError}</p>}
+          <div className={`overflow-x-auto rounded-md border p-3 ${isDark ? "border-white/10 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"}`}>
+            <MarksheetSheet
+              ref={marksheetRef}
+              data={{
+                result: marksheetResult,
+                gradeBands: marksheetSetup?.gradeBands ?? DEFAULT_GRADE_BANDS,
+                passPercent: marksheetSetup?.passPercent ?? 33,
+                fatherName: students.find((item) => item.id === marksheetResult.studentId)?.fatherName || "",
+                motherName: students.find((item) => item.id === marksheetResult.studentId)?.motherName || "",
+                sessionName: currentSession?.name || "",
+                examDate: exams.find((item) => item.id === marksheetResult.examId)?.examDate || "",
+                generatedAt: marksheetResult.marksheetGeneratedAt,
+              }}
+              lang={language === "bn" ? "bn" : "en"}
+              brandName={(language === "bn" ? brand.brandNameBn : brand.brandName) || t("brand")}
+              brandLogo={brand.brandLogo}
+              mdSignature={brand.mdSignature}
+              generatedOn={
+                marksheetResult.marksheetGeneratedAt
+                  ? new Date(marksheetResult.marksheetGeneratedAt).toLocaleDateString(isBn ? "bn-BD" : "en-GB")
+                  : (isBn ? "এখনও জেনারেট করা হয়নি" : "Not generated yet")
+              }
+            />
+          </div>
+        </Modal>
+      )}
 
       {/* Floating PDF Download Button */}
       {filtered.length > 0 && (

@@ -269,6 +269,7 @@ export default function HomePage() {
             <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.workflow")}</a>
             <Link href="/apply" className={`text-sm font-medium transition-colors ${textNav}`}>{t("nav.apply")}</Link>
             <Link href="/result" className={`text-sm transition-colors ${textNav}`}>{t("nav.results")}</Link>
+            <Link href="/marksheet" className={`text-sm transition-colors ${textNav}`}>{t("nav.marksheet")}</Link>
             <Link href="/verify-certificate" className={`text-sm transition-colors ${textNav}`}>{t("nav.verify")}</Link>
           </nav>
 
