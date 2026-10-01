@@ -465,7 +465,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 {passPercent ? (
                   <span style={{ color: MUTED, fontWeight: 400 }}>
                     {"  "}
-                    ({L("pass", "পাস")} {passPercent}%)
+                    ({L("pass mark", "পাস মার্ক")} {passPercent}%)
                   </span>
                 ) : null}
               </div>
