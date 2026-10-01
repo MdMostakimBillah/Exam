@@ -361,7 +361,7 @@ export async function generateMarksheets(examId: string, className?: string): Pr
   const scopedClass = className?.trim() ? className.trim() : null;
   let query = supabase
     .from(SUPABASE_TABLE)
-    .update({ marksheet_generated_at: new Date().toISOString() })
+    .update({ marksheet_generated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('exam_id', examId);
   if (scopedClass) query = query.eq('class_name', scopedClass);
   const { data, error } = await query.select('id');
@@ -377,6 +377,151 @@ export function useGenerateMarksheets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
       queryClient.invalidateQueries({ queryKey: ['marksheets'] });
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Class-wise publishing (results page → Publish tab)                 */
+/* ------------------------------------------------------------------ */
+
+export interface ClassPublishStatus {
+  className: string;
+  total: number;
+  published: number;
+}
+
+export interface ExamPublishStatus {
+  classes: ClassPublishStatus[];
+  total: number;
+  published: number;
+  /** `exams.status` at read time — flips to PUBLISHED once every class is out. */
+  examStatus: string | null;
+}
+
+/**
+ * Per-class publish counts for an exam, read straight from the table in
+ * 1000-row pages: the publish tab must list EVERY class of the exam, not
+ * just the rows the 200-row results list happens to hold.
+ */
+export async function fetchExamPublishStatus(examId: string): Promise<ExamPublishStatus> {
+  const supabase = createClient();
+  const PAGE = 1000;
+  const rows: { class_name: string | null; status: string }[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select('class_name,status')
+      .eq('exam_id', examId)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...((data as { class_name: string | null; status: string }[]) || []));
+    if (!data || data.length < PAGE) break;
+  }
+
+  const byClass = new Map<string, ClassPublishStatus>();
+  for (const row of rows) {
+    const name = row.class_name || '—';
+    const entry = byClass.get(name) || { className: name, total: 0, published: 0 };
+    entry.total += 1;
+    if (row.status === 'PUBLISHED') entry.published += 1;
+    byClass.set(name, entry);
+  }
+
+  const { data: examRow, error: examError } = await supabase
+    .from('exams')
+    .select('status')
+    .eq('id', examId)
+    .limit(1)
+    .maybeSingle();
+  if (examError) throw examError;
+
+  return {
+    classes: [...byClass.values()].sort((a, b) => a.className.localeCompare(b.className)),
+    total: rows.length,
+    published: rows.filter((row) => row.status === 'PUBLISHED').length,
+    examStatus: (examRow as { status?: string } | null)?.status ?? null,
+  };
+}
+
+export function useExamPublishStatus(examId: string) {
+  return useQuery({
+    queryKey: ['results', 'publish-status', examId],
+    queryFn: () => fetchExamPublishStatus(examId),
+    enabled: !!examId,
+    staleTime: 15 * 1000,
+  });
+}
+
+export interface PublishClassResult {
+  /** Rows this call moved to PUBLISHED (0 = already published). */
+  published: number;
+  /** Every result row the exam holds. */
+  total: number;
+  /** Rows still not PUBLISHED anywhere in the exam, after this call. */
+  remaining: number;
+  /** True when this was the last class — the exam itself flipped to PUBLISHED. */
+  examPublished: boolean;
+}
+
+/**
+ * Publish every result of ONE class. When that leaves the exam with no
+ * unpublished rows left, `exams.status` is set to PUBLISHED too — so the
+ * exam goes live on /result the moment the last class is published, without
+ * a second manual switch.
+ */
+export async function publishClassResults(examId: string, className: string): Promise<PublishClassResult> {
+  const supabase = createClient();
+  const now = new Date().toISOString();
+
+  const { data: updated, error: updateError } = await supabase
+    .from(SUPABASE_TABLE)
+    .update({ status: 'PUBLISHED', updated_at: now })
+    .eq('exam_id', examId)
+    .eq('class_name', className)
+    .neq('status', 'PUBLISHED')
+    .select('id');
+  if (updateError) throw updateError;
+
+  const { count: remainingCount, error: remainingError } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('exam_id', examId)
+    .neq('status', 'PUBLISHED');
+  if (remainingError) throw remainingError;
+
+  const { count: totalCount, error: totalError } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('exam_id', examId);
+  if (totalError) throw totalError;
+
+  const remaining = remainingCount ?? 0;
+  const total = totalCount ?? 0;
+  let examPublished = false;
+
+  if (total > 0 && remaining === 0) {
+    const { error: examError } = await supabase
+      .from('exams')
+      .update({ status: 'PUBLISHED', updated_at: now })
+      .eq('id', examId)
+      .neq('status', 'PUBLISHED')
+      .select('id');
+    if (examError) throw examError;
+    examPublished = true;
+  }
+
+  return { published: (updated || []).length, total, remaining, examPublished };
+}
+
+export function usePublishClassResults() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ examId, className }: { examId: string; className: string }) =>
+      publishClassResults(examId, className),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['results'] });
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
     },
   });
 }

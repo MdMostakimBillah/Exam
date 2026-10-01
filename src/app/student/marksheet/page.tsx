@@ -1,40 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStudentSession } from "@/lib/auth/student-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
 import { useResultsByStudent } from "@/lib/storage/results";
-import { useStudentById } from "@/lib/storage/students";
-import { useExamsFull } from "@/lib/storage/exams";
-import { useCurrentSession } from "@/lib/storage/sessions";
-import { DEFAULT_GRADE_BANDS, useExamMarkSetup } from "@/lib/storage/mark-setup";
-import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
-import { MarksheetSheet } from "@/components/marksheet/marksheet-sheet";
-import {
-  downloadMarksheetPdf,
-  openMarksheetPrintWindow,
-  printMarksheet,
-} from "@/lib/pdf/marksheet-pdf";
+import { MarksheetViewer } from "@/components/marksheet/marksheet-viewer";
 import type { Result } from "@/lib/types";
-import {
-  FileText,
-  Loader2,
-  Printer,
-  ScrollText,
-  Trophy,
-  XCircle,
-  Download,
-} from "lucide-react";
+import { FileText, Loader2, ScrollText, Trophy, XCircle } from "lucide-react";
 
 /**
- * Student Marksheet — the student's own processed results, each opening as
- * an A4 board-style transcript (preview + Download PDF / Print, using the
- * same <MarksheetSheet> node as /marksheet and the institution action).
+ * Student Marksheet — the student's own processed results, each opening the
+ * shared A4 transcript viewer (preview + Download PDF / Print — the same
+ * <MarksheetSheet> node as /marksheet and the institution action).
  * The whole section is permission-gated: the super admin must grant the
  * institution `allow_marksheet_download` (migration 0038), same mechanism as
  * admit cards. The nav item only renders when it is on; the redirect here
@@ -43,7 +24,7 @@ import {
 export default function StudentMarksheetPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { lang: language, t } = useLang();
+  const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
 
@@ -52,15 +33,6 @@ export default function StudentMarksheetPage() {
 
   // Transcript viewer for one result.
   const [viewing, setViewing] = useState<Result | null>(null);
-  const [busy, setBusy] = useState<"" | "pdf" | "print">("");
-  const [actionError, setActionError] = useState("");
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const { data: examSetup } = useExamMarkSetup(viewing?.examId || "");
-  const { data: exams = [] } = useExamsFull();
-  const { data: currentSession } = useCurrentSession();
-  const { data: fullStudent } = useStudentById(viewing?.studentId || "");
-  const { data: brandData } = useBranding();
-  const brand = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
 
   useEffect(() => {
     if (!studentLoading && !student) {
@@ -79,39 +51,6 @@ export default function StudentMarksheetPage() {
     : "bg-white border border-zinc-200 rounded-xl shadow-sm";
   const iconBg = "bg-brand-accent-soft";
   const iconColor = "text-brand-accent";
-
-  const handleDownload = async () => {
-    if (!sheetRef.current || busy) return;
-    setActionError("");
-    setBusy("pdf");
-    try {
-      await downloadMarksheetPdf(sheetRef.current, `marksheet-${viewing?.registrationNumber || "sheet"}.pdf`);
-    } catch {
-      setActionError(isBn ? "PDF তৈরি করা যায়নি। আবার চেষ্টা করুন।" : "Could not build the PDF. Please try again.");
-    } finally {
-      setBusy("");
-    }
-  };
-
-  const handlePrint = async () => {
-    if (!sheetRef.current || busy) return;
-    setActionError("");
-    // Must open synchronously inside the click gesture or popups get blocked.
-    const win = openMarksheetPrintWindow();
-    if (!win) {
-      setActionError(isBn ? "পপআপ ব্লক হয়েছে — প্রিন্ট করতে সাইটটির পপআপ অনুমোদন দিন।" : "Pop-up blocked — allow pop-ups for this site to print.");
-      return;
-    }
-    setBusy("print");
-    try {
-      await printMarksheet(win, sheetRef.current);
-    } catch {
-      win.close?.();
-      setActionError(isBn ? "প্রিন্ট ব্যর্থ। আবার চেষ্টা করুন।" : "Print failed. Please try again.");
-    } finally {
-      setBusy("");
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -236,7 +175,7 @@ export default function StudentMarksheetPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => { setActionError(""); setViewing(r); }}
+                      onClick={() => setViewing(r)}
                       title={isBn ? "মার্কশিট দেখুন" : "View marksheet"}
                     >
                       <ScrollText className="h-4 w-4" />
@@ -250,59 +189,15 @@ export default function StudentMarksheetPage() {
         )}
       </div>
 
-      {/* Transcript viewer — A4 sheet, download/print (same node everywhere) */}
+      {/* Transcript viewer — shared A4 sheet with download/print */}
       {viewing && (
-        <Modal
-          open
-          onClose={() => { setViewing(null); setActionError(""); }}
-          title={isBn ? `মার্কশিট — ${viewing.examName}` : `Marksheet — ${viewing.examName}`}
-          description={`${viewing.studentName} · ${viewing.className}`}
-          maxWidth="max-w-[900px]"
-          maxHeight="max-h-[92vh]"
-        >
-          <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-200"}`}>
-            <div className={`text-[11px] ${viewing.marksheetGeneratedAt ? (isDark ? "text-zinc-500" : "text-zinc-500") : "text-amber-500"}`}>
-              {viewing.marksheetGeneratedAt
-                ? (isBn ? "প্রকাশিত মার্কশিট — নিচের /marksheet পেজেও দেখা যাবে" : "Published — also visible on the public /marksheet page")
-                : (isBn ? "অফিস এখনও জেনারেট করেনি (প্রিভিউ)" : "Not generated by the office yet (preview only)")}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={handleDownload} disabled={!!busy}>
-                {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                {isBn ? "PDF ডাউনলোড" : "Download PDF"}
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={handlePrint} disabled={!!busy}>
-                {busy === "print" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-                {isBn ? "প্রিন্ট" : "Print"}
-              </Button>
-            </div>
-          </div>
-          {actionError && <p className="mb-2 text-xs text-red-500">{actionError}</p>}
-          <div className={`overflow-x-auto rounded-md border p-3 ${isDark ? "border-white/10 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"}`}>
-            <MarksheetSheet
-              ref={sheetRef}
-              data={{
-                result: viewing,
-                gradeBands: examSetup?.gradeBands ?? DEFAULT_GRADE_BANDS,
-                passPercent: examSetup?.passPercent ?? 33,
-                fatherName: fullStudent?.fatherName || "",
-                motherName: fullStudent?.motherName || "",
-                sessionName: currentSession?.name || "",
-                examDate: exams.find((item) => item.id === viewing.examId)?.examDate || "",
-                generatedAt: viewing.marksheetGeneratedAt,
-              }}
-              lang={language === "bn" ? "bn" : "en"}
-              brandName={(language === "bn" ? brand.brandNameBn : brand.brandName) || t("brand")}
-              brandLogo={brand.brandLogo}
-              mdSignature={brand.mdSignature}
-              generatedOn={
-                viewing.marksheetGeneratedAt
-                  ? new Date(viewing.marksheetGeneratedAt).toLocaleDateString(isBn ? "bn-BD" : "en-GB")
-                  : (isBn ? "এখনও জেনারেট করা হয়নি" : "Not generated yet")
-              }
-            />
-          </div>
-        </Modal>
+        <MarksheetViewer
+          result={viewing}
+          onClose={() => setViewing(null)}
+          note={viewing.marksheetGeneratedAt
+            ? (isBn ? "প্রকাশিত মার্কশিট — সবার জন্য উন্মুক্ত" : "Published marksheet — released to everyone")
+            : (isBn ? "অফিস এখনও জেনারেট করেনি (প্রিভিউ)" : "Not generated by the office yet (preview)")}
+        />
       )}
     </div>
   );
