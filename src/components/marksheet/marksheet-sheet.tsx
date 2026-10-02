@@ -252,8 +252,6 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
       (lang === "bn" ? result.institutionName : result.institutionNameEn) ||
       result.institutionName;
 
-    const examYear = (result.examName.match(/\b(20\d{2})\b/) || [])[1] || "";
-
     const infoValue = (value: string, fallback = "—") => value?.trim() || fallback;
 
     return (
@@ -455,9 +453,10 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                   }}
                 >
                   {/* Board style: title case (not shouted), heading face — matches
-                      the reference transcript's "… Examination - 2019". */}
+                      the reference transcript's "… Examination - 2019". The year
+                      lives INSIDE the exam name ("Scholarship-2026"), so it must
+                      never be appended again — that printed "2026 - 2026". */}
                   {result.examName}
-                  {examYear ? ` - ${examYear}` : ""}
                 </div>
                 {data.sessionName && (
                   <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
