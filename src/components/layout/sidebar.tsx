@@ -13,7 +13,6 @@ import { useAuth, logout } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
-import { useInstitutionBySlug } from "@/lib/storage/institutions";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -71,17 +70,6 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
     const match = pathname.match(/^\/i\/([^/]+)/);
     return match ? match[1] : '';
   }, [pathname]);
-
-  // Institution logo for the bottom user block (institution pages only;
-  // super-admin has no institution → keeps the initials circle).
-  const { data: inst } = useInstitutionBySlug(slug);
-
-  // Bottom-block name: institution pages show the INSTITUTION name (pairs
-  // with the institution logo above it and updates after Settings → Profile
-  // saves); super-admin keeps the signed-in person's name.
-  const bottomName = inst?.name
-    ? (isBn ? inst.name : (inst.nameEn || inst.name))
-    : (user?.name ?? '');
 
   const institutionNav: NavItem[] = React.useMemo(() => [
     { label: 'Dashboard', labelBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, href: `/i/${slug}` },
@@ -234,43 +222,10 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
           'border-t p-3 shrink-0',
           isDark ? 'bg-[#0D0D0D] border-white/[0.04]' : 'bg-white border-gray-200/50'
         )}>
-          <div className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-md',
-            isDark ? 'bg-white/[0.04]' : 'bg-gray-50'
-          )}>
-            {inst?.logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={inst.logo}
-                alt={inst.name}
-                className={cn(
-                  'h-8 w-8 shrink-0 rounded-md object-contain bg-white/90 p-0.5 ring-1',
-                  isDark ? 'ring-white/15' : 'ring-black/10'
-                )}
-              />
-            ) : (
-              <div className={cn(
-                'h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold',
-                'bg-brand-accent text-brand-accent-fg'
-              )}>
-                {bottomName.split(' ').map(n => n[0]).join('')}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className={cn(
-                'text-sm font-medium truncate',
-                isDark ? 'text-white' : 'text-gray-900'
-              )}>{bottomName}</p>
-              <p className={cn(
-                'text-[10px] truncate',
-                isDark ? 'text-zinc-500' : 'text-gray-500'
-              )}>{user.role.replace('_', ' ')}</p>
-            </div>
-          </div>
           <button
             onClick={handleLogout}
             className={cn(
-              'flex w-full items-center gap-3 rounded-md px-3 py-2.5 mt-1 text-sm transition-all duration-200',
+              'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200',
               isDark
                 ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
