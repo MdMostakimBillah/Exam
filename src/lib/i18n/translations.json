@@ -33,7 +33,26 @@
     "checkResult": { "en": "Check Result", "bn": "ফলাফল দেখুন" },
     "verifyCertificate": { "en": "Verify Certificate", "bn": "সার্টিফিকেট যাচাই" },
     "apply": { "en": "Apply", "bn": "আবেদন" },
-    "track": { "en": "Track", "bn": "অবস্থা" }
+    "track": { "en": "Track", "bn": "অবস্থা" },
+    "more": { "en": "More", "bn": "আরও" },
+    "help": { "en": "Help", "bn": "সহায়তা" },
+    "trackApplication": { "en": "Track Application", "bn": "অবস্থা দেখুন" },
+    "verifyCertificateDesc": {
+      "en": "Check that a certificate issued by this board is genuine.",
+      "bn": "বোর্ড কর্তৃক প্রদত্ত সার্টিফিকেটটি সত্যিকারের কিনা যাচাই করুন।"
+    },
+    "trackDesc": {
+      "en": "Follow a submitted application from review through to approval.",
+      "bn": "জমা দেওয়া আবেদনের পর্যবেক্ষণ থেকে অনুমোদন পর্যন্ত অগ্রগতি দেখুন।"
+    },
+    "helpDesc": {
+      "en": "Answers about exams, results, payments and accounts.",
+      "bn": "পরীক্ষা, ফলাফল, পেমেন্ট ও অ্যাকাউন্ট সম্পর্কে প্রশ্নোত্তর।"
+    },
+    "contactDesc": {
+      "en": "Phone, email and office hours of the examination board.",
+      "bn": "পরীক্ষা বোর্ডের ফোন, ইমেইল ও দপ্তরের সময়সূচি।"
+    }
   },
   "hero": {
     "badge": { "en": "New · Scholarship Examination 2026 is now open →", "bn": "নতুন · ২০২৬ সালের বৃত্তি পরীক্ষা এখন খোলা →" },

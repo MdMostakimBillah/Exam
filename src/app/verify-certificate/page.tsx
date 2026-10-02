@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Search, CheckCircle, ShieldCheck, XCircle, ShieldAlert } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
+import { PublicNav } from "@/components/layout/public-nav";
 
 export default function VerifyCertificatePage() {
   const { theme } = useTheme();
@@ -63,18 +64,7 @@ export default function VerifyCertificatePage() {
 
   return (
     <div className={`min-h-screen ${bg}`}>
-      <header className={`border-b backdrop-blur-xl ${isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"}`}>
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm ${"bg-brand-accent text-brand-accent-fg"}`}>B</div>
-            <span className={`text-sm font-semibold ${text}`}>{t("brand")}</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/result" className={`text-xs ${isDark ? "text-zinc-500 hover:text-zinc-300" : "text-gray-500 hover:text-gray-900"}`}>{t("nav.checkResult")}</Link>
-            <Link href="/login" className={`text-xs ${isDark ? "text-zinc-500 hover:text-zinc-300" : "text-gray-500 hover:text-gray-900"}`}>{t("nav.signIn")}</Link>
-          </div>
-        </div>
-      </header>
+      <PublicNav />
 
       <main className="max-w-xl mx-auto px-6 py-16">
         <div className="text-center mb-8">
