@@ -1,31 +1,13 @@
 "use client";
-import Link from "next/link";
+import { PublicNav } from "@/components/layout/public-nav";
 import { Building2, Users, FileText, ClipboardList, BookOpen, Award, CreditCard, BarChart3, Shield, Bell, Search, Settings } from "lucide-react";
 
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-[#080808]">
-      <header className="fixed top-0 w-full z-50 border-b border-white/[0.06] bg-[#080808]/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-accent text-brand-accent-fg font-bold text-sm">S</div>
-            <span className="text-sm font-semibold text-zinc-100">ScholarX</span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="/about" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">About</Link>
-            <Link href="/features" className="text-sm text-zinc-300">Features</Link>
-            <Link href="/pricing" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Pricing</Link>
-            <Link href="/contact" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Contact</Link>
-            <Link href="/help" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Help</Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors px-3 py-1.5">Sign in</Link>
-            <Link href="/register" className="text-sm bg-brand-accent text-brand-accent-fg hover:opacity-90 px-4 py-1.5 rounded-md font-medium transition-colors">Register</Link>
-          </div>
-        </div>
-      </header>
+      <PublicNav tone="dark" />
 
-      <main className="pt-32 pb-20 px-6">
+      <main className="pt-10 sm:pt-14 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="max-w-2xl mb-16">
             <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">Platform Features</h1>

@@ -29,11 +29,14 @@ interface MoreItem {
  * The bar is `fixed`, so it renders its own top spacer — drop it in where the
  * old sticky `<header>` was and nothing below it re-flows.
  */
-export function PublicNav() {
+export function PublicNav({ tone = "auto" }: { tone?: "auto" | "dark" | "light" } = {}) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLang();
-  const isDark = theme === "dark";
+  // Marketing pages that paint their own fixed `bg-[#080808]` ignore the site
+  // theme — pass tone="dark" so the glass matches the page they sit on instead
+  // of following a light/dark preference the page itself doesn't honour.
+  const isDark = tone === "auto" ? theme === "dark" : tone === "dark";
 
   const { data: brandData } = useBranding();
   const b = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
@@ -157,60 +160,18 @@ export function PublicNav() {
               </Link>
             ))}
 
-            {/* Sub-nav: one glass panel, two columns of title + description */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMoreOpen((v) => !v)}
-                aria-expanded={moreOpen}
-                aria-haspopup="true"
-                className={`${linkCls(moreOpen)} inline-flex items-center gap-1`}
-              >
-                {t("nav.more")}
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {moreOpen && (
-                <div
-                  className={`absolute right-0 top-full mt-2 w-[min(560px,calc(100vw-32px))] rounded-md p-3 animate-fadeInDown ${pillShell}`}
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                    {moreItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`rounded-md p-3 transition-colors ${
-                          pathname === item.href
-                            ? isDark
-                              ? "bg-white/[0.07]"
-                              : "bg-white/70"
-                            : isDark
-                              ? "hover:bg-white/[0.06]"
-                              : "hover:bg-white/70"
-                        }`}
-                      >
-                        <div
-                          className={`text-sm font-semibold ${
-                            isDark ? "text-zinc-100" : "text-zinc-900"
-                          }`}
-                        >
-                          {item.title}
-                        </div>
-                        <div
-                          className={`mt-0.5 text-xs leading-relaxed ${
-                            isDark ? "text-zinc-400" : "text-zinc-500"
-                          }`}
-                        >
-                          {item.desc}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setMoreOpen((v) => !v)}
+              aria-expanded={moreOpen}
+              aria-haspopup="true"
+              className={`${linkCls(moreOpen)} inline-flex items-center gap-1`}
+            >
+              {t("nav.more")}
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
+              />
+            </button>
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-1.5 ml-auto xl:ml-0 shrink-0">
@@ -252,6 +213,51 @@ export function PublicNav() {
             </button>
           </div>
         </div>
+
+        {/* Sub-nav — deliberately a *sibling* of the bar above, not a child of
+            it: the bar's own `backdrop-filter` sets up a backdrop root, so a
+            panel nested inside it would sample an empty backdrop and render as
+            a flat tint with no blur. Here it frosts the page underneath, in the
+            same glass as the bar. */}
+        {moreOpen && (
+          <div
+            className={`absolute right-0 top-full mt-2 w-[min(560px,calc(100vw-32px))] rounded-md p-3 animate-fadeInDown ${pillShell}`}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+              {moreItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={`rounded-md p-3 transition-colors ${
+                    pathname === item.href
+                      ? isDark
+                        ? "bg-white/[0.07]"
+                        : "bg-white/70"
+                      : isDark
+                        ? "hover:bg-white/[0.06]"
+                        : "hover:bg-white/70"
+                  }`}
+                >
+                  <div
+                    className={`text-sm font-semibold ${
+                      isDark ? "text-zinc-100" : "text-zinc-900"
+                    }`}
+                  >
+                    {item.title}
+                  </div>
+                  <div
+                    className={`mt-0.5 text-xs leading-relaxed ${
+                      isDark ? "text-zinc-400" : "text-zinc-500"
+                    }`}
+                  >
+                    {item.desc}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Below xl the link row would crowd the bar — same glass, drops down */}
         {mobileOpen && (

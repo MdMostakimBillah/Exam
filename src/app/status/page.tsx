@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { PublicNav } from "@/components/layout/public-nav";
 import { lookupStudentApplicationStatus } from "@/lib/auth/student-apply";
 import type { ApplicationStatus } from "@/lib/auth/student-apply";
 import { Input } from "@/components/ui/input";
@@ -10,17 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import {
   Award,
   CalendarClock,
   Check,
-  Globe,
   Loader2,
-  Moon,
   Search,
   SearchX,
-  Sun,
   UserCheck,
   Wallet,
   X,
@@ -97,16 +94,10 @@ function stageStates(s: ApplicationStatus): StageState[] {
 }
 
 export default function StatusPage() {
-  const { theme, toggleTheme } = useTheme();
-  const { t, lang, setLang } = useLang();
+  const { theme } = useTheme();
+  const { lang } = useLang();
   const isDark = theme === "dark";
   const L = useCallback((en: string, bn: string) => (lang === "bn" ? bn : en), [lang]);
-
-  // Super-admin branding — the top bar shows the real logo/name (same as /apply).
-  const { data: brandData } = useBranding();
-  const b = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };
-  const brandName = (lang === "bn" ? b.brandNameBn : b.brandName) || t("brand");
-  const brandLetter = brandName.trim().charAt(0).toUpperCase() || "B";
 
   const [regNumber, setRegNumber] = useState("");
   const [dob, setDob] = useState("");
@@ -180,12 +171,6 @@ export default function StatusPage() {
   const fieldCls = `h-11 rounded-lg focus-visible:ring-[color:var(--brand-accent)] focus-visible:border-transparent hover:border-zinc-400/70 ${
     isDark ? "dark:hover:border-white/25" : ""
   }`;
-  const navPill = isDark
-    ? "text-zinc-400 hover:text-white hover:bg-white/[0.07]"
-    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100";
-  const iconPill = isDark
-    ? "text-zinc-400 hover:text-white hover:bg-white/[0.07]"
-    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100";
   const panelCls = isDark ? "border-white/10 bg-white/[0.03]" : "border-gray-200 bg-white";
   const sectionIconCls = `flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
     isDark ? "bg-white/[0.06]" : "bg-gray-100"
@@ -269,74 +254,7 @@ export default function StatusPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#080808]" : "bg-gray-50"}`}>
-      <header
-        className={`sticky top-0 z-50 border-b backdrop-blur-xl ${
-          isDark ? "border-white/[0.06] bg-[#080808]/80" : "border-gray-200 bg-white/80"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <Link href="/" className="group flex min-w-0 items-center gap-2.5">
-            {b.brandLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={b.brandLogo}
-                alt={brandName}
-                className={`h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-full object-contain bg-white/90 ring-1 ${
-                  isDark ? "ring-white/15" : "ring-zinc-200"
-                }`}
-              />
-            ) : (
-              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-brand-accent text-brand-accent-fg text-sm font-bold">
-                {brandLetter}
-              </div>
-            )}
-            <span
-              className={`truncate text-sm font-semibold transition-opacity group-hover:opacity-75 max-w-[45vw] sm:max-w-[320px] ${
-                isDark ? "text-zinc-100" : "text-gray-900"
-              }`}
-            >
-              {brandName}
-            </span>
-          </Link>
-
-          <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
-            <Link
-              href="/apply"
-              className={`hidden sm:inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${navPill}`}
-            >
-              {L("Apply", "আবেদন")}
-            </Link>
-            <Link
-              href="/result"
-              className={`hidden md:inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition-colors ${navPill}`}
-            >
-              {t("nav.results")}
-            </Link>
-            <button
-              type="button"
-              onClick={() => setLang(lang === "en" ? "bn" : "en")}
-              aria-label={lang === "bn" ? "Switch to English" : "বাংলায় দেখুন"}
-              className={`rounded-md p-2 transition-colors ${iconPill}`}
-            >
-              <Globe className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={isDark ? "Light mode" : "Dark mode"}
-              className={`rounded-md p-2 transition-colors ${iconPill}`}
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            <Link
-              href="/login"
-              className="inline-flex h-9 items-center rounded-md px-3 sm:px-4 text-xs font-medium transition-all hover:opacity-90 bg-brand-accent text-brand-accent-fg"
-            >
-              {t("nav.signIn")}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicNav />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
         <div className="text-center mb-6">
