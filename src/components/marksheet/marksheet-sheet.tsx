@@ -71,7 +71,7 @@ const thStyle: CSSProperties = {
   border: `1px solid ${LINE}`,
   background: SOFT,
   padding: "7px 9px",
-  fontSize: 9.5,
+  fontSize: 12,
   fontWeight: 700,
   letterSpacing: "0.06em",
   color: INK,
@@ -89,9 +89,11 @@ const tdStyle: CSSProperties = {
 };
 
 /** A candidate line: fixed label + value on a dotted leader (the scan look).
- *  `valueFont`/`valueSize` swap the FILL-IN face: Cookie (script) for the
- *  personal names, Quantico for text values, Fira Code for IDs — the labels
- *  stay in the label face so the form still reads as label = static. */
+ *  `valueFont` swaps the FILL-IN face (Cookie for words, Fira Code for IDs)
+ *  and `valueSize` is deliberately constant across the block — script fonts
+ *  need a few px more than the 12px label to look the same size, but every
+ *  value line must match every other. Labels stay in the label face, so the
+ *  form still reads as label = static, value = filled in. */
 function LeaderRow({
   label,
   value,
@@ -125,7 +127,7 @@ function LeaderRow({
           minWidth: 0,
           borderBottom: `1px dotted ${LINE}`,
           paddingBottom: 2,
-          fontSize: valueSize ?? 13.5,
+          fontSize: valueSize ?? 15,
           fontWeight: 600,
           color: INK,
           wordBreak: "break-word",
@@ -301,7 +303,9 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 fontFamily: HEADING_FONT,
                 fontSize: 150,
                 fontWeight: 400,
-                color: INK,
+                // Light grey, not ink: at 0.35 opacity black reads as printed
+                // text over the marks table instead of a watermark.
+                color: LINE,
                 letterSpacing: 10,
                 lineHeight: 1,
                 whiteSpace: "nowrap",
@@ -477,13 +481,13 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 >
                   <tbody>
                     <tr>
-                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 9.5, letterSpacing: "0.05em" }}>
                         {L("Letter Grade", "লেটার গ্রেড")}
                       </th>
-                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 9.5, letterSpacing: "0.05em" }}>
                         {L("Marks", "নম্বর")}
                       </th>
-                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 9.5, letterSpacing: "0.05em" }}>
                         {L("Grade Point", "গ্রেড পয়েন্ট")}
                       </th>
                     </tr>
@@ -504,31 +508,32 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
             </div>
 
             {/* ── Candidate block ── */}
-            <div style={{ marginTop: 18 }}>
-              {/* Names in Cookie (script), other text in Quantico, IDs in Fira
-                  Code — the fill-in faces from globals.css. */}
+            <div style={{ marginTop: 14 }}>
+              {/* The fill-in hand: names, institution and class are written in
+                  Cookie (script) at ONE size — see LeaderRow's default — while
+                  the machine-readable IDs (roll, registration, exam date) stay
+                  in Fira Code, because Cookie writes a flag-shaped "1" that
+                  reads as "4" in a roll number. Bangla values fall through the
+                  stack to Noto Sans Bengali (Cookie has no Bengali glyphs). */}
               <LeaderRow
                 label={L("Name of Student", "শিক্ষার্থীর নাম")}
                 value={infoValue(result.studentName)}
                 valueFont={SCRIPT_FONT}
-                valueSize={16}
               />
               <LeaderRow
                 label={L("Father's Name", "পিতার নাম")}
                 value={data.fatherName || ""}
                 valueFont={SCRIPT_FONT}
-                valueSize={16}
               />
               <LeaderRow
                 label={L("Mother's Name", "মাতার নাম")}
                 value={data.motherName || ""}
                 valueFont={SCRIPT_FONT}
-                valueSize={16}
               />
               <LeaderRow
                 label={L("Institution", "প্রতিষ্ঠান")}
                 value={infoValue(institutionName)}
-                valueFont={VALUE_FONT}
+                valueFont={SCRIPT_FONT}
               />
 
               <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 7 }}>
@@ -553,14 +558,14 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                   <LeaderRow
                     label={L("Class / Group", "শ্রেণি / গ্রুপ")}
                     value={result.className}
-                    valueFont={VALUE_FONT}
+                    valueFont={SCRIPT_FONT}
                   />
                 </div>
                 <div style={{ width: "50%" }}>
                   <LeaderRow
                     label={L("Exam Date", "পরীক্ষার তারিখ")}
                     value={data.examDate || ""}
-                    valueFont={VALUE_FONT}
+                    valueFont={MONO_FONT}
                   />
                 </div>
               </div>
@@ -571,7 +576,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginTop: 22,
+                marginTop: 16,
                 border: `1px solid ${LINE}`,
                 tableLayout: "fixed",
               }}
@@ -784,7 +789,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 display: "flex",
                 alignItems: "flex-end",
                 justifyContent: "space-between",
-                marginTop: 57,
+                marginTop: 28,
               }}
             >
               <div style={{ fontSize: 11.5, color: INK, maxWidth: 300 }}>
