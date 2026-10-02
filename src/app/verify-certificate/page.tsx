@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { lookupCertificate } from "@/lib/auth/public-lookup";
 import { Certificate } from "@/lib/types";
 import { Input } from "@/components/ui/input";
@@ -9,12 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, CheckCircle, ShieldCheck, XCircle, ShieldAlert } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
-import { useLang } from "@/contexts/language-context";
 import { PublicNav } from "@/components/layout/public-nav";
 
 export default function VerifyCertificatePage() {
   const { theme } = useTheme();
-  const { t } = useLang();
   const isDark = theme === "dark";
   const [certNumber, setCertNumber] = useState("");
   const [searched, setSearched] = useState(false);
@@ -59,8 +56,6 @@ export default function VerifyCertificatePage() {
   const isRevoked = certificate?.status === "DRAFT";
 
   const bg = isDark ? "bg-[#080808]" : "bg-gray-50";
-  const text = isDark ? "text-zinc-100" : "text-gray-900";
-  const textSec = isDark ? "text-zinc-500" : "text-gray-500";
 
   return (
     <div className={`min-h-screen ${bg}`}>

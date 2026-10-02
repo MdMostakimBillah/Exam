@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import Link from "next/link";
 import { lookupPublicMarksheet, type MarksheetData } from "@/lib/auth/public-lookup";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
