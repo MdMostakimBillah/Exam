@@ -35,36 +35,36 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#080808]">
-      <PublicNav tone="dark" />
+    <div className="min-h-screen bg-gray-50 dark:bg-[#080808]">
+      <PublicNav />
 
       <main className="pt-10 sm:pt-14 pb-20 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4">Simple, Transparent Pricing</h1>
-            <p className="text-lg text-zinc-500 max-w-lg mx-auto">Choose the plan that fits your institution. All plans include core features.</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mb-4">Simple, Transparent Pricing</h1>
+            <p className="text-lg text-gray-500 dark:text-zinc-500 max-w-lg mx-auto">Choose the plan that fits your institution. All plans include core features.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map(plan => (
-              <div key={plan.name} className={`rounded-md border p-6 ${plan.popular ? 'border-white/20 bg-[#151515]' : 'border-white/[0.06] bg-[#111111]'}`}>
-                {plan.popular && <span className="text-[10px] uppercase tracking-wider text-zinc-400 bg-white/10 px-2 py-0.5 rounded-full">Most Popular</span>}
-                <h3 className="text-lg font-semibold text-zinc-100 mt-2">{plan.name}</h3>
-                <p className="text-xs text-zinc-500 mb-4">{plan.desc}</p>
+              <div key={plan.name} className={`rounded-md border p-6 ${plan.popular ? 'border-gray-300 dark:border-white/20 bg-white dark:bg-[#151515]' : 'border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#111111]'}`}>
+                {plan.popular && <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-400 bg-zinc-100 dark:bg-white/10 px-2 py-0.5 rounded-full">Most Popular</span>}
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mt-2">{plan.name}</h3>
+                <p className="text-xs text-gray-500 dark:text-zinc-500 mb-4">{plan.desc}</p>
                 <div className="mb-6">
-                  {plan.price !== 'Custom' && <span className="text-xs text-zinc-500">৳</span>}
-                  <span className="text-3xl font-bold text-zinc-100">{plan.price}</span>
-                  {plan.period && <span className="text-sm text-zinc-500">{plan.period}</span>}
+                  {plan.price !== 'Custom' && <span className="text-xs text-gray-500 dark:text-zinc-500">৳</span>}
+                  <span className="text-3xl font-bold text-gray-900 dark:text-zinc-100">{plan.price}</span>
+                  {plan.period && <span className="text-sm text-gray-500 dark:text-zinc-500">{plan.period}</span>}
                 </div>
                 <ul className="space-y-2 mb-6">
                   {plan.features.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-zinc-400">
-                      <Check className="h-4 w-4 text-zinc-600 mt-0.5 shrink-0" />
+                    <li key={f} className="flex items-start gap-2 text-sm text-gray-500 dark:text-zinc-400">
+                      <Check className="h-4 w-4 text-gray-400 dark:text-zinc-600 mt-0.5 shrink-0" />
                       {f}
                     </li>
                   ))}
                 </ul>
-                <Link href="/register" className={`block text-center py-2.5 rounded-md text-sm font-medium transition-colors ${plan.popular ? 'bg-brand-accent text-brand-accent-fg hover:opacity-90' : 'border border-white/[0.08] text-zinc-300 hover:bg-white/[0.03]'}`}>
+                <Link href="/register" className={`block text-center py-2.5 rounded-md text-sm font-medium transition-colors ${plan.popular ? 'bg-brand-accent text-brand-accent-fg hover:opacity-90' : 'border border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-white/[0.03]'}`}>
                   {plan.cta}
                 </Link>
               </div>
@@ -73,13 +73,13 @@ export default function PricingPage() {
         </div>
       </main>
 
-      <footer className="border-t border-white/[0.06] py-8 px-6">
+      <footer className="border-t border-gray-200 dark:border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-accent text-brand-accent-fg font-bold text-xs">S</div>
-            <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
+            <span className="text-sm font-semibold text-gray-700 dark:text-zinc-300">ScholarX</span>
           </div>
-          <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-700">© 2026 ScholarX. All rights reserved.</p>
         </div>
       </footer>
     </div>

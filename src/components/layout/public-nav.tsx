@@ -29,14 +29,11 @@ interface MoreItem {
  * The bar is `fixed`, so it renders its own top spacer — drop it in where the
  * old sticky `<header>` was and nothing below it re-flows.
  */
-export function PublicNav({ tone = "auto" }: { tone?: "auto" | "dark" | "light" } = {}) {
+export function PublicNav() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLang();
-  // Marketing pages that paint their own fixed `bg-[#080808]` ignore the site
-  // theme — pass tone="dark" so the glass matches the page they sit on instead
-  // of following a light/dark preference the page itself doesn't honour.
-  const isDark = tone === "auto" ? theme === "dark" : tone === "dark";
+  const isDark = theme === "dark";
 
   const { data: brandData } = useBranding();
   const b = { ...BRANDING_DEFAULTS, ...(brandData ?? {}) };

@@ -4,14 +4,14 @@ import { Building2, Users, FileText, ClipboardList, BookOpen, Award, CreditCard,
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-[#080808]">
-      <PublicNav tone="dark" />
+    <div className="min-h-screen bg-gray-50 dark:bg-[#080808]">
+      <PublicNav />
 
       <main className="pt-10 sm:pt-14 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="max-w-2xl mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">Platform Features</h1>
-            <p className="text-lg text-zinc-500 leading-relaxed">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight mb-6">Platform Features</h1>
+            <p className="text-lg text-gray-500 dark:text-zinc-500 leading-relaxed">
               Everything you need to manage scholarship examinations, from registration to certificate verification.
             </p>
           </div>
@@ -31,25 +31,25 @@ export default function FeaturesPage() {
               { icon: Bell, title: 'Notifications', desc: 'Global notification center with real-time alerts for important events.' },
               { icon: Search, title: 'Certificate Verification', desc: 'Public certificate verification portal with QR code scanning support.' },
             ].map(f => (
-              <div key={f.title} className="rounded-md border border-white/[0.06] bg-[#111111] p-5 hover:border-white/[0.1] transition-colors">
-                <div className="rounded-md bg-zinc-800/50 p-2 w-fit mb-3">
-                  <f.icon className="h-5 w-5 text-zinc-400" />
+              <div key={f.title} className="rounded-md border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#111111] p-5 hover:border-gray-300 dark:hover:border-white/[0.1] transition-colors">
+                <div className="rounded-md bg-zinc-100 dark:bg-zinc-800/50 p-2 w-fit mb-3">
+                  <f.icon className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
                 </div>
-                <h3 className="text-sm font-semibold text-zinc-100 mb-1">{f.title}</h3>
-                <p className="text-xs text-zinc-500 leading-relaxed">{f.desc}</p>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-1">{f.title}</h3>
+                <p className="text-xs text-gray-500 dark:text-zinc-500 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </main>
 
-      <footer className="border-t border-white/[0.06] py-8 px-6">
+      <footer className="border-t border-gray-200 dark:border-white/[0.06] py-8 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-accent text-brand-accent-fg font-bold text-xs">S</div>
-            <span className="text-sm font-semibold text-zinc-300">ScholarX</span>
+            <span className="text-sm font-semibold text-gray-700 dark:text-zinc-300">ScholarX</span>
           </div>
-          <p className="text-xs text-zinc-700">© 2026 ScholarX. All rights reserved.</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-700">© 2026 ScholarX. All rights reserved.</p>
         </div>
       </footer>
     </div>
