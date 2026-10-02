@@ -18,11 +18,13 @@ import { useInstitutionBySlug } from "@/lib/storage/institutions";
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
+  /** Docked edge of the sidebar rail — mirrors the header inset. */
+  side?: "left" | "right";
   /** Opens the mobile drawer (hamburger, lg:hidden only). */
   onMenu?: () => void;
 }
 
-const Topbar = React.memo(function Topbar({ sidebarCollapsed, onMenu }: TopbarProps) {
+const Topbar = React.memo(function Topbar({ sidebarCollapsed, side = "left", onMenu }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -132,7 +134,12 @@ const Topbar = React.memo(function Topbar({ sidebarCollapsed, onMenu }: TopbarPr
       isDark
         ? 'bg-[#0D0D0D] border-b border-white/[0.04]'
         : 'bg-white border-b border-gray-200/50',
-      'left-0 right-0 lg:left-[240px]'
+      'left-0 right-0',
+      // Inset from the rail's docked edge — written literally so Tailwind
+      // emits all four variants.
+      side === 'left'
+        ? (sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[240px]')
+        : (sidebarCollapsed ? 'lg:right-[72px]' : 'lg:right-[240px]')
     )}>
       {/* Left side */}
       <div className="flex items-center gap-2 sm:gap-4 min-w-0">
