@@ -1,7 +1,9 @@
 "use client";
 import * as React from "react";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/helpers";
+import { PageEntrance } from "@/components/animation";
 
 const Sidebar = dynamic(() => import("./sidebar").then((m) => m.Sidebar), {
   ssr: false,
@@ -19,6 +21,10 @@ const Topbar = dynamic(() => import("./topbar").then((m) => m.Topbar), {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = React.useState(false);
+  // Keying the entrance by pathname makes it run once per genuine page
+  // mount — filters, modals and in-page data refreshes never replay it,
+  // while navigating to another page gives a quiet fresh fade-in.
+  const pathname = usePathname();
   // Below lg the sidebar is an off-canvas drawer driven by this flag; the
   // hamburger in the Topbar opens it and the scrim closes it.
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -53,7 +59,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         collapsed ? 'lg:pl-[72px]' : 'lg:pl-[240px]',
         'pl-0'
       )}>
-        <div>{children}</div>
+        <PageEntrance key={pathname}>{children}</PageEntrance>
       </main>
     </div>
   );

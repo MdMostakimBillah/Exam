@@ -133,9 +133,9 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
       )}
       {/* Logo */}
       <div className={cn(
-        'flex items-center border-b shrink-0',
+        'flex items-center border-b shrink-0 anim-enter',
         isDark ? 'bg-[#0D0D0D] border-white/[0.04]' : 'bg-white border-gray-200/50'
-      )}>
+      )} style={{ '--anim-delay': '0.05s', '--anim-dur': '0.4s', '--anim-x': '-6px', '--anim-y': '0px' } as React.CSSProperties}>
         <div className={cn(
           'flex items-center',
           showLabels ? 'h-16 px-5 pr-9 lg:pr-5' : 'h-16 px-4 pr-9 lg:pr-4 justify-center w-full'
@@ -182,7 +182,7 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
         'flex-1 overflow-y-auto py-4 px-3 space-y-1',
         isDark ? 'bg-[#0D0D0D]' : 'bg-white'
       )}>
-        {navItems.map((item) => {
+        {navItems.map((item, i) => {
           const isDashboard = item.href === '/super-admin' || /^\/i\/[^/]+$/.test(item.href);
           const isActive = isDashboard
             ? pathname === item.href || pathname === item.href + '/dashboard'
@@ -196,14 +196,23 @@ const Sidebar = React.memo(function Sidebar({ collapsed = false, onToggle, mobil
                 router.push(item.href);
                 onClose?.();
               }}
+              /* Mount-only stagger: React keeps these DOM nodes across
+                 navigations (stable keys), so the CSS animation fires once
+                 when the sidebar first appears and never replays. */
               className={cn(
-                'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200',
+                'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200 anim-enter',
                 isActive
                   ? 'bg-brand-accent text-brand-accent-fg font-medium'
                   : isDark
                     ? 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               )}
+              style={{
+                '--anim-delay': `${0.1 + Math.min(i, 12) * 0.03}s`,
+                '--anim-dur': '0.4s',
+                '--anim-x': '-6px',
+                '--anim-y': '0px',
+              } as React.CSSProperties}
             >
               <item.icon className="h-[18px] w-[18px] shrink-0" />
               {showLabels && (

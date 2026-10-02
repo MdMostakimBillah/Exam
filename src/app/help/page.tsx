@@ -12,6 +12,7 @@ import { useHelpdeskContact, useCreateSupportReport, useMySupportReports, Suppor
 import { useInstitutionById } from "@/lib/storage/institutions";
 import { formatDate } from "@/lib/storage/storage";
 import { SupportReport } from "@/lib/types";
+import { PageEntrance } from "@/components/animation";
 
 const CATEGORIES: { value: SupportCategory; en: string; bn: string }[] = [
   { value: "login", en: "Login / Account", bn: "লগইন / অ্যাকাউন্ট" },
@@ -126,6 +127,7 @@ export default function HelpPage() {
       </header>
 
       <main className="pt-32 pb-20 px-6">
+        <PageEntrance>
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-accent-soft text-brand-accent">
@@ -335,6 +337,7 @@ export default function HelpPage() {
             </div>
           </div>
         </div>
+        </PageEntrance>
       </main>
 
       <footer className="border-t border-white/[0.06] py-8 px-6">

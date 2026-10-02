@@ -20,6 +20,12 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { LoadingBar } from "@/components/ui/loading-bar";
 import { Registration } from "@/lib/types";
+import {
+  AnimatedCounter, FadeIn, StaggerContainer, StaggerItem, useEntranceClock,
+} from "@/components/animation";
+
+/** Rounds interpolated counter figures so currency never flickers decimals. */
+const formatCountCurrency = (n: number) => `৳${Math.round(n).toLocaleString()}`;
 
 export default function InstitutionDashboardPage() {
   const params = useParams();
@@ -33,6 +39,18 @@ export default function InstitutionDashboardPage() {
 
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Absolute entrance timeline from mount (spec §7) — late data skips any
+  // part of the schedule that already elapsed instead of waiting it out.
+  const clock = useEntranceClock();
+  const seq = {
+    head: clock(0.15),
+    sub: clock(0.25),
+    cards: clock(0.35),
+    sections: clock(0.65),
+    rows: clock(0.72),
+    table: clock(0.8),
+    tableRows: clock(0.86),
+  };
 
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
@@ -105,57 +123,72 @@ export default function InstitutionDashboardPage() {
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3">
-            <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-              {isBn ? 'প্রতিষ্ঠান ড্যাশবোর্ড' : 'Institution Dashboard'}
-            </h1>
-            <Badge status={inst.status} />
-          </div>
-          <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-            {isBn ? 'আপনার প্রতিষ্ঠানের পরিসংখ্যান এবং পরিচালনা' : 'Overview and management of your institution'}
-          </p>
+          <FadeIn delay={seq.head} duration={0.4} y={8} blur={4}>
+            <div className="flex items-center gap-3">
+              <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+                {isBn ? 'প্রতিষ্ঠান ড্যাশবোর্ড' : 'Institution Dashboard'}
+              </h1>
+              <Badge status={inst.status} />
+            </div>
+          </FadeIn>
+          <FadeIn delay={seq.sub} duration={0.4} y={8}>
+            <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+              {isBn ? 'আপনার প্রতিষ্ঠানের পরিসংখ্যান এবং পরিচালনা' : 'Overview and management of your institution'}
+            </p>
+          </FadeIn>
         </div>
 
         {/* Metric Cards */}
+        <StaggerContainer delay={seq.cards} increment={0.04}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: students.length },
             { icon: Activity, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: activeExams },
             { icon: Clock, label: isBn ? 'আবেদন প্রতীক্ষা' : 'Pending Applications', value: pendingStudents },
             { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: approvedStudents },
-          ].map((s) => (
-            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
-                <s.icon className={`h-5 w-5 ${iconColor}`} />
+          ].map((s, i) => (
+            <StaggerItem key={`stat-${i}`} index={i}>
+              <div className={`${card} px-4 py-3 flex items-center gap-3 hover-lift group`}>
+                <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg} transition-transform duration-200 group-hover:scale-105`}>
+                  <s.icon className={`h-5 w-5 ${iconColor}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+                    <AnimatedCounter value={s.value} delay={seq.cards + i * 0.04} />
+                  </p>
+                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-              </div>
-            </div>
+            </StaggerItem>
           ))}
         </div>
 
         {/* Revenue Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {[
-            { icon: DollarSign, label: isBn ? 'সংগ্রহিত' : 'Total Collected', value: `৳${totalCollected.toLocaleString()}` },
-            { icon: Wallet, label: isBn ? 'বকেয়া' : 'Total Due', value: `৳${totalDue.toLocaleString()}` },
-            { icon: XCircle, label: isBn ? 'প্রত্যাখ্যান' : 'Rejected', value: rejectedStudents },
-          ].map((s) => (
-            <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-              <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
-                <s.icon className={`h-5 w-5 ${iconColor}`} />
+            { icon: DollarSign, label: isBn ? 'সংগ্রহিত' : 'Total Collected', value: totalCollected, format: formatCountCurrency },
+            { icon: Wallet, label: isBn ? 'বকেয়া' : 'Total Due', value: totalDue, format: formatCountCurrency },
+            { icon: XCircle, label: isBn ? 'প্রত্যাখ্যান' : 'Rejected', value: rejectedStudents, format: undefined },
+          ].map((s, i) => (
+            <StaggerItem key={`revenue-${i}`} index={i + 4}>
+              <div className={`${card} px-4 py-3 flex items-center gap-3 hover-lift group`}>
+                <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg} transition-transform duration-200 group-hover:scale-105`}>
+                  <s.icon className={`h-5 w-5 ${iconColor}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+                    <AnimatedCounter value={s.value} format={s.format} delay={seq.cards + (i + 4) * 0.04} />
+                  </p>
+                  <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-lg font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{s.value}</p>
-                <p className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-              </div>
-            </div>
+            </StaggerItem>
           ))}
         </div>
+        </StaggerContainer>
 
         {/* Content Grid */}
+        <FadeIn delay={seq.sections} duration={0.45} y={12}>
         <div className="grid grid-cols-12 gap-6">
           {/* Available Exams */}
           <div className="col-span-12 lg:col-span-8">
@@ -179,8 +212,12 @@ export default function InstitutionDashboardPage() {
                 </div>
               ) : (
                 <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
-                  {exams.slice(0, 5).map(exam => (
-                    <div key={exam.id} className={`flex items-center justify-between px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+                  {exams.slice(0, 5).map((exam, i) => (
+                    <div
+                      key={exam.id}
+                      className={`flex items-center justify-between px-5 py-3 transition-colors anim-enter ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
+                      style={{ '--anim-delay': `${seq.rows + i * 0.04}s`, '--anim-dur': '0.4s', '--anim-y': '6px' } as React.CSSProperties}
+                    >
                       <div className="flex items-center gap-3">
                         <div className={`h-9 w-9 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                           {exam.name.charAt(0)}
@@ -224,8 +261,10 @@ export default function InstitutionDashboardPage() {
             </div>
           </div>
         </div>
+        </FadeIn>
 
         {/* Recent Students */}
+        <FadeIn delay={seq.table} duration={0.45} y={12}>
         <div className={`${card} mt-6`}>
           <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
             <div className="flex items-center justify-between">
@@ -264,8 +303,12 @@ export default function InstitutionDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {students.slice(0, 5).map(s => (
-                  <TableRow key={s.id} className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(s.id) ? ('bg-brand-accent-soft') : ''}`}>
+                {students.slice(0, 5).map((s, i) => (
+                  <TableRow
+                    key={s.id}
+                    className={`${isDark ? 'border-white/[0.04]' : 'border-zinc-100'} ${selection.isSelected(s.id) ? ('bg-brand-accent-soft') : ''} anim-enter`}
+                    style={{ '--anim-delay': `${seq.tableRows + i * 0.04}s`, '--anim-dur': '0.4s', '--anim-y': '6px' } as React.CSSProperties}
+                  >
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(s.id)} onChange={() => selection.toggle(s.id)} />
                     </TableCell>
@@ -293,6 +336,7 @@ export default function InstitutionDashboardPage() {
             </Table>
           )}
         </div>
+        </FadeIn>
 
         {selection.selectedCount > 0 && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-slideUp">

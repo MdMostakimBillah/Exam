@@ -6,6 +6,7 @@ import { clearStudentSession, getStudentSession, type StudentSession } from "@/l
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
+import { PageEntrance } from "@/components/animation";
 import { LogOut, LayoutDashboard, CreditCard, ChevronRight, FileText, Award } from "lucide-react";
 
 interface StudentLayoutProps {
@@ -167,7 +168,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
       {/* Content */}
       <main className="max-w-5xl mx-auto p-4 sm:p-6">
-        {children}
+        <PageEntrance key={pathname}>{children}</PageEntrance>
       </main>
     </div>
   );

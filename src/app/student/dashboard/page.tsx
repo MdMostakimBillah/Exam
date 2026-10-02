@@ -9,6 +9,9 @@ import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { formatDate } from "@/lib/storage/storage";
 import { PageLoading } from "@/components/ui/page-loading";
+import {
+  AnimatedCounter, FadeIn, StaggerContainer, StaggerItem, useEntranceClock,
+} from "@/components/animation";
 import { useRegistrationsByStudent } from "@/lib/storage/registrations";
 import { Registration } from "@/lib/types";
 import {
@@ -28,6 +31,16 @@ export default function StudentDashboardPage() {
   const { lang: language } = useLang();
   const isDark = theme === "dark";
   const isBn = language === "bn";
+  // Absolute entrance timeline from mount (spec §7); declared before any
+  // early return so the hook order stays stable across renders.
+  const clock = useEntranceClock();
+  const seq = {
+    head: clock(0.15),
+    sub: clock(0.25),
+    cards: clock(0.35),
+    list: clock(0.65),
+    rows: clock(0.72),
+  };
 
   const { data: student, isLoading: studentLoading } = useStudentSession();
   const { data: registrations = [], isLoading: registrationsLoading } = useRegistrationsByStudent(student?.id || '', {
@@ -100,37 +113,46 @@ export default function StudentDashboardPage() {
     <div className="space-y-6">
       {/* Welcome */}
       <div>
-        <h1 className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-          {isBn ? `স্বাগতম, ${student.firstName}` : `Welcome, ${student.firstName}`}
-        </h1>
-        <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
-          {isBn ? student.institutionName : (student.institutionNameEn || student.institutionName)} &middot; {student.class} {student.section && `- ${student.section}`}
-        </p>
+        <FadeIn delay={seq.head} duration={0.4} y={8} blur={4}>
+          <h1 className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+            {isBn ? `স্বাগতম, ${student.firstName}` : `Welcome, ${student.firstName}`}
+          </h1>
+        </FadeIn>
+        <FadeIn delay={seq.sub} duration={0.4} y={8}>
+          <p className={`text-sm mt-1 ${isDark ? "text-zinc-500" : "text-zinc-500"}`}>
+            {isBn ? student.institutionName : (student.institutionNameEn || student.institutionName)} &middot; {student.class} {student.section && `- ${student.section}`}
+          </p>
+        </FadeIn>
       </div>
 
       {/* Stats */}
+      <StaggerContainer delay={seq.cards} increment={0.04}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: isBn ? "মোট নিবন্ধন" : "Total Registrations", value: registrations.length, icon: FileText },
-          { label: isBn ? "অনুমোদিত" : "Approved", value: approvedCount, icon: CheckCircle },
-          { label: isBn ? "পরিশোধ প্রক্রিয়াধীন" : "Pending Review", value: submittedCount, icon: Clock },
-          { label: isBn ? "মোট বকেয়" : "Total Due", value: `৳${totalDue.toLocaleString()}`, icon: CreditCard },
-        ].map((s) => (
-          <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
-            <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
-              <s.icon className={`h-4 w-4 ${iconColor}`} />
+          { label: isBn ? "মোট নিবন্ধন" : "Total Registrations", value: registrations.length, icon: FileText, format: undefined },
+          { label: isBn ? "অনুমোদিত" : "Approved", value: approvedCount, icon: CheckCircle, format: undefined },
+          { label: isBn ? "পরিশোধ প্রক্রিয়াধীন" : "Pending Review", value: submittedCount, icon: Clock, format: undefined },
+          { label: isBn ? "মোট বকেয়" : "Total Due", value: totalDue, icon: CreditCard, format: (n: number) => `৳${Math.round(n).toLocaleString()}` },
+        ].map((s, i) => (
+          <StaggerItem key={`stat-${i}`} index={i}>
+            <div className={`${card} px-4 py-3 flex items-center gap-3 hover-lift group`}>
+              <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg} transition-transform duration-200 group-hover:scale-105`}>
+                <s.icon className={`h-4 w-4 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-base font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+                  <AnimatedCounter value={s.value} format={s.format} delay={seq.cards + i * 0.04} />
+                </p>
+                <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className={`text-base font-bold tracking-tight leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-                {s.value}
-              </p>
-              <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{s.label}</p>
-            </div>
-          </div>
+          </StaggerItem>
         ))}
       </div>
+      </StaggerContainer>
 
       {/* Registrations List */}
+      <FadeIn delay={seq.list} duration={0.45} y={12}>
       <div className={card}>
         <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
           <div className="flex items-center gap-2">
@@ -159,12 +181,13 @@ export default function StudentDashboardPage() {
           </div>
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-white/[0.04]">
-            {registrations.map((reg) => (
+            {registrations.map((reg, i) => (
               <div
                 key={reg.id}
-                className={`px-5 py-4 flex items-center justify-between gap-4 ${
+                className={`px-5 py-4 flex items-center justify-between gap-4 anim-enter ${
                   isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"
                 } transition-colors`}
+                style={{ '--anim-delay': `${seq.rows + i * 0.04}s`, '--anim-dur': '0.4s', '--anim-y': '6px' } as React.CSSProperties}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -204,6 +227,7 @@ export default function StudentDashboardPage() {
           </div>
         )}
       </div>
+      </FadeIn>
     </div>
   );
 }

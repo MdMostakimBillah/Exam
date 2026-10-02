@@ -18,6 +18,13 @@ import type { DashboardStats } from "@/lib/data/dashboard";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/storage/storage";
 import { LoadingBar } from "@/components/ui/loading-bar";
+import {
+  AnimatedCounter, ChartEntrance, FadeIn, StaggerContainer, StaggerItem,
+  chartBarStyle, useEntranceClock,
+} from "@/components/animation";
+
+/** Rounds interpolated counter figures so currency never flickers decimals. */
+const formatCountCurrency = (n: number) => formatCurrency(Math.round(n));
 
 const ZERO_STATS: DashboardStats = {
   institutions_total: 0,
@@ -53,32 +60,48 @@ function startOfDhakaDay(now: Date = new Date()): number {
 /**
  * KPI card in the dashboard's original style: accent icon tile on the left,
  * value over label.
+ *
+ * `count` (a raw number) routes the value through AnimatedCounter so figures
+ * count up from 0 to the real number when the card first lands; cards only
+ * ever render fetched data (the parent gates them behind the skeleton), so no
+ * fake numbers are ever animated. Cards without `count` keep a plain value.
  */
 function StatCard({
   icon: Icon,
   label,
   value,
+  count,
+  formatCount,
+  countDelay,
   href,
   isDark,
 }: {
   icon: LucideIcon;
   label: string;
-  value: ReactNode;
+  value?: ReactNode;
+  count?: number;
+  formatCount?: (n: number) => string;
+  /** When the card itself starts appearing — the counter waits for it. */
+  countDelay?: number;
   href: string;
   isDark: boolean;
 }) {
   const shell = isDark
-    ? "bg-[#141416] border border-white/[0.06] hover:border-white/[0.1] transition-colors rounded-md"
-    : "bg-white border border-zinc-200 hover:border-zinc-300 transition-colors rounded-md shadow-sm";
+    ? "bg-[#141416] border border-white/[0.06] hover:border-white/[0.1] rounded-md hover-lift"
+    : "bg-white border border-zinc-200 hover:border-zinc-300 rounded-md shadow-sm hover-lift";
   return (
-    <Link href={href} className="block">
+    <Link href={href} className="group block">
       <div className={`${shell} px-4 py-3 flex items-center gap-3`}>
-        <div className="h-10 w-10 rounded-md flex items-center justify-center shrink-0 bg-brand-accent-soft">
+        <div className="h-10 w-10 rounded-md flex items-center justify-center shrink-0 bg-brand-accent-soft transition-transform duration-200 group-hover:scale-105">
           <Icon className="h-5 w-5 text-brand-accent" />
         </div>
         <div className="flex-1 min-w-0">
           {/* truncate keeps a long currency figure from widening the card on a phone */}
-          <p className={`text-base sm:text-lg font-bold tracking-tight leading-tight truncate ${isDark ? "text-white" : "text-zinc-900"}`}>{value}</p>
+          <p className={`text-base sm:text-lg font-bold tracking-tight leading-tight truncate ${isDark ? "text-white" : "text-zinc-900"}`}>
+            {count !== undefined
+              ? <AnimatedCounter value={count} format={formatCount} delay={countDelay ?? 0} />
+              : value}
+          </p>
           <p className={`text-[11px] truncate ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{label}</p>
         </div>
       </div>
@@ -116,6 +139,24 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
   const router = useRouter();
   const { theme } = useTheme();
   const { lang: language } = useLang();
+  // Absolute timeline from this component's mount: late-arriving data skips
+  // the part of the schedule that already elapsed instead of waiting it out.
+  const clock = useEntranceClock();
+  // Spec §7 timing, expressed against the page-open clock. Recomputed every
+  // render — values only ever shrink, which can never re-trigger a finished
+  // CSS animation, so auto-refreshes don't replay the entrance.
+  const t = {
+    head: clock(0.15),
+    sub: clock(0.25),
+    cards: clock(0.35),
+    queues: clock(0.65),
+    rows: clock(0.72),
+    recent: clock(0.8),
+    recentRows: clock(0.86),
+    chart: clock(0.7),
+    chartBar: clock(0.78),
+    chartFooter: clock(0.95),
+  };
 
   const isDark = theme === "dark";
   const isBn = language === "bn";
@@ -217,21 +258,21 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
 
   // KPI grids — kept as data so adding a card is a one-line change.
   const todayCards = [
-    { icon: CreditCard, label: isBn ? 'আজ পরিশোধিত' : "Today's Paid", value: today.paid, href: '/super-admin/payments' },
-    { icon: Clock, label: isBn ? 'আজকের বকেয়া' : "Today's Due", value: formatCurrency(today.due), href: '/super-admin/payments' },
-    { icon: UserPlus, label: isBn ? 'আজকের নিবন্ধন' : "Today's Registrations", value: today.registrations, href: '/super-admin/registrations' },
-    { icon: BadgeCheck, label: isBn ? 'আজ অনুমোদিত' : "Today's Approved", value: today.approved, href: '/super-admin/registrations' },
+    { icon: CreditCard, label: isBn ? 'আজ পরিশোধিত' : "Today's Paid", count: today.paid, href: '/super-admin/payments' },
+    { icon: Clock, label: isBn ? 'আজকের বকেয়া' : "Today's Due", count: today.due, formatCount: formatCountCurrency, href: '/super-admin/payments' },
+    { icon: UserPlus, label: isBn ? 'আজকের নিবন্ধন' : "Today's Registrations", count: today.registrations, href: '/super-admin/registrations' },
+    { icon: BadgeCheck, label: isBn ? 'আজ অনুমোদিত' : "Today's Approved", count: today.approved, href: '/super-admin/registrations' },
   ];
 
   const overviewCards = [
-    { icon: Building2, label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', value: stats.institutions_total, href: '/super-admin/institutions' },
-    { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', value: stats.students_total, href: '/super-admin/students' },
-    { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', value: stats.exams_active, href: '/super-admin/exams' },
-    { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', value: stats.results_total, href: '/super-admin/results' },
-    { icon: TrendingUp, label: isBn ? 'মোট আয়' : 'Total Revenue', value: formatCurrency(stats.payments_total), href: '/super-admin/payments' },
-    { icon: DollarSign, label: isBn ? 'বকেয়া' : 'Total Due', value: formatCurrency(stats.payments_due), href: '/super-admin/payments' },
-    { icon: ClipboardList, label: isBn ? 'নিবন্ধিত' : 'Registered', value: stats.registrations_total, href: '/super-admin/registrations' },
-    { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', value: stats.registrations_approved, href: '/super-admin/registrations' },
+    { icon: Building2, label: isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions', count: stats.institutions_total, href: '/super-admin/institutions' },
+    { icon: Users, label: isBn ? 'মোট শিক্ষার্থী' : 'Total Students', count: stats.students_total, href: '/super-admin/students' },
+    { icon: FileText, label: isBn ? 'সক্রিয় পরীক্ষা' : 'Active Exams', count: stats.exams_active, href: '/super-admin/exams' },
+    { icon: GraduationCap, label: isBn ? 'ফলাফল' : 'Results Published', count: stats.results_total, href: '/super-admin/results' },
+    { icon: TrendingUp, label: isBn ? 'মোট আয়' : 'Total Revenue', count: stats.payments_total, formatCount: formatCountCurrency, href: '/super-admin/payments' },
+    { icon: DollarSign, label: isBn ? 'বকেয়া' : 'Total Due', count: stats.payments_due, formatCount: formatCountCurrency, href: '/super-admin/payments' },
+    { icon: ClipboardList, label: isBn ? 'নিবন্ধিত' : 'Registered', count: stats.registrations_total, href: '/super-admin/registrations' },
+    { icon: CheckCircle, label: isBn ? 'অনুমোদিত' : 'Approved', count: stats.registrations_approved, href: '/super-admin/registrations' },
   ];
 
   return (
@@ -240,12 +281,16 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
       <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header — simple; the session lives in the topbar selector */}
         <div className="mb-8">
-          <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
-            {isBn ? 'বিএমএ-তে স্বাগতম' : 'Welcome to BMA'}
-          </h1>
-          <p className={`text-sm mt-1.5 ${subtext}`}>
-            {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন পরিচালনা করুন' : 'Manage Bangladesh Madrasah Association operations'}
-          </p>
+          <FadeIn delay={t.head} duration={0.4} y={8} blur={4}>
+            <h1 className={`text-2xl lg:text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-zinc-900"}`}>
+              {isBn ? 'বিএমএ-তে স্বাগতম' : 'Welcome to BMA'}
+            </h1>
+          </FadeIn>
+          <FadeIn delay={t.sub} duration={0.4} y={8}>
+            <p className={`text-sm mt-1.5 ${subtext}`}>
+              {isBn ? 'বাংলাদেশ মাদ্রাসা এসোসিয়েশন পরিচালনা করুন' : 'Manage Bangladesh Madrasah Association operations'}
+            </p>
+          </FadeIn>
         </div>
 
         {/* Stats error — surface it instead of showing silent zeros */}
@@ -262,21 +307,31 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
           <DashboardSkeleton isDark={isDark} />
         ) : (
           <>
-            {/* Today — Asia/Dhaka day, recomputed against the live lists */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {todayCards.map((s) => (
-                <StatCard key={s.label} {...s} isDark={isDark} />
-              ))}
-            </div>
+            {/* Today + Overview share ONE stagger sequence (12 cards), and each
+                counter starts counting exactly when its own card starts to
+                appear. */}
+            <StaggerContainer delay={t.cards} increment={0.04}>
+              {/* Today — Asia/Dhaka day, recomputed against the live lists */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {todayCards.map((s, i) => (
+                  <StaggerItem key={`today-${i}`} index={i}>
+                    <StatCard {...s} isDark={isDark} countDelay={t.cards + i * 0.04} />
+                  </StaggerItem>
+                ))}
+              </div>
 
-            {/* Overview — lifetime totals */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {overviewCards.map((s) => (
-                <StatCard key={s.label} {...s} isDark={isDark} />
-              ))}
-            </div>
+              {/* Overview — lifetime totals */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {overviewCards.map((s, i) => (
+                  <StaggerItem key={`overview-${i}`} index={i + 4}>
+                    <StatCard {...s} isDark={isDark} countDelay={t.cards + (i + 4) * 0.04} />
+                  </StaggerItem>
+                ))}
+              </div>
+            </StaggerContainer>
 
             {/* Actionable queues */}
+            <FadeIn delay={t.queues} duration={0.45} y={12}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
               {/* Pending registrations */}
               <div className={card}>
@@ -301,11 +356,12 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                         {isBn ? 'কোনো নিবন্ধন অনুমোদনের অপেক্ষায় নেই' : 'No registrations awaiting approval'}
                       </p>
                     ) : (
-                      pendingRegs.slice(0, 5).map((r) => (
+                      pendingRegs.slice(0, 5).map((r, i) => (
                         <button
                           key={r.id}
                           onClick={() => router.push('/super-admin/registrations')}
-                          className={`w-full text-left flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
+                          className={`w-full text-left flex items-center gap-3 px-5 py-3 transition-colors anim-enter ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
+                          style={{ '--anim-delay': `${t.rows + i * 0.04}s`, '--anim-dur': '0.4s', '--anim-y': '6px' } as React.CSSProperties}
                         >
                           <div className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                             {r.studentName.charAt(0)}
@@ -347,11 +403,12 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                         {isBn ? 'কোনো পেমেন্ট যাচাইয়ের অপেক্ষায় নেই' : 'No payments awaiting review'}
                       </p>
                     ) : (
-                      pendingPayments.slice(0, 5).map((p) => (
+                      pendingPayments.slice(0, 5).map((p, i) => (
                         <button
                           key={p.id}
                           onClick={() => router.push('/super-admin/payments')}
-                          className={`w-full text-left flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
+                          className={`w-full text-left flex items-center gap-3 px-5 py-3 transition-colors anim-enter ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
+                          style={{ '--anim-delay': `${t.rows + i * 0.04}s`, '--anim-dur': '0.4s', '--anim-y': '6px' } as React.CSSProperties}
                         >
                           <div className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                             {instName(p.institutionName, p.institutionId).charAt(0)}
@@ -372,11 +429,12 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                 </div>
               </div>
             </div>
+            </FadeIn>
 
             {/* Recent Institutions + Graph */}
             <div className="grid grid-cols-12 gap-4 sm:gap-6">
               {/* Recent Institutions */}
-              <div className="col-span-12 lg:col-span-7">
+              <FadeIn delay={t.recent} duration={0.45} y={12} className="col-span-12 lg:col-span-7">
                 <div className={`${card}`}>
                   <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
                     <div className="flex items-center justify-between">
@@ -389,8 +447,12 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                     </div>
                   </div>
                   <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-zinc-100'}`}>
-                    {[...institutions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((inst) => (
-                      <div key={inst.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}>
+                    {[...institutions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((inst, i) => (
+                      <div
+                        key={inst.id}
+                        className={`flex items-center gap-3 px-5 py-3 transition-colors anim-enter ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-zinc-50/50"}`}
+                        style={{ '--anim-delay': `${t.recentRows + i * 0.04}s`, '--anim-dur': '0.4s', '--anim-y': '6px' } as React.CSSProperties}
+                      >
                         <div className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 text-xs font-bold ${isDark ? 'bg-white/[0.06] text-zinc-400' : 'bg-zinc-100 text-zinc-500'}`}>
                           {instName(inst.name, inst.id).charAt(0)}
                         </div>
@@ -408,10 +470,10 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                     )}
                   </div>
                 </div>
-              </div>
+              </FadeIn>
 
               {/* Institutions Added graph */}
-              <div className="col-span-12 lg:col-span-5">
+              <ChartEntrance delay={t.chart} className="col-span-12 lg:col-span-5">
                 <div className={`${card} h-full`}>
                   <div className={`p-5 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
                     <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -445,13 +507,16 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                                 className="flex-1 h-full flex flex-col justify-end items-center gap-1"
                               >
                                 {h > 0 && (
-                                  <span className={`text-[9px] font-bold leading-none ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                                  <span
+                                    className={`text-[9px] font-bold leading-none anim-enter ${isDark ? "text-zinc-400" : "text-zinc-600"}`}
+                                    style={{ '--anim-delay': `${t.chartBar + i * 0.035}s`, '--anim-dur': '0.35s', '--anim-y': '4px' } as React.CSSProperties}
+                                  >
                                     {h}
                                   </span>
                                 )}
                                 <div
-                                  className="w-full rounded-t-md transition-all bg-brand-accent-strong"
-                                  style={{ height: `${pct}%` }}
+                                  className="w-full rounded-t-md transition-all bg-brand-accent-strong anim-bar"
+                                  style={{ height: `${pct}%`, ...chartBarStyle(i, t.chartBar) }}
                                   title={`${h} ${isBn ? 'টি প্রতিষ্ঠান' : 'institutions'}`}
                                 />
                               </div>
@@ -467,17 +532,19 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
                     )}
                     <div className={`flex items-center justify-between mt-4 pt-3 border-t ${isDark ? "border-white/[0.04]" : "border-zinc-100"}`}>
                       <div>
-                        <p className={`text-2xl font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>{stats.institutions_total}</p>
+                        <p className={`text-2xl font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>
+                          <AnimatedCounter value={stats.institutions_total} delay={t.chartFooter} />
+                        </p>
                         <p className={`text-[11px] ${subtext}`}>{isBn ? 'মোট প্রতিষ্ঠান' : 'Total Institutions'}</p>
                       </div>
                       <div className="text-right">
-                        <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>+{stats.institutions_pending}</p>
+                        <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>+<AnimatedCounter value={stats.institutions_pending} delay={t.chartFooter} /></p>
                         <p className={`text-[11px] ${subtext}`}>{isBn ? 'বাকি অনুমোদন' : 'Pending'}</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </ChartEntrance>
             </div>
           </>
         )}

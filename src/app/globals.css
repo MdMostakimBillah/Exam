@@ -12,11 +12,10 @@
   font-display: swap;
 }
 
-/* Certificate heading face for the marksheet header: the institution name and
-   the exam title (src/components/marksheet/marksheet-sheet.tsx) —
-   public/fonts/Certificate 400.ttf. Also declared in the print window
-   (src/lib/pdf/marksheet-pdf.ts): that popup gets its own <style> and never
-   sees this file. */
+/* Board-style heading face for the marksheet header (institution name,
+   ACADEMIC TRANSCRIPT, exam title) — public/fonts/Certificate 400.ttf.
+   Also declared in the print window (src/lib/pdf/marksheet-pdf.ts): that
+   popup gets its own <style> and never sees this file. */
 @font-face {
   font-family: 'Certificate';
   src: url('/fonts/Certificate%20400.ttf') format('truetype');
@@ -302,6 +301,65 @@ html body .admit-card-page * {
 .stagger-7 { animation-delay: 0.35s; }
 .stagger-8 { animation-delay: 0.4s; }
 
+/* ---- Entrance system (see components/animation) -------------------------
+   One-shot keyframes driven by --anim-* custom properties. `backwards` fill
+   means the from-state applies during the delay and, once the animation
+   ends, the element reverts to its natural style — no lingering transform
+   or filter (which would otherwise become the containing block for any
+   fixed-position descendant). Easing is ease-out-expo-like: quick start,
+   soft landing, zero bounce. */
+@keyframes animEnter {
+  from {
+    opacity: 0;
+    transform: translate(var(--anim-x, 0px), var(--anim-y, 10px)) scale(var(--anim-s, 1));
+    filter: var(--anim-filter, none);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0px, 0px) scale(1);
+    filter: none;
+  }
+}
+
+.anim-enter {
+  animation: animEnter var(--anim-dur, 0.5s) cubic-bezier(0.16, 1, 0.3, 1) var(--anim-delay, 0s) backwards;
+}
+
+/* Page wrapper: opacity ONLY. Never transform/filter — the pages wrapped in
+   PageEntrance contain fixed-position toolbars, selection bars and modals
+   that must stay anchored to the viewport. */
+@keyframes animPage {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.anim-page {
+  animation: animPage 0.32s ease-out backwards;
+}
+
+/* Chart bars grow upward from their baseline once their card has landed. */
+@keyframes chartGrow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.anim-bar {
+  transform-origin: bottom center;
+  animation: chartGrow 0.55s cubic-bezier(0.16, 1, 0.3, 1) var(--anim-delay, 0.78s) backwards;
+}
+
+/* Reduced motion: collapse entrances to an imperceptible instant step so
+   content is simply *there*. Loaders (animate-spin/pulse) are intentionally
+   left alone — freezing a spinner would read as a hang. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-enter,
+  .anim-page,
+  .anim-bar {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}
+
 /* Subtle lift on hover for metric tiles / section cards (used by StatCard and
    the Marks page). Kept very small so it reads as polish, not animation. */
 .hover-lift {
@@ -310,6 +368,14 @@ html body .admit-card-page * {
 .hover-lift:hover {
   transform: translateY(-2px);
   box-shadow: 0 14px 28px -20px rgba(0, 0, 0, 0.55);
+}
+
+/* Reduced motion: keep hover affordances colour-only, no lift. */
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 /* Keyboard-shortcut chip (Marks entry navigation hint). */
