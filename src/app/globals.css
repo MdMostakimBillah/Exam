@@ -3,12 +3,12 @@
    Noto Sans Bengali is the Google font the PDFs must render Bangla with — it
    is what the print window and the html2canvas clone load too. */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@100..900&display=swap');
-/* Dynamic-value faces for the marksheet: Cookie (script names), Quantico
-   (text values) and Fira Code (IDs / marks). Also requested explicitly in the
-   print window (marksheet-pdf.ts) and in the html2canvas clone (admit-card-pdf):
-   globals.css is imported through the bundler, so those documents never see
-   this @import on their own. */
-@import url('https://fonts.googleapis.com/css2?family=Cookie&family=Fira+Code:wght@300..700&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+/* Dynamic-value faces for the marksheet: Dancing Script (the fill-in hand),
+   Quantico (table text) and Fira Code (marks / IDs). Also requested
+   explicitly in the print window (marksheet-pdf.ts) and in the html2canvas
+   clone (admit-card-pdf): globals.css is imported through the bundler, so
+   those documents never see this @import on their own. */
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Fira+Code:wght@300..700&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
 @font-face {
   font-family: 'Kalpurush';

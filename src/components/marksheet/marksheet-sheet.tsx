@@ -55,7 +55,11 @@ const HEADING_FONT = "'Certificate', " + SERIF;
  * The Bengali fallbacks at the end keep Bangla values on a readable face —
  * none of the three Latin faces has Bengali glyphs.
  */
-const SCRIPT_FONT = "'Cookie', 'Noto Sans Bengali', 'Kalpurush', cursive";
+/** The FILL-IN hand for every candidate-block value (student, father,
+ *  mother, institution, roll, registration, class, exam date) — a script
+ *  face at ONE size across the block. Bengali values fall through the stack:
+ *  Dancing Script has no Bengali glyphs. */
+const SCRIPT_FONT = "'Dancing Script', 'Noto Sans Bengali', 'Kalpurush', cursive";
 const MONO_FONT =
   "'Fira Code', ui-monospace, SFMono-Regular, Menlo, 'Noto Sans Bengali', monospace";
 const VALUE_FONT = "'Quantico', 'Inter', 'Noto Sans Bengali', sans-serif";
@@ -89,11 +93,11 @@ const tdStyle: CSSProperties = {
 };
 
 /** A candidate line: fixed label + value on a dotted leader (the scan look).
- *  `valueFont` swaps the FILL-IN face (Cookie for words, Fira Code for IDs)
- *  and `valueSize` is deliberately constant across the block — script fonts
- *  need a few px more than the 12px label to look the same size, but every
- *  value line must match every other. Labels stay in the label face, so the
- *  form still reads as label = static, value = filled in. */
+ *  `valueFont` swaps the FILL-IN face (Dancing Script throughout the block)
+ *  and `valueSize` is deliberately constant across it — script fonts need a
+ *  few px more than the 12px label to look the same size, but every value
+ *  line must match every other. Labels stay in the label face, so the form
+ *  still reads as label = static, value = filled in. */
 function LeaderRow({
   label,
   value,
@@ -509,12 +513,10 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
 
             {/* ── Candidate block ── */}
             <div style={{ marginTop: 14 }}>
-              {/* The fill-in hand: names, institution and class are written in
-                  Cookie (script) at ONE size — see LeaderRow's default — while
-                  the machine-readable IDs (roll, registration, exam date) stay
-                  in Fira Code, because Cookie writes a flag-shaped "1" that
-                  reads as "4" in a roll number. Bangla values fall through the
-                  stack to Noto Sans Bengali (Cookie has no Bengali glyphs). */}
+              {/* The fill-in hand: EVERY value of this block — names,
+                  institution, roll, registration, class and exam date — is
+                  written in Dancing Script at ONE size (see LeaderRow's
+                  default and SCRIPT_FONT above). */}
               <LeaderRow
                 label={L("Name of Student", "শিক্ষার্থীর নাম")}
                 value={infoValue(result.studentName)}
@@ -541,14 +543,14 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                   <LeaderRow
                     label={L("Roll No", "রোল নম্বর")}
                     value={infoValue(String(result.roll))}
-                    valueFont={MONO_FONT}
+                    valueFont={SCRIPT_FONT}
                   />
                 </div>
                 <div style={{ width: "50%" }}>
                   <LeaderRow
                     label={L("Registration No", "রেজিস্ট্রেশন নম্বর")}
                     value={infoValue(result.registrationNumber)}
-                    valueFont={MONO_FONT}
+                    valueFont={SCRIPT_FONT}
                   />
                 </div>
               </div>
@@ -565,7 +567,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                   <LeaderRow
                     label={L("Exam Date", "পরীক্ষার তারিখ")}
                     value={data.examDate || ""}
-                    valueFont={MONO_FONT}
+                    valueFont={SCRIPT_FONT}
                   />
                 </div>
               </div>

@@ -41,7 +41,7 @@ export async function waitForFonts(target: Document = document): Promise<void> {
       '400 14px "Tiro Bangla"',
       '400 14px Kalpurush',
       '400 28px Certificate', // marksheet heading face (html2canvas must not rasterise a fallback)
-      '400 16px Cookie', // marksheet dynamic-value faces — same reason
+      '600 15px "Dancing Script"', // marksheet fill-in face — same reason
       '700 14px Quantico',
       '600 14px "Fira Code"',
     ];
@@ -211,10 +211,10 @@ function injectFontsIntoClone(clonedDoc: Document) {
   addLink(
     "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&family=Tiro+Bangla&display=swap"
   );
-  // Marksheet dynamic-value faces (Cookie / Quantico / Fira Code) — globals.css
-  // loads them via @import, which the clone never sees (see above).
+  // Marksheet dynamic-value faces (Dancing Script / Quantico / Fira Code) —
+  // globals.css loads them via @import, which the clone never sees (above).
   addLink(
-    "https://fonts.googleapis.com/css2?family=Cookie&family=Fira+Code:wght@300..700&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Fira+Code:wght@300..700&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&display=swap"
   );
   // 2) Ensure Kalpurush @font-face (offline Bangla fallback) is present in clone
   const style = clonedDoc.createElement("style");
