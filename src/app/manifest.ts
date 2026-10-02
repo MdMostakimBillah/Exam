@@ -91,7 +91,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const brandFavicon = await fetchBrandFavicon();
   return {
     id: "/",
-    name: "Bangladesh Madrasah Association — Scholarship Examination Management Platform",
+    name: "Bangladesh Madrasah Association",
     short_name: "Madrasah Exam",
     description:
       "A complete platform for institutions to manage scholarship examinations, student registrations, results, and certificates.",

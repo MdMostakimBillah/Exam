@@ -6,7 +6,9 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Bangladesh Madrasah Association — Scholarship Examination Management Platform",
+  // Short: this is also what the installed PWA's title bar shows — the
+  // descriptor belongs in `description`, not the window chrome.
+  title: "Bangladesh Madrasah Association",
   description: "A complete platform for institutions to manage scholarship examinations, student registrations, results, and certificates.",
   applicationName: "Madrasah Exam",
   // Lets iOS "Add to Home Screen" launch the app standalone (no browser chrome).
