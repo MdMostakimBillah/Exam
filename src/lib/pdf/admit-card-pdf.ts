@@ -41,7 +41,7 @@ export async function waitForFonts(target: Document = document): Promise<void> {
       '400 14px "Tiro Bangla"',
       '400 14px Kalpurush',
       '400 28px Certificate', // marksheet heading face (html2canvas must not rasterise a fallback)
-      '600 15px "Dancing Script"', // marksheet fill-in face — same reason
+      '700 15px "Dancing Script"', // marksheet fill-in face — same reason
       '700 14px Quantico',
       '600 14px "Fira Code"',
     ];

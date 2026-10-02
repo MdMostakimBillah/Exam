@@ -132,7 +132,7 @@ function LeaderRow({
           borderBottom: `1px dotted ${LINE}`,
           paddingBottom: 2,
           fontSize: valueSize ?? 15,
-          fontWeight: 600,
+          fontWeight: 700,
           color: INK,
           wordBreak: "break-word",
           ...(valueFont ? { fontFamily: valueFont } : null),
