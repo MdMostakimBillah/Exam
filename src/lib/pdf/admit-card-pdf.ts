@@ -214,7 +214,7 @@ function injectFontsIntoClone(clonedDoc: Document) {
   // Marksheet dynamic-value faces (Dancing Script / Quantico / Fira Code) —
   // globals.css loads them via @import, which the clone never sees (above).
   addLink(
-    "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Fira+Code:wght@300..700&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Fira+Code:wght@300..700&family=Quantico:wght@400;700&display=swap"
   );
   // 2) Ensure Kalpurush @font-face (offline Bangla fallback) is present in clone
   const style = clonedDoc.createElement("style");
