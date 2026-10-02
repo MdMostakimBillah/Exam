@@ -220,7 +220,7 @@ export default function NotificationsPage() {
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.04]">
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-200 dark:border-white/[0.04]">
             <span className={`text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
               {isBn ? `${filtered.length}টি বিজ্ঞপ্তি` : `${filtered.length} notifications`}
             </span>

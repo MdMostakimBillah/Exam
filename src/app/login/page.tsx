@@ -249,7 +249,7 @@ export default function LoginPage() {
           )}
         >
           <ShieldCheck
-            className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-emerald-400/70" : "text-emerald-600/70")}
+            className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-emerald-400/70" : "text-emerald-700")}
           />
           {isBn
             ? "ভূমিকাভিত্তিক প্রবেশ · লক করা প্রচেষ্টা · সব লগইন নিরীক্ষিত"
@@ -367,7 +367,7 @@ export default function LoginPage() {
                   <p className="text-xs font-medium text-amber-500">
                     {isBn ? "অ্যাকাউন্ট লক করা হয়েছে" : "Account Locked"}
                   </p>
-                  <p className="text-[11px] text-amber-500/70 mt-0.5">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-500/70 mt-0.5">
                     {isBn ? `পুনরায় চেষ্টা করুন ${formatTime(retryAfter)} পর` : `Try again in ${formatTime(retryAfter)}`}
                   </p>
                 </div>

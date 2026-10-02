@@ -20,7 +20,7 @@ function RailSkeleton() {
   return (
     <aside
       className={cn(
-        "hidden lg:flex fixed top-0 z-40 h-screen bg-[#0D0D0D] animate-pulse",
+        "hidden lg:flex fixed top-0 z-40 h-screen bg-white dark:bg-[#0D0D0D] animate-pulse",
         side === "right" ? "right-0" : "left-0",
         collapsed ? "w-[72px]" : "w-[240px]"
       )}
@@ -38,7 +38,7 @@ function TopbarSkeleton() {
   return (
     <header
       className={cn(
-        "fixed top-0 z-30 h-14 sm:h-16 left-0 right-0 bg-[#0D0D0D] animate-pulse",
+        "fixed top-0 z-30 h-14 sm:h-16 left-0 right-0 bg-white dark:bg-[#0D0D0D] animate-pulse",
         offset
       )}
     />

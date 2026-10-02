@@ -218,7 +218,7 @@ export default function SupportPage() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end mt-4 pt-4 border-t border-white/[0.04]">
+          <div className="flex justify-end mt-4 pt-4 border-t border-zinc-200 dark:border-white/[0.04]">
             <button
               onClick={handleSaveContact}
               disabled={saveContact.isPending}

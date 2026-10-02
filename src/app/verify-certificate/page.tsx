@@ -106,20 +106,20 @@ export default function VerifyCertificatePage() {
             <CardContent className="p-6">
               {isRevoked ? (
                 <div className="flex items-center gap-3 rounded-md bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
-                  <ShieldAlert className="h-5 w-5 text-amber-400 shrink-0" />
+                  <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-amber-300">Certificate Not Active</p>
-                    <p className="text-xs text-amber-400/70">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Certificate Not Active</p>
+                    <p className="text-xs text-amber-800 dark:text-amber-400/70">
                       This certificate exists but has been revoked or not yet issued, so it does not pass verification.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 rounded-md bg-emerald-500/10 border border-emerald-500/20 p-4 mb-6">
-                  <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-emerald-300">Certificate Verified</p>
-                    <p className="text-xs text-emerald-400/60">This certificate is authentic and issued by ScholarX.</p>
+                    <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Certificate Verified</p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400/60">This certificate is authentic and issued by ScholarX.</p>
                   </div>
                 </div>
               )}
@@ -133,9 +133,9 @@ export default function VerifyCertificatePage() {
                   { label: 'Certificate Number', value: certificate.certificateNumber },
                   { label: 'Issue Date', value: new Date(certificate.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) },
                 ].map(item => (
-                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
+                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-white/[0.04] last:border-0">
                     <span className="text-xs text-zinc-500">{item.label}</span>
-                    <span className="text-sm text-zinc-200">{item.value}</span>
+                    <span className="text-sm text-zinc-700 dark:text-zinc-200">{item.value}</span>
                   </div>
                 ))}
               </div>

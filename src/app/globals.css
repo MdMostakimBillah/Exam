@@ -74,29 +74,57 @@ html.light, body.light {
 
 /* Dashboard accent color — super-admin Settings → Branding → Accent color.
    Defaults reproduce the original monochrome chrome (near-black accent in
-   light, white accent in dark). A saved accent overrides these via inline
-   vars set on <html> by the AccentColor sync component (inline beats every
-   stylesheet rule, so the custom color applies in BOTH themes). Note: vars
-   live only on html/:root — never on body, so body children inherit the
-   inline override instead of shadowing it with a class rule. */
+   light, white accent in dark). A saved accent overrides the *-dark /
+   *-light SLOTS via inline vars on <html> (AccentColor sync component);
+   the mapping rules below then pick the right slot for the active theme,
+   so the custom color applies in BOTH themes and can be tuned per theme.
+
+   Two distinct values per theme:
+     --brand-accent       the FILL (buttons, chips, progress bars). Keep the
+                          brand hue; AccentColor only caps its luminance so
+                          the white label on it stays ≥4.5:1.
+     --brand-accent-text  the TEXT color (links, labels, "active" chips).
+                          Heavily retuned so it clears 4.5:1 against the
+                          page AND against a --brand-accent-soft chip. */
 :root {
-  --brand-accent: #ffffff;
-  --brand-accent-fg: #000000;
-  --brand-accent-soft: rgba(255, 255, 255, 0.10);
-  --brand-accent-strong: rgba(255, 255, 255, 0.14);
+  --brand-accent-dark: #ffffff;
+  --brand-accent-light: #18181b;
+  --brand-accent-fg-dark: #000000;
+  --brand-accent-fg-light: #ffffff;
+  --brand-accent-text-dark: #ffffff;
+  --brand-accent-text-light: #18181b;
+  --brand-accent-soft-dark: rgba(255, 255, 255, 0.10);
+  --brand-accent-soft-light: rgba(24, 24, 27, 0.06);
+  --brand-accent-strong-dark: rgba(255, 255, 255, 0.14);
+  --brand-accent-strong-light: rgba(24, 24, 27, 0.12);
+
+  --brand-accent: var(--brand-accent-dark);
+  --brand-accent-fg: var(--brand-accent-fg-dark);
+  --brand-accent-text: var(--brand-accent-text-dark);
+  --brand-accent-soft: var(--brand-accent-soft-dark);
+  --brand-accent-strong: var(--brand-accent-strong-dark);
 }
 
 html.light {
-  --brand-accent: #18181b;
-  --brand-accent-fg: #ffffff;
-  --brand-accent-soft: rgba(24, 24, 27, 0.06);
-  --brand-accent-strong: rgba(24, 24, 27, 0.12);
+  --brand-accent: var(--brand-accent-light);
+  --brand-accent-fg: var(--brand-accent-fg-light);
+  --brand-accent-text: var(--brand-accent-text-light);
+  --brand-accent-soft: var(--brand-accent-soft-light);
+  --brand-accent-strong: var(--brand-accent-strong-light);
+}
+
+html.dark {
+  --brand-accent: var(--brand-accent-dark);
+  --brand-accent-fg: var(--brand-accent-fg-dark);
+  --brand-accent-text: var(--brand-accent-text-dark);
+  --brand-accent-soft: var(--brand-accent-soft-dark);
+  --brand-accent-strong: var(--brand-accent-strong-dark);
 }
 
 /* Accent utilities (plain CSS — explicit, theme-class independent, and
    always present regardless of Tailwind's arbitrary-value type inference). */
 .bg-brand-accent { background-color: var(--brand-accent); }
-.text-brand-accent { color: var(--brand-accent); }
+.text-brand-accent { color: var(--brand-accent-text); }
 .text-brand-accent-fg { color: var(--brand-accent-fg); }
 .bg-brand-accent-soft { background-color: var(--brand-accent-soft); }
 .bg-brand-accent-strong { background-color: var(--brand-accent-strong); }
@@ -104,6 +132,350 @@ html.light {
 /* hover: variant — Tailwind can't generate it (brand colors aren't in the
    config), and it's used by table checkboxes and the PDF-modal ghost buttons. */
 .hover\:border-brand-accent:hover { border-color: var(--brand-accent); }
+
+/* ── Theme-aware muted text ramp ─────────────────────────────────────────
+   Tailwind's zinc/gray "muted" steps are tuned for a mid-grey canvas. Our
+   surfaces are near-black (#0a0a0b page, #141416 card) in dark and
+   near-white (#f4f4f5) in light, where several of those steps land under
+   WCAG AA (4.5:1) for body text:
+
+       dark    zinc-500 = 4.09:1 on a card   light   zinc-400 = 2.56:1
+               zinc-600 = 2.56:1                                 gray-400 = 2.43:1
+               zinc-700 = 1.76:1                                 zinc-500 = 4.40:1
+
+   Rather than rewriting ~1500 call sites (and every isDark ternary that
+   picks a color per theme), retint the ramp ONCE per theme. Only TEXT
+   utilities are touched — borders, fills, dividers and icon strokes keep
+   the stock Tailwind colors.
+
+   The dark ramp is compressed into the band that still reads on our
+   lightest dark surfaces (bg-white/[0.1], bg-[#1a1a1c] …):
+       zinc-400 #a1a1aa (unchanged) → 500 #9a9aa4 → 600 #94949e → 700 #8d8d97
+   and the light ramp into the band that clears 4.5:1 on #f4f4f5:
+       zinc-400 #6c6c75 → 500 #67676f → 600 #52525b (unchanged) → 700 unchanged
+
+   ORDERING: base-class overrides come first, `dark:` overrides second —
+   equal specificity, so the later rule still wins and
+   `text-gray-500 dark:text-zinc-300` resolves to the dark: value.
+   Rules use `html.dark` / `html.light` (0,2,1) to outrank Tailwind's own
+   `.dark .dark\:text-*` (0,2,0). */
+html.dark .text-zinc-500,
+html.dark .text-gray-500 { color: #9a9aa4; }
+html.dark .text-zinc-600,
+html.dark .text-gray-600 { color: #94949e; }
+html.dark .text-zinc-700,
+html.dark .text-gray-700 { color: #8d8d97; }
+html.dark .hover\:text-zinc-500:hover,
+html.dark .hover\:text-gray-500:hover { color: #a3a3ad; }
+html.dark .hover\:text-zinc-600:hover,
+html.dark .hover\:text-gray-600:hover { color: #9c9ca6; }
+html.dark .hover\:text-zinc-700:hover,
+html.dark .hover\:text-gray-700:hover { color: #9696a0; }
+html.dark .placeholder\:text-zinc-500::placeholder,
+html.dark .placeholder\:text-gray-500::placeholder { color: #9a9aa4; }
+html.dark .placeholder\:text-zinc-600::placeholder,
+html.dark .placeholder\:text-gray-600::placeholder { color: #94949e; }
+html.dark .group:hover .group-hover\:text-zinc-500 { color: #a3a3ad; }
+html.dark .group:hover .group-hover\:text-zinc-700 { color: #9696a0; }
+
+/* `dark:`-prefixed utilities — must come after the base overrides above. */
+html.dark .dark\:text-zinc-500,
+html.dark .dark\:text-gray-500 { color: #9a9aa4; }
+html.dark .dark\:text-zinc-600,
+html.dark .dark\:text-gray-600 { color: #94949e; }
+html.dark .dark\:text-zinc-700,
+html.dark .dark\:text-gray-700 { color: #8d8d97; }
+html.dark .dark\:placeholder\:text-zinc-500::placeholder { color: #9a9aa4; }
+html.dark .dark\:placeholder\:text-zinc-600::placeholder { color: #94949e; }
+/* Re-assert the stock colors for the light-side dark:-variants so a plain
+   `text-gray-500` override above can't win over `dark:text-zinc-300`. */
+html.dark .dark\:text-zinc-100 { color: #f4f4f5; }
+html.dark .dark\:text-zinc-200 { color: #e4e4e7; }
+html.dark .dark\:text-zinc-300 { color: #d4d4d8; }
+html.dark .dark\:text-zinc-400 { color: #a1a1aa; }
+
+html.light .text-zinc-400,
+html.light .text-gray-400 { color: #6c6c75; }
+html.light .text-zinc-500,
+html.light .text-gray-500 { color: #67676f; }
+html.light .hover\:text-zinc-400:hover,
+html.light .hover\:text-gray-400:hover { color: #62626b; }
+html.light .placeholder\:text-zinc-400::placeholder,
+html.light .placeholder\:text-gray-400::placeholder { color: #6c6c75; }
+html.light .placeholder\:text-zinc-500::placeholder,
+html.light .placeholder\:text-gray-500::placeholder { color: #67676f; }
+
+/* Fixed-surface opt-outs. `.on-light` = always-white chrome (document
+   previews) that must keep the LIGHT ramp while the page is dark.
+   `.on-dark` = always-black chrome (toasts, print bars) that must keep
+   the DARK ramp while the page is light. Higher specificity than the
+   ramps above, and only declared for the theme that would get it wrong. */
+html.dark .on-light .text-zinc-400 { color: #6c6c75; }
+html.dark .on-light .text-zinc-500 { color: #67676f; }
+html.dark .on-light .text-zinc-600 { color: #52525b; }
+html.dark .on-light .text-zinc-700 { color: #3f3f46; }
+html.dark .on-light .hover\:text-zinc-500:hover { color: #52525b; }
+html.dark .on-light .hover\:text-zinc-600:hover { color: #3f3f46; }
+html.dark .on-light .placeholder\:text-zinc-500::placeholder { color: #52525b; }
+html.dark .on-light .placeholder\:text-zinc-600::placeholder { color: #52525b; }
+
+html.light .on-dark .text-zinc-400 { color: #a1a1aa; }
+html.light .on-dark .text-zinc-500 { color: #9a9aa4; }
+html.light .on-dark .text-zinc-600 { color: #94949e; }
+html.light .on-dark .text-zinc-700 { color: #8d8d97; }
+html.light .on-dark .hover\:text-zinc-400:hover { color: #c4c4cb; }
+html.light .on-dark .hover\:text-zinc-600:hover { color: #a3a3ad; }
+
+/* ── Status badge palettes ───────────────────────────────────────────────
+   `text-<hue>-500` on a 10%-tint of itself misses AA in both themes:
+   green-500 on green-50 is 2.09:1 in light, red-500 on its dark card tint
+   is 4.45:1. The palettes below are tuned once per theme — dark uses the
+   -400 steps (≥6:1 against a 10% tint over #141416), light the -700/-800
+   steps (≥5.8:1 against the same tint over #f4f4f5). */
+.badge-success {
+  background-color: rgba(34, 197, 94, 0.10);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #4ade80;
+}
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.10);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+}
+.badge-danger {
+  background-color: rgba(239, 68, 68, 0.10);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #f87171;
+}
+.badge-info {
+  background-color: rgba(59, 130, 246, 0.10);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #60a5fa;
+}
+.badge-muted {
+  background-color: rgba(107, 114, 128, 0.10);
+  border-color: rgba(156, 163, 175, 0.35);
+  color: #9ca3af;
+}
+.badge-accent {
+  background-color: var(--brand-accent-soft);
+  border-color: var(--brand-accent);
+  color: var(--brand-accent-text);
+}
+html.light .badge-success { border-color: rgba(22, 101, 52, 0.35); color: #166534; }
+html.light .badge-warning { border-color: rgba(146, 64, 14, 0.35); color: #92400e; }
+html.light .badge-danger { border-color: rgba(185, 28, 28, 0.35); color: #b91c1c; }
+html.light .badge-info { border-color: rgba(29, 78, 216, 0.35); color: #1d4ed8; }
+html.light .badge-muted { border-color: rgba(55, 65, 81, 0.35); color: #374151; }
+
+/* Bare `skeleton` pill used by the /i loading screens (defined here — it
+   was referenced by three pages but never declared, so the spinner was
+   invisible). Mirrors <Skeleton>: theme-aware tint + a soft pulse. */
+.skeleton {
+  background-color: rgba(255, 255, 255, 0.08);
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+html.light .skeleton {
+  background-color: rgba(9, 9, 11, 0.12);
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Status hues in light mode ───────────────────────────────────────────
+   The light-side shades of every chromatic hue miss AA on our near-white
+   surfaces (blue-400 on white is 2.54:1, amber-500 is 1.95:1, even
+   red-600 drops to 4.13:1 on a 10% tint). Tailwind's dark-side shades are
+   the ones that clear 4.5:1 against white, the page (#f4f4f5) AND a
+   same-hue 10% tint, so light mode jumps straight to them. Only TEXT
+   utilities are remapped — tinted backgrounds keep the bright hue.
+
+   Generated from tailwindcss/colors by gen-light-chromatic.cjs. */
+html.light .text-red-200,
+html.light .text-red-300,
+html.light .text-red-400,
+html.light .text-red-500,
+html.light .text-red-600 { color: #b91c1c; }
+html.light .hover\:text-red-200:hover { color: #b91c1c; }
+html.light .hover\:text-red-300:hover { color: #b91c1c; }
+html.light .hover\:text-red-400:hover { color: #b91c1c; }
+html.light .hover\:text-red-500:hover { color: #b91c1c; }
+html.light .hover\:text-red-600:hover { color: #b91c1c; }
+html.light .text-orange-200,
+html.light .text-orange-300,
+html.light .text-orange-400,
+html.light .text-orange-500,
+html.light .text-orange-600,
+html.light .text-orange-700 { color: #9a3412; }
+html.light .hover\:text-orange-200:hover { color: #9a3412; }
+html.light .hover\:text-orange-300:hover { color: #9a3412; }
+html.light .hover\:text-orange-400:hover { color: #9a3412; }
+html.light .hover\:text-orange-500:hover { color: #9a3412; }
+html.light .hover\:text-orange-600:hover { color: #9a3412; }
+html.light .hover\:text-orange-700:hover { color: #9a3412; }
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light .text-amber-400,
+html.light .text-amber-500,
+html.light .text-amber-600,
+html.light .text-amber-700 { color: #92400e; }
+html.light .hover\:text-amber-200:hover { color: #92400e; }
+html.light .hover\:text-amber-300:hover { color: #92400e; }
+html.light .hover\:text-amber-400:hover { color: #92400e; }
+html.light .hover\:text-amber-500:hover { color: #92400e; }
+html.light .hover\:text-amber-600:hover { color: #92400e; }
+html.light .hover\:text-amber-700:hover { color: #92400e; }
+html.light .text-yellow-200,
+html.light .text-yellow-300,
+html.light .text-yellow-400,
+html.light .text-yellow-500,
+html.light .text-yellow-600,
+html.light .text-yellow-700 { color: #854d0e; }
+html.light .hover\:text-yellow-200:hover { color: #854d0e; }
+html.light .hover\:text-yellow-300:hover { color: #854d0e; }
+html.light .hover\:text-yellow-400:hover { color: #854d0e; }
+html.light .hover\:text-yellow-500:hover { color: #854d0e; }
+html.light .hover\:text-yellow-600:hover { color: #854d0e; }
+html.light .hover\:text-yellow-700:hover { color: #854d0e; }
+html.light .text-lime-200,
+html.light .text-lime-300,
+html.light .text-lime-400,
+html.light .text-lime-500,
+html.light .text-lime-600,
+html.light .text-lime-700 { color: #3f6212; }
+html.light .hover\:text-lime-200:hover { color: #3f6212; }
+html.light .hover\:text-lime-300:hover { color: #3f6212; }
+html.light .hover\:text-lime-400:hover { color: #3f6212; }
+html.light .hover\:text-lime-500:hover { color: #3f6212; }
+html.light .hover\:text-lime-600:hover { color: #3f6212; }
+html.light .hover\:text-lime-700:hover { color: #3f6212; }
+html.light .text-green-200,
+html.light .text-green-300,
+html.light .text-green-400,
+html.light .text-green-500,
+html.light .text-green-600,
+html.light .text-green-700 { color: #166534; }
+html.light .hover\:text-green-200:hover { color: #166534; }
+html.light .hover\:text-green-300:hover { color: #166534; }
+html.light .hover\:text-green-400:hover { color: #166534; }
+html.light .hover\:text-green-500:hover { color: #166534; }
+html.light .hover\:text-green-600:hover { color: #166534; }
+html.light .hover\:text-green-700:hover { color: #166534; }
+html.light .text-emerald-200,
+html.light .text-emerald-300,
+html.light .text-emerald-400,
+html.light .text-emerald-500,
+html.light .text-emerald-600 { color: #047857; }
+html.light .hover\:text-emerald-200:hover { color: #047857; }
+html.light .hover\:text-emerald-300:hover { color: #047857; }
+html.light .hover\:text-emerald-400:hover { color: #047857; }
+html.light .hover\:text-emerald-500:hover { color: #047857; }
+html.light .hover\:text-emerald-600:hover { color: #047857; }
+html.light .text-teal-200,
+html.light .text-teal-300,
+html.light .text-teal-400,
+html.light .text-teal-500,
+html.light .text-teal-600 { color: #0f766e; }
+html.light .hover\:text-teal-200:hover { color: #0f766e; }
+html.light .hover\:text-teal-300:hover { color: #0f766e; }
+html.light .hover\:text-teal-400:hover { color: #0f766e; }
+html.light .hover\:text-teal-500:hover { color: #0f766e; }
+html.light .hover\:text-teal-600:hover { color: #0f766e; }
+html.light .text-cyan-200,
+html.light .text-cyan-300,
+html.light .text-cyan-400,
+html.light .text-cyan-500,
+html.light .text-cyan-600 { color: #0e7490; }
+html.light .hover\:text-cyan-200:hover { color: #0e7490; }
+html.light .hover\:text-cyan-300:hover { color: #0e7490; }
+html.light .hover\:text-cyan-400:hover { color: #0e7490; }
+html.light .hover\:text-cyan-500:hover { color: #0e7490; }
+html.light .hover\:text-cyan-600:hover { color: #0e7490; }
+html.light .text-sky-200,
+html.light .text-sky-300,
+html.light .text-sky-400,
+html.light .text-sky-500,
+html.light .text-sky-600 { color: #0369a1; }
+html.light .hover\:text-sky-200:hover { color: #0369a1; }
+html.light .hover\:text-sky-300:hover { color: #0369a1; }
+html.light .hover\:text-sky-400:hover { color: #0369a1; }
+html.light .hover\:text-sky-500:hover { color: #0369a1; }
+html.light .hover\:text-sky-600:hover { color: #0369a1; }
+html.light .text-blue-200,
+html.light .text-blue-300,
+html.light .text-blue-400,
+html.light .text-blue-500,
+html.light .text-blue-600 { color: #1d4ed8; }
+html.light .hover\:text-blue-200:hover { color: #1d4ed8; }
+html.light .hover\:text-blue-300:hover { color: #1d4ed8; }
+html.light .hover\:text-blue-400:hover { color: #1d4ed8; }
+html.light .hover\:text-blue-500:hover { color: #1d4ed8; }
+html.light .hover\:text-blue-600:hover { color: #1d4ed8; }
+html.light .text-indigo-200,
+html.light .text-indigo-300,
+html.light .text-indigo-400,
+html.light .text-indigo-500 { color: #4f46e5; }
+html.light .hover\:text-indigo-200:hover { color: #4f46e5; }
+html.light .hover\:text-indigo-300:hover { color: #4f46e5; }
+html.light .hover\:text-indigo-400:hover { color: #4f46e5; }
+html.light .hover\:text-indigo-500:hover { color: #4f46e5; }
+html.light .text-violet-200,
+html.light .text-violet-300,
+html.light .text-violet-400,
+html.light .text-violet-500 { color: #7c3aed; }
+html.light .hover\:text-violet-200:hover { color: #7c3aed; }
+html.light .hover\:text-violet-300:hover { color: #7c3aed; }
+html.light .hover\:text-violet-400:hover { color: #7c3aed; }
+html.light .hover\:text-violet-500:hover { color: #7c3aed; }
+html.light .text-purple-200,
+html.light .text-purple-300,
+html.light .text-purple-400,
+html.light .text-purple-500 { color: #9333ea; }
+html.light .hover\:text-purple-200:hover { color: #9333ea; }
+html.light .hover\:text-purple-300:hover { color: #9333ea; }
+html.light .hover\:text-purple-400:hover { color: #9333ea; }
+html.light .hover\:text-purple-500:hover { color: #9333ea; }
+html.light .text-fuchsia-200,
+html.light .text-fuchsia-300,
+html.light .text-fuchsia-400,
+html.light .text-fuchsia-500,
+html.light .text-fuchsia-600 { color: #a21caf; }
+html.light .hover\:text-fuchsia-200:hover { color: #a21caf; }
+html.light .hover\:text-fuchsia-300:hover { color: #a21caf; }
+html.light .hover\:text-fuchsia-400:hover { color: #a21caf; }
+html.light .hover\:text-fuchsia-500:hover { color: #a21caf; }
+html.light .hover\:text-fuchsia-600:hover { color: #a21caf; }
+html.light .text-pink-200,
+html.light .text-pink-300,
+html.light .text-pink-400,
+html.light .text-pink-500,
+html.light .text-pink-600 { color: #be185d; }
+html.light .hover\:text-pink-200:hover { color: #be185d; }
+html.light .hover\:text-pink-300:hover { color: #be185d; }
+html.light .hover\:text-pink-400:hover { color: #be185d; }
+html.light .hover\:text-pink-500:hover { color: #be185d; }
+html.light .hover\:text-pink-600:hover { color: #be185d; }
+html.light .text-rose-200,
+html.light .text-rose-300,
+html.light .text-rose-400,
+html.light .text-rose-500,
+html.light .text-rose-600 { color: #be123c; }
+html.light .hover\:text-rose-200:hover { color: #be123c; }
+html.light .hover\:text-rose-300:hover { color: #be123c; }
+html.light .hover\:text-rose-400:hover { color: #be123c; }
+html.light .hover\:text-rose-500:hover { color: #be123c; }
+html.light .hover\:text-rose-600:hover { color: #be123c; }
+
+/* Fixed-surface opt-outs for the status hues: the toast chrome is always
+   dark, so it must keep the dark-side shades while the page is light. */
+html.light .on-dark .text-emerald-400 { color: #34d399; }
+html.light .on-dark .text-red-400 { color: #f87171; }
+html.light .on-dark .text-amber-400 { color: #fbbf24; }
+html.light .on-dark .text-blue-400 { color: #60a5fa; }
+html.light .on-dark .text-zinc-100 { color: #f4f4f5; }
+html.light .on-dark .text-zinc-200 { color: #e4e4e7; }
+html.light .on-dark .text-zinc-300 { color: #d4d4d8; }
 
 /* Bengali language support */
 html.lang-bn,

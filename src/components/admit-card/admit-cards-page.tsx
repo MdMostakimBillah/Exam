@@ -832,7 +832,7 @@ export function AdmitCardsPage({ mode = "super", institutionId }: AdmitCardsPage
               className="fixed inset-0 bg-black/70 backdrop-blur-sm"
               onClick={() => setPreview(null)}
             />
-            <div className="relative z-50 w-full max-w-[1180px] max-h-[92vh] flex flex-col rounded-md shadow-2xl bg-white overflow-hidden">
+            <div className="on-light relative z-50 w-full max-w-[1180px] max-h-[92vh] flex flex-col rounded-md shadow-2xl bg-white overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 border-b border-black/10 bg-black text-white">
                 <span className="text-sm font-semibold">
                   {bi("প্রবেশপত্র প্রিভিউ", "Admit Card Preview")} — {preview.studentName}

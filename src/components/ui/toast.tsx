@@ -98,7 +98,9 @@ const ToastItem = React.memo(function ToastItem({
   return (
     <div className={cn(
       'flex items-center gap-3 rounded-md px-5 py-4 shadow-2xl animate-slideInRight backdrop-blur-xl min-w-[300px]',
-      'border border-white/[0.06] bg-[#0D0D0D] shadow-black/40',
+      // Toasts are always dark regardless of theme — `on-dark` keeps the
+      // muted-text ramp reading on #0D0D0D while the page is in light mode.
+      'on-dark border border-white/[0.06] bg-[#0D0D0D] shadow-black/40',
       'dark:border-white/[0.06] dark:bg-[#0D0D0D]',
     )}>
       <div className={cn('rounded-md p-1.5', bgColors[t.type])}>

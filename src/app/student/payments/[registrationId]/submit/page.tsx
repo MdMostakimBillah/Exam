@@ -394,7 +394,7 @@ export default function PaymentSubmitPage() {
                       <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                     </label>
                     {proofImagePreview && (
-                      <button type="button" onClick={() => { setProofImageFile(null); setProofImagePreview(null); }} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
+                      <button type="button" onClick={() => { setProofImageFile(null); setProofImagePreview(null); }} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
                         <X className="h-3 w-3 inline" /> {isBn ? "সরান" : "Remove"}
                       </button>
                     )}

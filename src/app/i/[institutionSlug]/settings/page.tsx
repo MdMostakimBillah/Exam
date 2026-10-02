@@ -526,7 +526,7 @@ export default function InstitutionSettingsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button
                     onClick={handleSaveProfile}
                     disabled={saving}
@@ -585,7 +585,7 @@ export default function InstitutionSettingsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button
                     onClick={handleSaveAccount}
                     disabled={saving}
@@ -702,7 +702,7 @@ export default function InstitutionSettingsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button
                     onClick={handleChangePassword}
                     disabled={saving || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
@@ -770,7 +770,7 @@ export default function InstitutionSettingsPage() {
                   })}
                 </div>
 
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button
                     onClick={handleSaveNotifications}
                     disabled={saving}

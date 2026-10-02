@@ -13,11 +13,11 @@ interface EmptyStateProps {
 function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
     <div className={cn("flex flex-col items-center justify-center py-16 text-center animate-fadeIn", className)}>
-      <div className="rounded-md bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 p-4 mb-5 border border-white/[0.04]">
+      <div className="rounded-md bg-gradient-to-b from-zinc-100 to-zinc-200 p-4 mb-5 border border-zinc-200 dark:from-zinc-800/50 dark:to-zinc-900/50 dark:border-white/[0.04]">
         {icon || <FileX className="h-6 w-6 text-zinc-500" />}
       </div>
-      <h3 className="text-sm font-medium text-zinc-300 mb-2">{title}</h3>
-      <p className="text-xs text-zinc-600 max-w-sm mb-6 leading-relaxed">{description}</p>
+      <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">{title}</h3>
+      <p className="text-xs text-zinc-500 dark:text-zinc-600 max-w-sm mb-6 leading-relaxed">{description}</p>
       {action}
     </div>
   );

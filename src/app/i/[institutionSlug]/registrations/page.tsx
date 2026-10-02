@@ -640,7 +640,7 @@ export default function InstitutionRegistrationsPage() {
                     <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
                   </label>
                   {studentForm.photo && (
-                    <button onClick={() => setStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
+                    <button onClick={() => setStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
                       {isBn ? 'সরান' : 'Remove'}
                     </button>
                   )}
@@ -952,7 +952,7 @@ export default function InstitutionRegistrationsPage() {
                         <input type="file" accept="image/*" onChange={handleEditPhotoChange} className="hidden" />
                       </label>
                       {editStudentForm.photo && (
-                        <button onClick={() => setEditStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-400 hover:text-red-300 ml-2">
+                        <button onClick={() => setEditStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
                           {isBn ? 'সরান' : 'Remove'}
                         </button>
                       )}

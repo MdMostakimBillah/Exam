@@ -423,7 +423,7 @@ export default function SuperAdminSettingsPage() {
                     <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" className={cn(inputCls, "h-10")} />
                   </div>
                 </div>
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleSaveProfile} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
@@ -705,7 +705,7 @@ export default function SuperAdminSettingsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleSaveBranding} disabled={saving || saveBranding.isPending}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90",
@@ -735,7 +735,7 @@ export default function SuperAdminSettingsPage() {
                     <Input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="Enter email" className={cn(inputCls, "h-10")} />
                   </div>
                 </div>
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleSaveAccount} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
@@ -783,7 +783,7 @@ export default function SuperAdminSettingsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleChangePassword} disabled={saving || !currentPassword || !newPassword || !confirmPassword}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90",
@@ -949,7 +949,7 @@ export default function SuperAdminSettingsPage() {
                     <p className={`text-[11px] mt-1.5 ${subtextCls}`}>{isBn ? 'লাইন বিরতিসহ লিখুন — প্রতিষ্ঠানের পেমেন্ট পেজে এমনিই দেখানো হবে' : 'Line breaks are preserved — shown as-is on the institution payments page'}</p>
                   </div>
                 </div>
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleSavePayment} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
@@ -1006,7 +1006,7 @@ export default function SuperAdminSettingsPage() {
                     ? 'বন্ধ করলে সেই তথ্যটি আবেদন পেজে লুকানো থাকবে — পরীক্ষা, প্রতিষ্ঠান ও শিক্ষার্থীর ড্যাশবোর্ডে তথ্য অবিকল থাকবে।'
                     : 'Turning one off hides it from the apply page only — exams, institutions and student dashboards keep the same data.'}
                 </p>
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleSaveApplyVisibility} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"
@@ -1059,7 +1059,7 @@ export default function SuperAdminSettingsPage() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end mt-8 pt-5 border-t border-white/[0.06]">
+                <div className="flex justify-end mt-8 pt-5 border-t border-zinc-200 dark:border-white/[0.06]">
                   <button onClick={handleSaveNotifications} disabled={saving}
                     className={cn("flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-medium transition-all duration-200",
                       "bg-brand-accent text-brand-accent-fg hover:opacity-90", saving && "opacity-60 cursor-not-allowed"

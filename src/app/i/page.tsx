@@ -91,7 +91,7 @@ export default function InstitutionRootPage() {
 
   if (state === "loading" || redirectedRef.current) {
     return (
-      <div className="min-h-screen bg-[#080808] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F4F4F5] dark:bg-[#080808] flex items-center justify-center">
         <div className="h-6 w-32 skeleton rounded" />
       </div>
     );
@@ -116,7 +116,7 @@ export default function InstitutionRootPage() {
       : "We couldn't fetch your institution details. Please try again.";
 
   return (
-    <div className="min-h-screen bg-[#080808] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#F4F4F5] dark:bg-[#080808] flex items-center justify-center p-6">
       <div
         className={cn(
           "max-w-md w-full text-center p-8 rounded-md",

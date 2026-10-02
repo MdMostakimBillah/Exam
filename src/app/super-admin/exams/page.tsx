@@ -690,7 +690,7 @@ export default function ExamsPage() {
                                       className={cn("h-9 text-[12px] text-center", isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200")} />
                                     <Input type="number" value={subject.passMarks} onChange={(e) => updateSubject(globalIdx, 'passMarks', Number(e.target.value))} placeholder="40"
                                       className={cn("h-9 text-[12px] text-center", isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-white border-zinc-200")} />
-                                    <button onClick={() => removeSubject(globalIdx)} className="text-red-400 hover:text-red-300 flex items-center justify-center">
+                                    <button onClick={() => removeSubject(globalIdx)} className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex items-center justify-center">
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   </div>

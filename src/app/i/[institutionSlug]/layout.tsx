@@ -74,7 +74,7 @@ export default function InstitutionLayout({ children }: { children: React.ReactN
   }, [slug, user, loading]);
 
   if (loading || !authorized) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+    <div className="min-h-screen bg-[#F4F4F5] dark:bg-zinc-950 flex items-center justify-center">
       <div className="h-6 w-32 skeleton rounded" />
     </div>
   );

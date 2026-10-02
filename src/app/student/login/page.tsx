@@ -165,7 +165,7 @@ export default function StudentLoginPage() {
                     <p className="text-xs font-medium text-amber-400">
                       {isBn ? "অ্যাকাউন্ট লক করা হয়েছে" : "Account Locked"}
                     </p>
-                    <p className="text-[11px] text-amber-400/70 mt-0.5">
+                    <p className="text-[11px] text-amber-800 dark:text-amber-400/70 mt-0.5">
                       {isBn ? `পুনরায় চেষ্টা করুন ${formatTime(retryAfter)} পর` : `Try again in ${formatTime(retryAfter)}`}
                     </p>
                   </div>

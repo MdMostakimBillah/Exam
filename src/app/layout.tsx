@@ -29,17 +29,35 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // `dark` matches ThemeProvider's first (SSR) render, so there is no
+    // hydration mismatch; the script below swaps it for a stored preference
+    // before first paint, and ThemeProvider confirms it in a layout effect.
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var lang = localStorage.getItem('scholarx-lang') || 'en';
-                  document.documentElement.classList.add('dark');
-                  document.documentElement.classList.add('lang-' + lang);
-                  document.body.classList.add('dark');
+                  // Mirror getInitialTheme(): scan the scholarx-theme-* keys so
+                  // a light-mode user never sees a dark flash (this used to add
+                  // 'dark' unconditionally).
+                  var theme = 'dark';
+                  var keys = Object.keys(localStorage);
+                  for (var i = 0; i < keys.length; i++) {
+                    if (keys[i].indexOf('scholarx-theme-') === 0) {
+                      var v = localStorage.getItem(keys[i]);
+                      if (v === 'light' || v === 'dark') { theme = v; break; }
+                    }
+                  }
+                  var root = document.documentElement;
+                  var drop = theme === 'dark' ? 'light' : 'dark';
+                  root.classList.remove(drop);
+                  document.body.classList.remove(drop);
+                  root.classList.add(theme);
+                  document.body.classList.add(theme);
+                  root.style.colorScheme = theme;
+                  root.classList.add('lang-' + (localStorage.getItem('scholarx-lang') || 'en'));
                 } catch (e) {}
               })();
             `,

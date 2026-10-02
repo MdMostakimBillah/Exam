@@ -18,9 +18,9 @@ function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmTe
     <Modal open={open} onClose={onClose} title={title} description={description}>
       <div className="flex items-center gap-3 rounded-md bg-red-500/10 border border-red-500/20 p-4 mb-4">
         <div className="rounded-md bg-red-500/20 p-2">
-          <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
         </div>
-        <p className="text-xs text-red-300">This action cannot be undone.</p>
+        <p className="text-xs text-red-700 dark:text-red-300">This action cannot be undone.</p>
       </div>
       <ModalFooter>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
