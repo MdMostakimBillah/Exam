@@ -3,8 +3,12 @@
  *
  * Strategy — the app is a live, authenticated Supabase client, so the SW
  * deliberately caches as little as possible:
- *   * /_next/static, /fonts, /icons, favicon, manifest, offline page
+ *   * /_next/static, /fonts, /icons, favicon, offline page
  *       -> cache-first (these files are immutable per build / never change)
+ *   * /manifest.webmanifest
+ *       -> NOT cached: it is the one static URL whose contents change at
+ *          runtime (branding favicon -> installed-app icons, revalidated
+ *          hourly by src/app/manifest.ts)
  *   * document navigations (request.mode === "navigate")
  *       -> network-first; on network failure serve the precached
  *          /offline.html. HTML is NEVER cached: it is per-user and
@@ -21,7 +25,7 @@
  * caches are dropped on activate.
  * ============================================================ */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `scholarx-static-${VERSION}`;
 
 const isDev = new URL(self.location.href).searchParams.has("dev");
@@ -32,7 +36,6 @@ const PRECACHE = [
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
   "/favicon.ico",
-  "/manifest.webmanifest",
 ];
 
 self.addEventListener("install", (event) => {
@@ -96,7 +99,6 @@ function isStaticAsset(pathname) {
     pathname.startsWith("/fonts/") ||
     pathname.startsWith("/icons/") ||
     pathname === "/favicon.ico" ||
-    pathname === "/manifest.webmanifest" ||
     pathname === "/offline.html"
   );
 }

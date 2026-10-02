@@ -122,6 +122,13 @@ export interface PublicResultLookup {
   ok: boolean;
   error?: string;
   result?: Result | null;
+  /**
+   * Transcript data for the export — set only when the super admin has
+   * generated the marksheet for this row (0040), which is what makes /result
+   * print the full transcript design. `null` while the office still holds
+   * the result back, so the page falls back to the simple result sheet.
+   */
+  sheet?: TranscriptExtras | null;
 }
 
 /**
@@ -213,21 +220,39 @@ export async function searchPublicResults(input: {
 
     if (rows.length === 0) return { ok: true, result: null };
 
+    let match: Record<string, unknown> | undefined;
+    let student: Record<string, unknown> | null = null;
+
     if (mode === "roll") {
-      const match = rows.find((r) => String(r.roll ?? "") === roll);
-      return { ok: true, result: match ? await resultWithEn(match) : null };
+      match = rows.find((r) => String(r.roll ?? "") === roll);
+    } else {
+      const studentIds = rows.map((r) => r.student_id).filter(Boolean);
+      const { data: students } = await supabaseAdmin
+        .from("students")
+        .select("id,date_of_birth,father_name,mother_name")
+        .in("id", studentIds as string[]);
+      const byId = new Map((students || []).map((s) => [s.id, s]));
+      const dobById = new Map(
+        (students || []).map((s) => [
+          s.id,
+          s.date_of_birth ? String(s.date_of_birth).slice(0, 10) : "",
+        ])
+      );
+      match = rows.find((r) => dobById.get(r.student_id as string) === dob);
+      if (match) student = byId.get(match.student_id as string) ?? null;
     }
 
-    const studentIds = rows.map((r) => r.student_id).filter(Boolean);
-    const { data: students } = await supabaseAdmin
-      .from("students")
-      .select("id,date_of_birth")
-      .in("id", studentIds as string[]);
-    const dobById = new Map(
-      (students || []).map((s) => [s.id, s.date_of_birth ? String(s.date_of_birth).slice(0, 10) : ""])
-    );
-    const match = rows.find((r) => dobById.get(r.student_id as string) === dob);
-    return { ok: true, result: match ? await resultWithEn(match) : null };
+    if (!match) return { ok: true, result: null };
+
+    const result = await resultWithEn(match);
+    // Transcript-form export: the office must have pressed "Generate
+    // marksheet" (0040) — publishing the result alone does NOT release the
+    // transcript, exactly like /marksheet. Until then `sheet` stays null and
+    // the page keeps exporting the plain result sheet.
+    const sheet = result.marksheetGeneratedAt
+      ? await transcriptExtras(result, student)
+      : null;
+    return { ok: true, result, sheet };
   } catch {
     return { ok: false, error: "Lookup failed. Please try again." };
   }
@@ -318,6 +343,61 @@ const FALLBACK_SCHOLARSHIPS = [
 ];
 
 /**
+ * Everything <MarksheetSheet> prints beyond the result row: the parents'
+ * names, the session, the exam date and the exam's grade / scholarship
+ * config. Shared by BOTH public transcript surfaces — /marksheet and the
+ * transcript-form export on /result — so the two can never drift apart.
+ *
+ * `student` is passed in when the caller already loaded the row (/marksheet
+ * reads it first for the DOB ownership check, /result's DOB mode reads it to
+ * match); otherwise it is fetched here.
+ */
+export type TranscriptExtras = Omit<MarksheetData, "result" | "generatedAt" | "photoUrl">;
+
+async function transcriptExtras(
+  result: Result,
+  student?: Record<string, unknown> | null
+): Promise<TranscriptExtras> {
+  const [studentRow, examRes, sessionRes, configRes] = await Promise.all([
+    student !== undefined && student !== null
+      ? Promise.resolve(student)
+      : supabaseAdmin
+          .from("students")
+          .select("father_name,mother_name")
+          .eq("id", String(result.studentId))
+          .limit(1)
+          .then((r) => (r.data as Record<string, unknown>[] | null)?.[0] ?? null),
+    supabaseAdmin.from("exams").select("exam_date").eq("id", result.examId).limit(1),
+    supabaseAdmin.from("academic_sessions").select("name").eq("id", result.sessionId).limit(1),
+    supabaseAdmin
+      .from("exam_mark_configs")
+      .select("grade_bands,scholarship_categories,pass_percent")
+      .eq("exam_id", result.examId)
+      .limit(1),
+  ]);
+
+  const exam = (examRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
+  const session = (sessionRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
+  const config = (configRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
+  const bands =
+    Array.isArray(config?.grade_bands) && config.grade_bands.length
+      ? (config.grade_bands as MarksheetData["gradeBands"])
+      : FALLBACK_BANDS;
+
+  return {
+    fatherName: String(studentRow?.father_name || ""),
+    motherName: String(studentRow?.mother_name || ""),
+    sessionName: String(session?.name || ""),
+    examDate: exam?.exam_date ? String(exam.exam_date) : null,
+    gradeBands: bands,
+    passPercent: Number(config?.pass_percent ?? 33),
+    scholarshipCategories: Array.isArray(config?.scholarship_categories)
+      ? (config.scholarship_categories as MarksheetData["scholarshipCategories"])
+      : FALLBACK_SCHOLARSHIPS,
+  };
+}
+
+/**
  * Roll + registration number + date of birth → the student's transcript.
  *
  * All three are required: the registration number finds the row, the roll
@@ -389,39 +469,15 @@ export async function lookupPublicMarksheet(input: {
     if (!generatedAt) return { ok: true, marksheet: null, notGenerated: true };
 
     const result = await resultWithEn(byRoll);
-
-    const [examRes, sessionRes, configRes] = await Promise.all([
-      supabaseAdmin.from("exams").select("exam_date").eq("id", result.examId).limit(1),
-      supabaseAdmin.from("academic_sessions").select("name").eq("id", result.sessionId).limit(1),
-      supabaseAdmin
-        .from("exam_mark_configs")
-        .select("grade_bands,scholarship_categories,pass_percent")
-        .eq("exam_id", result.examId)
-        .limit(1),
-    ]);
-
-    const exam = (examRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
-    const session = (sessionRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
-    const config = (configRes.data as Record<string, unknown>[] | null)?.[0] ?? null;
-    const bands = Array.isArray(config?.grade_bands) && config.grade_bands.length
-      ? (config.grade_bands as MarksheetData["gradeBands"])
-      : FALLBACK_BANDS;
+    const extras = await transcriptExtras(result, student);
 
     return {
       ok: true,
       marksheet: {
         result,
-        fatherName: String(student.father_name || ""),
-        motherName: String(student.mother_name || ""),
         photoUrl: String(student.photo_url || ""),
-        sessionName: String(session?.name || ""),
-        examDate: exam?.exam_date ? String(exam.exam_date) : null,
         generatedAt,
-        gradeBands: bands,
-        passPercent: Number(config?.pass_percent ?? 33),
-        scholarshipCategories: Array.isArray(config?.scholarship_categories)
-          ? (config.scholarship_categories as MarksheetData["scholarshipCategories"])
-          : FALLBACK_SCHOLARSHIPS,
+        ...extras,
       },
     };
   } catch {

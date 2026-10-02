@@ -122,7 +122,7 @@ export function useSaveBranding() {
       );
       // Best-effort: drop old storage objects that were replaced or removed.
       await removeBrandingObject(prev.brandLogo, values.brandLogo);
-      await removeBrandingObject(prev.brandFavicon, values.brandFavicon);
+      await removeBrandingObject(prev.brandFavicon, values.brandFavicon, true);
       await removeBrandingObject(prev.brandWatermark, values.brandWatermark);
       await removeBrandingObject(prev.mdSignature, values.mdSignature);
       return values;
@@ -138,8 +138,14 @@ export function useSaveBranding() {
  * Best-effort delete of a previously stored branding object once it has
  * been replaced or removed. Only ever touches files we own
  * (`<bucket>/branding/…`) — never any other storage path.
+ * `faviconVariants` also drops the manifest icon variants derived from a
+ * favicon upload (they are never referenced from settings rows themselves).
  */
-async function removeBrandingObject(oldUrl?: string, newUrl?: string): Promise<void> {
+async function removeBrandingObject(
+  oldUrl?: string,
+  newUrl?: string,
+  faviconVariants = false
+): Promise<void> {
   if (!oldUrl || oldUrl === newUrl) return;
   try {
     const clean = oldUrl.split("?")[0];
@@ -153,7 +159,8 @@ async function removeBrandingObject(oldUrl?: string, newUrl?: string): Promise<v
     const path = rest.slice(slash + 1);
     if (!path.startsWith("branding/")) return;
     const supabase = createClient();
-    await supabase.storage.from(bucket).remove([path]);
+    const paths = faviconVariants ? [path, ...faviconVariantPaths(path)] : [path];
+    await supabase.storage.from(bucket).remove(paths);
   } catch {
     // A leftover file never breaks the app — ignore cleanup failures.
   }
@@ -172,6 +179,90 @@ export async function uploadBrandingImage(
     .from("public")
     .upload(path, file, { contentType: file.type || "image/png", upsert: true });
   if (error) throw error;
+  // The installed-PWA icons must show the favicon too: render the fixed-size
+  // manifest variants alongside the upload (see faviconVariantPaths).
+  if (kind === "favicon") await uploadFaviconVariants(path, file);
   const { data } = supabase.storage.from("public").getPublicUrl(path);
   return data?.publicUrl || "";
+}
+
+/**
+ * Storage paths of the manifest icons derived from a favicon upload:
+ * `<name>_192.png`, `<name>_512.png`, `<name>_maskable.png` next to the
+ * original — exactly what src/app/manifest.ts lists for the installed app.
+ */
+function faviconVariantPaths(path: string): string[] {
+  const slash = path.lastIndexOf("/");
+  const dir = path.slice(0, slash + 1);
+  const stem = path.slice(slash + 1).replace(/\.[^.]+$/, "");
+  return [`${dir}${stem}_192.png`, `${dir}${stem}_512.png`, `${dir}${stem}_maskable.png`];
+}
+
+/**
+ * Render one PWA icon variant of a favicon upload: a square `size`-px PNG
+ * with the image scaled to fit. `maskable` adds the manifest background and
+ * keeps the artwork inside the launcher-safe inner 80% box. Returns null
+ * when the browser cannot decode the file (some engines refuse .ico in
+ * <img>) — callers treat that as "no variant", never as an error.
+ */
+async function renderFaviconVariant(
+  file: File,
+  size: number,
+  maskable: boolean
+): Promise<Blob | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    if (maskable) {
+      // manifest background_color — full-bleed behind the artwork.
+      ctx.fillStyle = "#090909";
+      ctx.fillRect(0, 0, size, size);
+    }
+    const box = maskable ? size * 0.8 : size;
+    const scale = Math.min(box / img.naturalWidth, box / img.naturalHeight);
+    const w = img.naturalWidth * scale;
+    const h = img.naturalHeight * scale;
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+    return await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/png")
+    );
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Best-effort upload of the manifest variants for a favicon. Failures never
+ * break the favicon upload itself — src/app/manifest.ts also lists the raw
+ * favicon URL, so the installed app still gets the right artwork.
+ */
+async function uploadFaviconVariants(path: string, file: File): Promise<void> {
+  const specs: Array<[size: number, maskable: boolean]> = [
+    [192, false],
+    [512, false],
+    [512, true],
+  ];
+  const paths = faviconVariantPaths(path);
+  const supabase = createClient();
+  for (let i = 0; i < specs.length; i++) {
+    try {
+      const [size, maskable] = specs[i];
+      const blob = await renderFaviconVariant(file, size, maskable);
+      if (!blob) continue;
+      await supabase.storage
+        .from("public")
+        .upload(paths[i], blob, { contentType: "image/png", upsert: true });
+    } catch {
+      // skip — fallback entry in the manifest covers us
+    }
+  }
 }

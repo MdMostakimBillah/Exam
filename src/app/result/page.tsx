@@ -9,11 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ResultSheet } from "@/components/result/result-sheet";
+import { MarksheetSheet } from "@/components/marksheet/marksheet-sheet";
+import type { TranscriptExtras } from "@/lib/auth/public-lookup";
 import {
   downloadResultPdf,
   openResultPrintWindow,
   printResultSheet,
 } from "@/lib/pdf/result-pdf";
+import {
+  downloadMarksheetPdf,
+  openMarksheetPrintWindow,
+  printMarksheet,
+} from "@/lib/pdf/marksheet-pdf";
 import {
   Search,
   Download,
@@ -54,6 +61,8 @@ export default function ResultPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<"" | "pdf" | "print">("");
   const [foundResult, setFoundResult] = useState<Result | null>(null);
+  /** Transcript data — non-null only after the office generated the marksheet (0040). */
+  const [sheet, setSheet] = useState<TranscriptExtras | null>(null);
   const [lookupError, setLookupError] = useState("");
   const [actionError, setActionError] = useState("");
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -83,6 +92,7 @@ export default function ResultPage() {
     if (!regOk) return;
     setSearched(true);
     setFoundResult(null);
+    setSheet(null);
     setLookupError("");
     setActionError("");
     setLoading(true);
@@ -95,6 +105,7 @@ export default function ResultPage() {
       });
       if (res.ok) {
         setFoundResult(res.result ?? null);
+        setSheet(res.sheet ?? null);
         if (!res.result) {
           setLookupError(
             L(
@@ -115,16 +126,23 @@ export default function ResultPage() {
     }
   }, [regNumber, searchType, dob, roll, regOk, L]);
 
-  /* Both actions run on the hidden <ResultSheet> node staged below. */
+  /* Both actions run on the hidden sheet node staged below — the full
+   * transcript once the office generated the marksheet (0040), the plain
+   * result sheet until then. The right export module is picked here so the
+   * print window loads the matching font stack either way. */
+  const useTranscript = Boolean(sheet) && Boolean(foundResult);
+
   const handleDownload = useCallback(async () => {
     if (!sheetRef.current || busy) return;
     setActionError("");
     setBusy("pdf");
     try {
-      await downloadResultPdf(
-        sheetRef.current,
-        `result-${foundResult?.registrationNumber || "sheet"}.pdf`
-      );
+      const filename = `result-${foundResult?.registrationNumber || "sheet"}.pdf`;
+      if (useTranscript) {
+        await downloadMarksheetPdf(sheetRef.current, filename);
+      } else {
+        await downloadResultPdf(sheetRef.current, filename);
+      }
     } catch {
       setActionError(
         L("Could not build the PDF. Please try again.", "PDF তৈরি করা যায়নি। আবার চেষ্টা করুন।")
@@ -132,13 +150,13 @@ export default function ResultPage() {
     } finally {
       setBusy("");
     }
-  }, [busy, foundResult, L]);
+  }, [busy, foundResult, useTranscript, L]);
 
   const handlePrint = useCallback(async () => {
     if (!sheetRef.current || busy) return;
     setActionError("");
     // Must open synchronously inside the click gesture or popups get blocked.
-    const win = openResultPrintWindow();
+    const win = useTranscript ? openMarksheetPrintWindow() : openResultPrintWindow();
     if (!win) {
       setActionError(
         L(
@@ -150,14 +168,18 @@ export default function ResultPage() {
     }
     setBusy("print");
     try {
-      await printResultSheet(win, sheetRef.current);
+      if (useTranscript) {
+        await printMarksheet(win, sheetRef.current);
+      } else {
+        await printResultSheet(win, sheetRef.current);
+      }
     } catch {
       win.close?.();
       setActionError(L("Print failed. Please try again.", "প্রিন্ট ব্যর্থ। আবার চেষ্টা করুন।"));
     } finally {
       setBusy("");
     }
-  }, [busy, L]);
+  }, [busy, useTranscript, L]);
 
   const labelCls = `flex items-center gap-1 text-[13px] font-medium mb-1.5 ${
     isDark ? "text-zinc-300" : "text-gray-700"
@@ -636,21 +658,50 @@ export default function ResultPage() {
           aria-hidden
           style={{ position: "fixed", left: -10000, top: 0, background: "#fff", zIndex: -1 }}
         >
-          <ResultSheet
-            ref={sheetRef}
-            result={foundResult}
-            lang={lang === "bn" ? "bn" : "en"}
-            brandName={brandName}
-            brandLogo={b.brandLogo}
-            generatedOn={new Date().toLocaleDateString(
-              lang === "bn" ? "bn-BD" : "en-GB"
-            )}
-            verifyUrl={
-              typeof window !== "undefined"
-                ? `${window.location.origin}/verify-certificate`
-                : "/verify-certificate"
-            }
-          />
+          {useTranscript && sheet ? (
+            /* Released by the office (0040): the SAME transcript component the
+             * student portal /marksheet export, so this PDF is pixel-identical
+             * to the dashboard marksheet. */
+            <MarksheetSheet
+              ref={sheetRef}
+              data={{
+                result: foundResult,
+                gradeBands: sheet.gradeBands,
+                passPercent: sheet.passPercent,
+                fatherName: sheet.fatherName,
+                motherName: sheet.motherName,
+                sessionName: sheet.sessionName,
+                examDate: sheet.examDate,
+                generatedAt: foundResult.marksheetGeneratedAt,
+                scholarshipCategories: sheet.scholarshipCategories,
+              }}
+              lang={lang === "bn" ? "bn" : "en"}
+              brandName={brandName}
+              brandLogo={b.brandLogo}
+              mdSignature={b.mdSignature}
+              watermarkUrl={b.brandWatermark || undefined}
+              watermarkText={b.brandShort || "BMA"}
+              generatedOn={new Date(
+                foundResult.marksheetGeneratedAt || Date.now()
+              ).toLocaleDateString(lang === "bn" ? "bn-BD" : "en-GB")}
+            />
+          ) : (
+            <ResultSheet
+              ref={sheetRef}
+              result={foundResult}
+              lang={lang === "bn" ? "bn" : "en"}
+              brandName={brandName}
+              brandLogo={b.brandLogo}
+              generatedOn={new Date().toLocaleDateString(
+                lang === "bn" ? "bn-BD" : "en-GB"
+              )}
+              verifyUrl={
+                typeof window !== "undefined"
+                  ? `${window.location.origin}/verify-certificate`
+                  : "/verify-certificate"
+              }
+            />
+          )}
         </div>
       )}
     </div>

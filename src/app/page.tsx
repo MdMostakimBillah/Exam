@@ -264,8 +264,6 @@ export default function HomePage() {
           </Link>
 
           <nav className="hidden xl:flex items-center gap-6 2xl:gap-7 mx-auto px-4">
-            <a href="#features" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.features")}</a>
-            <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.platform")}</a>
             <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`text-sm transition-colors ${textNav}`}>{t("nav.workflow")}</a>
             <Link href="/apply" className={`text-sm font-medium transition-colors ${textNav}`}>{t("nav.apply")}</Link>
             <Link href="/result" className={`text-sm transition-colors ${textNav}`}>{t("nav.results")}</Link>
@@ -297,8 +295,6 @@ export default function HomePage() {
         {mobileNavOpen && (
           <div className={`xl:hidden mt-2 rounded-md p-3 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_20px_50px_-22px_rgba(0,0,0,0.45)] animate-nav-in ${isDark ? "bg-gradient-to-b from-white/[0.13] via-white/[0.09] to-white/[0.06]" : "bg-gradient-to-b from-white/90 via-white/80 to-white/70"}`}>
             <div className="flex flex-col">
-              <a href="#features" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.features")}</a>
-              <a href="#platform" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.platform")}</a>
               <a href="#workflow" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.workflow")}</a>
               <Link href="/apply" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.apply")}</Link>
               <Link href="/status" onClick={() => setMobileNavOpen(false)} className={`rounded-md px-4 py-3 text-sm font-medium transition-colors ${mobileLink}`}>{t("nav.track")}</Link>
