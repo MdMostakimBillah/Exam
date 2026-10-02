@@ -12,6 +12,19 @@
   font-display: swap;
 }
 
+/* Certificate heading face for the marksheet header: the institution name and
+   the exam title (src/components/marksheet/marksheet-sheet.tsx) —
+   public/fonts/Certificate 400.ttf. Also declared in the print window
+   (src/lib/pdf/marksheet-pdf.ts): that popup gets its own <style> and never
+   sees this file. */
+@font-face {
+  font-family: 'Certificate';
+  src: url('/fonts/Certificate%20400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

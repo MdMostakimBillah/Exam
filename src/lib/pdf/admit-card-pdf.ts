@@ -40,6 +40,7 @@ export async function waitForFonts(target: Document = document): Promise<void> {
       '700 14px "Noto Sans Bengali"',
       '400 14px "Tiro Bangla"',
       '400 14px Kalpurush',
+      '400 28px Certificate', // marksheet heading face (html2canvas must not rasterise a fallback)
     ];
     await Promise.all(
       checks.map((c) => {

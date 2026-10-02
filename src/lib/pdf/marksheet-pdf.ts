@@ -42,6 +42,7 @@ export async function printMarksheet(win: Window, el: HTMLElement): Promise<void
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&display=swap" />' +
       "<style>" +
       "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
+      "@font-face{font-family:Certificate;src:url('/fonts/Certificate%20400.ttf') format('truetype');font-weight:400;font-display:swap}" +
       "@page{size:210mm 297mm;margin:0}" +
       "html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
       "body{display:block}" +

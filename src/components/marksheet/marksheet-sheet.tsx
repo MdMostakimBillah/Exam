@@ -36,6 +36,14 @@ const FONT =
 const SERIF =
   "'Times New Roman', 'Liberation Serif', 'Nimbus Roman', Georgia, 'Noto Serif Bengali', 'Noto Sans Bengali', serif";
 
+/**
+ * The marksheet heading face — public/fonts/Certificate 400.ttf (declared in
+ * globals.css AND in the print window's <style>, see marksheet-pdf.ts).
+ * Falls back to SERIF when the file is missing, so a stripped build still
+ * prints a formal heading rather than Inter.
+ */
+const HEADING_FONT = "'Certificate', " + SERIF;
+
 const INK = "#18181b";
 const MUTED = "#71717a";
 const LINE = "#a1a1aa";
@@ -225,11 +233,11 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
           <div
             style={{
               border: `1px solid ${INK}`,
-              padding: "24px 30px 26px",
+              padding: "20px 30px 22px",
               boxSizing: "border-box",
             }}
           >
-            {/* ── Header: crest | title | grade scale ── */}
+            {/* ── Header: crest | title (grade scale sits below) ── */}
             <div style={{ display: "flex", alignItems: "flex-start" }}>
               <div style={{ width: 74, flexShrink: 0 }}>
                 {brandLogo ? (
@@ -271,11 +279,11 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
               <div style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "0 8px 0" }}>
                 <div
                   style={{
-                    fontFamily: SERIF,
-                    fontSize: 21,
-                    fontWeight: 700,
+                    fontFamily: HEADING_FONT,
+                    fontSize: 30,
+                    fontWeight: 400,
                     color: INK,
-                    lineHeight: 1.18,
+                    lineHeight: 1.14,
                     letterSpacing: "0.01em",
                   }}
                 >
@@ -284,10 +292,10 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 <div
                   style={{
                     fontFamily: SERIF,
-                    fontSize: 11.5,
+                    fontSize: 13,
                     color: INK,
-                    letterSpacing: "0.26em",
-                    paddingLeft: "0.26em",
+                    letterSpacing: "0.3em",
+                    paddingLeft: "0.3em",
                     marginTop: 4,
                   }}
                 >
@@ -296,12 +304,12 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 <div
                   style={{
                     fontFamily: SERIF,
-                    fontSize: 13.5,
+                    fontSize: 16,
                     fontWeight: 700,
                     letterSpacing: "0.24em",
                     paddingLeft: "0.24em",
                     color: INK,
-                    marginTop: 11,
+                    marginTop: 10,
                   }}
                 >
                   {cap("Academic Transcript", "একাডেমিক ট্রান্সক্রিপ্ট")}
@@ -309,7 +317,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 <div
                   style={{
                     fontFamily: SERIF,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontStyle: "italic",
                     color: MUTED,
                     marginTop: 4,
@@ -319,54 +327,61 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 </div>
               </div>
 
-              <div style={{ width: 196, flexShrink: 0 }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: 9.5,
-                    color: INK,
-                  }}
-                >
-                  <tbody>
-                    <tr>
-                      <th style={{ ...thStyle, padding: "4px 5px" }}>
-                        {L("Letter Grade", "লেটার গ্রেড")}
-                      </th>
-                      <th style={{ ...thStyle, padding: "4px 5px" }}>{L("Marks", "নম্বর")}</th>
-                      <th style={{ ...thStyle, padding: "4px 5px" }}>
-                        {L("Grade Point", "গ্রেড পয়েন্ট")}
-                      </th>
+              {/* Ghost column matching the crest: with the grade scale moved
+                  out of the row, this is what keeps the title optically centred. */}
+              <div style={{ width: 74, flexShrink: 0 }} aria-hidden="true" />
+            </div>
+
+            {/* ── Grade scale: below the title, same style, smaller ── */}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 11 }}>
+              <table
+                style={{
+                  width: 172,
+                  borderCollapse: "collapse",
+                  fontSize: 9,
+                  color: INK,
+                }}
+              >
+                <tbody>
+                  <tr>
+                    <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                      {L("Letter Grade", "লেটার গ্রেড")}
+                    </th>
+                    <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                      {L("Marks", "নম্বর")}
+                    </th>
+                    <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                      {L("Grade Point", "গ্রেড পয়েন্ট")}
+                    </th>
+                  </tr>
+                  {scale.map((band) => (
+                    <tr key={band.letter + band.range}>
+                      <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9, fontWeight: 600 }}>
+                        {band.letter}
+                      </td>
+                      <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9 }}>{band.range}</td>
+                      <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9 }}>
+                        {band.point}
+                      </td>
                     </tr>
-                    {scale.map((band) => (
-                      <tr key={band.letter + band.range}>
-                        <td style={{ ...tdStyle, padding: "3px 5px", fontSize: 10, fontWeight: 600 }}>
-                          {band.letter}
-                        </td>
-                        <td style={{ ...tdStyle, padding: "3px 5px", fontSize: 10 }}>{band.range}</td>
-                        <td style={{ ...tdStyle, padding: "3px 5px", fontSize: 10 }}>
-                          {band.point}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {/* ── Exam title ── */}
-            <div style={{ textAlign: "center", marginTop: 18, marginBottom: 14 }}>
+            <div style={{ textAlign: "center", marginTop: 12, marginBottom: 10 }}>
               <div
                 style={{
-                  fontFamily: SERIF,
-                  fontSize: 18.5,
-                  fontWeight: 700,
+                  fontFamily: HEADING_FONT,
+                  fontSize: 21,
+                  fontWeight: 400,
                   letterSpacing: "0.03em",
                   color: INK,
                 }}
               >
-                {/* Board style: title case (not shouted), serif — matches the
-                    reference transcript's "… Examination - 2019". */}
+                {/* Board style: title case (not shouted), heading face — matches
+                    the reference transcript's "… Examination - 2019". */}
                 {result.examName}
                 {examYear ? ` - ${examYear}` : ""}
               </div>
@@ -627,7 +642,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 display: "flex",
                 alignItems: "flex-end",
                 justifyContent: "space-between",
-                marginTop: 34,
+                marginTop: 26,
               }}
             >
               <div style={{ fontSize: 11.5, color: INK, maxWidth: 300 }}>
