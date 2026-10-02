@@ -428,6 +428,8 @@ export default function MarksheetPage() {
                   brandName={brandName}
                   brandLogo={b.brandLogo}
                   mdSignature={b.mdSignature}
+                  watermarkUrl={b.brandWatermark || undefined}
+                  watermarkText={b.brandShort || "BMA"}
                   generatedOn={new Date(marksheet.generatedAt).toLocaleDateString(dateLocale)}
                 />
               </div>

@@ -44,6 +44,22 @@ const SERIF =
  */
 const HEADING_FONT = "'Certificate', " + SERIF;
 
+/**
+ * Dynamic-value faces (Google Fonts — declared in globals.css AND in the print
+ * window's <link>, see marksheet-pdf.ts):
+ * - SCRIPT  — the personal fields (student / father / mother name), so the
+ *             filled-in names read like entries on a real certificate.
+ * - MONO    — every number and ID (roll, registration, marks, GPA, totals):
+ *             fixed advance keeps the figures aligned.
+ * - VALUE   — the other filled-in text (institution, class, exam date, subject).
+ * The Bengali fallbacks at the end keep Bangla values on a readable face —
+ * none of the three Latin faces has Bengali glyphs.
+ */
+const SCRIPT_FONT = "'Cookie', 'Noto Sans Bengali', 'Kalpurush', cursive";
+const MONO_FONT =
+  "'Fira Code', ui-monospace, SFMono-Regular, Menlo, 'Noto Sans Bengali', monospace";
+const VALUE_FONT = "'Quantico', 'Inter', 'Noto Sans Bengali', sans-serif";
+
 const INK = "#18181b";
 const MUTED = "#71717a";
 const LINE = "#a1a1aa";
@@ -72,8 +88,21 @@ const tdStyle: CSSProperties = {
   verticalAlign: "middle",
 };
 
-/** A candidate line: fixed label + value on a dotted leader (the scan look). */
-function LeaderRow({ label, value }: { label: string; value: string }) {
+/** A candidate line: fixed label + value on a dotted leader (the scan look).
+ *  `valueFont`/`valueSize` swap the FILL-IN face: Cookie (script) for the
+ *  personal names, Quantico for text values, Fira Code for IDs — the labels
+ *  stay in the label face so the form still reads as label = static. */
+function LeaderRow({
+  label,
+  value,
+  valueFont,
+  valueSize,
+}: {
+  label: string;
+  value: string;
+  valueFont?: string;
+  valueSize?: number;
+}) {
   if (!value) return null;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 7 }}>
@@ -96,10 +125,11 @@ function LeaderRow({ label, value }: { label: string; value: string }) {
           minWidth: 0,
           borderBottom: `1px dotted ${LINE}`,
           paddingBottom: 2,
-          fontSize: 13.5,
+          fontSize: valueSize ?? 13.5,
           fontWeight: 600,
           color: INK,
           wordBreak: "break-word",
+          ...(valueFont ? { fontFamily: valueFont } : null),
         }}
       >
         {value}
@@ -151,10 +181,18 @@ export interface MarksheetSheetProps {
   generatedOn: string;
   /** MD signature image for the footer (branding.mdSignature), if any. */
   mdSignature?: string;
+  /** Brand watermark (branding.brandWatermark) — rendered inside the sheet so
+   *  preview, print and the downloaded PDF all carry it. Falls back to the
+   *  short brand text (branding.brandShort) when no image is set. */
+  watermarkUrl?: string;
+  watermarkText?: string;
 }
 
 export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
-  function MarksheetSheet({ data, lang, brandName, brandLogo, generatedOn, mdSignature }, ref) {
+  function MarksheetSheet(
+    { data, lang, brandName, brandLogo, generatedOn, mdSignature, watermarkUrl, watermarkText },
+    ref,
+  ) {
     const L = (en: string, bn: string) => (lang === "bn" ? bn : en);
     const cap = (en: string, bn: string) => (lang === "bn" ? bn : en.toUpperCase());
 
@@ -226,10 +264,64 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
           fontFamily: FONT,
           fontSize: 13,
           lineHeight: 1.45,
+          position: "relative",
+          // Stacking context so the watermark paints above the white page but
+          // behind every piece of content (and survives html2canvas).
+          isolation: "isolate",
         }}
       >
+        {/* Brand watermark — 130 mm, 35% opacity, flat (angle 0°), the same
+            seal treatment as the admit card / certificate, so the PDF matches
+            the on-screen preview. */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            opacity: 0.35,
+            zIndex: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          {watermarkUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={watermarkUrl}
+              alt=""
+              crossOrigin="anonymous"
+              style={{ width: 491, height: "auto", maxHeight: 491 }}
+            />
+          ) : (
+            <span
+              style={{
+                fontFamily: HEADING_FONT,
+                fontSize: 150,
+                fontWeight: 400,
+                color: INK,
+                letterSpacing: 10,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {watermarkText || ""}
+            </span>
+          )}
+        </div>
+
         {/* Decorative double frame */}
-        <div style={{ border: `3px solid ${INK}`, padding: 4, boxSizing: "border-box" }}>
+        <div
+          style={{
+            border: `3px solid ${INK}`,
+            padding: 4,
+            boxSizing: "border-box",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           <div
             style={{
               border: `1px solid ${INK}`,
@@ -237,7 +329,11 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
               boxSizing: "border-box",
             }}
           >
-            {/* ── Header: crest | title (grade scale sits below) ── */}
+            {/* ── Header row 1: crest | THE title, centred on the page ──
+                The title gets its own full-width band (no table beside it) so
+                it can be big (36px) AND sit on the page centre-line: two equal
+                74px columns (crest / ghost) leave a 534px middle band whose
+                centre is exactly 341px = half of the 682px content width. */}
             <div style={{ display: "flex", alignItems: "flex-start" }}>
               <div style={{ width: 74, flexShrink: 0 }}>
                 {brandLogo ? (
@@ -276,15 +372,15 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 )}
               </div>
 
-              <div style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "0 8px 0" }}>
+              <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
                 <div
                   style={{
                     fontFamily: HEADING_FONT,
-                    fontSize: 30,
+                    fontSize: 36,
                     fontWeight: 400,
                     color: INK,
                     lineHeight: 1.14,
-                    letterSpacing: "0.01em",
+                    letterSpacing: "0.02em",
                   }}
                 >
                   {brandName}
@@ -332,108 +428,139 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
               <div style={{ width: 74, flexShrink: 0 }} aria-hidden="true" />
             </div>
 
-            {/* ── Grade scale: below the title, same style, smaller ── */}
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 11 }}>
-              <table
-                style={{
-                  width: 172,
-                  borderCollapse: "collapse",
-                  fontSize: 9,
-                  color: INK,
-                }}
-              >
-                <tbody>
-                  <tr>
-                    <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
-                      {L("Letter Grade", "লেটার গ্রেড")}
-                    </th>
-                    <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
-                      {L("Marks", "নম্বর")}
-                    </th>
-                    <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
-                      {L("Grade Point", "গ্রেড পয়েন্ট")}
-                    </th>
-                  </tr>
-                  {scale.map((band) => (
-                    <tr key={band.letter + band.range}>
-                      <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9, fontWeight: 600 }}>
-                        {band.letter}
-                      </td>
-                      <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9 }}>{band.range}</td>
-                      <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9 }}>
-                        {band.point}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* ── Row 2: [172 ghost | exam title centred on the page | grade
+                scale on the right]. Two equal 172px columns put the middle
+                band's centre at 172 + 338/2 = 341px = the page centre, so the
+                title under the main title never shifts when the scale sits in
+                the side corner. */}
+            <div style={{ display: "flex", alignItems: "flex-start", marginTop: 18 }}>
+              <div style={{ width: 172, flexShrink: 0 }} aria-hidden="true" />
 
-            {/* ── Exam title ── */}
-            <div style={{ textAlign: "center", marginTop: 12, marginBottom: 10 }}>
-              <div
-                style={{
-                  fontFamily: HEADING_FONT,
-                  fontSize: 21,
-                  fontWeight: 400,
-                  letterSpacing: "0.03em",
-                  color: INK,
-                }}
-              >
-                {/* Board style: title case (not shouted), heading face — matches
-                    the reference transcript's "… Examination - 2019". */}
-                {result.examName}
-                {examYear ? ` - ${examYear}` : ""}
-              </div>
-              {data.sessionName && (
-                <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
-                  {L("Session", "সেশন")}: {data.sessionName}
+              <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
+                <div
+                  style={{
+                    fontFamily: HEADING_FONT,
+                    fontSize: 21,
+                    fontWeight: 400,
+                    letterSpacing: "0.03em",
+                    color: INK,
+                  }}
+                >
+                  {/* Board style: title case (not shouted), heading face — matches
+                      the reference transcript's "… Examination - 2019". */}
+                  {result.examName}
+                  {examYear ? ` - ${examYear}` : ""}
                 </div>
-              )}
-              <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>
-                {L("Serial No", "সিরিয়াল নম্বর")}: {infoValue(result.registrationNumber)}
+                {data.sessionName && (
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
+                    {L("Session", "সেশন")}:{" "}
+                    <span style={{ fontFamily: MONO_FONT }}>{data.sessionName}</span>
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>
+                  {L("Serial No", "সিরিয়াল নম্বর")}:{" "}
+                  <span style={{ fontFamily: MONO_FONT }}>
+                    {infoValue(result.registrationNumber)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grade scale — right-hand side corner (was: centred below) */}
+              <div style={{ width: 172, flexShrink: 0 }}>
+                <table
+                  style={{
+                    width: 172,
+                    borderCollapse: "collapse",
+                    fontSize: 9,
+                    color: INK,
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                        {L("Letter Grade", "লেটার গ্রেড")}
+                      </th>
+                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                        {L("Marks", "নম্বর")}
+                      </th>
+                      <th style={{ ...thStyle, padding: "2.5px 4px", fontSize: 8, letterSpacing: "0.05em" }}>
+                        {L("Grade Point", "গ্রেড পয়েন্ট")}
+                      </th>
+                    </tr>
+                    {scale.map((band) => (
+                      <tr key={band.letter + band.range}>
+                        <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9, fontWeight: 600 }}>
+                          {band.letter}
+                        </td>
+                        <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9 }}>{band.range}</td>
+                        <td style={{ ...tdStyle, padding: "1.5px 4px", fontSize: 9 }}>
+                          {band.point}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
             {/* ── Candidate block ── */}
-            <div style={{ marginTop: 2 }}>
+            <div style={{ marginTop: 18 }}>
+              {/* Names in Cookie (script), other text in Quantico, IDs in Fira
+                  Code — the fill-in faces from globals.css. */}
               <LeaderRow
                 label={L("Name of Student", "শিক্ষার্থীর নাম")}
                 value={infoValue(result.studentName)}
+                valueFont={SCRIPT_FONT}
+                valueSize={16}
               />
               <LeaderRow
                 label={L("Father's Name", "পিতার নাম")}
                 value={data.fatherName || ""}
+                valueFont={SCRIPT_FONT}
+                valueSize={16}
               />
               <LeaderRow
                 label={L("Mother's Name", "মাতার নাম")}
                 value={data.motherName || ""}
+                valueFont={SCRIPT_FONT}
+                valueSize={16}
               />
               <LeaderRow
                 label={L("Institution", "প্রতিষ্ঠান")}
                 value={infoValue(institutionName)}
+                valueFont={VALUE_FONT}
               />
 
               <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 7 }}>
                 <div style={{ width: "50%", paddingRight: 14 }}>
-                  <LeaderRow label={L("Roll No", "রোল নম্বর")} value={infoValue(String(result.roll))} />
+                  <LeaderRow
+                    label={L("Roll No", "রোল নম্বর")}
+                    value={infoValue(String(result.roll))}
+                    valueFont={MONO_FONT}
+                  />
                 </div>
                 <div style={{ width: "50%" }}>
                   <LeaderRow
                     label={L("Registration No", "রেজিস্ট্রেশন নম্বর")}
                     value={infoValue(result.registrationNumber)}
+                    valueFont={MONO_FONT}
                   />
                 </div>
               </div>
 
               <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 7 }}>
                 <div style={{ width: "50%", paddingRight: 14 }}>
-                  <LeaderRow label={L("Class / Group", "শ্রেণি / গ্রুপ")} value={result.className} />
+                  <LeaderRow
+                    label={L("Class / Group", "শ্রেণি / গ্রুপ")}
+                    value={result.className}
+                    valueFont={VALUE_FONT}
+                  />
                 </div>
                 <div style={{ width: "50%" }}>
                   <LeaderRow
                     label={L("Exam Date", "পরীক্ষার তারিখ")}
                     value={data.examDate || ""}
+                    valueFont={VALUE_FONT}
                   />
                 </div>
               </div>
@@ -444,7 +571,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginTop: 12,
+                marginTop: 22,
                 border: `1px solid ${LINE}`,
                 tableLayout: "fixed",
               }}
@@ -464,9 +591,18 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
               <tbody>
                 {rows.map((row, i) => (
                   <tr key={`${row.no}-${row.name}`}>
-                    <td style={tdStyle}>{row.no}</td>
-                    <td style={{ ...tdStyle, textAlign: "left", fontWeight: 500 }}>{row.name}</td>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>
+                    <td style={{ ...tdStyle, fontFamily: MONO_FONT }}>{row.no}</td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        textAlign: "left",
+                        fontWeight: 500,
+                        fontFamily: VALUE_FONT,
+                      }}
+                    >
+                      {row.name}
+                    </td>
+                    <td style={{ ...tdStyle, fontWeight: 600, fontFamily: MONO_FONT }}>
                       {row.marks}
                       <span style={{ color: MUTED, fontWeight: 400 }}>/{row.full}</span>
                     </td>
@@ -474,12 +610,13 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                       style={{
                         ...tdStyle,
                         fontWeight: 700,
+                        fontFamily: MONO_FONT,
                         color: row.letter === "F" ? RED : INK,
                       }}
                     >
                       {row.letter}
                     </td>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>
+                    <td style={{ ...tdStyle, fontWeight: 600, fontFamily: MONO_FONT }}>
                       {row.point.toFixed(2)}
                     </td>
                     {i === 0 && (
@@ -491,6 +628,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                           fontWeight: 700,
                           letterSpacing: "0.02em",
                           background: SOFT,
+                          fontFamily: MONO_FONT,
                         }}
                       >
                         {gpa.toFixed(2)}
@@ -517,22 +655,26 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginTop: 10,
+                marginTop: 18,
                 fontSize: 11.5,
                 color: INK,
               }}
             >
               <div>
                 <span style={{ fontWeight: 700 }}>{L("Total", "মোট")}: </span>
-                {result.totalMarks}/{result.totalFullMarks}
+                <span style={{ fontFamily: MONO_FONT }}>
+                  {result.totalMarks}/{result.totalFullMarks}
+                </span>
                 <span style={{ color: MUTED }}>
                   {"  ·  "}
-                  {L("Percentage", "শতকরা")}: {result.percentage.toFixed(1)}%
+                  {L("Percentage", "শতকরা")}:{" "}
+                  <span style={{ fontFamily: MONO_FONT }}>{result.percentage.toFixed(1)}%</span>
                 </span>
                 {result.position > 0 && (
                   <span style={{ color: MUTED }}>
                     {"  ·  "}
-                    {L("Position", "অবস্থান")}: #{result.position}
+                    {L("Position", "অবস্থান")}:{" "}
+                    <span style={{ fontFamily: MONO_FONT }}>#{result.position}</span>
                   </span>
                 )}
               </div>
@@ -556,7 +698,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
             <div
               style={{
                 display: "flex",
-                marginTop: 10,
+                marginTop: 18,
                 border: `1px solid ${LINE}`,
                 background: "#ffffff",
               }}
@@ -628,7 +770,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 >
                   {cap("Overall", "সারসংক্ষেপ")}
                 </span>
-                <span style={{ fontWeight: 700, textAlign: "right" }}>
+                <span style={{ fontWeight: 700, textAlign: "right", fontFamily: MONO_FONT }}>
                   {L("Grade", "গ্রেড")} {overallGrade}
                   <span style={{ color: LINE, fontWeight: 500 }}>{" · "}</span>
                   GPA {gpa.toFixed(2)}
@@ -642,7 +784,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 display: "flex",
                 alignItems: "flex-end",
                 justifyContent: "space-between",
-                marginTop: 26,
+                marginTop: 57,
               }}
             >
               <div style={{ fontSize: 11.5, color: INK, maxWidth: 300 }}>

@@ -41,6 +41,9 @@ export async function waitForFonts(target: Document = document): Promise<void> {
       '400 14px "Tiro Bangla"',
       '400 14px Kalpurush',
       '400 28px Certificate', // marksheet heading face (html2canvas must not rasterise a fallback)
+      '400 16px Cookie', // marksheet dynamic-value faces — same reason
+      '700 14px Quantico',
+      '600 14px "Fira Code"',
     ];
     await Promise.all(
       checks.map((c) => {
@@ -207,6 +210,11 @@ function injectFontsIntoClone(clonedDoc: Document) {
   // clone can rasterise Bangla with a fallback font.
   addLink(
     "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&family=Tiro+Bangla&display=swap"
+  );
+  // Marksheet dynamic-value faces (Cookie / Quantico / Fira Code) — globals.css
+  // loads them via @import, which the clone never sees (see above).
+  addLink(
+    "https://fonts.googleapis.com/css2?family=Cookie&family=Fira+Code:wght@300..700&family=Quantico:ital,wght@0,400;0,700;1,400;1,700&display=swap"
   );
   // 2) Ensure Kalpurush @font-face (offline Bangla fallback) is present in clone
   const style = clonedDoc.createElement("style");

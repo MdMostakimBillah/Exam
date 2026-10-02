@@ -176,6 +176,8 @@ export function MarksheetViewer({
             brandName={(lang === "bn" ? brand.brandNameBn : brand.brandName) || t("brand")}
             brandLogo={brand.brandLogo}
             mdSignature={brand.mdSignature}
+            watermarkUrl={brand.brandWatermark || undefined}
+            watermarkText={brand.brandShort || "BMA"}
             generatedOn={
               transcript.marksheetGeneratedAt
                 ? new Date(transcript.marksheetGeneratedAt).toLocaleDateString(isBn ? "bn-BD" : "en-GB")
