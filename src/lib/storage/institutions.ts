@@ -10,17 +10,11 @@ const SUPABASE_TABLE = 'institutions';
 const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,allow_admit_card_download,allow_marksheet_download,allow_certificate_download,total_students,total_applications,created_at,updated_at';
 
 /**
- * Same list without the columns added by migrations 0022, 0033 and 0038.
- * PostgREST rejects an unknown column in the WHOLE select, so while any of
- * them is still pending every read (and any profile save) would fail —
- * retry once with this list instead so the app keeps working until the SQL
- * is applied.
+ * While any of the columns added by migrations 0022, 0033 and 0038 is
+ * pending, PostgREST rejects this list in the WHOLE select/RETURNING.
+ * `selectResilient` below strips only the column(s) the error names and
+ * retries, so columns that already exist keep reading and saving.
  */
-const LEGACY_INSTITUTION_COLUMNS = INSTITUTION_COLUMNS
-  .replace(',principal_signature_url', '')
-  .replace(',allow_admit_card_download', '')
-  .replace(',allow_marksheet_download', '')
-  .replace(',allow_certificate_download', '');
 
 const isPreMigrationError = (error: unknown): boolean =>
   /(principal_signature_url|allow_admit_card_download|allow_marksheet_download|allow_certificate_download)/.test(
@@ -36,6 +30,32 @@ const missingLegacyColumn = (error: unknown): string | null => {
   if (/principal_signature_url/.test(msg)) return 'principal_signature_url';
   return null;
 };
+
+type PgResult<T> = { data: T; error: { message?: string; code?: string; details?: unknown } | null };
+
+/**
+ * Run a SELECT, retrying while PostgREST rejects a column this database
+ * does not have yet (migrations 0022/0033/0038 pending). Each retry strips
+ * ONLY the column the error names and retries — the old "legacy" fallback
+ * dropped all four at once, so columns that DO exist became unreadable
+ * (allow_admit_card_download was written but rendered `undefined` while
+ * 0038 was pending: the switch saved, toasted, then snapped back).
+ * Up to four rounds cover every pending column at once (0038 adds two).
+ */
+async function selectResilient<T>(
+  build: (select: string) => PromiseLike<PgResult<T>>,
+  initial: string = INSTITUTION_COLUMNS,
+): Promise<PgResult<T>> {
+  let select = initial;
+  let result = await build(select);
+  for (let i = 0; i < 4 && result.error && isPreMigrationError(result.error); i++) {
+    const missing = missingLegacyColumn(result.error);
+    if (!missing || !select.includes(`,${missing}`)) break;
+    select = select.replace(`,${missing}`, '');
+    result = await build(select);
+  }
+  return result;
+}
 
 const INSTITUTIONS_STALE_TIME = 60 * 1000; // 1 min (was 5 min) - keeps lists fresh after RLS or data fixes
 
@@ -91,10 +111,9 @@ export async function uploadPrincipalSignature(slug: string, file: File): Promis
 
 export async function fetchInstitutions(): Promise<Institution[]> {
   const supabase = createClient();
-  let { data, error } = await supabase.from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).order('created_at', { ascending: false });
-  if (error && isPreMigrationError(error)) {
-    ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).order('created_at', { ascending: false }));
-  }
+  let { data, error } = await selectResilient<any[]>((sel) =>
+    supabase.from(SUPABASE_TABLE).select(sel).order('created_at', { ascending: false }),
+  );
   if (error) {
     console.error("[fetchInstitutions] Supabase error:", error.message, error.code, error.details);
     throw error;
@@ -105,10 +124,9 @@ export async function fetchInstitutions(): Promise<Institution[]> {
 
 export async function fetchInstitutionById(id: string): Promise<Institution | undefined> {
   const supabase = createClient();
-  let { data, error } = await supabase.from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).eq('id', id).single();
-  if (error && isPreMigrationError(error)) {
-    ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).eq('id', id).single());
-  }
+  let { data, error } = await selectResilient((sel) =>
+    supabase.from(SUPABASE_TABLE).select(sel).eq('id', id).single(),
+  );
   if (error) {
     console.error("[fetchInstitutionById] Supabase error:", error.message, error.code, error.details);
     throw error;
@@ -119,10 +137,9 @@ export async function fetchInstitutionById(id: string): Promise<Institution | un
 
 export async function fetchInstitutionBySlug(slug: string): Promise<Institution | undefined> {
   const supabase = createClient();
-  let { data, error } = await supabase.from(SUPABASE_TABLE).select(INSTITUTION_COLUMNS).eq('slug', slug).single();
-  if (error && isPreMigrationError(error)) {
-    ({ data, error } = await supabase.from(SUPABASE_TABLE).select(LEGACY_INSTITUTION_COLUMNS).eq('slug', slug).single());
-  }
+  let { data, error } = await selectResilient((sel) =>
+    supabase.from(SUPABASE_TABLE).select(sel).eq('slug', slug).single(),
+  );
   if (error) {
     console.error("[fetchInstitutionBySlug] Supabase error:", error.message, error.code, error.details);
     throw error;
@@ -182,13 +199,28 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   let { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(INSTITUTION_COLUMNS).single();
   const missingColumn = error && isPreMigrationError(error) ? missingLegacyColumn(error) : null;
   if (missingColumn) {
-    // 0022/0033/0038 not applied yet: drop the new columns and retry (the
-    // failed statement changed nothing, so this is not a partial save).
-    delete u.principal_signature_url;
-    delete u.allow_admit_card_download;
-    delete u.allow_marksheet_download;
-    delete u.allow_certificate_download;
-    ({ data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(LEGACY_INSTITUTION_COLUMNS).single());
+    // 0022/0033/0038 not applied yet: the SELECT (PostgREST's RETURNING)
+    // named a column this database doesn't have — the statement failed
+    // atomically, so retry with the legacy column list. Only remove the
+    // missing column from the UPDATE PAYLOAD when the payload actually
+    // writes THAT column: blanket-dropping every new column used to
+    // silently discard fields that DO exist (granting the admit-card flag
+    // while 0038 is pending saved only updated_at — and toasted
+    // "enabled" anyway).
+    const payloadKey: Record<string, string | undefined> = {
+      principal_signature_url: "principalSignature",
+      allow_admit_card_download: "allowAdmitCardDownload",
+      allow_marksheet_download: "allowMarksheetDownload",
+      allow_certificate_download: "allowCertificateDownload",
+    };
+    const dropKey = payloadKey[missingColumn];
+    if (dropKey && data[dropKey as keyof Institution] !== undefined) {
+      delete u[missingColumn];
+    }
+    ({ data: result, error } = await selectResilient(
+      (sel) => supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(sel).single(),
+      INSTITUTION_COLUMNS.replace(`,${missingColumn}`, ''),
+    ));
   }
   if (error) {
     console.error("[updateInstitution] Supabase error:", error.message, error.code, error.details);
