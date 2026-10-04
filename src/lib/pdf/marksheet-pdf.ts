@@ -45,7 +45,11 @@ export async function printMarksheet(win: Window, el: HTMLElement): Promise<void
       "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
       "@font-face{font-family:Certificate;src:url('/fonts/Certificate%20400.ttf') format('truetype');font-weight:400;font-display:swap}" +
       "@page{size:210mm 297mm;margin:0}" +
-      "html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+      // Exact color on EVERY node (not just html/body): a printed sheet
+      // must keep its fills and borders even when the dialog's "Background
+      // graphics" checkbox is off — see the palette note in marksheet-sheet.
+      "*,*::before,*::after{-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+      "html,body{margin:0;padding:0;background:#fff}" +
       "body{display:block}" +
       "</style></head><body>" +
       body +

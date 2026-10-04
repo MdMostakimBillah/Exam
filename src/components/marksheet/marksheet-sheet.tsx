@@ -66,8 +66,20 @@ const VALUE_FONT = "'Quantico', 'Inter', 'Noto Sans Bengali', sans-serif";
 
 const INK = "#18181b";
 const MUTED = "#71717a";
-const LINE = "#a1a1aa";
-const SOFT = "#f4f4f5";
+/**
+ * PRINTABLE palette (what survives paper, not just the screen):
+ * - LINE was #a1a1aa (2.4:1 on white) — under the ~3:1 graphics threshold
+ *   and washed out on real printers, so the grid vanished on paper. #52525b
+ *   (7:1) prints as a clear board-style rule while staying gray on screen.
+ * - SOFT was #f4f4f5 — lighter than a laser printer renders cleanly at
+ *   1px-cell scale; #e4e4e7 prints as a visible band for header/GPA cells.
+ * - FAINT keeps the two decorative grays (watermark text, the separator
+ *   dots) at the old value so the liked design doesn't shift with the
+ *   structural lines.
+ */
+const LINE = "#52525b";
+const FAINT = "#a1a1aa";
+const SOFT = "#e4e4e7";
 const GREEN = "#166534";
 const RED = "#b91c1c";
 
@@ -265,6 +277,13 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
           padding: 18,
           background: "#ffffff",
           color: INK,
+          // Every fill must survive a RAW Ctrl+P as well: the print window
+          // sets print-color-adjust on html/body, but printing the page
+          // itself relies on this inline value — it inherits to every
+          // descendant, so header bands, the GPA cell and the scholarship
+          // strip print even with "Background graphics" unchecked.
+          WebkitPrintColorAdjust: "exact",
+          printColorAdjust: "exact",
           fontFamily: FONT,
           fontSize: 13,
           lineHeight: 1.45,
@@ -307,7 +326,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 fontWeight: 400,
                 // Light grey, not ink: at 0.35 opacity black reads as printed
                 // text over the marks table instead of a watermark.
-                color: LINE,
+                color: FAINT,
                 letterSpacing: 10,
                 lineHeight: 1,
                 whiteSpace: "nowrap",
@@ -778,7 +797,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 </span>
                 <span style={{ fontWeight: 700, textAlign: "right", fontFamily: MONO_FONT }}>
                   {L("Grade", "গ্রেড")} {overallGrade}
-                  <span style={{ color: LINE, fontWeight: 500 }}>{" · "}</span>
+                  <span style={{ color: FAINT, fontWeight: 500 }}>{" · "}</span>
                   GPA {gpa.toFixed(2)}
                 </span>
               </div>
