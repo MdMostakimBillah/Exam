@@ -20,13 +20,28 @@ async function fixSuperAdminProfile() {
   console.log('Checking super admin profile...\n');
 
   const { data: existingUsers } = await supabase.auth.admin.listUsers();
-  const superAdmin = existingUsers.users.find(u =>
+  let superAdmin = existingUsers.users.find(u =>
     u.user_metadata?.role === 'super_admin' || u.email?.includes('admin')
   );
 
   if (!superAdmin) {
-    console.log('No super admin auth user found. Create one in Supabase Dashboard > Auth > Users.');
-    return;
+    const adminEmail = process.env.SUPER_ADMIN_EMAIL || 'superadmin@scholarx.local';
+    const adminPassword = process.env.SUPER_ADMIN_PASSWORD || 'qvML&v@FgrRZ$qXkUL1qr@*^0J9068ay';
+    console.log(`No super admin user found. Creating super admin user (${adminEmail})...`);
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email: adminEmail,
+      password: adminPassword,
+      email_confirm: true,
+      user_metadata: { role: 'super_admin', name: 'Super Admin' },
+    });
+
+    if (createError || !created?.user) {
+      console.error('Failed to create super admin user:', createError?.message);
+      return;
+    }
+
+    superAdmin = created.user;
+    console.log(`Created auth user: ${superAdmin.email} (id: ${superAdmin.id})`);
   }
 
   console.log(`Found auth user: ${superAdmin.email} (id: ${superAdmin.id})`);
