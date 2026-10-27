@@ -19,6 +19,7 @@ import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import { PublicNav } from "@/components/layout/public-nav";
 import { MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Camera,
@@ -86,24 +87,53 @@ function SelectShell({ dark, children }: { dark: boolean; children: ReactNode })
 
 type PhotoResult =
   | { ok: true; dataUrl: string }
-  | { ok: false; code: "TYPE" | "READ" | "SIZE" };
+  | { ok: false; code: "TYPE" | "READ" | "SIZE"; sizeStr?: string };
+
+const ALLOWED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
+  "image/pjpeg",
+];
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  }
+  return `${Math.round(bytes / 1024)}KB`;
+}
+
+function isAllowedPhotoFile(file: File): boolean {
+  const type = (file.type || "").toLowerCase();
+  if (type) {
+    if (ALLOWED_PHOTO_TYPES.includes(type)) return true;
+    if (type.startsWith("image/")) {
+      return (
+        type.includes("jpeg") ||
+        type.includes("jpg") ||
+        type.includes("png") ||
+        type.includes("webp")
+      );
+    }
+  }
+  return /\.(jpe?g|png|webp)$/i.test(file.name);
+}
 
 /**
- * Read the applicant's photo while keeping it under MAX_IMAGE_SIZE (350KB):
- * a small standard photo is stored as-is, a big camera photo is scaled to at
- * most 1024px and re-encoded as JPEG on a canvas. Returns an error CODE so
- * the caller translates it bilingually.
+ * Read the applicant's photo ensuring it stays under MAX_IMAGE_SIZE (350KB).
+ * Rejects photos that exceed the maximum size or have an unsupported format.
  */
 async function readPhotoFile(file: File): Promise<PhotoResult> {
-  if (!file.type.startsWith("image/")) return { ok: false, code: "TYPE" };
+  if (!isAllowedPhotoFile(file)) {
+    return { ok: false, code: "TYPE" };
+  }
 
-  const maxChars = Math.ceil((MAX_IMAGE_SIZE * 4) / 3) + 64;
+  if (file.size > MAX_IMAGE_SIZE) {
+    return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
+  }
 
-  // Fast path — small JPG/PNG/WebP needs no re-encoding (keeps PNG edges sharp).
-  if (
-    ["image/jpeg", "image/png", "image/webp"].includes(file.type) &&
-    file.size <= MAX_IMAGE_SIZE
-  ) {
+  try {
     const dataUrl = await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () =>
@@ -111,55 +141,15 @@ async function readPhotoFile(file: File): Promise<PhotoResult> {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     });
-    if (dataUrl) return { ok: true, dataUrl };
-    return { ok: false, code: "READ" };
-  }
 
-  // Too big (or an odd type): scale down + re-encode JPEG.
-  try {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = new Image();
-      img.src = url;
-      await img.decode();
+    if (!dataUrl) return { ok: false, code: "READ" };
 
-      const naturalMax = Math.max(img.naturalWidth, img.naturalHeight);
-      if (naturalMax < 1) return { ok: false, code: "READ" };
-
-      let side = Math.min(1024, naturalMax);
-      let quality = 0.85;
-
-      const encode = (): string => {
-        const scale = side / naturalMax;
-        const w = Math.max(1, Math.round(img.naturalWidth * scale));
-        const h = Math.max(1, Math.round(img.naturalHeight * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return "";
-        // JPEG has no alpha — paint white first so transparent PNGs
-        // don't come out with black corners.
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        return canvas.toDataURL("image/jpeg", quality);
-      };
-
-      let out = encode();
-      while (out.length > maxChars && (quality > 0.35 || side > 400)) {
-        if (quality > 0.35) quality = Math.max(0.35, +(quality - 0.15).toFixed(2));
-        else {
-          side = Math.round(side * 0.7);
-          quality = 0.85;
-        }
-        out = encode();
-      }
-      if (!out || out.length > maxChars) return { ok: false, code: "SIZE" };
-      return { ok: true, dataUrl: out };
-    } finally {
-      URL.revokeObjectURL(url);
+    const maxChars = Math.ceil((MAX_IMAGE_SIZE * 4) / 3) + 64;
+    if (dataUrl.length > maxChars) {
+      return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
     }
+
+    return { ok: true, dataUrl };
   } catch {
     return { ok: false, code: "READ" };
   }
@@ -192,7 +182,7 @@ export default function ApplyPage() {
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState<ApplyResult | null>(null);
 
-  // Optional applicant photo (base64 data URL, ≤350KB after readPhotoFile).
+  // Optional applicant photo (base64 data URL, max 350KB).
   const [photo, setPhoto] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -206,15 +196,28 @@ export default function ApplyPage() {
     setPhotoBusy(true);
     try {
       const res = await readPhotoFile(file);
-      if (res.ok) setPhoto(res.dataUrl);
-      else
+      if (res.ok) {
+        setPhoto(res.dataUrl);
+      } else {
+        setPhoto("");
+        const sizeStr = res.sizeStr ?? formatFileSize(file.size);
         setPhotoError(
           res.code === "TYPE"
-            ? L("Please choose an image file (JPG, PNG or WebP).", "অনুগ্রহ করে ছবি নির্বাচন করুন (JPG, PNG বা WebP)।")
+            ? L(
+                "Please choose a JPG, PNG or WebP image file.",
+                "অনুগ্রহ করে JPG, PNG বা WebP ছবি নির্বাচন করুন।"
+              )
             : res.code === "SIZE"
-              ? L("This photo is still too large. Please choose a smaller one (max 350KB).", "ছবির আকার এখনও বেশি। ছোট ছবি নির্বাচন করুন (সর্বোচ্চ 350KB)।")
-              : L("Could not read this photo. Please try another one.", "ছবিটি পড়া যায়নি। অন্য একটি ছবি দিন।")
+              ? L(
+                  `Photo is ${sizeStr}. Maximum 350KB allowed.`,
+                  `ছবির আকার ${sizeStr}। সর্বোচ্চ ৩৫০KB অনুমোদিত।`
+                )
+              : L(
+                  "Could not read this photo. Please try another one.",
+                  "ছবিটি পড়া যায়নি। অন্য একটি ছবি দিন।"
+                )
         );
+      }
     } finally {
       setPhotoBusy(false);
     }
@@ -254,13 +257,8 @@ export default function ApplyPage() {
         return L("Please select your class.", "অনুগ্রহ করে আপনার শ্রেণি নির্বাচন করুন।");
       return "";
     }
-    // A photo the browser couldn't read must be fixed or explicitly
-    // dismissed — never silently dropped from the application.
-    if (photoError)
-      return L(
-        "Could not attach the student photo — choose another one or dismiss the message.",
-        "শিক্ষার্থীর ছবি যুক্ত হয়নি — অন্য ছবি দিন বা বার্তাটি বাতিল করুন।"
-      );
+    // A photo error must be resolved before proceeding.
+    if (photoError) return photoError;
     if (!NAME_RE.test(form.englishName.trim()))
       return L(
         "Enter the student's name in English (2–60 letters).",
@@ -797,7 +795,7 @@ export default function ApplyPage() {
                       <div className={labelCls}>
                         {L("Student Photo", "শিক্ষার্থীর ছবি")}
                         <span className={`text-[11px] font-normal ${isDark ? "text-zinc-500" : "text-gray-400"}`}>
-                          ({L("optional", "ঐচ্ছিক")})
+                          ({L("optional, max 350KB", "ঐচ্ছিক, সর্বোচ্চ ৩৫০KB")})
                         </span>
                       </div>
                       <div className="flex items-start gap-4">
@@ -806,9 +804,11 @@ export default function ApplyPage() {
                           onClick={() => photoInputRef.current?.click()}
                           aria-label={L("Choose photo", "ছবি নির্বাচন করুন")}
                           className={`h-20 w-20 shrink-0 overflow-hidden rounded-lg flex items-center justify-center transition-all ${
-                            photo
-                              ? `ring-1 ${isDark ? "ring-white/15 hover:ring-white/30" : "ring-black/10 hover:ring-black/25"}`
-                              : `border-2 border-dashed ${isDark ? "border-white/15 hover:border-white/35 text-zinc-500 hover:text-zinc-300" : "border-gray-300 hover:border-gray-400 text-gray-400 hover:text-gray-600"}`
+                            photoError
+                              ? `border-2 border-dashed ${isDark ? "border-red-500/60 text-red-400 bg-red-500/5" : "border-red-400 text-red-500 bg-red-50"}`
+                              : photo
+                                ? `ring-1 ${isDark ? "ring-white/15 hover:ring-white/30" : "ring-black/10 hover:ring-black/25"}`
+                                : `border-2 border-dashed ${isDark ? "border-white/15 hover:border-white/35 text-zinc-500 hover:text-zinc-300" : "border-gray-300 hover:border-gray-400 text-gray-400 hover:text-gray-600"}`
                           }`}
                         >
                           {photo ? (
@@ -818,11 +818,11 @@ export default function ApplyPage() {
                             <Camera className="h-6 w-6" />
                           )}
                         </button>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className={`text-xs ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
                             {L(
-                              "Appears on the admit card. JPG, PNG or WebP up to 350KB — large photos are resized automatically.",
-                              "অ্যাডমিট কার্ডে দেখানো হবে। JPG, PNG বা WebP — সর্বোচ্চ 350KB, বড় ছবি স্বয়ংক্রিয়ভাবে ছোট করা হবে।"
+                              "Appears on the admit card. JPG, PNG or WebP (max 350KB).",
+                              "অ্যাডমিট কার্ডে প্রদর্শিত হবে। JPG, PNG বা WebP (সর্বোচ্চ ৩৫০KB)।"
                             )}
                           </p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -858,14 +858,19 @@ export default function ApplyPage() {
                             )}
                           </div>
                           {photoError && (
-                            <div className="mt-2 flex items-center gap-2">
-                              <p className={`text-xs ${isDark ? "text-red-400" : "text-red-600"}`}>
-                                {photoError}
-                              </p>
+                            <div className={`mt-2.5 flex items-center justify-between rounded-md border px-3 py-2 text-xs ${
+                              isDark
+                                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                : "border-red-200 bg-red-50 text-red-700"
+                            }`}>
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                                <span>{photoError}</span>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => setPhotoError("")}
-                                className={`text-[11px] underline ${isDark ? "text-zinc-500 hover:text-zinc-300" : "text-gray-400 hover:text-gray-600"}`}
+                                className="ml-2 text-[11px] underline opacity-80 hover:opacity-100"
                               >
                                 {L("Dismiss", "বাতিল")}
                               </button>
@@ -877,7 +882,7 @@ export default function ApplyPage() {
                         ref={photoInputRef}
                         id="apply-photo"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         className="hidden"
                         onChange={handlePhotoChange}
                       />
@@ -964,7 +969,12 @@ export default function ApplyPage() {
                 )}
 
                 {fieldError && (
-                  <p className={`text-xs ${isDark ? "text-red-400" : "text-red-600"}`}>{fieldError}</p>
+                  <div className={`rounded-md border px-3 py-2 text-xs flex items-center gap-2 ${
+                    isDark ? "border-red-500/20 bg-red-500/10 text-red-300" : "border-red-200 bg-red-50 text-red-700"
+                  }`}>
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                    <span>{fieldError}</span>
+                  </div>
                 )}
 
                 {/* Navigation */}
