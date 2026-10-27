@@ -29,6 +29,18 @@ export function generateTransactionId(): string {
   return 'TXN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
 }
 
+/** Retry a flaky server-action call once. Server actions can fail on a
+ *  transient blip (dev rebuild, dropped connection, service restart) even
+ *  though a second attempt succeeds a moment later. */
+export async function retryOnce<T>(fn: () => Promise<T>, delayMs = 600): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return fn();
+  }
+}
+
 export function calculateGrade(percentage: number): string {
   return _calculateGrade(percentage, DEFAULT_SCALE);
 }

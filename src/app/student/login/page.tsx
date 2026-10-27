@@ -5,7 +5,7 @@ import Link from "next/link";
 import { loginStudent } from "@/lib/auth/student-login";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn } from "@/lib/utils/helpers";
+import { cn, retryOnce } from "@/lib/utils/helpers";
 import { ArrowRight, Eye, EyeOff, Lock, AlertCircle, User } from "lucide-react";
 
 export default function StudentLoginPage() {
@@ -55,7 +55,7 @@ export default function StudentLoginPage() {
     setError("");
 
     try {
-      const result = await loginStudent(studentId, phoneOrEmail);
+      const result = await retryOnce(() => loginStudent(studentId, phoneOrEmail));
 
       if (result.locked) {
         setLocked(true);
@@ -71,7 +71,15 @@ export default function StudentLoginPage() {
         setError(isBn ? "ভুল শিক্ষার্থী আইডি বা তথ্য" : "Invalid student ID or credentials");
       }
     } catch {
-      setError(isBn ? "সংযোগে সমস্যা" : "Connection error");
+      setError(
+        typeof navigator !== "undefined" && navigator.onLine === false
+          ? isBn
+            ? "ইন্টারনেট সংযোগ নেই। নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।"
+            : "No internet connection. Check your network and try again."
+          : isBn
+            ? "সার্ভারে পৌঁছানো যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।"
+            : "Could not reach the server. Please try again."
+      );
     }
 
     setLoading(false);

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth/auth";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
-import { cn } from "@/lib/utils/helpers";
+import { cn, retryOnce } from "@/lib/utils/helpers";
 import { ArrowRight, Eye, EyeOff, Lock, AlertCircle, ShieldCheck, Sun, Moon } from "lucide-react";
 
 export default function LoginPage() {
@@ -67,17 +67,25 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const lockoutResult = await checkAccountLockout(email);
+      // The lockout probe is advisory — if it can't be reached, still attempt
+      // the sign-in (loginWithLockout re-checks the lockout server-side).
+      // A transient failure here used to abort the whole login as
+      // "Connection error".
+      try {
+        const lockoutResult = await checkAccountLockout(email);
 
-      if (lockoutResult.locked) {
-        setLocked(true);
-        setRetryAfter(lockoutResult.retryAfter || 300);
-        setError(isBn
-          ? `অ্যাকাউন্ট লক করা হয়েছে। ${formatTime(lockoutResult.retryAfter || 300)} অপেক্ষা করুন।`
-          : `Account locked. Wait ${formatTime(lockoutResult.retryAfter || 300)}.`
-        );
-        setLoading(false);
-        return;
+        if (lockoutResult.locked) {
+          setLocked(true);
+          setRetryAfter(lockoutResult.retryAfter || 300);
+          setError(isBn
+            ? `অ্যাকাউন্ট লক করা হয়েছে। ${formatTime(lockoutResult.retryAfter || 300)} অপেক্ষা করুন।`
+            : `Account locked. Wait ${formatTime(lockoutResult.retryAfter || 300)}.`
+          );
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // ignore — proceed to the real sign-in call below
       }
 
       // loginWithLockout (server action) records every attempt in
@@ -85,7 +93,7 @@ export default function LoginPage() {
       // The old client-side login() never wrote to that table, so
       // checkAccountLockout() always read an empty table — brute force was
       // unlimited. See audit C2.
-      const result = await loginWithLockout(email, password);
+      const result = await retryOnce(() => loginWithLockout(email, password));
 
       if (result.success && result.user) {
         // Hydrate the shared auth context first — see the useAuth() note above.
@@ -110,7 +118,15 @@ export default function LoginPage() {
         setError(isBn ? "ভুল ইমেইল বা পাসওয়ার্ড" : "Invalid email or password");
       }
     } catch {
-      setError(isBn ? "সংযোগে সমস্যা" : "Connection error");
+      setError(
+        typeof navigator !== "undefined" && navigator.onLine === false
+          ? isBn
+            ? "ইন্টারনেট সংযোগ নেই। নেটওয়ার্ক পরীক্ষা করে আবার চেষ্টা করুন।"
+            : "No internet connection. Check your network and try again."
+          : isBn
+            ? "সার্ভারে পৌঁছানো যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।"
+            : "Could not reach the server. Please try again."
+      );
     }
 
     setLoading(false);
