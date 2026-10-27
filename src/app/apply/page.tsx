@@ -86,7 +86,7 @@ function SelectShell({ dark, children }: { dark: boolean; children: ReactNode })
 }
 
 type PhotoResult =
-  | { ok: true; dataUrl: string }
+  | { ok: true; dataUrl: string; resized: boolean }
   | { ok: false; code: "TYPE" | "READ" | "SIZE"; sizeStr?: string };
 
 const ALLOWED_PHOTO_TYPES = [
@@ -96,6 +96,13 @@ const ALLOWED_PHOTO_TYPES = [
   "image/jpg",
   "image/pjpeg",
 ];
+
+/** base64 grows a payload by ~4/3; allow the data-URL prefix + padding. */
+const MAX_PHOTO_CHARS = Math.ceil((MAX_IMAGE_SIZE * 4) / 3) + 64;
+
+/** Nothing bigger than this is even decoded — protects the tab. Bigger
+ *  photos are still compressed down to the 350KB cap, not rejected. */
+const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -120,39 +127,110 @@ function isAllowedPhotoFile(file: File): boolean {
   return /\.(jpe?g|png|webp)$/i.test(file.name);
 }
 
+function readAsDataUrl(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () =>
+      resolve(typeof reader.result === "string" ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Cameras/browsers report variants like `image/jpg` or `image/pjpeg`;
+ *  normalise the prefix so the server action accepts the data URL. */
+function normalizePhotoDataUrl(dataUrl: string, mime: string): string {
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0 || !dataUrl.startsWith("data:")) return dataUrl;
+
+  let type = (mime || "").toLowerCase();
+  if (!type || !type.startsWith("image/")) {
+    type = (dataUrl.slice(5, comma).split(";")[0] || "").toLowerCase();
+  }
+  if (type === "image/jpg" || type === "image/pjpeg" || type === "image/jfif") {
+    type = "image/jpeg";
+  }
+  if (!["image/jpeg", "image/png", "image/webp"].includes(type)) return dataUrl;
+
+  return `data:${type};base64,${dataUrl.slice(comma + 1)}`;
+}
+
+/** Scale + re-encode a large photo as JPEG until it fits the 350KB cap. */
+async function compressPhoto(file: File): Promise<string | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+
+    const naturalMax = Math.max(img.naturalWidth, img.naturalHeight);
+    if (naturalMax < 1) return null;
+
+    let side = Math.min(1024, naturalMax);
+    let quality = 0.85;
+
+    const encode = (): string => {
+      const scale = side / naturalMax;
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return "";
+      // JPEG has no alpha — paint white first so transparent PNGs
+      // don't come out with black corners.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", quality);
+    };
+
+    let out = encode();
+    while (out && out.length > MAX_PHOTO_CHARS && (quality > 0.4 || side > 320)) {
+      if (quality > 0.4) quality = Math.max(0.4, +(quality - 0.1).toFixed(2));
+      else {
+        side = Math.round(side * 0.75);
+        quality = 0.85;
+      }
+      out = encode();
+    }
+    return out && out.length <= MAX_PHOTO_CHARS ? out : null;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /**
- * Read the applicant's photo ensuring it stays under MAX_IMAGE_SIZE (350KB).
- * Rejects photos that exceed the maximum size or have an unsupported format.
+ * Read the applicant's photo. Files at or under MAX_IMAGE_SIZE (350KB) are
+ * used as-is (no warning); larger ones are scaled/re-encoded to fit, so a
+ * normal phone photo never blocks the application.
  */
 async function readPhotoFile(file: File): Promise<PhotoResult> {
   if (!isAllowedPhotoFile(file)) {
     return { ok: false, code: "TYPE" };
   }
 
-  if (file.size > MAX_IMAGE_SIZE) {
+  if (file.size > MAX_SOURCE_BYTES) {
     return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
   }
 
-  try {
-    const dataUrl = await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        resolve(typeof reader.result === "string" ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
+  const raw = await readAsDataUrl(file);
+  if (!raw) return { ok: false, code: "READ" };
 
-    if (!dataUrl) return { ok: false, code: "READ" };
-
-    const maxChars = Math.ceil((MAX_IMAGE_SIZE * 4) / 3) + 64;
-    if (dataUrl.length > maxChars) {
-      return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
+  if (file.size <= MAX_IMAGE_SIZE) {
+    const dataUrl = normalizePhotoDataUrl(raw, file.type);
+    if (dataUrl.length <= MAX_PHOTO_CHARS) {
+      return { ok: true, dataUrl, resized: false };
     }
-
-    return { ok: true, dataUrl };
-  } catch {
-    return { ok: false, code: "READ" };
   }
+
+  const compressed = await compressPhoto(file);
+  if (compressed) return { ok: true, dataUrl: compressed, resized: true };
+
+  return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
 }
 
 export default function ApplyPage() {
@@ -185,6 +263,7 @@ export default function ApplyPage() {
   // Optional applicant photo (base64 data URL, max 350KB).
   const [photo, setPhoto] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [photoNote, setPhotoNote] = useState("");
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,11 +272,20 @@ export default function ApplyPage() {
     e.target.value = ""; // allow re-picking the same file
     if (!file) return;
     setPhotoError("");
+    setPhotoNote("");
     setPhotoBusy(true);
     try {
       const res = await readPhotoFile(file);
       if (res.ok) {
         setPhoto(res.dataUrl);
+        if (res.resized) {
+          setPhotoNote(
+            L(
+              "Photo optimized automatically to fit within 350KB.",
+              "ছবিটি ৩৫০KB-এর মধ্যে আনার জন্য স্বয়ংক্রিয়ভাবে অপ্টিমাইজ করা হয়েছে।"
+            )
+          );
+        }
       } else {
         setPhoto("");
         const sizeStr = res.sizeStr ?? formatFileSize(file.size);
@@ -209,8 +297,8 @@ export default function ApplyPage() {
               )
             : res.code === "SIZE"
               ? L(
-                  `Photo is ${sizeStr}. Maximum 350KB allowed.`,
-                  `ছবির আকার ${sizeStr}। সর্বোচ্চ ৩৫০KB অনুমোদিত।`
+                  `Photo is ${sizeStr}. Please choose one under 350KB.`,
+                  `ছবির আকার ${sizeStr}। ৩৫০KB-এর কম আকারের ছবি নির্বাচন করুন।`
                 )
               : L(
                   "Could not read this photo. Please try another one.",
@@ -821,8 +909,8 @@ export default function ApplyPage() {
                         <div className="min-w-0 flex-1">
                           <p className={`text-xs ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
                             {L(
-                              "Appears on the admit card. JPG, PNG or WebP (max 350KB).",
-                              "অ্যাডমিট কার্ডে প্রদর্শিত হবে। JPG, PNG বা WebP (সর্বোচ্চ ৩৫০KB)।"
+                              "Appears on the admit card. JPG, PNG or WebP up to 350KB — larger photos are fitted automatically.",
+                              "অ্যাডমিট কার্ডে প্রদর্শিত হবে। JPG, PNG বা WebP সর্বোচ্চ ৩৫০KB — বড় ছবি স্বয়ংক্রিয়ভাবে ফিট করা হবে।"
                             )}
                           </p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -850,6 +938,7 @@ export default function ApplyPage() {
                                 onClick={() => {
                                   setPhoto("");
                                   setPhotoError("");
+                                  setPhotoNote("");
                                 }}
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -875,6 +964,12 @@ export default function ApplyPage() {
                                 {L("Dismiss", "বাতিল")}
                               </button>
                             </div>
+                          )}
+                          {photoNote && (
+                            <p className={`mt-2 flex items-center gap-1.5 text-xs ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+                              <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                              <span>{photoNote}</span>
+                            </p>
                           )}
                         </div>
                       </div>

@@ -352,7 +352,7 @@ const MAX_PHOTO_BYTES = 350 * 1024;
 /** base64 grows a payload by ~4/3; allow the data-URL prefix + padding. */
 const MAX_PHOTO_CHARS = Math.ceil((MAX_PHOTO_BYTES * 4) / 3) + 64;
 const PHOTO_DATA_URL_RE =
-  /^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+  /^data:image\/(?:jpeg|jpg|pjpeg|jfif|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/i;
 
 export interface ApplyResult {
   ok: boolean;
