@@ -323,7 +323,7 @@ export default function SuperAdminSettingsPage() {
     const MAX_BRAND_SIZE = MAX_IMAGE_SIZE;
     if (file.size > MAX_BRAND_SIZE) {
       const sizeKB = Math.round(file.size / 1024);
-      toast("error", isBn ? `ছবির সর্বোচ্চ আকার 350KB — এটি ${sizeKB}KB` : `Maximum image size is 350KB — this one is ${sizeKB}KB`);
+      toast("error", isBn ? `ছবির সর্বোচ্চ আকার 150KB — এটি ${sizeKB}KB` : `Maximum image size is 150KB — this one is ${sizeKB}KB`);
       return;
     }
     setUploadKind(kind);
@@ -699,7 +699,7 @@ export default function SuperAdminSettingsPage() {
                             </button>
                           )}
                         </div>
-                        <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'সর্বোচ্চ ৩৫০KB — PNG/JPG/WEBP, স্বচ্ছ পটভূমি ভালো দেখায়' : 'Max 350KB — PNG/JPG/WEBP, a transparent background looks best'}</p>
+                        <p className={`text-[11px] ${subtextCls}`}>{isBn ? 'সর্বোচ্চ ১৫০KB — PNG/JPG/WEBP, স্বচ্ছ পটভূমি ভালো দেখায়' : 'Max 150KB — PNG/JPG/WEBP, a transparent background looks best'}</p>
                       </div>
                     </div>
                   </div>

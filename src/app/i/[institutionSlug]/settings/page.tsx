@@ -103,8 +103,8 @@ export default function InstitutionSettingsPage() {
     if (file.size > MAX_IMAGE_SIZE) {
       setLogoError(
         isBn
-          ? `লোগো ৩৫০KB এর কম হতে হবে। বর্তমান: ${(file.size / 1024).toFixed(0)}KB`
-          : `Logo must be under 350KB. Current: ${(file.size / 1024).toFixed(0)}KB`
+          ? `লোগো ১৫০KB এর কম হতে হবে। বর্তমান: ${(file.size / 1024).toFixed(0)}KB`
+          : `Logo must be under 150KB. Current: ${(file.size / 1024).toFixed(0)}KB`
       );
       e.target.value = "";
       return;
@@ -130,8 +130,8 @@ export default function InstitutionSettingsPage() {
       const sizeKB = Math.round(file.size / 1024);
       setSigError(
         isBn
-          ? `স্বাক্ষর ৩৫০KB এর কম হতে হবে। বর্তমান: ${sizeKB}KB`
-          : `Signature must be under 350KB. Current: ${sizeKB}KB`
+          ? `স্বাক্ষর ১৫০KB এর কম হতে হবে। বর্তমান: ${sizeKB}KB`
+          : `Signature must be under 150KB. Current: ${sizeKB}KB`
       );
       e.target.value = "";
       return;
@@ -346,7 +346,7 @@ export default function InstitutionSettingsPage() {
                         {isBn ? 'প্রতিষ্ঠানের লোগো' : 'Institution Logo'}
                       </p>
                       <p className={`text-xs mb-2 ${subtextCls}`}>
-                        {isBn ? 'সর্বোচ্চ ৩৫০KB — টপ প্যানেল ও সাইডবারে দেখানো হবে' : 'Max 350KB — shown in the top panel and sidebar'}
+                        {isBn ? 'সর্বোচ্চ ১৫০KB — টপ প্যানেল ও সাইডবারে দেখানো হবে' : 'Max 150KB — shown in the top panel and sidebar'}
                       </p>
                       <label className={cn(
                         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-all",
@@ -385,7 +385,7 @@ export default function InstitutionSettingsPage() {
                         {isBn ? 'অধ্যক্ষের স্বাক্ষর' : 'Principal Signature'}
                       </p>
                       <p className={`text-xs mb-2 ${subtextCls}`}>
-                        {isBn ? 'সর্বোচ্চ ৩৫০KB — প্রবেশপত্রের ফুটারে দেখানো হবে' : 'Max 350KB — shown in the admit-card footer'}
+                        {isBn ? 'সর্বোচ্চ ১৫০KB — প্রবেশপত্রের ফুটারে দেখানো হবে' : 'Max 150KB — shown in the admit-card footer'}
                       </p>
                       <div className="flex items-center gap-2">
                         <label className={cn(

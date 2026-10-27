@@ -101,7 +101,7 @@ const ALLOWED_PHOTO_TYPES = [
 const MAX_PHOTO_CHARS = Math.ceil((MAX_IMAGE_SIZE * 4) / 3) + 64;
 
 /** Nothing bigger than this is even decoded — protects the tab. Bigger
- *  photos are still compressed down to the 350KB cap, not rejected. */
+ *  photos are still compressed down to the 150KB cap, not rejected. */
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 
 function formatFileSize(bytes: number): string {
@@ -155,7 +155,7 @@ function normalizePhotoDataUrl(dataUrl: string, mime: string): string {
   return `data:${type};base64,${dataUrl.slice(comma + 1)}`;
 }
 
-/** Scale + re-encode a large photo as JPEG until it fits the 350KB cap. */
+/** Scale + re-encode a large photo as JPEG until it fits the 150KB cap. */
 async function compressPhoto(file: File): Promise<string | null> {
   const url = URL.createObjectURL(file);
   try {
@@ -204,7 +204,7 @@ async function compressPhoto(file: File): Promise<string | null> {
 }
 
 /**
- * Read the applicant's photo. Files at or under MAX_IMAGE_SIZE (350KB) are
+ * Read the applicant's photo. Files at or under MAX_IMAGE_SIZE (150KB) are
  * used as-is (no warning); larger ones are scaled/re-encoded to fit, so a
  * normal phone photo never blocks the application.
  */
@@ -260,7 +260,7 @@ export default function ApplyPage() {
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState<ApplyResult | null>(null);
 
-  // Optional applicant photo (base64 data URL, max 350KB).
+  // Optional applicant photo (base64 data URL, max 150KB).
   const [photo, setPhoto] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [photoNote, setPhotoNote] = useState("");
@@ -281,8 +281,8 @@ export default function ApplyPage() {
         if (res.resized) {
           setPhotoNote(
             L(
-              "Photo optimized automatically to fit within 350KB.",
-              "ছবিটি ৩৫০KB-এর মধ্যে আনার জন্য স্বয়ংক্রিয়ভাবে অপ্টিমাইজ করা হয়েছে।"
+              "Photo optimized automatically to fit within 150KB.",
+              "ছবিটি ১৫০KB-এর মধ্যে আনার জন্য স্বয়ংক্রিয়ভাবে অপ্টিমাইজ করা হয়েছে।"
             )
           );
         }
@@ -297,8 +297,8 @@ export default function ApplyPage() {
               )
             : res.code === "SIZE"
               ? L(
-                  `Photo is ${sizeStr}. Please choose one under 350KB.`,
-                  `ছবির আকার ${sizeStr}। ৩৫০KB-এর কম আকারের ছবি নির্বাচন করুন।`
+                  `Photo is ${sizeStr}. Please choose one under 150KB.`,
+                  `ছবির আকার ${sizeStr}। ১৫০KB-এর কম আকারের ছবি নির্বাচন করুন।`
                 )
               : L(
                   "Could not read this photo. Please try another one.",
@@ -883,7 +883,7 @@ export default function ApplyPage() {
                       <div className={labelCls}>
                         {L("Student Photo", "শিক্ষার্থীর ছবি")}
                         <span className={`text-[11px] font-normal ${isDark ? "text-zinc-500" : "text-gray-400"}`}>
-                          ({L("optional, max 350KB", "ঐচ্ছিক, সর্বোচ্চ ৩৫০KB")})
+                          ({L("optional, max 150KB", "ঐচ্ছিক, সর্বোচ্চ ১৫০KB")})
                         </span>
                       </div>
                       <div className="flex items-start gap-4">
@@ -909,8 +909,8 @@ export default function ApplyPage() {
                         <div className="min-w-0 flex-1">
                           <p className={`text-xs ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
                             {L(
-                              "Appears on the admit card. JPG, PNG or WebP up to 350KB — larger photos are fitted automatically.",
-                              "অ্যাডমিট কার্ডে প্রদর্শিত হবে। JPG, PNG বা WebP সর্বোচ্চ ৩৫০KB — বড় ছবি স্বয়ংক্রিয়ভাবে ফিট করা হবে।"
+                              "Appears on the admit card. JPG, PNG or WebP up to 150KB — larger photos are fitted automatically.",
+                              "অ্যাডমিট কার্ডে প্রদর্শিত হবে। JPG, PNG বা WebP সর্বোচ্চ ১৫০KB — বড় ছবি স্বয়ংক্রিয়ভাবে ফিট করা হবে।"
                             )}
                           </p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">

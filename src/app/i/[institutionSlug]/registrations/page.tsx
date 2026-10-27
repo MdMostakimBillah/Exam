@@ -189,7 +189,7 @@ export default function InstitutionRegistrationsPage() {
     setPhotoError("");
     if (file.size > MAX_PHOTO_SIZE) {
       const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 350KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 350KB allowed.`);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 150KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 150KB allowed.`);
       return;
     }
     const reader = new FileReader();
@@ -370,7 +370,7 @@ export default function InstitutionRegistrationsPage() {
     setPhotoError("");
     if (file.size > MAX_PHOTO_SIZE) {
       const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 350KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 350KB allowed.`);
+      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 150KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 150KB allowed.`);
       return;
     }
     const reader = new FileReader();
@@ -624,7 +624,7 @@ export default function InstitutionRegistrationsPage() {
           <div className="py-3 space-y-4">
             {/* Profile Picture */}
             <div>
-              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 350KB)</span></label>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 150KB)</span></label>
               <div className="flex items-start gap-4">
                 <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", studentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
                   {studentForm.photo ? (
@@ -650,7 +650,7 @@ export default function InstitutionRegistrationsPage() {
                     </p>
                   )}
                   <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                    {isBn ? 'JPG, PNG। সর্বোচ্চ 350KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 350KB file size allowed.'}
+                    {isBn ? 'JPG, PNG। সর্বোচ্চ 150KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 150KB file size allowed.'}
                   </p>
                 </div>
               </div>
@@ -936,7 +936,7 @@ export default function InstitutionRegistrationsPage() {
             {editStep === 3 && (
               <div className="py-2 space-y-4">
                 <div>
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 350KB)</span></label>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 150KB)</span></label>
                   <div className="flex items-start gap-4">
                     <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", editStudentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
                       {editStudentForm.photo ? (
@@ -962,7 +962,7 @@ export default function InstitutionRegistrationsPage() {
                         </p>
                       )}
                       <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                        {isBn ? 'JPG, PNG। সর্বোচ্চ 350KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 350KB file size allowed.'}
+                        {isBn ? 'JPG, PNG। সর্বোচ্চ 150KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 150KB file size allowed.'}
                       </p>
                     </div>
                   </div>

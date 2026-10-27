@@ -29,7 +29,7 @@ async function canUploadBranding(): Promise<{ ok: boolean; error?: string }> {
  *  a stored SVG opened directly executes script on the storage origin. */
 const ALLOWED_IMAGE_EXT = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif"]);
 /** Matches system_settings.max_upload_size_mb (5). */
-const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+const MAX_LOGO_BYTES = 150 * 1024;
 /** Slug becomes part of the storage object key — keep it strictly slug-safe. */
 const SAFE_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 /** Institution codes become URL/path fragments elsewhere — keep them tight. */
@@ -170,7 +170,7 @@ export async function uploadLogo(slug: string, file: ArrayBuffer, ext: string): 
     const safeExt = String(ext || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
     if (!ALLOWED_IMAGE_EXT.has(safeExt)) return "";
 
-    // Enforce the advertised upload cap (settings page shows 5 MB).
+    // Enforce the advertised upload cap (the register form shows 150 KB).
     if (!file || file.byteLength > MAX_LOGO_BYTES) return "";
 
     const path = `institution-logos/${safeSlug}-${Date.now()}.${safeExt}`;

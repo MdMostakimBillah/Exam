@@ -8,8 +8,8 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Global cap for every image upload in the app (logos, photos, payment
  *  proofs, branding images). Photos are stored as base64 in the DB, so a
- * tight cap keeps storage predictable (~350KB ≈ 3,000-5,000 students/GB). */
-export const MAX_IMAGE_SIZE = 350 * 1024;
+ * tight cap keeps storage predictable (~150KB ≈ 4,500-5,000 students/GB). */
+export const MAX_IMAGE_SIZE = 150 * 1024;
 
 export function generateApplicationId(): string {
   const prefix = 'APP';

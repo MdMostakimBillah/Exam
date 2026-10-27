@@ -120,7 +120,7 @@ export default function PaymentSubmitPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_IMAGE_SIZE) {
-      setError(isBn ? "ছবির আকার 350KB এর বেশি হতে পারে না" : "Image must be under 350KB");
+      setError(isBn ? "ছবির আকার 150KB এর বেশি হতে পারে না" : "Image must be under 150KB");
       return;
     }
     setProofImageFile(file);
@@ -399,7 +399,7 @@ export default function PaymentSubmitPage() {
                       </button>
                     )}
                     <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                      {isBn ? "JPG, PNG। সর্বোচ্চ 350KB।" : "JPG, PNG. Max 350KB."}
+                      {isBn ? "JPG, PNG। সর্বোচ্চ 150KB।" : "JPG, PNG. Max 150KB."}
                     </p>
                   </div>
                 </div>

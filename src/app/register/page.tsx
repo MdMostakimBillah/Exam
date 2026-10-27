@@ -89,7 +89,7 @@ export default function RegisterPage() {
     if (!file) return;
     setLogoError("");
     if (file.size > MAX_LOGO_SIZE) {
-      setLogoError(`Logo must be under 350KB. Current: ${(file.size / 1024).toFixed(0)}KB`);
+      setLogoError(`Logo must be under 150KB. Current: ${(file.size / 1024).toFixed(0)}KB`);
       e.target.value = "";
       return;
     }
@@ -319,7 +319,7 @@ export default function RegisterPage() {
                           Institution Logo
                         </p>
                         <p className={`text-xs ${textSec} mb-2`}>
-                          Upload your institution logo (max 350KB)
+                          Upload your institution logo (max 150KB)
                         </p>
                         <label
                           className={`inline-flex items-center gap-2 text-sm cursor-pointer transition-colors ${linkBlue}`}
