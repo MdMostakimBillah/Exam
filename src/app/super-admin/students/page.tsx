@@ -14,6 +14,7 @@ import { useAllRegistrations, normalizeRegistrationStatus } from "@/lib/storage/
 import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
+import { downloadExcel, type ExcelColumn } from "@/lib/utils/export-excel";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { Student, Registration } from "@/lib/types";
@@ -100,6 +101,7 @@ export default function StudentsPage() {
     { header: isBn ? 'পিতার নাম' : 'Father', key: 'father' },
     { header: isBn ? 'মাতার নাম' : 'Mother', key: 'mother' },
     { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
+    { header: isBn ? 'জন্ম তারিখ' : 'Date of Birth', key: 'dob' },
     { header: isBn ? 'লিঙ্গ' : 'Gender', key: 'gender' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
     { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
@@ -118,11 +120,52 @@ export default function StudentsPage() {
       father: s.fatherName || '-',
       mother: s.motherName || '-',
       phone: s.phone || '-',
+      dob: s.dateOfBirth || '-',
       gender: genderLabel(s.gender, isBn),
       class: s.class,
       roll: s.roll,
       status: normalizeRegistrationStatus(latestReg.get(s.id)?.status) || s.status,
     })), [filtered, selection, getInstitutionName, latestReg, isBn]);
+
+  const excelColumns: ExcelColumn[] = useMemo(() => [
+    { header: isBn ? 'ক্রমিক' : 'SN', key: 'sn', width: 7 },
+    { header: isBn ? 'শিক্ষার্থী' : 'Student', key: 'name' },
+    { header: isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number', key: 'regNumber' },
+    { header: isBn ? 'প্রতিষ্ঠান' : 'Institution', key: 'institution' },
+    { header: isBn ? 'পিতার নাম' : 'Father', key: 'father' },
+    { header: isBn ? 'মাতার নাম' : 'Mother', key: 'mother' },
+    { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
+    { header: isBn ? 'জন্ম তারিখ' : 'Date of Birth', key: 'dob', width: 15 },
+    { header: isBn ? 'লিঙ্গ' : 'Gender', key: 'gender', width: 10 },
+    { header: isBn ? 'শ্রেণী' : 'Class', key: 'class', width: 10 },
+    { header: isBn ? 'রোল' : 'Roll', key: 'roll' },
+    { header: isBn ? 'স্থিতি' : 'Status', key: 'status', width: 12 },
+  ], [isBn]);
+
+  /** Excel export follows the table: every row that matches the filters. */
+  const handleExportExcel = () => {
+    if (filtered.length === 0) return;
+    const rows = filtered.map((s, i) => ({
+      sn: i + 1,
+      name: `${s.firstName} ${s.lastName}`.trim(),
+      regNumber: getRegNumber(s.id),
+      institution: getInstitutionName(s.institutionId),
+      father: s.fatherName || '-',
+      mother: s.motherName || '-',
+      phone: s.phone || '-',
+      dob: s.dateOfBirth || '-',
+      gender: genderLabel(s.gender, isBn),
+      class: s.class,
+      roll: s.roll || '-',
+      status: getRegStatus(s.id) || s.status,
+    }));
+    downloadExcel({
+      filename: `students-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: isBn ? 'শিক্ষার্থী' : 'Students',
+      columns: excelColumns,
+      rows,
+    });
+  };
 
   const approvedCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'APPROVED').length, [students, latestReg]);
   const pendingCount = useMemo(() => students.filter(s => normalizeRegistrationStatus(latestReg.get(s.id)?.status) === 'PENDING').length, [students, latestReg]);
@@ -256,8 +299,13 @@ export default function StudentsPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className={`w-full sm:w-36 ${inputCls}`}
             />
-            <button className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}>
-              <Download className="h-3.5 w-3.5" /> {isBn ? 'এক্সপোর্ট' : 'Export'}
+            <button
+              onClick={handleExportExcel}
+              disabled={filtered.length === 0}
+              title={isBn ? 'বর্তমান তালিকা এক্সেল ফাইলে ডাউনলোড করুন' : 'Download the current list as an Excel file'}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isDark ? "bg-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200"}`}
+            >
+              <Download className="h-3.5 w-3.5" /> {isBn ? 'এক্সেল' : 'Excel'}
             </button>
           </div>
         </div>
@@ -284,7 +332,7 @@ export default function StudentsPage() {
               <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'অনুসন্ধান বা ফিল্টার পরিবর্তন করুন' : 'Try adjusting your search or filters'}</p>
             </div>
           ) : (
-            <Table className="min-w-[1300px] whitespace-nowrap">
+            <Table className="min-w-[1400px] whitespace-nowrap">
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
                   <TableHead className="w-10">
@@ -297,6 +345,7 @@ export default function StudentsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পিতার নাম' : 'Father'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'মাতার নাম' : 'Mother'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ফোন' : 'Phone'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'লিঙ্গ' : 'Gender'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রোল' : 'Roll'}</TableHead>
@@ -330,6 +379,7 @@ export default function StudentsPage() {
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.fatherName || '-'}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.motherName || '-'}</TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.phone || '-'}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.dateOfBirth || '-'}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{genderLabel(student.gender, isBn)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.roll}</TableCell>

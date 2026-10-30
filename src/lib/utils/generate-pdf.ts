@@ -39,6 +39,7 @@ export const PDF_CENTER_KEYS = new Set<string>([
   "registrationNumber",
   "phone",
   "gender",
+  "dob",
   "class",
   "roll",
   "status",
