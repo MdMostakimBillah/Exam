@@ -421,6 +421,35 @@ export async function generatePdf(options: GeneratePdfOptions) {
     };
   });
 
+  // ── Cell padding: keep every column on a single line ────────────────────
+  // The table's natural width is Σ(widest header/body text + padding) over
+  // the columns, plus the fixed # (and photo) columns. autotable scales all
+  // columns down when that exceeds the page — which wraps text and doubles
+  // row heights. A list sized EXACTLY to the page (the student list, before
+  // the Date of Birth column) therefore broke as soon as one column was
+  // added. Measure and pick the widest padding that still fits: tables that
+  // fit at the default 3mm keep the previous design byte-for-byte, and only
+  // over-full tables tighten up instead of wrapping.
+  const measuredNatural = columns.map((c) => {
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(7);
+    const headerW = doc.getTextWidth(c.header.toUpperCase());
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(8);
+    const bodyW = data.reduce(
+      (max, row) => Math.max(max, doc.getTextWidth(String(row[c.key] ?? ""))),
+      0
+    );
+    return Math.max(headerW, bodyW);
+  });
+  const fixedWidth = 10 + (withImage ? 16 : 0); // # column (+ photo column)
+  const availableWidth = pageWidth - 28 - fixedWidth;
+  const PADDING_STEPS = [3, 2.5, 2, 1.5, 1];
+  const cellPadding =
+    PADDING_STEPS.find((p) =>
+      measuredNatural.reduce((sum, w) => sum + w + 2 * p, 0) <= availableWidth
+    ) ?? PADDING_STEPS[PADDING_STEPS.length - 1];
+
   autoTable(doc, {
     startY: yPos,
     head: [["#", ...(withImage ? [imageHeader.toUpperCase()] : []), ...tableHeaders]],
@@ -429,7 +458,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
     styles: {
       font: FONT,
       fontSize: 8,
-      cellPadding: 3,
+      cellPadding,
       textColor: textDark,
       lineColor: pal.lightRgb,
       lineWidth: 0.2,
