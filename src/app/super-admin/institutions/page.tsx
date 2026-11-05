@@ -35,6 +35,7 @@ export default function InstitutionsPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
     name: "", code: "", slug: "", email: "", password: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING" as Institution["status"],
   });
@@ -146,7 +147,13 @@ export default function InstitutionsPage() {
    * immediately — no verification email/code is ever sent.
    */
   const handleCreate = async () => {
-    if (!form.name || !form.code) return;
+    if (creating) return; // guard against double-submit
+    if (!form.name || !form.code) {
+      toast("error", isBn
+        ? "প্রতিষ্ঠানের নাম ও কোড দিন"
+        : "Institution name and code are required");
+      return;
+    }
     if (!form.email.includes("@")) {
       toast("error", isBn
         ? "সঠিক ইমেইল দিন — এটিই প্রতিষ্ঠানের লগইন ইমেইল হবে"
@@ -159,6 +166,7 @@ export default function InstitutionsPage() {
         : "Password must be at least 8 characters");
       return;
     }
+    setCreating(true);
     try {
       const result = await createInstitutionWithAccountServer({
         name: form.name, code: form.code, slug: form.slug, email: form.email, password: form.password,
@@ -178,6 +186,8 @@ export default function InstitutionsPage() {
         : "Institution created — log in with its email & password (no email verification)");
     } catch (err) {
       toast("error", `${isBn ? "প্রতিষ্ঠান তৈরি করা যায়নি" : "Could not create institution"}: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -478,7 +488,7 @@ export default function InstitutionsPage() {
           </p>
           <ModalFooter>
             <button onClick={() => setShowCreateModal(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
-            <button onClick={handleCreate} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${'bg-brand-accent text-brand-accent-fg hover:opacity-90'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
+            <button onClick={handleCreate} disabled={creating} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${'bg-brand-accent text-brand-accent-fg hover:opacity-90'}`}>{creating ? (isBn ? 'তৈরি হচ্ছে...' : 'Creating...') : (isBn ? 'তৈরি করুন' : 'Create')}</button>
           </ModalFooter>
         </Modal>
       </div>

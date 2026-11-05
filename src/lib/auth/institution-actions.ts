@@ -241,25 +241,50 @@ export async function createInstitutionWithAccountServer(data: {
     });
     if (authError) {
       await supabaseAdmin.from("institutions").delete().eq("id", inst.id);
-      return { success: false, error: `Login account: ${authError.message}` };
+      const duplicate = /already been registered|already exists/i.test(authError.message);
+      return {
+        success: false,
+        error: duplicate ? "An account with this email already exists" : `Login account: ${authError.message}`,
+      };
     }
 
-    // 3. handle_new_user() already created the profile — attach it.
+    // 3. Profile: handle_new_user() normally created it already — UPSERT so a
+    //    missing row can never leave the account unlinked (same approach as
+    //    createUserServer in user-actions.ts). Sets institution_id too: the
+    //    trigger deliberately ignores it from metadata.
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .update({ institution_id: inst.id })
-      .eq("id", authData.user.id);
+      .upsert(
+        {
+          id: authData.user.id,
+          email,
+          name,
+          role: "institution_admin",
+          institution_id: inst.id,
+        },
+        { onConflict: "id" }
+      );
     if (profileError) {
+      // Profile first: profiles.id references auth.users — deleting the user
+      // while its profile row exists would violate the FK.
+      await supabaseAdmin.from("profiles").delete().eq("id", authData.user.id);
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => undefined);
       await supabaseAdmin.from("institutions").delete().eq("id", inst.id);
       return { success: false, error: profileError.message };
     }
 
-    // 4. Back-reference used by the dashboard's fallback lookup.
-    await supabaseAdmin
+    // 4. Back-reference used by the /i dashboard's fallback lookup — a failure
+    //    here must roll back too, or the admin could not find their institution.
+    const { error: linkError } = await supabaseAdmin
       .from("institutions")
       .update({ admin_user_id: authData.user.id })
       .eq("id", inst.id);
+    if (linkError) {
+      await supabaseAdmin.from("profiles").delete().eq("id", authData.user.id);
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => undefined);
+      await supabaseAdmin.from("institutions").delete().eq("id", inst.id);
+      return { success: false, error: linkError.message };
+    }
 
     return { success: true, institutionId: inst.id, userId: authData.user.id };
   } catch (err: unknown) {
