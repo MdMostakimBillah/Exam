@@ -148,33 +148,6 @@ export async function fetchInstitutionBySlug(slug: string): Promise<Institution 
   return mapInstitution(data);
 }
 
-export async function createInstitution(data: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>): Promise<Institution> {
-  const supabase = createClient();
-  const payload = {
-    name: data.name,
-    name_en: data.nameEn ?? null,
-    code: data.code,
-    slug: data.slug,
-    email: data.email,
-    phone: data.phone,
-    address: data.address,
-    city: data.city,
-    district: data.district,
-    contact_person: data.contactPerson,
-    contact_person_phone: data.contactPersonPhone,
-    admin_user_id: data.adminUserId,
-    status: data.status,
-    logo_url: data.logo,
-  };
-  let { data: result, error } = await supabase.from(SUPABASE_TABLE).insert(payload).select(INSTITUTION_COLUMNS).single();
-  if (error && isPreMigrationError(error)) {
-    // Invalid RETURNING list rolls the whole statement back — safe to retry.
-    ({ data: result, error } = await supabase.from(SUPABASE_TABLE).insert(payload).select('*').single());
-  }
-  if (error) throw error;
-  return mapInstitution(result);
-}
-
 export async function updateInstitution(id: string, data: Partial<Institution>): Promise<Institution | undefined> {
   const supabase = createClient();
   const u: any = { updated_at: new Date().toISOString() };
@@ -291,14 +264,6 @@ export function useInstitutionName() {
 }
 export function useInstitutionById(id: string) { return useQuery({ queryKey: ['institutions', id], queryFn: () => fetchInstitutionById(id), enabled: !!id, staleTime: INSTITUTIONS_STALE_TIME }); }
 export function useInstitutionBySlug(slug: string) { return useQuery({ queryKey: ['institutions', 'slug', slug], queryFn: () => fetchInstitutionBySlug(slug), enabled: !!slug, staleTime: INSTITUTIONS_STALE_TIME }); }
-
-export function useCreateInstitution() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => createInstitution(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['institutions'] }),
-  });
-}
 
 export function useUpdateInstitution() {
   const qc = useQueryClient();

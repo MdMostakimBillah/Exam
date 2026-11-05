@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { useInstitutions, useCreateInstitution, useUpdateInstitution, useDeleteInstitution, useInstitutionName } from "@/lib/storage/institutions";
+import { useInstitutions, useUpdateInstitution, useDeleteInstitution, useInstitutionName } from "@/lib/storage/institutions";
+import { createInstitutionWithAccountServer } from "@/lib/auth/institution-actions";
 import { useInstitutionStudentCounts } from "@/lib/storage/students";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Institution } from "@/lib/types";
@@ -19,6 +20,7 @@ import { useLang } from "@/contexts/language-context";
 import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
 import { LoadingBar } from "@/components/ui/loading-bar";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function InstitutionsPage() {
   const [mounted, setMounted] = useState(false);
@@ -34,13 +36,13 @@ export default function InstitutionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [form, setForm] = useState({
-    name: "", code: "", slug: "", email: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING" as Institution["status"],
+    name: "", code: "", slug: "", email: "", password: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING" as Institution["status"],
   });
 
   useEffect(() => { setMounted(true); }, []);
 
   const { data: institutions = [], isFetching, error: institutionsError } = useInstitutions();
-  const createInstitutionMutation = useCreateInstitution();
+  const queryClient = useQueryClient();
   const updateInstitutionMutation = useUpdateInstitution();
   const deleteInstitutionMutation = useDeleteInstitution();
   // Live student counts per institution, scoped to the session being viewed
@@ -135,19 +137,48 @@ export default function InstitutionsPage() {
   };
 
   const resetForm = () => setForm({
-    name: "", code: "", slug: "", email: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING",
+    name: "", code: "", slug: "", email: "", password: "", phone: "", address: "", city: "", district: "", contactPerson: "", contactPersonPhone: "", status: "PENDING",
   });
 
+  /**
+   * Creates the institution AND its login account in one step. The account is
+   * email-confirmed server-side, so the email + password entered here work
+   * immediately — no verification email/code is ever sent.
+   */
   const handleCreate = async () => {
     if (!form.name || !form.code) return;
-    await createInstitutionMutation.mutateAsync({
-      name: form.name, code: form.code, slug: form.slug, email: form.email, phone: form.phone,
-      address: form.address, city: form.city, district: form.district, contactPerson: form.contactPerson,
-      contactPersonPhone: form.contactPersonPhone, status: form.status, totalStudents: 0, totalApplications: 0,
-    });
-    resetForm();
-    setShowCreateModal(false);
-    setRefreshKey(k => k + 1);
+    if (!form.email.includes("@")) {
+      toast("error", isBn
+        ? "সঠিক ইমেইল দিন — এটিই প্রতিষ্ঠানের লগইন ইমেইল হবে"
+        : "Enter a valid email — it becomes the institution's login email");
+      return;
+    }
+    if (form.password.length < 8) {
+      toast("error", isBn
+        ? "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে"
+        : "Password must be at least 8 characters");
+      return;
+    }
+    try {
+      const result = await createInstitutionWithAccountServer({
+        name: form.name, code: form.code, slug: form.slug, email: form.email, password: form.password,
+        phone: form.phone, address: form.address, city: form.city, district: form.district,
+        contactPerson: form.contactPerson, contactPersonPhone: form.contactPersonPhone, status: form.status,
+      });
+      if (!result.success) {
+        toast("error", `${isBn ? "প্রতিষ্ঠান তৈরি করা যায়নি" : "Could not create institution"}: ${result.error || ""}`);
+        return;
+      }
+      resetForm();
+      setShowCreateModal(false);
+      setRefreshKey(k => k + 1);
+      await queryClient.invalidateQueries({ queryKey: ["institutions"] });
+      toast("success", isBn
+        ? "প্রতিষ্ঠান তৈরি হয়েছে — এই ইমেইল ও পাসওয়ার্ড দিয়ে সরাসরি লগইন করা যাবে (কোনো ইমেইল যাচাই নেই)"
+        : "Institution created — log in with its email & password (no email verification)");
+    } catch (err) {
+      toast("error", `${isBn ? "প্রতিষ্ঠান তৈরি করা যায়নি" : "Could not create institution"}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   const card = isDark
@@ -408,8 +439,12 @@ export default function InstitutionsPage() {
               </select>
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ইমেইল' : 'Email'}</label>
-              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={isBn ? 'ইমেইল' : 'email@example.com'} />
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ইমেইল' : 'Email'} *</label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={isBn ? 'ইমেইল' : 'email@example.com'} autoComplete="off" />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'পাসওয়ার্ড' : 'Password'} *</label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={isBn ? 'কমপক্ষে ৮ অক্ষর' : 'Min 8 characters'} autoComplete="new-password" />
             </div>
             <div className="col-span-2 sm:col-span-1">
               <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{isBn ? 'ফোন' : 'Phone'}</label>
@@ -436,6 +471,11 @@ export default function InstitutionsPage() {
               <Input value={form.contactPersonPhone} onChange={(e) => setForm({ ...form, contactPersonPhone: e.target.value })} placeholder={isBn ? 'ব্যক্তির ফোন' : 'Person phone'} />
             </div>
           </div>
+          <p className={`mt-3 text-[10px] leading-relaxed ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            {isBn
+              ? 'এই ইমেইল ও পাসওয়ার্ডই প্রতিষ্ঠানের লগইন হিসেবে কাজ করবে — কোনো ইমেইল যাচাই ছাড়াই সাথে সাথে লগইন করা যাবে।'
+              : 'This email and password become the institution’s login — created without email verification, ready to sign in immediately.'}
+          </p>
           <ModalFooter>
             <button onClick={() => setShowCreateModal(false)} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}>{isBn ? 'বাতিল' : 'Cancel'}</button>
             <button onClick={handleCreate} className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${'bg-brand-accent text-brand-accent-fg hover:opacity-90'}`}>{isBn ? 'তৈরি করুন' : 'Create'}</button>
