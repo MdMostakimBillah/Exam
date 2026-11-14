@@ -424,6 +424,8 @@ export default function StudentsPage() {
                     { label: "50", value: "50" },
                     { label: "70", value: "70" },
                     { label: "100", value: "100" },
+                    { label: "200", value: "200" },
+                    { label: "500", value: "500" },
                   ]}
                   value={String(pageSize)}
                   onChange={(e) => setPageSize(Number(e.target.value))}
