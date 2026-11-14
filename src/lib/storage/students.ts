@@ -57,20 +57,39 @@ function mapStudent(data: any): Student {
   };
 }
 
-export async function fetchStudents(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Student[]> {
+export async function fetchStudents(sessionId?: string, page?: number, pageSize?: number): Promise<Student[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
-  if (!sid) return [];
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(STUDENT_COLUMNS)
-    .eq('session_id', sid)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapStudent);
+
+  if (page !== undefined && pageSize !== undefined) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    let query = supabase
+      .from(SUPABASE_TABLE)
+      .select(STUDENT_COLUMNS)
+      .order('created_at', { ascending: false });
+    if (sid) query = query.eq('session_id', sid);
+    const { data, error } = await query.range(from, to);
+    if (error || !data) return [];
+    return data.map(mapStudent);
+  }
+
+  // Fetch all students (pages past Supabase's 1000-row cap)
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let p = 0; p < 50; p++) {
+    const from = p * PAGE;
+    let query = supabase
+      .from(SUPABASE_TABLE)
+      .select(STUDENT_COLUMNS)
+      .order('created_at', { ascending: false });
+    if (sid) query = query.eq('session_id', sid);
+    const { data, error } = await query.range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapStudent);
 }
 
 /**
@@ -90,21 +109,42 @@ export async function fetchStudentIdsByInstitution(institutionId: string, sessio
   return data.map((row: { student_id: string }) => row.student_id);
 }
 
-export async function fetchStudentsByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Student[]> {
+export async function fetchStudentsByInstitution(institutionId: string, sessionId?: string, page?: number, pageSize?: number): Promise<Student[]> {
   const supabase = createClient();
+  if (!institutionId) return [];
   const sid = sessionId || (await fetchCurrentSession())?.id;
-  if (!sid) return [];
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(STUDENT_COLUMNS)
-    .eq('session_id', sid)
-    .eq('institution_id', institutionId)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapStudent);
+
+  if (page !== undefined && pageSize !== undefined) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    let query = supabase
+      .from(SUPABASE_TABLE)
+      .select(STUDENT_COLUMNS)
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: false });
+    if (sid) query = query.eq('session_id', sid);
+    const { data, error } = await query.range(from, to);
+    if (error || !data) return [];
+    return data.map(mapStudent);
+  }
+
+  // Fetch all students for this institution (pages past Supabase's 1000-row cap)
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let p = 0; p < 50; p++) {
+    const from = p * PAGE;
+    let query = supabase
+      .from(SUPABASE_TABLE)
+      .select(STUDENT_COLUMNS)
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: false });
+    if (sid) query = query.eq('session_id', sid);
+    const { data, error } = await query.range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapStudent);
 }
 
 export async function fetchStudentById(id: string): Promise<Student | undefined> {

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
+import { Pagination } from "@/components/ui/pagination";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useStudents, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
@@ -46,6 +47,8 @@ export default function StudentsPage() {
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", class: "", section: "", roll: "", status: "" });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(30);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -92,6 +95,17 @@ export default function StudentsPage() {
   }), [students, latestReg, search, classFilter, institutionFilter, genderFilter, statusFilter, refreshKey]);
 
   const selection = useTableSelection(filtered);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, classFilter, institutionFilter, genderFilter, statusFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedStudents = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, safePage, pageSize]);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'ক্রমিক' : 'SN', key: 'sn' },
@@ -332,6 +346,7 @@ export default function StudentsPage() {
               <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? 'অনুসন্ধান বা ফিল্টার পরিবর্তন করুন' : 'Try adjusting your search or filters'}</p>
             </div>
           ) : (
+            <>
             <Table className="min-w-[1400px] whitespace-nowrap">
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
@@ -354,12 +369,12 @@ export default function StudentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(0, 20).map((student, idx) => (
+                {paginatedStudents.map((student, idx) => (
                   <TableRow key={student.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(student.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(student.id)} onChange={() => selection.toggle(student.id)} />
                     </TableCell>
-                    <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{idx + 1}</TableCell>
+                    <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{(safePage - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         {student.photo ? (
@@ -398,6 +413,31 @@ export default function StudentsPage() {
                 ))}
               </TableBody>
             </Table>
+            <div className={`px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                  {isBn ? "প্রতি পৃষ্ঠায়:" : "Per page:"}
+                </span>
+                <Select
+                  options={[
+                    { label: "30", value: "30" },
+                    { label: "50", value: "50" },
+                    { label: "70", value: "70" },
+                    { label: "100", value: "100" },
+                  ]}
+                  value={String(pageSize)}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className={`h-8 w-20 text-xs ${inputCls}`}
+                />
+                <span className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                  {isBn
+                    ? `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} / ${filtered.length} শিক্ষার্থী দেখানো হচ্ছে`
+                    : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} students`}
+                </span>
+              </div>
+              <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setCurrentPage} className="py-0" />
+            </div>
+            </>
           )}
         </div>
 
