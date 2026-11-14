@@ -344,7 +344,7 @@ export function useStudents(sessionId?: string, page?: number, pageSize?: number
 // Own column list including exam_roll (0013) plus the biographical fields the
 // Admit Card page prints — kept separate from STUDENT_COLUMNS so every other
 // students page keeps working before migration 0013 is run.
-const CLASS_ROLL_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,father_name,mother_name,photo_url,status,created_at,updated_at';
+const CLASS_ROLL_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,gender,father_name,mother_name,phone,address,photo_url,status,created_at,updated_at';
 
 /**
  * All students of one class in a session (across every institution),

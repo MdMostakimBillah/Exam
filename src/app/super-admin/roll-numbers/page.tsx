@@ -21,10 +21,11 @@ import { LoadingBar } from "@/components/ui/loading-bar";
 
 function genderLabel(g: string | undefined, isBn: boolean): string {
   if (!g) return '-';
-  const up = g.toUpperCase();
+  const up = g.trim().toUpperCase();
   if (up === 'MALE') return isBn ? 'পুরুষ' : 'Male';
   if (up === 'FEMALE') return isBn ? 'মহিলা' : 'Female';
-  return isBn ? 'অন্যান্য' : 'Other';
+  if (up === 'OTHER') return isBn ? 'অন্যান্য' : 'Other';
+  return g;
 }
 
 export default function RollNumbersPage() {
@@ -94,9 +95,10 @@ export default function RollNumbersPage() {
 
   // Gender options with live student counts
   const genderOptions = useMemo(() => {
-    const maleCount = students.filter(s => (s.gender || '').toUpperCase() === 'MALE').length;
-    const femaleCount = students.filter(s => (s.gender || '').toUpperCase() === 'FEMALE').length;
-    const otherCount = students.filter(s => (s.gender || '').toUpperCase() === 'OTHER').length;
+    const maleCount = students.filter(s => (s.gender || '').trim().toUpperCase() === 'MALE').length;
+    const femaleCount = students.filter(s => (s.gender || '').trim().toUpperCase() === 'FEMALE').length;
+    const otherCount = students.filter(s => (s.gender || '').trim().toUpperCase() === 'OTHER').length;
+    const unassignedCount = students.filter(s => !s.gender || !['MALE', 'FEMALE', 'OTHER'].includes(s.gender.trim().toUpperCase())).length;
     return [
       {
         label: selectedClass
@@ -122,13 +124,22 @@ export default function RollNumbersPage() {
           : (isBn ? "অন্যান্য" : "Other"),
         value: "OTHER",
       }] : []),
+      ...(unassignedCount > 0 ? [{
+        label: selectedClass
+          ? `${isBn ? "অনির্ধারিত" : "Not Specified"} (${unassignedCount})`
+          : (isBn ? "অনির্ধারিত" : "Not Specified"),
+        value: "UNASSIGNED",
+      }] : []),
     ];
   }, [students, selectedClass, isBn]);
 
   // Target students based on selected gender
   const targetStudents = useMemo(() => {
     if (!selectedGender) return students;
-    return students.filter(s => (s.gender || '').toUpperCase() === selectedGender.toUpperCase());
+    if (selectedGender === 'UNASSIGNED') {
+      return students.filter(s => !s.gender || !['MALE', 'FEMALE', 'OTHER'].includes(s.gender.trim().toUpperCase()));
+    }
+    return students.filter(s => (s.gender || '').trim().toUpperCase() === selectedGender.toUpperCase());
   }, [students, selectedGender]);
 
   const targetTotal = targetStudents.length;
@@ -176,8 +187,13 @@ export default function RollNumbersPage() {
   }, [students, firstReg]);
 
   const filtered = useMemo(() => sorted.filter(s => {
-    if (selectedGender && (s.gender || '').toUpperCase() !== selectedGender.toUpperCase()) {
-      return false;
+    if (selectedGender) {
+      const up = (s.gender || '').trim().toUpperCase();
+      if (selectedGender === 'UNASSIGNED') {
+        if (['MALE', 'FEMALE', 'OTHER'].includes(up)) return false;
+      } else if (up !== selectedGender.toUpperCase()) {
+        return false;
+      }
     }
     if (!search.trim()) return true;
     const q = search.toLowerCase();
