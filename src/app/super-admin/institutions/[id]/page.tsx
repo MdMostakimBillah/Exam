@@ -13,7 +13,9 @@ import { usePaymentsByInstitution } from "@/lib/storage/payments";
 import { useResultsByInstitution } from "@/lib/storage/results";
 import { useCertificatesByInstitution } from "@/lib/storage/certificates";
 import { Student, Registration } from "@/lib/types";
-import { Building2, Users, CreditCard, Award, ArrowLeft, Mail, Phone, MapPin, Calendar, FileCheck, FileText } from "lucide-react";
+import { Building2, Users, CreditCard, Award, ArrowLeft, Mail, Phone, MapPin, Calendar, FileCheck, FileText, Edit } from "lucide-react";
+import { Modal, ModalFooter } from "@/components/ui/modal";
+import { Input } from "@/components/ui/input";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -27,6 +29,20 @@ export default function InstitutionDetailPage() {
   const isBn = language === "bn";
   const { toast } = useToast();
   const updateInstitution = useUpdateInstitution();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    nameEn: "",
+    code: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    district: "",
+    contactPerson: "",
+    contactPersonPhone: "",
+  });
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -125,6 +141,55 @@ export default function InstitutionDetailPage() {
     );
   };
 
+  const handleStartEdit = () => {
+    if (!inst) return;
+    setEditForm({
+      name: inst.name || "",
+      nameEn: inst.nameEn || "",
+      code: inst.code || "",
+      email: inst.email || "",
+      phone: inst.phone || "",
+      address: inst.address || "",
+      city: inst.city || "",
+      district: inst.district || "",
+      contactPerson: inst.contactPerson || "",
+      contactPersonPhone: inst.contactPersonPhone || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!inst) return;
+    if (!editForm.name.trim()) {
+      toast("error", isBn ? "প্রতিষ্ঠানের নাম আবশ্যক" : "Institution name is required");
+      return;
+    }
+    setUpdating(true);
+    try {
+      await updateInstitution.mutateAsync({
+        id: inst.id,
+        data: {
+          name: editForm.name.trim(),
+          nameEn: editForm.nameEn.trim(),
+          code: editForm.code.trim(),
+          email: editForm.email.trim(),
+          phone: editForm.phone.trim(),
+          address: editForm.address.trim(),
+          city: editForm.city.trim(),
+          district: editForm.district.trim(),
+          contactPerson: editForm.contactPerson.trim(),
+          contactPersonPhone: editForm.contactPersonPhone.trim(),
+        },
+      });
+      toast("success", isBn ? "প্রতিষ্ঠানের নাম ও তথ্য সফলভাবে আপডেট হয়েছে" : "Institution name and details updated successfully");
+      setShowEditModal(false);
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : (isBn ? "আপডেট ব্যর্থ হয়েছে" : "Update failed"));
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (!mounted) return <InstitutionSkeleton isDark={isDark} />;
   if (!inst) return <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0a0a0b]' : 'bg-zinc-50'}`}><p className={isDark ? 'text-zinc-400' : 'text-zinc-500'}>Institution not found</p></div>;
 
@@ -148,20 +213,29 @@ export default function InstitutionDetailPage() {
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
       <div className="p-6 lg:p-8">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => router.back()}
-            className={`h-8 w-8 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{isBn ? inst.name : (inst.nameEn || inst.name)}</h1>
-              <Badge status={inst.status} />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className={`h-8 w-8 rounded-md flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/[0.08] text-zinc-400' : 'hover:bg-zinc-100 text-zinc-500'}`}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>{isBn ? inst.name : (inst.nameEn || inst.name)}</h1>
+                <Badge status={inst.status} />
+              </div>
+              <p className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{inst.code} · {inst.city}, {inst.district}</p>
             </div>
-            <p className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{inst.code} · {inst.city}, {inst.district}</p>
           </div>
+          <button
+            onClick={handleStartEdit}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Edit className="h-3.5 w-3.5" />
+            {isBn ? 'নাম বা তথ্য পরিবর্তন' : 'Edit Name / Details'}
+          </button>
         </div>
 
         {/* Metric Cards */}
@@ -302,8 +376,15 @@ export default function InstitutionDetailPage() {
           <div className="col-span-12 lg:col-span-4 space-y-6">
             {/* Institution Info */}
             <div className={`${card}`}>
-              <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+              <div className={`px-5 py-4 border-b flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{isBn ? 'প্রতিষ্ঠান তথ্য' : 'Institution Details'}</h3>
+                <button
+                  onClick={handleStartEdit}
+                  className={`text-xs flex items-center gap-1 transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'}`}
+                >
+                  <Edit className="h-3 w-3" />
+                  {isBn ? 'সম্পাদনা' : 'Edit'}
+                </button>
               </div>
               <div className="p-5 space-y-4">
                 <div className="flex items-start gap-3">
@@ -445,6 +526,80 @@ export default function InstitutionDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Edit Institution Modal */}
+        <Modal
+          open={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title={isBn ? 'প্রতিষ্ঠানের নাম ও তথ্য পরিবর্তন' : 'Edit Institution Name & Details'}
+          maxWidth="max-w-xl"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`}>
+                {isBn ? 'প্রতিষ্ঠানের নাম (বাংলা / প্রধান)' : 'Institution Name (Bangla / Primary)'} *
+              </label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder={isBn ? 'প্রতিষ্ঠানের নাম লিখুন' : 'Enter institution name'}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                {isBn ? 'প্রতিষ্ঠানের নাম (ইংরেজি)' : 'Institution Name (English)'}
+              </label>
+              <Input
+                value={editForm.nameEn}
+                onChange={(e) => setEditForm({ ...editForm, nameEn: e.target.value })}
+                placeholder={isBn ? 'ইংরেজি নাম (ঐচ্ছিক)' : 'English name (optional)'}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'কোড' : 'Code'}</label>
+              <Input value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} placeholder={isBn ? 'কোড' : 'Code'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'ইমেইল' : 'Email'}</label>
+              <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder={isBn ? 'ইমেইল' : 'email@example.com'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'ফোন' : 'Phone'}</label>
+              <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder={isBn ? 'ফোন নম্বর' : 'Phone'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'যোগাযোগ ব্যক্তি' : 'Contact Person'}</label>
+              <Input value={editForm.contactPerson} onChange={(e) => setEditForm({ ...editForm, contactPerson: e.target.value })} placeholder={isBn ? 'ব্যক্তির নাম' : 'Contact person'} />
+            </div>
+            <div className="col-span-2">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'ঠিকানা' : 'Address'}</label>
+              <Input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder={isBn ? 'ঠিকানা' : 'Address'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'শহর' : 'City'}</label>
+              <Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder={isBn ? 'শহর' : 'City'} />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-xs mb-1 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{isBn ? 'জেলা' : 'District'}</label>
+              <Input value={editForm.district} onChange={(e) => setEditForm({ ...editForm, district: e.target.value })} placeholder={isBn ? 'জেলা' : 'District'} />
+            </div>
+          </div>
+          <ModalFooter>
+            <button
+              onClick={() => setShowEditModal(false)}
+              className={`px-4 py-2 rounded-md text-[11px] font-medium transition-colors ${isDark ? 'bg-white/[0.08] text-zinc-300 hover:text-white' : 'bg-zinc-100 text-zinc-700 hover:text-zinc-900'}`}
+            >
+              {isBn ? 'বাতিল' : 'Cancel'}
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={updating}
+              className="px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {updating ? (isBn ? 'সংরক্ষণ হচ্ছে...' : 'Saving...') : (isBn ? 'পরিবর্তন সংরক্ষণ করুন' : 'Save Changes')}
+            </button>
+          </ModalFooter>
+        </Modal>
       </div>
     </div>
   );

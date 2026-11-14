@@ -148,6 +148,23 @@ export async function fetchInstitutionBySlug(slug: string): Promise<Institution 
   return mapInstitution(data);
 }
 
+/**
+ * Tables that store their OWN copy of the institution's name.
+ * When a super admin updates an institution name, sync all copies across
+ * related tables so they stay consistent everywhere.
+ */
+const INSTITUTION_NAME_COPY_TABLES = ['registrations', 'payments', 'results', 'certificates', 'support_reports'];
+
+async function syncInstitutionNameCopies(institutionId: string, name: string): Promise<void> {
+  const supabase = createClient();
+  await Promise.all(
+    INSTITUTION_NAME_COPY_TABLES.map(async (table) => {
+      const { error } = await supabase.from(table).update({ institution_name: name }).eq('institution_id', institutionId);
+      if (error) console.warn(`[institutions] could not sync ${table}.institution_name:`, error.message);
+    }),
+  );
+}
+
 export async function updateInstitution(id: string, data: Partial<Institution>): Promise<Institution | undefined> {
   const supabase = createClient();
   const u: any = { updated_at: new Date().toISOString() };
@@ -214,6 +231,9 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
       );
     }
   }
+  if (data.name !== undefined && data.name.trim()) {
+    await syncInstitutionNameCopies(id, data.name.trim());
+  }
   return mapInstitution(result);
 }
 
@@ -269,7 +289,14 @@ export function useUpdateInstitution() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Institution> }) => updateInstitution(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['institutions'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['institutions'] });
+      qc.invalidateQueries({ queryKey: ['registrations'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['results'] });
+      qc.invalidateQueries({ queryKey: ['certificates'] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+    },
   });
 }
 
