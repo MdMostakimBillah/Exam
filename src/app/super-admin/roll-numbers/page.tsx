@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -15,10 +16,16 @@ import { useClasses } from "@/lib/storage/classes";
 import { useAllRegistrations } from "@/lib/storage/registrations";
 import { formatDate } from "@/lib/storage/storage";
 import { Registration } from "@/lib/types";
-import { Hash, Search, Sparkles, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Users } from "lucide-react";
+import { Hash, Search, Sparkles, Loader2, AlertTriangle, Users } from "lucide-react";
 import { LoadingBar } from "@/components/ui/loading-bar";
 
-const PAGE_SIZE = 20;
+function genderLabel(g: string | undefined, isBn: boolean): string {
+  if (!g) return '-';
+  const up = g.toUpperCase();
+  if (up === 'MALE') return isBn ? 'পুরুষ' : 'Male';
+  if (up === 'FEMALE') return isBn ? 'মহিলা' : 'Female';
+  return isBn ? 'অন্যান্য' : 'Other';
+}
 
 export default function RollNumbersPage() {
   const { theme } = useTheme();
@@ -28,11 +35,13 @@ export default function RollNumbersPage() {
   const isBn = language === "bn";
   const [mounted, setMounted] = useState(false);
   const [selectedClass, setSelectedClass] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(30);
 
   useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { setPage(1); }, [selectedClass, search]);
+  useEffect(() => { setPage(1); }, [selectedClass, selectedGender, search, pageSize]);
 
   // ---- Data ----
   const sessionQuery = useCurrentSession();
@@ -83,11 +92,56 @@ export default function RollNumbersPage() {
     ? getRollPrefix(selectedClass, classCodeByName.get(selectedClass.toLowerCase().trim()))
     : null;
 
+  // Gender options with live student counts
+  const genderOptions = useMemo(() => {
+    const maleCount = students.filter(s => (s.gender || '').toUpperCase() === 'MALE').length;
+    const femaleCount = students.filter(s => (s.gender || '').toUpperCase() === 'FEMALE').length;
+    const otherCount = students.filter(s => (s.gender || '').toUpperCase() === 'OTHER').length;
+    return [
+      {
+        label: selectedClass
+          ? `${isBn ? "সকল লিঙ্গ" : "All Genders"} (${students.length})`
+          : (isBn ? "সকল লিঙ্গ" : "All Genders"),
+        value: "",
+      },
+      {
+        label: selectedClass
+          ? `${isBn ? "ছাত্র (পুরুষ)" : "Male"} (${maleCount})`
+          : (isBn ? "ছাত্র (পুরুষ)" : "Male"),
+        value: "MALE",
+      },
+      {
+        label: selectedClass
+          ? `${isBn ? "ছাত্রী (মহিলা)" : "Female"} (${femaleCount})`
+          : (isBn ? "ছাত্রী (মহিলা)" : "Female"),
+        value: "FEMALE",
+      },
+      ...(otherCount > 0 ? [{
+        label: selectedClass
+          ? `${isBn ? "অন্যান্য" : "Other"} (${otherCount})`
+          : (isBn ? "অন্যান্য" : "Other"),
+        value: "OTHER",
+      }] : []),
+    ];
+  }, [students, selectedClass, isBn]);
+
+  // Target students based on selected gender
+  const targetStudents = useMemo(() => {
+    if (!selectedGender) return students;
+    return students.filter(s => (s.gender || '').toUpperCase() === selectedGender.toUpperCase());
+  }, [students, selectedGender]);
+
+  const targetTotal = targetStudents.length;
+  const targetRolled = targetStudents.filter(s => s.examRoll).length;
+  const targetPending = Math.max(targetTotal - targetRolled, 0);
+
   const rollRange = useMemo(() => {
     const rolls = students.map(s => s.examRoll).filter((r): r is string => !!r).sort();
     return rolls.length ? `${rolls[0]} – ${rolls[rolls.length - 1]}` : null;
   }, [students]);
 
+  // The next roll number to be assigned across this class prefix
+  // Always continues after the highest existing roll sequence in this session
   const nextStart = useMemo(() => {
     if (!prefix) return null;
     let maxSeq = 0;
@@ -100,14 +154,18 @@ export default function RollNumbersPage() {
     return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
   }, [students, prefix]);
 
-  // Display order mirrors the assignment order: registration date first,
-  // unregistered after, then student creation date.
+  // Sorting: students with examRoll first (numerical order), then pending students (registration order)
   const sorted = useMemo(() => {
     const time = (id: string) => {
       const reg = firstReg.get(id);
       return reg ? new Date(reg.createdAt || 0).getTime() : null;
     };
     return [...students].sort((a, b) => {
+      if (a.examRoll && b.examRoll) {
+        return a.examRoll.localeCompare(b.examRoll, undefined, { numeric: true });
+      }
+      if (a.examRoll && !b.examRoll) return -1;
+      if (!a.examRoll && b.examRoll) return 1;
       const ta = time(a.id);
       const tb = time(b.id);
       if (ta !== null && tb !== null && ta !== tb) return ta - tb;
@@ -118,6 +176,9 @@ export default function RollNumbersPage() {
   }, [students, firstReg]);
 
   const filtered = useMemo(() => sorted.filter(s => {
+    if (selectedGender && (s.gender || '').toUpperCase() !== selectedGender.toUpperCase()) {
+      return false;
+    }
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     const reg = firstReg.get(s.id);
@@ -125,11 +186,14 @@ export default function RollNumbersPage() {
       || s.studentId.toLowerCase().includes(q)
       || (reg?.registrationNumber || "").toLowerCase().includes(q)
       || (s.examRoll || "").includes(q);
-  }), [sorted, search, firstReg]);
+  }), [sorted, selectedGender, search, firstReg]);
 
-  const pageCount = Math.max(Math.ceil(filtered.length / PAGE_SIZE), 1);
-  const currentPage = Math.min(page, pageCount);
-  const rows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const rows = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, safePage, pageSize]);
 
   const classOptions = useMemo(() => summaries.map(s => ({
     label: `${s.className} (${s.total}${s.rolled ? ` · ${s.rolled} ${isBn ? 'রোল' : 'rolled'}` : ''})`,
@@ -138,8 +202,6 @@ export default function RollNumbersPage() {
 
   // ---- Generate ----
   const handleGenerate = async () => {
-    // Never bail out silently — a click must always explain itself,
-    // otherwise the button looks broken ("Roll Generation is not working").
     if (!sessionId) {
       toast("error", isBn
         ? 'বর্তমান একাডেমিক সেশন পাওয়া যায়নি — পেজ রিফ্রেশ করুন'
@@ -160,18 +222,33 @@ export default function RollNumbersPage() {
         : `Cannot determine a class number from "${selectedClass}"`);
       return;
     }
-    if (pending === 0) {
-      toast("info", isBn
-        ? `এই শ্রেণীর সব শিক্ষার্থীর রোল নম্বর আছে`
-        : `Every student in this class already has a roll number`);
+    if (targetTotal === 0) {
+      const gLabel = selectedGender ? genderLabel(selectedGender, isBn) : '';
+      toast("error", isBn
+        ? `এই শ্রেণীতে কোনো ${gLabel} শিক্ষার্থী নেই`
+        : `No ${gLabel} students in this class`);
       return;
     }
+    if (targetPending === 0) {
+      const gLabel = selectedGender ? genderLabel(selectedGender, isBn) : '';
+      toast("info", isBn
+        ? `এই শ্রেণীর ${gLabel ? gLabel + ' ' : ''}সব শিক্ষার্থীর রোল নম্বর ইতিমধ্যে আছে`
+        : `Every ${gLabel ? gLabel + ' ' : ''}student in this class already has a roll number`);
+      return;
+    }
+
+    const gLabel = selectedGender ? genderLabel(selectedGender, isBn) : '';
     const ok = confirm(isBn
-      ? `"${selectedClass}" শ্রেণীর ${total} জন শিক্ষার্থীর পরীক্ষার রোল নম্বর তৈরি হবে।\n\nপ্রিফিক্স: ${prefix} · পরবর্তী নম্বর: ${nextStart}\nপ্রথমে নিবন্ধিত শিক্ষার্থীই প্রথম রোল পাবেন। যাদের আগে থেকেই রোল আছে তাদের নম্বর অপরিবর্তিত থাকবে।\n\nচালিয়ে যিয়ে?`
-      : `Generate exam rolls for ${total} students of "${selectedClass}"?\n\nPrefix: ${prefix} · Next number: ${nextStart}\nThe earliest-registered student gets the first number. Existing rolls are never changed.\n\nContinue?`);
+      ? `"${selectedClass}" শ্রেণীর ${gLabel ? gLabel + ' ' : ''}${targetPending} জন শিক্ষার্থীর পরীক্ষার রোল নম্বর তৈরি হবে।\n\nপ্রিফিক্স: ${prefix} · পরবর্তী শুরুর নম্বর: ${nextStart}\nপ্রথমে নিবন্ধিত শিক্ষার্থীই প্রথম রোল পাবেন। যাদের আগে থেকেই রোল আছে তাদের নম্বর অপরিবর্তিত থাকবে।\n\nচালিয়ে যাবেন?`
+      : `Generate exam rolls for ${targetPending} ${gLabel ? gLabel + ' ' : ''}students of "${selectedClass}"?\n\nPrefix: ${prefix} · Next number: ${nextStart}\nThe earliest-registered student gets the first number. Existing rolls are never changed.\n\nContinue?`);
     if (!ok) return;
+
     try {
-      const res = await generateMutation.mutateAsync({ sessionId, className: selectedClass });
+      const res = await generateMutation.mutateAsync({
+        sessionId,
+        className: selectedClass,
+        gender: selectedGender || undefined,
+      });
       if (res.assigned === 0) {
         toast("info", isBn ? 'সব শিক্ষার্থীর রোল নম্বর আগে থেকেই আছে' : 'All students already have roll numbers');
       } else {
@@ -210,8 +287,8 @@ export default function RollNumbersPage() {
           </h1>
           <p className={`text-sm mt-1 ${subtext}`}>
             {isBn
-              ? 'শ্রেণী নির্বাচন করে পরীক্ষার রোল নম্বর তৈরি করুন — প্রথমে নিবন্ধিত শিক্ষার্থী প্রথম রোল পাবেন'
-              : 'Select a class to generate exam roll numbers — the earliest-registered student gets the first number'}
+              ? 'শ্রেণী ও লিঙ্গ নির্বাচন করে পরীক্ষার রোল নম্বর তৈরি করুন — ধারাবাহিকতা বজায় রেখে রোল নম্বর তৈরি হবে'
+              : 'Select class and gender to generate exam rolls sequentially — rolls continue after previously generated numbers'}
           </p>
         </div>
 
@@ -237,10 +314,28 @@ export default function RollNumbersPage() {
         {/* Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
-            { label: isBn ? 'শ্রেণীর শিক্ষার্থী' : 'Class Students', value: selectedClass ? total : '—' },
-            { label: isBn ? 'রোল তৈরি' : 'Rolls Generated', value: selectedClass ? rolled : '—' },
-            { label: isBn ? 'বাকি' : 'Pending', value: selectedClass ? pending : '—' },
-            { label: isBn ? 'রোল প্রিফিক্স' : 'Roll Prefix', value: prefix || '—' },
+            {
+              label: selectedClass && selectedGender
+                ? (isBn ? `${genderLabel(selectedGender, isBn)} শিক্ষার্থী` : `${genderLabel(selectedGender, false)} Students`)
+                : (isBn ? 'শ্রেণীর শিক্ষার্থী' : 'Class Students'),
+              value: selectedClass ? (selectedGender ? `${targetTotal} (${genderLabel(selectedGender, isBn)})` : total) : '—'
+            },
+            {
+              label: selectedClass && selectedGender
+                ? (isBn ? `${genderLabel(selectedGender, isBn)} রোল তৈরি` : `${genderLabel(selectedGender, false)} Rolled`)
+                : (isBn ? 'রোল তৈরি' : 'Rolls Generated'),
+              value: selectedClass ? (selectedGender ? `${targetRolled} / ${targetTotal}` : `${rolled} / ${total}`) : '—'
+            },
+            {
+              label: selectedClass && selectedGender
+                ? (isBn ? `${genderLabel(selectedGender, isBn)} বাকি` : `${genderLabel(selectedGender, false)} Pending`)
+                : (isBn ? 'বাকি' : 'Pending'),
+              value: selectedClass ? (selectedGender ? targetPending : pending) : '—'
+            },
+            {
+              label: isBn ? 'রোল প্রিফিক্স' : 'Roll Prefix',
+              value: prefix ? `${prefix} · ${pending > 0 ? nextStart : '—'}` : '—'
+            },
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3 flex items-center gap-3`}>
               <div className={`h-10 w-10 rounded-md flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -256,8 +351,8 @@ export default function RollNumbersPage() {
 
         {/* Controls */}
         <div className={`${card} p-4 mb-6`}>
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-            <div className="flex-1 min-w-[220px]">
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
+            <div className="flex-1 min-w-[200px] w-full md:w-auto">
               <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>
                 {isBn ? 'শ্রেণী নির্বাচন' : 'Select Class'}
               </label>
@@ -265,10 +360,12 @@ export default function RollNumbersPage() {
                 options={classOptions}
                 placeholder={isBn ? 'শ্রেণী নির্বাচন করুন' : 'Select a class'}
                 value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
+                onChange={(e) => {
+                  setSelectedClass(e.target.value);
+                  setSelectedGender("");
+                }}
                 className={inputCls}
               />
-              {/* Explains an empty dropdown instead of leaving a dead control */}
               {!summariesQuery.isPending && classOptions.length === 0 && !queryError && !!currentSession && (
                 <p className={`text-[11px] mt-1.5 ${isDark ? "text-amber-400" : "text-amber-600"}`}>
                   {isBn
@@ -277,37 +374,54 @@ export default function RollNumbersPage() {
                 </p>
               )}
             </div>
+
+            <div className="w-full md:w-[220px]">
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>
+                {isBn ? 'লিঙ্গ নির্বাচন' : 'Select Gender'}
+              </label>
+              <Select
+                options={genderOptions}
+                value={selectedGender}
+                onChange={(e) => setSelectedGender(e.target.value)}
+                className={inputCls}
+                disabled={!selectedClass}
+              />
+            </div>
+
             <button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending}
+              disabled={generateMutation.isPending || !selectedClass}
               className={cn(
-                "flex items-center gap-2 px-5 h-10 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                "flex items-center justify-center gap-2 px-5 h-10 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto shrink-0",
                 "bg-brand-accent text-brand-accent-fg hover:opacity-90"
               )}
             >
               {generateMutation.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" />
                 : <Sparkles className="h-4 w-4" />}
-              {isBn ? 'রোল তৈরি করুন' : 'Generate Roll'}
+              {selectedGender
+                ? (isBn ? `${genderLabel(selectedGender, isBn)} রোল তৈরি করুন` : `Generate ${genderLabel(selectedGender, false)} Roll`)
+                : (isBn ? 'রোল তৈরি করুন' : 'Generate Roll')}
             </button>
           </div>
+
           {selectedClass && (
-            <p className={`text-[11px] mt-2.5 ${subtext}`}>
+            <p className={`text-[11px] mt-3 ${subtext}`}>
               {prefix
                 ? (isBn
-                  ? `প্রিফিক্স ${prefix} · ${total} জন শিক্ষার্থী · ${rolled} টি রোল তৈরি · পরবর্তী: ${pending > 0 ? nextStart : '—'}${rollRange ? ` · সীমা: ${rollRange}` : ''}`
-                  : `Prefix ${prefix} · ${total} students · ${rolled} rolled · Next: ${pending > 0 ? nextStart : '—'}${rollRange ? ` · Range: ${rollRange}` : ''}`)
+                  ? `প্রিফিক্স ${prefix} · ${selectedGender ? genderLabel(selectedGender, isBn) + ': ' : ''}${targetTotal} জন শিক্ষার্থী · ${targetRolled} টি রোল তৈরি · বাকি: ${targetPending} · পরবর্তী শুরুর রোল: ${targetPending > 0 ? nextStart : '—'}${rollRange ? ` · বর্তমান রোল সীমা: ${rollRange}` : ''}`
+                  : `Prefix ${prefix} · ${selectedGender ? genderLabel(selectedGender, false) + ': ' : ''}${targetTotal} students · ${targetRolled} rolled · Pending: ${targetPending} · Next roll: ${targetPending > 0 ? nextStart : '—'}${rollRange ? ` · Current range: ${rollRange}` : ''}`)
                 : (isBn
                   ? `"${selectedClass}" থেকে শ্রেণী নম্বর বোঝা যায়নি — রোল তৈরি করা যাবে না`
                   : `Cannot determine a class number from "${selectedClass}" — rolls cannot be generated`)}
             </p>
           )}
-          {/* Confirms "nothing to do" instead of a button that just sits there */}
-          {selectedClass && pending === 0 && total > 0 && (
-            <p className={`text-[11px] mt-1 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+
+          {selectedClass && targetPending === 0 && targetTotal > 0 && (
+            <p className={`text-[11px] mt-1.5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
               {isBn
-                ? `এই শ্রেণীর সব ${total} জন শিক্ষার্থীর রোল নম্বর আছে`
-                : `All ${total} students in this class already have a roll number`}
+                ? `এই শ্রেণীর ${selectedGender ? genderLabel(selectedGender, isBn) + ' ' : ''}সব ${targetTotal} জন শিক্ষার্থীর রোল নম্বর ইতিমধ্যে আছে`
+                : `All ${targetTotal} ${selectedGender ? genderLabel(selectedGender, false) + ' ' : ''}students in this class already have a roll number`}
             </p>
           )}
         </div>
@@ -349,7 +463,7 @@ export default function RollNumbersPage() {
                 <span className={`text-[11px] ${subtext}`}>({filtered.length})</span>
               </div>
               <span className={`text-[11px] ${subtext}`}>
-                {isBn ? 'সাজানো: নিবন্ধনের ক্রমিক' : 'Sorted by registration order'}
+                {isBn ? 'সাজানো: রোল নম্বর ও নিবন্ধনের ক্রমিক' : 'Sorted by exam roll and registration order'}
               </span>
             </div>
 
@@ -382,6 +496,7 @@ export default function RollNumbersPage() {
                     <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
                       <TableHead className={headCls}>{isBn ? 'ক্রম' : '#'}</TableHead>
                       <TableHead className={headCls}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
+                      <TableHead className={headCls}>{isBn ? 'লিঙ্গ' : 'Gender'}</TableHead>
                       <TableHead className={headCls}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
                       <TableHead className={headCls}>{isBn ? 'রেজি নং' : 'Reg No'}</TableHead>
                       <TableHead className={headCls}>{isBn ? 'নিবন্ধনের তারিখ' : 'Registered On'}</TableHead>
@@ -392,7 +507,7 @@ export default function RollNumbersPage() {
                   <TableBody>
                     {rows.map((s, idx) => {
                       const reg = firstReg.get(s.id);
-                      const seq = (currentPage - 1) * PAGE_SIZE + idx + 1;
+                      const seq = (safePage - 1) * pageSize + idx + 1;
                       return (
                         <TableRow key={s.id} className={isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50'}>
                           <TableCell className={`text-[11px] ${subtext}`}>{seq}</TableCell>
@@ -403,6 +518,9 @@ export default function RollNumbersPage() {
                               </span>
                               <span className={`text-[10px] font-mono ${subtext}`}>{s.studentId}</span>
                             </div>
+                          </TableCell>
+                          <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
+                            {genderLabel(s.gender, isBn)}
                           </TableCell>
                           <TableCell className={`text-[11px] max-w-[180px] truncate ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
                             {institutionMap.get(s.institutionId) || 'Unknown'}
@@ -434,31 +552,32 @@ export default function RollNumbersPage() {
                 </Table>
 
                 {/* Pagination */}
-                {pageCount > 1 && (
-                  <div className={`px-5 py-3 border-t flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
-                    <span className={`text-[11px] ${subtext}`}>
-                      {isBn
-                        ? `পৃষ্ঠা ${currentPage} / ${pageCount}`
-                        : `Page ${currentPage} of ${pageCount}`}
+                <div className={`px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                      {isBn ? "প্রতি পৃষ্ঠায়:" : "Per page:"}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPage(p => Math.max(p - 1, 1))}
-                        disabled={currentPage <= 1}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all disabled:opacity-40 ${isDark ? "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" /> {isBn ? 'আগে' : 'Prev'}
-                      </button>
-                      <button
-                        onClick={() => setPage(p => Math.min(p + 1, pageCount))}
-                        disabled={currentPage >= pageCount}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all disabled:opacity-40 ${isDark ? "bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
-                      >
-                        {isBn ? 'পরে' : 'Next'} <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    <Select
+                      options={[
+                        { label: "30", value: "30" },
+                        { label: "50", value: "50" },
+                        { label: "70", value: "70" },
+                        { label: "100", value: "100" },
+                        { label: "200", value: "200" },
+                        { label: "500", value: "500" },
+                      ]}
+                      value={String(pageSize)}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className={`h-8 w-20 text-xs ${inputCls}`}
+                    />
+                    <span className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                      {isBn
+                        ? `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} / ${filtered.length} শিক্ষার্থী দেখানো হচ্ছে`
+                        : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} students`}
+                    </span>
                   </div>
-                )}
+                  <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setPage} className="py-0" />
+                </div>
               </>
             )}
           </div>
