@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, generateGlobalRegistrationNumber } from "@/lib/storage/registrations";
@@ -75,6 +76,8 @@ export default function InstitutionRegistrationsPage() {
     fatherName: "", motherName: "", phone: "", address: "", photo: "",
   });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(30);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const [step, setStep] = useState<Step>(1);
   const [studentForm, setStudentForm] = useState<StudentForm>(emptyStudentForm);
@@ -100,16 +103,28 @@ export default function InstitutionRegistrationsPage() {
   const createStudentMutation = useCreateStudent();
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
-  const filtered = registrations.filter(r => {
+  const filtered = useMemo(() => registrations.filter(r => {
     const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.registrationNumber.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesExam = !examFilter || r.examId === examFilter;
     return matchesSearch && matchesStatus && matchesExam;
-  });
+  }), [registrations, search, statusFilter, examFilter]);
 
   const selection = useTableSelection(filtered);
 
-  const pdfColumns: PdfColumn[] = [
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, examFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedRegistrations = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, safePage, pageSize]);
+
+  const pdfColumns: PdfColumn[] = useMemo(() => [
+    { header: isBn ? "ক্রমিক" : "SN", key: 'sn' },
     { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: 'registrationNumber' },
     { header: isBn ? "শিক্ষার্থী" : "Student", key: 'studentName' },
     { header: isBn ? "পরীক্ষা" : "Exam", key: 'examName' },
@@ -117,17 +132,21 @@ export default function InstitutionRegistrationsPage() {
     { header: isBn ? "পেমেন্ট" : "Payment", key: 'paymentStatus' },
     { header: isBn ? "পরিমাণ" : "Amount", key: 'paymentAmount' },
     { header: isBn ? "তারিখ" : "Date", key: 'createdAt' },
-  ];
+  ], [isBn]);
 
-  const pdfData = filtered.map(r => ({
-    registrationNumber: r.registrationNumber,
-    studentName: r.studentName,
-    examName: r.examName,
-    status: r.status,
-    paymentStatus: r.paymentStatus,
-    paymentAmount: `৳${r.paymentAmount.toLocaleString()}`,
-    createdAt: formatDate(r.createdAt),
-  }));
+  const pdfData = useMemo(() => filtered
+    .map((r, i) => ({ r, sn: i + 1 }))
+    .filter(({ r }) => (selection.selectedCount > 0 ? selection.isSelected(r.id) : true))
+    .map(({ r, sn }) => ({
+      sn: String(sn),
+      registrationNumber: r.registrationNumber,
+      studentName: r.studentName,
+      examName: r.examName,
+      status: r.status,
+      paymentStatus: r.paymentStatus,
+      paymentAmount: `৳${r.paymentAmount.toLocaleString()}`,
+      createdAt: formatDate(r.createdAt),
+    })), [filtered, selection]);
 
   const statusCounts = {
     all: registrations.length,
@@ -469,12 +488,14 @@ export default function InstitutionRegistrationsPage() {
               <p className={`text-xs mt-1 ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{isBn ? "নতুন নিবন্ধন যোগ করুন" : "Add a new registration to get started"}</p>
             </div>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow className={isDark ? "border-white/[0.04] hover:bg-transparent" : "border-zinc-100 hover:bg-transparent"}>
                   <TableHead className="w-10">
                     <TableCheckbox checked={selection.allSelected} indeterminate={selection.someSelected} onChange={selection.toggleAll} />
                   </TableHead>
+                  <TableHead className={`w-12 text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "ক্রমিক" : "SN"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "শিক্ষার্থী" : "Student"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "পরীক্ষা" : "Exam"}</TableHead>
@@ -486,11 +507,12 @@ export default function InstitutionRegistrationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(reg => (
+                {paginatedRegistrations.map((reg, idx) => (
                   <TableRow key={reg.id} className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"} ${selection.isSelected(reg.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(reg.id)} onChange={() => selection.toggle(reg.id)} />
                     </TableCell>
+                    <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{(safePage - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
                     <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
@@ -515,6 +537,33 @@ export default function InstitutionRegistrationsPage() {
                 ))}
               </TableBody>
             </Table>
+            <div className={`px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`text-xs ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                  {isBn ? "প্রতি পৃষ্ঠায়:" : "Per page:"}
+                </span>
+                <Select
+                  options={[
+                    { label: "30", value: "30" },
+                    { label: "50", value: "50" },
+                    { label: "70", value: "70" },
+                    { label: "100", value: "100" },
+                    { label: "200", value: "200" },
+                    { label: "500", value: "500" },
+                  ]}
+                  value={String(pageSize)}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className={`h-8 w-20 text-xs ${inputCls}`}
+                />
+                <span className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                  {isBn
+                    ? `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} / ${filtered.length} নিবন্ধন দেখানো হচ্ছে`
+                    : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} registrations`}
+                </span>
+              </div>
+              <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setCurrentPage} className="py-0" />
+            </div>
+            </>
           )}
         </div>
       </div>

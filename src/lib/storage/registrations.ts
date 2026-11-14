@@ -46,37 +46,44 @@ function mapRegistration(data: any): Registration {
   };
 }
 
-export async function fetchRegistrations(sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Registration[]> {
+export async function fetchRegistrations(sessionId?: string, page?: number, pageSize?: number): Promise<Registration[]> {
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(REGISTRATION_SELECT)
-    .eq('session_id', sid)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapRegistration);
+  if (page !== undefined && pageSize !== undefined) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(REGISTRATION_SELECT)
+      .eq('session_id', sid)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (error || !data) return [];
+    return data.map(mapRegistration);
+  }
+  return fetchAllRegistrations(sessionId);
 }
 
-export async function fetchRegistrationsByInstitution(institutionId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Registration[]> {
+export async function fetchRegistrationsByInstitution(institutionId: string, sessionId?: string, page?: number, pageSize?: number): Promise<Registration[]> {
   const supabase = createClient();
+  if (!institutionId) return [];
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(REGISTRATION_SELECT)
-    .eq('session_id', sid)
-    .eq('institution_id', institutionId)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapRegistration);
+  if (page !== undefined && pageSize !== undefined) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(REGISTRATION_SELECT)
+      .eq('session_id', sid)
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (error || !data) return [];
+    return data.map(mapRegistration);
+  }
+  return fetchAllRegistrationsByInstitution(institutionId, sessionId);
 }
 
 export async function fetchRegistrationsByExam(examId: string, sessionId?: string, page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE): Promise<Registration[]> {

@@ -32,19 +32,38 @@ function mapRegistration(data: any): Registration {
 
 export async function fetchRegistrationsServer(
   sessionId: string,
-  page: number = 1,
-  pageSize: number = DEFAULT_PAGE_SIZE,
+  page?: number,
+  pageSize?: number,
 ): Promise<Registration[]> {
   const supabase = await createClient();
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
 
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(REGISTRATION_COLUMNS)
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  if (error || !data) return [];
-  return data.map(mapRegistration);
+  if (page !== undefined && pageSize !== undefined) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(REGISTRATION_COLUMNS)
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (error || !data) return [];
+    return data.map(mapRegistration);
+  }
+
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let p = 0; p < 50; p++) {
+    const from = p * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(REGISTRATION_COLUMNS)
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapRegistration);
 }
