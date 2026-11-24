@@ -20,7 +20,7 @@ import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn, MAX_IMAGE_SIZE, capitalizeWords } from "@/lib/utils/helpers";
+import { cn, MAX_IMAGE_SIZE, capitalizeWords, compressImageToWebP } from "@/lib/utils/helpers";
 import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2, Edit, Loader2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -64,6 +64,7 @@ export default function InstitutionRegistrationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [examFilter, setExamFilter] = useState("");
+  const [classFilter, setClassFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [viewingReg, setViewingReg] = useState<Registration | null>(null);
@@ -83,6 +84,7 @@ export default function InstitutionRegistrationsPage() {
   const [studentForm, setStudentForm] = useState<StudentForm>(emptyStudentForm);
   const [selectedExamId, setSelectedExamId] = useState("");
   const [photoError, setPhotoError] = useState("");
+  const [compressingPhoto, setCompressingPhoto] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [generatedRegNumber, setGeneratedRegNumber] = useState("");
@@ -103,18 +105,30 @@ export default function InstitutionRegistrationsPage() {
   const createStudentMutation = useCreateStudent();
   const classNames = allClasses.length > 0 ? allClasses.map(c => c.name) : [];
 
+  const classOptions = useMemo(() => {
+    const fromClasses = allClasses.map(c => c.name);
+    const fromRegs = registrations.map(r => r.className).filter(Boolean);
+    const set = new Set([...fromClasses, ...fromRegs]);
+    return [
+      { label: isBn ? 'সব শ্রেণী' : 'All Classes', value: '' },
+      ...Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(c => ({ label: c, value: c })),
+    ];
+  }, [allClasses, registrations, isBn]);
+
   const filtered = useMemo(() => registrations.filter(r => {
-    const matchesSearch = r.studentName.toLowerCase().includes(search.toLowerCase()) || r.registrationNumber.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = r.studentName.toLowerCase().includes(q) || r.registrationNumber.toLowerCase().includes(q) || (r.className || '').toLowerCase().includes(q);
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesExam = !examFilter || r.examId === examFilter;
-    return matchesSearch && matchesStatus && matchesExam;
-  }), [registrations, search, statusFilter, examFilter]);
+    const matchesClass = !classFilter || r.className === classFilter;
+    return matchesSearch && matchesStatus && matchesExam && matchesClass;
+  }), [registrations, search, statusFilter, examFilter, classFilter]);
 
   const selection = useTableSelection(filtered);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, examFilter, pageSize]);
+  }, [search, statusFilter, examFilter, classFilter, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -127,6 +141,7 @@ export default function InstitutionRegistrationsPage() {
     { header: isBn ? "ক্রমিক" : "SN", key: 'sn' },
     { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: 'registrationNumber' },
     { header: isBn ? "শিক্ষার্থী" : "Student", key: 'studentName' },
+    { header: isBn ? "শ্রেণী" : "Class", key: 'className' },
     { header: isBn ? "পরীক্ষা" : "Exam", key: 'examName' },
     { header: isBn ? "স্থিতি" : "Status", key: 'status' },
     { header: isBn ? "পেমেন্ট" : "Payment", key: 'paymentStatus' },
@@ -141,6 +156,7 @@ export default function InstitutionRegistrationsPage() {
       sn: String(sn),
       registrationNumber: r.registrationNumber,
       studentName: r.studentName,
+      className: r.className,
       examName: r.examName,
       status: r.status,
       paymentStatus: r.paymentStatus,
@@ -202,20 +218,28 @@ export default function InstitutionRegistrationsPage() {
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    setPhotoError("");
-    if (file.size > MAX_PHOTO_SIZE) {
-      const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 150KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 150KB allowed.`);
+    if (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name)) {
+      setPhotoError(isBn ? "অনুগ্রহ করে একটি ছবি ফাইল নির্বাচন করুন।" : "Please select an image file.");
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setStudentForm(prev => ({ ...prev, photo: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
+    setPhotoError("");
+    setCompressingPhoto(true);
+    try {
+      const webpDataUrl = await compressImageToWebP(file, {
+        maxSide: 1024,
+        maxSizeBytes: MAX_IMAGE_SIZE,
+      });
+      setStudentForm(prev => ({ ...prev, photo: webpDataUrl }));
+    } catch (err: any) {
+      console.error("[photo-compress] failed:", err);
+      setPhotoError(isBn ? "ছবি প্রসেস করা যায়নি। অন্য ছবি দিন।" : "Could not process image. Please try another.");
+    } finally {
+      setCompressingPhoto(false);
+    }
   };
 
   const canProceedStep1 = studentForm.englishName.trim() !== "" && studentForm.class.trim() !== "";
@@ -383,20 +407,28 @@ export default function InstitutionRegistrationsPage() {
     }
   };
 
-  const handleEditPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    setPhotoError("");
-    if (file.size > MAX_PHOTO_SIZE) {
-      const sizeKB = (file.size / 1024).toFixed(1);
-      setPhotoError(isBn ? `ছবির আকার ${sizeKB}KB। সর্বোচ্চ 150KB অনুমোদিত।` : `Photo is ${sizeKB}KB. Maximum 150KB allowed.`);
+    if (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name)) {
+      setPhotoError(isBn ? "অনুগ্রহ করে একটি ছবি ফাইল নির্বাচন করুন।" : "Please select an image file.");
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setEditStudentForm(prev => ({ ...prev, photo: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
+    setPhotoError("");
+    setCompressingPhoto(true);
+    try {
+      const webpDataUrl = await compressImageToWebP(file, {
+        maxSide: 1024,
+        maxSizeBytes: MAX_IMAGE_SIZE,
+      });
+      setEditStudentForm(prev => ({ ...prev, photo: webpDataUrl }));
+    } catch (err: any) {
+      console.error("[photo-compress] failed:", err);
+      setPhotoError(isBn ? "ছবি প্রসেস করা যায়নি। অন্য ছবি দিন।" : "Could not process image. Please try another.");
+    } finally {
+      setCompressingPhoto(false);
+    }
   };
 
   const card = isDark
@@ -456,7 +488,8 @@ export default function InstitutionRegistrationsPage() {
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
               <Input placeholder={isBn ? "শিক্ষার্থী বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by student or registration number..."} value={search} onChange={(e) => setSearch(e.target.value)} className={cn("pl-10", inputCls)} />
             </div>
-            <Select options={[{ label: isBn ? "সব পরীক্ষা" : "All Exams", value: "" }, ...exams.map(e => ({ label: e.name, value: e.id }))]} value={examFilter} onChange={(e) => setExamFilter(e.target.value)} className={cn("w-full sm:w-48", inputCls)} />
+            <Select options={[{ label: isBn ? "সব পরীক্ষা" : "All Exams", value: "" }, ...exams.map(e => ({ label: e.name, value: e.id }))]} value={examFilter} onChange={(e) => setExamFilter(e.target.value)} className={cn("w-full sm:w-44", inputCls)} />
+            <Select options={classOptions} value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className={cn("w-full sm:w-36", inputCls)} />
             <Select
               options={[
                 { label: isBn ? "সব স্থিতি" : "All Status", value: "" },
@@ -466,7 +499,7 @@ export default function InstitutionRegistrationsPage() {
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className={cn("w-full sm:w-40", inputCls)}
+              className={cn("w-full sm:w-36", inputCls)}
             />
           </div>
         </div>
@@ -498,6 +531,7 @@ export default function InstitutionRegistrationsPage() {
                   <TableHead className={`w-12 text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "ক্রমিক" : "SN"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "শিক্ষার্থী" : "Student"}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "শ্রেণী" : "Class"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "পরীক্ষা" : "Exam"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "স্থিতি" : "Status"}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{isBn ? "পেমেন্ট" : "Payment"}</TableHead>
@@ -530,6 +564,9 @@ export default function InstitutionRegistrationsPage() {
                           {reg.studentName}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell className={`text-[11px] font-medium ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
+                      {reg.className || '-'}
                     </TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
                     <TableCell><Badge status={reg.status} /></TableCell>
@@ -690,22 +727,24 @@ export default function InstitutionRegistrationsPage() {
           <div className="py-3 space-y-4">
             {/* Profile Picture */}
             <div>
-              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 150KB)</span></label>
+              <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-brand-accent">(WebP · max 150KB)</span></label>
               <div className="flex items-start gap-4">
-                <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", studentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
-                  {studentForm.photo ? (
+                <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", (studentForm.photo && !compressingPhoto) ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
+                  {compressingPhoto ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-brand-accent" />
+                  ) : studentForm.photo ? (
                     <Image src={studentForm.photo} alt="Preview" width={80} height={80} unoptimized className="h-full w-full object-cover" />
                   ) : (
                     <Camera className={cn("h-6 w-6", isDark ? "text-zinc-600" : "text-zinc-400")} />
                   )}
                 </div>
                 <div className="flex-1 space-y-2">
-                  <label className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium cursor-pointer transition-colors", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
-                    <Upload className="h-3.5 w-3.5" />
-                    {isBn ? 'ছবি আপলোড করুন' : 'Upload Photo'}
-                    <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                  <label className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium cursor-pointer transition-colors", compressingPhoto && "opacity-60 pointer-events-none", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
+                    {compressingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {compressingPhoto ? (isBn ? 'কম্প্রেস হচ্ছে...' : 'Compressing...') : (isBn ? 'ছবি আপলোড করুন' : 'Upload Photo')}
+                    <input type="file" accept="image/*" onChange={handlePhotoChange} disabled={compressingPhoto} className="hidden" />
                   </label>
-                  {studentForm.photo && (
+                  {studentForm.photo && !compressingPhoto && (
                     <button onClick={() => setStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
                       {isBn ? 'সরান' : 'Remove'}
                     </button>
@@ -716,7 +755,7 @@ export default function InstitutionRegistrationsPage() {
                     </p>
                   )}
                   <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                    {isBn ? 'JPG, PNG। সর্বোচ্চ 150KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 150KB file size allowed.'}
+                    {isBn ? 'JPG, PNG, WebP। স্বয়ংক্রিয়ভাবে WebP ফরম্যাটে (সর্বোচ্চ 150KB) অপ্টিমাইজ হবে।' : 'JPG, PNG, WebP. Automatically compressed to WebP (max 150KB).'}
                   </p>
                 </div>
               </div>
@@ -1002,22 +1041,24 @@ export default function InstitutionRegistrationsPage() {
             {editStep === 3 && (
               <div className="py-2 space-y-4">
                 <div>
-                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-red-400">(max 150KB)</span></label>
+                  <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'প্রোফাইল ছবি' : 'Profile Picture'} <span className="text-brand-accent">(WebP · max 150KB)</span></label>
                   <div className="flex items-start gap-4">
-                    <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", editStudentForm.photo ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
-                      {editStudentForm.photo ? (
+                    <div className={cn("h-20 w-20 rounded-md flex items-center justify-center shrink-0 overflow-hidden", (editStudentForm.photo && !compressingPhoto) ? "" : (isDark ? "bg-white/[0.06] border border-white/[0.08]" : "bg-zinc-100 border border-zinc-200"))}>
+                      {compressingPhoto ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-brand-accent" />
+                      ) : editStudentForm.photo ? (
                         <Image src={editStudentForm.photo} alt="Preview" width={80} height={80} unoptimized className="h-full w-full object-cover" />
                       ) : (
                         <Camera className={cn("h-6 w-6", isDark ? "text-zinc-600" : "text-zinc-400")} />
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <label className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium cursor-pointer transition-colors", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
-                        <Upload className="h-3.5 w-3.5" />
-                        {isBn ? 'ছবি আপলোড করুন' : 'Upload Photo'}
-                        <input type="file" accept="image/*" onChange={handleEditPhotoChange} className="hidden" />
+                      <label className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium cursor-pointer transition-colors", compressingPhoto && "opacity-60 pointer-events-none", isDark ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")}>
+                        {compressingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        {compressingPhoto ? (isBn ? 'কম্প্রেস হচ্ছে...' : 'Compressing...') : (isBn ? 'ছবি আপলোড করুন' : 'Upload Photo')}
+                        <input type="file" accept="image/*" onChange={handleEditPhotoChange} disabled={compressingPhoto} className="hidden" />
                       </label>
-                      {editStudentForm.photo && (
+                      {editStudentForm.photo && !compressingPhoto && (
                         <button onClick={() => setEditStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
                           {isBn ? 'সরান' : 'Remove'}
                         </button>
@@ -1028,7 +1069,7 @@ export default function InstitutionRegistrationsPage() {
                         </p>
                       )}
                       <p className={`text-[10px] ${isDark ? "text-zinc-600" : "text-zinc-400"}`}>
-                        {isBn ? 'JPG, PNG। সর্বোচ্চ 150KB আকার অনুমোদিত।' : 'JPG, PNG. Maximum 150KB file size allowed.'}
+                        {isBn ? 'JPG, PNG, WebP। স্বয়ংক্রিয়ভাবে WebP ফরম্যাটে (সর্বোচ্চ 150KB) অপ্টিমাইজ হবে।' : 'JPG, PNG, WebP. Automatically compressed to WebP (max 150KB).'}
                       </p>
                     </div>
                   </div>

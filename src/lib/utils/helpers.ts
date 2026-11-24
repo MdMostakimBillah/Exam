@@ -81,3 +81,96 @@ export function capitalizeWords(text: string): string {
   if (!text) return text;
   return text.replace(/(^|[\s.\-\/])([a-z])/g, (_, boundary, char) => boundary + char.toUpperCase());
 }
+
+export interface CompressImageOptions {
+  maxSide?: number;
+  maxSizeBytes?: number;
+  initialQuality?: number;
+}
+
+/**
+ * Calculates approximate decoded byte size of a base64 data URL.
+ */
+export function getBase64SizeInBytes(dataUrl: string): number {
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) return Math.floor((dataUrl.length * 3) / 4);
+  const base64Str = dataUrl.slice(comma + 1);
+  const padding = base64Str.endsWith('==') ? 2 : base64Str.endsWith('=') ? 1 : 0;
+  return Math.max(0, Math.floor((base64Str.length * 3) / 4) - padding);
+}
+
+/**
+ * Compresses an image File or Blob to WebP format with a maximum dimension (max side)
+ * and maximum file size (default 150KB = 153,600 bytes).
+ */
+export async function compressImageToWebP(
+  file: File | Blob,
+  options: CompressImageOptions = {}
+): Promise<string> {
+  const maxSide = options.maxSide ?? 1024;
+  const maxSizeBytes = options.maxSizeBytes ?? MAX_IMAGE_SIZE;
+  const initialQuality = options.initialQuality ?? 0.85;
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+
+    const naturalMax = Math.max(img.naturalWidth, img.naturalHeight);
+    if (naturalMax < 1) {
+      throw new Error("Invalid image dimensions");
+    }
+
+    let currentSide = Math.min(maxSide, naturalMax);
+    let quality = initialQuality;
+
+    const render = (targetSide: number, q: number): string => {
+      const scale = Math.min(1, targetSide / naturalMax);
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return "";
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // White background so transparent PNGs/WebPs look clean on white paper / printouts
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      let out = canvas.toDataURL("image/webp", q);
+      // Fallback if browser canvas does not support image/webp
+      if (!out.startsWith("data:image/webp")) {
+        out = canvas.toDataURL("image/jpeg", q);
+      }
+      return out;
+    };
+
+    let result = render(currentSide, quality);
+
+    // Iteratively decrease quality and/or side until byte size <= maxSizeBytes
+    while (result && getBase64SizeInBytes(result) > maxSizeBytes && (quality > 0.35 || currentSide > 300)) {
+      if (quality > 0.4) {
+        quality = Math.max(0.35, +(quality - 0.1).toFixed(2));
+      } else {
+        currentSide = Math.round(currentSide * 0.8);
+        quality = 0.8;
+      }
+      result = render(currentSide, quality);
+    }
+
+    if (!result) {
+      throw new Error("Failed to process image");
+    }
+
+    return result;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

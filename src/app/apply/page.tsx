@@ -17,7 +17,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import { PublicNav } from "@/components/layout/public-nav";
-import { MAX_IMAGE_SIZE, capitalizeWords } from "@/lib/utils/helpers";
+import { MAX_IMAGE_SIZE, capitalizeWords, compressImageToWebP } from "@/lib/utils/helpers";
 import {
   AlertCircle,
   ArrowLeft,
@@ -97,9 +97,6 @@ const ALLOWED_PHOTO_TYPES = [
   "image/pjpeg",
 ];
 
-/** base64 grows a payload by ~4/3; allow the data-URL prefix + padding. */
-const MAX_PHOTO_CHARS = Math.ceil((MAX_IMAGE_SIZE * 4) / 3) + 64;
-
 /** Nothing bigger than this is even decoded — protects the tab. Bigger
  *  photos are still compressed down to the 150KB cap, not rejected. */
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
@@ -127,86 +124,8 @@ function isAllowedPhotoFile(file: File): boolean {
   return /\.(jpe?g|png|webp)$/i.test(file.name);
 }
 
-function readAsDataUrl(file: File): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () =>
-      resolve(typeof reader.result === "string" ? reader.result : null);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
-/** Cameras/browsers report variants like `image/jpg` or `image/pjpeg`;
- *  normalise the prefix so the server action accepts the data URL. */
-function normalizePhotoDataUrl(dataUrl: string, mime: string): string {
-  const comma = dataUrl.indexOf(",");
-  if (comma < 0 || !dataUrl.startsWith("data:")) return dataUrl;
-
-  let type = (mime || "").toLowerCase();
-  if (!type || !type.startsWith("image/")) {
-    type = (dataUrl.slice(5, comma).split(";")[0] || "").toLowerCase();
-  }
-  if (type === "image/jpg" || type === "image/pjpeg" || type === "image/jfif") {
-    type = "image/jpeg";
-  }
-  if (!["image/jpeg", "image/png", "image/webp"].includes(type)) return dataUrl;
-
-  return `data:${type};base64,${dataUrl.slice(comma + 1)}`;
-}
-
-/** Scale + re-encode a large photo as JPEG until it fits the 150KB cap. */
-async function compressPhoto(file: File): Promise<string | null> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-
-    const naturalMax = Math.max(img.naturalWidth, img.naturalHeight);
-    if (naturalMax < 1) return null;
-
-    let side = Math.min(1024, naturalMax);
-    let quality = 0.85;
-
-    const encode = (): string => {
-      const scale = side / naturalMax;
-      const w = Math.max(1, Math.round(img.naturalWidth * scale));
-      const h = Math.max(1, Math.round(img.naturalHeight * scale));
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return "";
-      // JPEG has no alpha — paint white first so transparent PNGs
-      // don't come out with black corners.
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0, w, h);
-      return canvas.toDataURL("image/jpeg", quality);
-    };
-
-    let out = encode();
-    while (out && out.length > MAX_PHOTO_CHARS && (quality > 0.4 || side > 320)) {
-      if (quality > 0.4) quality = Math.max(0.4, +(quality - 0.1).toFixed(2));
-      else {
-        side = Math.round(side * 0.75);
-        quality = 0.85;
-      }
-      out = encode();
-    }
-    return out && out.length <= MAX_PHOTO_CHARS ? out : null;
-  } catch {
-    return null;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 /**
- * Read the applicant's photo. Files at or under MAX_IMAGE_SIZE (150KB) are
- * used as-is (no warning); larger ones are scaled/re-encoded to fit, so a
- * normal phone photo never blocks the application.
+ * Read and compress the applicant's photo to WebP format (max 150KB).
  */
 async function readPhotoFile(file: File): Promise<PhotoResult> {
   if (!isAllowedPhotoFile(file)) {
@@ -217,20 +136,15 @@ async function readPhotoFile(file: File): Promise<PhotoResult> {
     return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
   }
 
-  const raw = await readAsDataUrl(file);
-  if (!raw) return { ok: false, code: "READ" };
-
-  if (file.size <= MAX_IMAGE_SIZE) {
-    const dataUrl = normalizePhotoDataUrl(raw, file.type);
-    if (dataUrl.length <= MAX_PHOTO_CHARS) {
-      return { ok: true, dataUrl, resized: false };
-    }
+  try {
+    const dataUrl = await compressImageToWebP(file, {
+      maxSide: 1024,
+      maxSizeBytes: MAX_IMAGE_SIZE,
+    });
+    return { ok: true, dataUrl, resized: file.size > MAX_IMAGE_SIZE };
+  } catch {
+    return { ok: false, code: "READ" };
   }
-
-  const compressed = await compressPhoto(file);
-  if (compressed) return { ok: true, dataUrl: compressed, resized: true };
-
-  return { ok: false, code: "SIZE", sizeStr: formatFileSize(file.size) };
 }
 
 export default function ApplyPage() {

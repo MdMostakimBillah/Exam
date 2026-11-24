@@ -12,6 +12,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useRegistrations, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
 import { useInstitutionName } from "@/lib/storage/institutions";
+import { useClasses } from "@/lib/storage/classes";
 import { useToast } from "@/components/ui/toast";
 import { LoadingBar } from "@/components/ui/loading-bar";
 import { ClipboardList, Search, Download, FileDown, Edit, Trash2, CheckCircle } from "lucide-react";
@@ -33,6 +34,7 @@ export default function RegistrationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [instFilter, setInstFilter] = useState("");
+  const [classFilter, setClassFilter] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
@@ -46,17 +48,29 @@ export default function RegistrationsPage() {
 
   const { toast } = useToast();
   const { data: registrations = [], isFetching } = useRegistrations();
+  const { data: allClasses = [] } = useClasses();
   const updateRegistrationMutation = useUpdateRegistration();
   const deleteRegistrationMutation = useDeleteRegistration();
+
+  const classOptions = useMemo(() => {
+    const fromClasses = allClasses.map(c => c.name);
+    const fromRegs = registrations.map(r => r.className).filter(Boolean);
+    const set = new Set([...fromClasses, ...fromRegs]);
+    return [
+      { label: isBn ? 'সব শ্রেণী' : 'All Classes', value: '' },
+      ...Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(c => ({ label: c, value: c })),
+    ];
+  }, [allClasses, registrations, isBn]);
 
   const filtered = useMemo(() => registrations.filter(r => {
     const q = search.toLowerCase();
     const matchesSearch = r.studentName.toLowerCase().includes(q) || r.registrationNumber.toLowerCase().includes(q) ||
-      instName(r.institutionName, r.institutionId).toLowerCase().includes(q);
+      instName(r.institutionName, r.institutionId).toLowerCase().includes(q) || (r.className || '').toLowerCase().includes(q);
     const matchesStatus = !statusFilter || r.status === statusFilter;
     const matchesInstitution = !instFilter || r.institutionId === instFilter;
-    return matchesSearch && matchesStatus && matchesInstitution;
-  }), [registrations, search, statusFilter, instFilter, instName]);
+    const matchesClass = !classFilter || r.className === classFilter;
+    return matchesSearch && matchesStatus && matchesInstitution && matchesClass;
+  }), [registrations, search, statusFilter, instFilter, classFilter, instName]);
 
   // Unique institutions present in the current registrations
   const institutionOptions = useMemo(() => {
@@ -74,7 +88,7 @@ export default function RegistrationsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, instFilter, pageSize]);
+  }, [search, statusFilter, instFilter, classFilter, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -87,6 +101,7 @@ export default function RegistrationsPage() {
     { header: isBn ? "ক্রমিক" : "SN", key: "sn" },
     { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: "registrationNumber" },
     { header: isBn ? "শিক্ষার্থী" : "Student", key: "studentName" },
+    { header: isBn ? "শ্রেণী" : "Class", key: "className" },
     { header: isBn ? "প্রতিষ্ঠান" : "Institution", key: "institutionName" },
     { header: isBn ? "পরীক্ষা" : "Exam", key: "examName" },
     { header: isBn ? "তারিখ" : "Date", key: "date" },
@@ -97,6 +112,7 @@ export default function RegistrationsPage() {
     sn: String(i + 1),
     registrationNumber: r.registrationNumber,
     studentName: r.studentName,
+    className: r.className || '-',
     institutionName: instName(r.institutionName, r.institutionId),
     examName: r.examName,
     date: formatDate(r.createdAt),
@@ -240,6 +256,12 @@ export default function RegistrationsPage() {
               className={`w-full sm:w-40 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
             />
             <Select
+              options={classOptions}
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className={`w-full sm:w-36 ${isDark ? "bg-white/[0.04] border-white/[0.06]" : "bg-zinc-50 border-zinc-200"}`}
+            />
+            <Select
               options={institutionOptions}
               value={instFilter}
               onChange={(e) => setInstFilter(e.target.value)}
@@ -287,6 +309,7 @@ export default function RegistrationsPage() {
                   <TableHead className={`w-12 text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ক্রমিক' : 'SN'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'রেজিস্ট্রেশন নম্বর' : 'Registration Number'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'প্রতিষ্ঠান' : 'Institution'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পরীক্ষা' : 'Exam'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'তারিখ' : 'Date'}</TableHead>
@@ -318,6 +341,9 @@ export default function RegistrationsPage() {
                           {reg.studentName}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell className={`text-[11px] font-medium ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
+                      {reg.className || '-'}
                     </TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instName(reg.institutionName, reg.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
