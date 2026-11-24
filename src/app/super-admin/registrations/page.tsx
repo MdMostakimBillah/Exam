@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -304,7 +305,20 @@ export default function RegistrationsPage() {
                     </TableCell>
                     <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{(safePage - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
-                    <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        {reg.studentPhoto ? (
+                          <Image src={reg.studentPhoto} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
+                        ) : (
+                          <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                            {reg.studentName.charAt(0)}
+                          </div>
+                        )}
+                        <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
+                          {reg.studentName}
+                        </span>
+                      </div>
+                    </TableCell>
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{instName(reg.institutionName, reg.institutionId)}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{formatDate(reg.createdAt)}</TableCell>
@@ -364,6 +378,19 @@ export default function RegistrationsPage() {
               <button onClick={() => setEditingReg(null)} className={`p-1 rounded ${isDark ? "text-zinc-500 hover:text-white" : "text-zinc-400 hover:text-zinc-600"}`}>×</button>
             </div>
             <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-md border bg-zinc-500/5 border-zinc-500/10">
+                {editingReg.studentPhoto ? (
+                  <Image src={editingReg.studentPhoto} alt={editingReg.studentName} width={48} height={48} unoptimized className="rounded-md object-cover shrink-0 h-12 w-12" />
+                ) : (
+                  <div className={`h-12 w-12 rounded-md flex items-center justify-center text-sm font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                    {editingReg.studentName.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{editingReg.studentName}</p>
+                  <p className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{editingReg.registrationNumber}</p>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শিক্ষার্থী' : 'Student'}</label>

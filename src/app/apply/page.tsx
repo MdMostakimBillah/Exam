@@ -17,7 +17,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
 import { PublicNav } from "@/components/layout/public-nav";
-import { MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
+import { MAX_IMAGE_SIZE, capitalizeWords } from "@/lib/utils/helpers";
 import {
   AlertCircle,
   ArrowLeft,
@@ -325,8 +325,15 @@ export default function ApplyPage() {
     };
   }, []);
 
-  const set = (key: keyof typeof emptyForm, value: string) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof typeof emptyForm, value: string) => {
+    let val = value;
+    if (key === "englishName" || key === "fatherName" || key === "motherName" || key === "address") {
+      val = capitalizeWords(value);
+    } else if (key === "roll") {
+      val = value.toUpperCase();
+    }
+    setForm((f) => ({ ...f, [key]: val }));
+  };
 
   const validDate = (dob: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return false;
@@ -402,14 +409,14 @@ export default function ApplyPage() {
       const res = await submitStudentApplication({
         institutionId: form.institutionId,
         classId: form.classId,
-        englishName: form.englishName.trim(),
+        englishName: capitalizeWords(form.englishName.trim()),
         banglaName: form.banglaName.trim() || undefined,
         dateOfBirth: form.dateOfBirth,
         gender: form.gender,
-        fatherName: form.fatherName.trim(),
-        motherName: form.motherName.trim() || undefined,
+        fatherName: capitalizeWords(form.fatherName.trim()),
+        motherName: form.motherName.trim() ? capitalizeWords(form.motherName.trim()) : undefined,
         phone: form.phone.trim(),
-        address: form.address.trim(),
+        address: capitalizeWords(form.address.trim()),
         roll: form.roll.trim() || undefined,
         photo: photo || undefined,
       });

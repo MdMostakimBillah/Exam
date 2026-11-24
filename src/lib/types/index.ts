@@ -209,6 +209,7 @@ export interface Registration {
   registrationNumber: string;
   studentId: string;
   studentName: string;
+  studentPhoto?: string;
   institutionId: string;
   institutionName: string;
   examId: string;
@@ -272,6 +273,7 @@ export interface MarksSheetPageRow {
   registrationId: string;
   studentId: string;
   studentName: string;
+  studentPhoto?: string;
   institutionId: string;
   institutionName: string;
   registrationNumber: string;
@@ -316,6 +318,7 @@ export interface Result {
   sessionId: string;
   studentId: string;
   studentName: string;
+  studentPhoto?: string;
   institutionId: string;
   institutionName: string;
   /** Institution's English name (name_en) — filled by public lookups so the
@@ -349,6 +352,7 @@ export interface Certificate {
   certificateNumber: string;
   studentId: string;
   studentName: string;
+  studentPhoto?: string;
   institutionId: string;
   institutionName: string;
   /** Institution's English name (name_en) — see Result.institutionNameEn. */

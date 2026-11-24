@@ -15,7 +15,7 @@ const REGISTRATION_COLUMNS = 'id,session_id,application_id,registration_number,s
  * Reads therefore prefer the live student name and only fall back to the
  * stored copy when the student row is not visible (or missing).
  */
-const REGISTRATION_SELECT = `${REGISTRATION_COLUMNS},student:students(first_name,last_name)`;
+const REGISTRATION_SELECT = `${REGISTRATION_COLUMNS},student:students(first_name,last_name,photo_url)`;
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -31,6 +31,7 @@ function mapRegistration(data: any): Registration {
     registrationNumber: data.registration_number || '',
     studentId: data.student_id,
     studentName: liveName || data.student_name,
+    studentPhoto: student?.photo_url || undefined,
     institutionId: data.institution_id,
     institutionName: data.institution_name,
     examId: data.exam_id,
@@ -302,7 +303,7 @@ export async function createRegistration(data: Omit<Registration, 'id' | 'create
       payment_amount: data.paymentAmount,
       transaction_id: data.transactionId,
     })
-    .select(REGISTRATION_COLUMNS)
+    .select(REGISTRATION_SELECT)
     .single();
   if (error) throw error;
   return mapRegistration(result);
@@ -326,7 +327,7 @@ export async function updateRegistration(id: string, data: Partial<Registration>
   if (data.studentPaymentStatus !== undefined) u.student_payment_status = data.studentPaymentStatus;
   if (data.paymentAmount !== undefined) u.payment_amount = data.paymentAmount;
   if (data.transactionId !== undefined) u.transaction_id = data.transactionId;
-  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(REGISTRATION_COLUMNS).single();
+  const { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(REGISTRATION_SELECT).single();
   if (error) return undefined;
   return mapRegistration(result);
 }

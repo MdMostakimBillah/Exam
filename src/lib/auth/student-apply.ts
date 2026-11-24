@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { headers } from "next/headers";
+import { capitalizeWords } from "@/lib/utils/helpers";
 
 /**
  * Public student application flow (no login, no online payment).
@@ -378,15 +379,15 @@ export async function submitStudentApplication(
   /* ---- validate ---- */
   const institutionId = String(input?.institutionId ?? "").trim();
   const classId = String(input?.classId ?? "").trim();
-  const englishName = String(input?.englishName ?? "").trim().replace(/\s+/g, " ");
+  const englishName = capitalizeWords(String(input?.englishName ?? "").trim().replace(/\s+/g, " "));
   const banglaName = String(input?.banglaName ?? "").trim();
   const dateOfBirth = String(input?.dateOfBirth ?? "").trim();
   const gender = String(input?.gender ?? "").trim().toUpperCase();
-  const fatherName = String(input?.fatherName ?? "").trim().replace(/\s+/g, " ");
-  const motherName = String(input?.motherName ?? "").trim().replace(/\s+/g, " ");
+  const fatherName = capitalizeWords(String(input?.fatherName ?? "").trim().replace(/\s+/g, " "));
+  const motherName = capitalizeWords(String(input?.motherName ?? "").trim().replace(/\s+/g, " "));
   const phone = String(input?.phone ?? "").trim();
-  const address = String(input?.address ?? "").trim().replace(/\s+/g, " ");
-  const roll = String(input?.roll ?? "").trim();
+  const address = capitalizeWords(String(input?.address ?? "").trim().replace(/\s+/g, " "));
+  const roll = String(input?.roll ?? "").trim().toUpperCase();
 
   if (!UUID_RE.test(institutionId)) {
     return { ok: false, error: "Please select your institution." };

@@ -20,7 +20,7 @@ import { Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
-import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
+import { cn, MAX_IMAGE_SIZE, capitalizeWords } from "@/lib/utils/helpers";
 import { ClipboardList, Search, Plus, Eye, FileDown, Upload, User, Users, Camera, AlertCircle, Trash2, Edit, Loader2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { TableCheckbox } from "@/components/ui/table-checkbox";
@@ -253,7 +253,7 @@ export default function InstitutionRegistrationsPage() {
       const newStudent = await createStudentMutation.mutateAsync({
         sessionId: currentSession?.id || '',
         institutionId: inst!.id,
-        firstName: studentForm.englishName.trim(),
+        firstName: capitalizeWords(studentForm.englishName.trim()),
         lastName: "",
         firstNameBn: studentForm.banglaName.trim() || undefined,
         lastNameBn: undefined,
@@ -263,10 +263,10 @@ export default function InstitutionRegistrationsPage() {
         roll: studentForm.roll.trim(),
         dateOfBirth: studentForm.dateOfBirth,
         gender: studentForm.gender,
-        fatherName: studentForm.fatherName.trim(),
-        motherName: studentForm.motherName.trim(),
+        fatherName: capitalizeWords(studentForm.fatherName.trim()),
+        motherName: capitalizeWords(studentForm.motherName.trim()),
         phone: studentForm.phone.trim(),
-        address: studentForm.address.trim(),
+        address: capitalizeWords(studentForm.address.trim()),
         photo: studentForm.photo || undefined,
         status: "ACTIVE",
       });
@@ -358,16 +358,16 @@ export default function InstitutionRegistrationsPage() {
         await updateStudentMutation.mutateAsync({
           id: student.id,
           data: {
-            firstName: editStudentForm.englishName.trim(),
+            firstName: capitalizeWords(editStudentForm.englishName.trim()),
             firstNameBn: editStudentForm.banglaName.trim() || undefined,
             class: editStudentForm.class,
             roll: editStudentForm.roll.trim(),
             dateOfBirth: editStudentForm.dateOfBirth,
             gender: editStudentForm.gender,
-            fatherName: editStudentForm.fatherName.trim(),
-            motherName: editStudentForm.motherName.trim(),
+            fatherName: capitalizeWords(editStudentForm.fatherName.trim()),
+            motherName: capitalizeWords(editStudentForm.motherName.trim()),
             phone: editStudentForm.phone.trim(),
-            address: editStudentForm.address.trim(),
+            address: capitalizeWords(editStudentForm.address.trim()),
             photo: editStudentForm.photo || undefined,
           },
         });
@@ -507,18 +507,34 @@ export default function InstitutionRegistrationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedRegistrations.map((reg, idx) => (
+                {paginatedRegistrations.map((reg, idx) => {
+                  const student = students.find(s => s.id === reg.studentId);
+                  const photoUrl = reg.studentPhoto || student?.photo;
+                  return (
                   <TableRow key={reg.id} className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"} ${selection.isSelected(reg.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(reg.id)} onChange={() => selection.toggle(reg.id)} />
                     </TableCell>
                     <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{(safePage - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
-                    <TableCell className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>{reg.studentName}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        {photoUrl ? (
+                          <Image src={photoUrl} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
+                        ) : (
+                          <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                            {reg.studentName.charAt(0)}
+                          </div>
+                        )}
+                        <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
+                          {reg.studentName}
+                        </span>
+                      </div>
+                    </TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{reg.examName}</TableCell>
                     <TableCell><Badge status={reg.status} /></TableCell>
                     <TableCell><Badge status={reg.paymentStatus} /></TableCell>
-                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>&#2547;{reg.paymentAmount.toLocaleString()}</TableCell>
+                    <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>৳{reg.paymentAmount.toLocaleString()}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{formatDate(reg.createdAt)}</TableCell>
                     <TableCell>
                       <TableActionMenu id={reg.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
@@ -534,7 +550,8 @@ export default function InstitutionRegistrationsPage() {
                       </TableActionMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                );
+                })}
               </TableBody>
             </Table>
             <div className={`px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
@@ -604,7 +621,7 @@ export default function InstitutionRegistrationsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'English Name *'}</label>
-                <Input placeholder={isBn ? 'ইংরেজি নাম' : 'English name'} value={studentForm.englishName} onChange={(e) => setStudentForm({ ...studentForm, englishName: e.target.value })} className={inputCls} />
+                <Input placeholder={isBn ? 'ইংরেজি নাম' : 'English name'} value={studentForm.englishName} onChange={(e) => setStudentForm({ ...studentForm, englishName: capitalizeWords(e.target.value) })} className={inputCls} />
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা নাম' : 'Bangla Name'}</label>
@@ -621,7 +638,7 @@ export default function InstitutionRegistrationsPage() {
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
-                <Input placeholder={isBn ? 'রোল নম্বর' : 'Roll number'} value={studentForm.roll} onChange={(e) => setStudentForm({ ...studentForm, roll: e.target.value })} className={inputCls} />
+                <Input placeholder={isBn ? 'রোল নম্বর' : 'Roll number'} value={studentForm.roll} onChange={(e) => setStudentForm({ ...studentForm, roll: e.target.value.toUpperCase() })} className={inputCls} />
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
@@ -650,11 +667,11 @@ export default function InstitutionRegistrationsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
-                <Input placeholder={isBn ? 'পিতার নাম' : "Father's name"} value={studentForm.fatherName} onChange={(e) => setStudentForm({ ...studentForm, fatherName: e.target.value })} className={inputCls} />
+                <Input placeholder={isBn ? 'পিতার নাম' : "Father's name"} value={studentForm.fatherName} onChange={(e) => setStudentForm({ ...studentForm, fatherName: capitalizeWords(e.target.value) })} className={inputCls} />
               </div>
               <div>
                 <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'মাতার নাম' : "Mother's Name"}</label>
-                <Input placeholder={isBn ? 'মাতার নাম' : "Mother's name"} value={studentForm.motherName} onChange={(e) => setStudentForm({ ...studentForm, motherName: e.target.value })} className={inputCls} />
+                <Input placeholder={isBn ? 'মাতার নাম' : "Mother's name"} value={studentForm.motherName} onChange={(e) => setStudentForm({ ...studentForm, motherName: capitalizeWords(e.target.value) })} className={inputCls} />
               </div>
             </div>
             <div>
@@ -663,7 +680,7 @@ export default function InstitutionRegistrationsPage() {
             </div>
             <div>
               <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা *' : 'Address *'}</label>
-              <Input placeholder={isBn ? 'পূর্ণ ঠিকানা' : 'Full address'} value={studentForm.address} onChange={(e) => setStudentForm({ ...studentForm, address: e.target.value })} className={inputCls} />
+              <Input placeholder={isBn ? 'পূর্ণ ঠিকানা' : 'Full address'} value={studentForm.address} onChange={(e) => setStudentForm({ ...studentForm, address: capitalizeWords(e.target.value) })} className={inputCls} />
             </div>
           </div>
         )}
@@ -917,7 +934,7 @@ export default function InstitutionRegistrationsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম *' : 'English Name *'}</label>
-                    <Input placeholder={isBn ? 'ইংরেজি নাম' : 'English name'} value={editStudentForm.englishName} onChange={(e) => setEditStudentForm({ ...editStudentForm, englishName: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'ইংরেজি নাম' : 'English name'} value={editStudentForm.englishName} onChange={(e) => setEditStudentForm({ ...editStudentForm, englishName: capitalizeWords(e.target.value) })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'বাংলা নাম' : 'Bangla Name'}</label>
@@ -934,7 +951,7 @@ export default function InstitutionRegistrationsPage() {
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
-                    <Input placeholder={isBn ? 'রোল নম্বর' : 'Roll number'} value={editStudentForm.roll} onChange={(e) => setEditStudentForm({ ...editStudentForm, roll: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'রোল নম্বর' : 'Roll number'} value={editStudentForm.roll} onChange={(e) => setEditStudentForm({ ...editStudentForm, roll: e.target.value.toUpperCase() })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</label>
@@ -963,11 +980,11 @@ export default function InstitutionRegistrationsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'পিতার নাম *' : "Father's Name *"}</label>
-                    <Input placeholder={isBn ? 'পিতার নাম' : "Father's name"} value={editStudentForm.fatherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, fatherName: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'পিতার নাম' : "Father's name"} value={editStudentForm.fatherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, fatherName: capitalizeWords(e.target.value) })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'মাতার নাম' : "Mother's Name"}</label>
-                    <Input placeholder={isBn ? 'মাতার নাম' : "Mother's name"} value={editStudentForm.motherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, motherName: e.target.value })} className={inputCls} />
+                    <Input placeholder={isBn ? 'মাতার নাম' : "Mother's name"} value={editStudentForm.motherName} onChange={(e) => setEditStudentForm({ ...editStudentForm, motherName: capitalizeWords(e.target.value) })} className={inputCls} />
                   </div>
                 </div>
                 <div className="mt-4">
@@ -976,7 +993,7 @@ export default function InstitutionRegistrationsPage() {
                 </div>
                 <div className="mt-4">
                   <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ঠিকানা *' : 'Address *'}</label>
-                  <Input placeholder={isBn ? 'পূর্ণ ঠিকানা' : 'Full address'} value={editStudentForm.address} onChange={(e) => setEditStudentForm({ ...editStudentForm, address: e.target.value })} className={inputCls} />
+                  <Input placeholder={isBn ? 'পূর্ণ ঠিকানা' : 'Full address'} value={editStudentForm.address} onChange={(e) => setEditStudentForm({ ...editStudentForm, address: capitalizeWords(e.target.value) })} className={inputCls} />
                 </div>
               </div>
             )}

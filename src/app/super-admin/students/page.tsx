@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
 import { downloadExcel, type ExcelColumn } from "@/lib/utils/export-excel";
+import { capitalizeWords } from "@/lib/utils/helpers";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { Student, Registration } from "@/lib/types";
@@ -203,11 +204,11 @@ export default function StudentsPage() {
     await updateStudentMutation.mutateAsync({
       id: editingStudent.id,
       data: {
-        firstName: editForm.firstName,
-        lastName: editForm.lastName,
+        firstName: capitalizeWords(editForm.firstName.trim()),
+        lastName: capitalizeWords(editForm.lastName.trim()),
         class: editForm.class,
         section: editForm.section,
-        roll: editForm.roll,
+        roll: editForm.roll.trim(),
         status: editForm.status as any,
       },
     });
@@ -484,11 +485,11 @@ export default function StudentsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'ইংরেজি নাম' : 'First Name'}</label>
-                    <Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} className={inputCls} />
+                    <Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: capitalizeWords(e.target.value) })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শেষ নাম' : 'Last Name'}</label>
-                    <Input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} className={inputCls} />
+                    <Input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: capitalizeWords(e.target.value) })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'শ্রেণী' : 'Class'}</label>
@@ -500,7 +501,7 @@ export default function StudentsPage() {
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'রোল' : 'Roll'}</label>
-                    <Input value={editForm.roll} onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })} className={inputCls} />
+                    <Input value={editForm.roll} onChange={(e) => setEditForm({ ...editForm, roll: e.target.value.toUpperCase() })} className={inputCls} />
                   </div>
                   <div>
                     <label className={`block text-[11px] mb-1.5 font-medium ${labelCls}`}>{isBn ? 'স্থিতি' : 'Status'} *</label>

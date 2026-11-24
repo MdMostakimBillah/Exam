@@ -72,3 +72,12 @@ export function getStatusColor(status: string): string {
 export function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
+
+/**
+ * Capitalizes each word in a string (Title Case / Capitalized Words).
+ * e.g., "mohammad ali" -> "Mohammad Ali", "dhanmondi, dhaka" -> "Dhanmondi, Dhaka"
+ */
+export function capitalizeWords(text: string): string {
+  if (!text) return text;
+  return text.replace(/(^|[\s.\-\/])([a-z])/g, (_, boundary, char) => boundary + char.toUpperCase());
+}
