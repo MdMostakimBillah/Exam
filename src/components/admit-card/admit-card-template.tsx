@@ -61,7 +61,7 @@ import { DEFAULT_INSTRUCTIONS } from "@/lib/storage/admit-cards";
  * so font fallback resolves identically in preview, PDF and print.
  */
 
-const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Kalpurush', 'Tiro Bangla', sans-serif";
+const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
 
 /** Print-safe ink palette — literal hex, identical in preview/PDF/print. */
 const INK = "#111111"; // structural rules + labels (dark in B&W)

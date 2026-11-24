@@ -30,6 +30,8 @@ async function waitForFonts(target: Document = document): Promise<void> {
     const checks = [
       "700 14px Inter",
       "800 42px Inter",
+      "400 14px 'Hind Siliguri'",
+      "700 14px 'Hind Siliguri'",
       "400 14px 'Noto Sans Bengali'",
       "700 14px 'Noto Sans Bengali'",
       "700 40px Georgia",
@@ -133,7 +135,7 @@ function injectFontsIntoClone(clonedDoc: Document) {
   // The app loads Google fonts through globals.css @import (no <link> in
   // <head>), so request the certificate's families explicitly.
   addLink(
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@100..900&display=swap"
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;600;700&family=Noto+Sans+Bengali:wght@100..900&display=swap"
   );
   const style = clonedDoc.createElement("style");
   style.textContent =

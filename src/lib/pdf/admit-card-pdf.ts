@@ -36,9 +36,10 @@ export async function waitForFonts(target: Document = document): Promise<void> {
       '700 14px Inter',
       '600 13px Inter',
       '400 11px Inter',
+      '400 14px "Hind Siliguri"',
+      '700 14px "Hind Siliguri"',
       '400 14px "Noto Sans Bengali"',
       '700 14px "Noto Sans Bengali"',
-      '400 14px "Tiro Bangla"',
       '400 14px Kalpurush',
       '400 28px Certificate', // marksheet heading face (html2canvas must not rasterise a fallback)
       '700 15px "Dancing Script"', // marksheet fill-in face — same reason
@@ -191,7 +192,7 @@ function timestamp(): string {
 /** Clone font-related styles into the html2canvas cloned document so text metrics match preview. */
 function injectFontsIntoClone(clonedDoc: Document) {
   const seen = new Set<string>();
-  // 1) Copy external <link> stylesheets that contain Inter / Tiro Bangla /
+  // 1) Copy external <link> stylesheets that contain Inter / Hind Siliguri /
   //    Noto Sans Bengali (Bangla for the PDF) — deduped.
   const addLink = (href: string) => {
     if (!href || seen.has(href)) return;
@@ -209,7 +210,7 @@ function injectFontsIntoClone(clonedDoc: Document) {
   // <head>), so always request the card's families explicitly — otherwise the
   // clone can rasterise Bangla with a fallback font.
   addLink(
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&family=Tiro+Bangla&display=swap"
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;600;700&family=Noto+Sans+Bengali:wght@100..900&display=swap"
   );
   // Marksheet dynamic-value faces (Dancing Script / Quantico / Fira Code) —
   // globals.css loads them via @import, which the clone never sees (above).
@@ -354,14 +355,16 @@ export async function printAdmitCards(win: Window, elements: HTMLElement[]): Pro
       lang +
       '"><head><meta charset="utf-8" />' +
       "<title>Admit Card</title>" +
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&family=Tiro+Bangla&display=swap" />' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;600;700&family=Noto+Sans+Bengali:wght@100..900&display=swap" />' +
       "<style>" +
+      "@font-face{font-family:'Hind Siliguri';src:url('/fonts/HindSiliguri-Regular.ttf') format('truetype');font-weight:400;font-display:swap}" +
+      "@font-face{font-family:'Hind Siliguri';src:url('/fonts/HindSiliguri-Bold.ttf') format('truetype');font-weight:700;font-display:swap}" +
       "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
       "@page{size:210mm 297mm;margin:0}" +
       "html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
       ".admit-card-page{page-break-after:always;break-after:page}" +
       ".admit-card-page:last-child{page-break-after:auto;break-after:auto}" +
-      ".admit-card-page,.admit-card-page *{font-family:'Inter',system-ui,-apple-system,'Segoe UI','Noto Sans Bengali','Kalpurush','Tiro Bangla',sans-serif!important}" +
+      ".admit-card-page,.admit-card-page *{font-family:'Inter',system-ui,-apple-system,'Segoe UI','Hind Siliguri','Noto Sans Bengali','Kalpurush',sans-serif!important}" +
       "</style></head><body>" +
       body +
       "</body></html>"

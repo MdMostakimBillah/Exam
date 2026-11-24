@@ -38,7 +38,7 @@ export async function printResultSheet(win: Window, el: HTMLElement): Promise<vo
       (el.getAttribute("lang") || "en") +
       '"><head><meta charset="utf-8" />' +
       "<title>Examination Result</title>" +
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@100..900&display=swap" />' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;600;700&family=Noto+Sans+Bengali:wght@100..900&display=swap" />' +
       "<style>" +
       "@font-face{font-family:Kalpurush;src:url('/fonts/kalpurush.ttf') format('truetype');font-weight:400 700;font-display:swap}" +
       "@page{size:210mm 297mm;margin:0}" +

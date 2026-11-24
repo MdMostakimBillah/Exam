@@ -24,7 +24,7 @@ export const MARKSHEET_W_PX = 794;
 export const MARKSHEET_H_PX = 1123;
 
 const FONT =
-  "'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
+  "'Inter', system-ui, -apple-system, 'Segoe UI', 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
 
 /**
  * Heading face — a real serif (the scanned-board look: institution name,

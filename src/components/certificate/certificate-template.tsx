@@ -20,7 +20,7 @@ export const CERT_H_PX = 794; // 210 mm @ 96 dpi
 export const WM_WIDTH_PX = 491; // 130 mm @ 96 dpi — same seal size as admit card
 
 const FONT_STACK =
-  "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Bengali', 'Kalpurush', 'Tiro Bangla', sans-serif";
+  "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
 const TITLE_FONT = "Georgia, 'Times New Roman', 'Noto Serif Bengali', serif";
 
 export interface CertificateTemplateProps {

@@ -142,18 +142,20 @@ async function imageToPng(src: string): Promise<string | null> {
 }
 
 // Noto Sans Bengali (Google Fonts) — the Bangla family every PDF renders with.
+// Hind Siliguri (Google Fonts) — the clean, modern Bangla family every PDF renders with.
 // The HTML/print side loads it from Google Fonts (@import in globals.css);
 // jsPDF cannot read CSS fonts, so the same family's TTF is embedded from
 // /public/fonts instead. Base64 is fetched once, but jsPDF's VFS/font state is
-// PER DOCUMENT: every generated doc must re-register the font itself. The old
-// module-level "loaded" flag left the 2nd+ PDF with no font at all, which came
-// out as garbage (¬¾¼…) after download.
+// PER DOCUMENT: every generated doc must re-register the font itself.
 let fontBase64: string | null = null;
-const FONT_FILE = "/fonts/NotoSansBengali-Regular.ttf";
-const FONT_VFS = "NotoSansBengali-Regular.ttf";
+let fontBoldBase64: string | null = null;
+const FONT_FILE = "/fonts/HindSiliguri-Regular.ttf";
+const FONT_BOLD_FILE = "/fonts/HindSiliguri-Bold.ttf";
+const FONT_VFS = "HindSiliguri-Regular.ttf";
+const FONT_BOLD_VFS = "HindSiliguri-Bold.ttf";
 /** Embedded Bangla font family — exported so sibling PDF generators
  *  (tabulation sheets) render with the same face. */
-export const FONT_NAME = "NotoSansBengali";
+export const FONT_NAME = "HindSiliguri";
 
 export async function loadFont(doc: any) {
   if (!fontBase64) {
@@ -168,11 +170,30 @@ export async function loadFont(doc: any) {
     fontBase64 = btoa(binary);
   }
 
+  if (!fontBoldBase64) {
+    try {
+      const response = await fetch(FONT_BOLD_FILE);
+      const buffer = await response.arrayBuffer();
+      const fontBytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < fontBytes.length; i++) {
+        binary += String.fromCharCode(fontBytes[i]);
+      }
+      fontBoldBase64 = btoa(binary);
+    } catch {
+      fontBoldBase64 = fontBase64;
+    }
+  }
+
   doc.addFileToVFS(FONT_VFS, fontBase64);
   doc.addFont(FONT_VFS, FONT_NAME, "normal");
-  // Titles and autotable headers request bold — register it too, otherwise
-  // jsPDF silently falls back to Helvetica, which has no Bengali glyphs.
-  doc.addFont(FONT_VFS, FONT_NAME, "bold");
+  // Titles and autotable headers request bold — register bold variant
+  if (fontBoldBase64) {
+    doc.addFileToVFS(FONT_BOLD_VFS, fontBoldBase64);
+    doc.addFont(FONT_BOLD_VFS, FONT_NAME, "bold");
+  } else {
+    doc.addFont(FONT_VFS, FONT_NAME, "bold");
+  }
 }
 
 // ── Watermark ─────────────────────────────────────────────────────────────

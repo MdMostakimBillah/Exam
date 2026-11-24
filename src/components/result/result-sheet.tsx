@@ -19,7 +19,7 @@ export const SHEET_W_PX = 794;
 export const SHEET_H_PX = 1123;
 
 const FONT =
-  "'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
+  "'Inter', system-ui, -apple-system, 'Segoe UI', 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif";
 
 const INK = "#18181b";
 const MUTED = "#71717a";
