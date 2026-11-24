@@ -20,6 +20,10 @@ interface PdfExportModalProps {
   data: Record<string, string | number>[];
   companyName?: string;
   companySubtitle?: string;
+  /** Logo image URL or data URL. Defaults to association brandLogo. */
+  logo?: string;
+  /** Fallback crest text (e.g. 'BMA'). Defaults to brandShort. */
+  logoText?: string;
   /** Row-data key holding a photo — enables the "include photos" option. */
   imageKey?: string;
   /** Header label for the photo column in the exported PDF. */
@@ -34,6 +38,8 @@ export function PdfExportModal({
   data,
   companyName,
   companySubtitle,
+  logo,
+  logoText,
   imageKey,
   imageHeader,
 }: PdfExportModalProps) {
@@ -48,10 +54,12 @@ export function PdfExportModal({
   // English institution/association name (name_en), Bangla UI prints the
   // Bangla name with the English one underneath. Explicit props win.
   const brand = useMemo(() => ({ ...BRANDING_DEFAULTS, ...(branding ?? {}) }), [branding]);
-  const resolvedCompany = companyName || (isBn ? (brand.brandNameBn || brand.brandName) : brand.brandName);
+  const resolvedCompany = companyName || (isBn ? (brand.brandNameBn || brand.brandName) : (brand.brandName || brand.brandNameBn)) || "Bangladesh Madrasah Association";
   const resolvedSubtitle = companySubtitle !== undefined
     ? companySubtitle
-    : (isBn ? brand.brandName : "");
+    : (isBn ? (brand.brandName || "Bangladesh Madrasah Association") : (brand.brandNameBn || "বাংলাদেশ মাদ্রাসা এসোসিয়েশন"));
+  const resolvedLogo = logo || brand.brandLogo || "";
+  const resolvedLogoText = logoText || brand.brandShort || "BMA";
 
   const [title, setTitle] = useState(defaultTitle);
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
@@ -98,6 +106,8 @@ export function PdfExportModal({
       orientation,
       companyName: resolvedCompany,
       companySubtitle: resolvedSubtitle,
+      logo: resolvedLogo,
+      logoText: resolvedLogoText,
       accent: pal.hex,
       watermark: branding?.brandWatermark || undefined,
       watermarkText: branding?.brandShort || undefined,
@@ -105,7 +115,7 @@ export function PdfExportModal({
       imageHeader: imageHeader || (isBn ? 'ছবি' : 'Photo'),
     });
     onClose();
-  }, [title, activeColumns, data, orientation, resolvedCompany, resolvedSubtitle, onClose,
+  }, [title, activeColumns, data, orientation, resolvedCompany, resolvedSubtitle, resolvedLogo, resolvedLogoText, onClose,
       pal.hex, withPhotos, photosAvailable, imageKey, imageHeader, isBn,
       branding?.brandWatermark, branding?.brandShort]);
 
@@ -275,6 +285,8 @@ export function PdfExportModal({
                 orientation={orientation}
                 companyName={resolvedCompany}
                 companySubtitle={resolvedSubtitle}
+                logo={resolvedLogo}
+                logoText={resolvedLogoText}
                 pal={pal}
                 imageKey={withPhotos && photosAvailable ? imageKey : undefined}
                 imageHeader={imageHeader || (isBn ? 'ছবি' : 'Photo')}
@@ -311,6 +323,8 @@ function PdfPreview({
   orientation,
   companyName,
   companySubtitle,
+  logo,
+  logoText,
   pal,
   imageKey,
   imageHeader,
@@ -321,6 +335,8 @@ function PdfPreview({
   orientation: "portrait" | "landscape";
   companyName?: string;
   companySubtitle?: string;
+  logo?: string;
+  logoText?: string;
   pal: ReturnType<typeof accentPalette>;
   imageKey?: string;
   imageHeader?: string;
@@ -333,13 +349,27 @@ function PdfPreview({
 
   return (
     <div className="text-[8px] select-none">
-      {/* Header */}
-      <div className="text-white px-3 py-2 rounded-t-sm flex justify-between items-start" style={{ backgroundColor: pal.hex }}>
-        <div>
-          <div className="text-[10px] font-bold">{company}</div>
-          {companySub ? <div className="text-[7px] opacity-80">{companySub}</div> : null}
+      {/* Header — clean uncolored top bar with association logo and name */}
+      <div className="bg-white border-b border-zinc-200 px-3 py-2.5 rounded-t-sm flex justify-between items-center text-zinc-900">
+        <div className="flex items-center gap-2.5">
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logo}
+              alt=""
+              className="h-7 w-7 object-contain rounded-sm shrink-0"
+            />
+          ) : (
+            <div className="h-7 w-7 rounded-sm bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[8px] font-bold text-zinc-700 shrink-0">
+              {logoText || "BMA"}
+            </div>
+          )}
+          <div>
+            <div className="text-[10px] font-bold text-zinc-900 leading-tight">{company}</div>
+            {companySub ? <div className="text-[7px] text-zinc-500 mt-0.5 leading-tight">{companySub}</div> : null}
+          </div>
         </div>
-        <div className="text-right text-[7px] opacity-80">
+        <div className="text-right text-[7px] text-zinc-500 leading-tight shrink-0">
           <div>Printed: {dateStr}</div>
           <div>Total: {data.length} records</div>
           <div>A4 · {orientation}</div>

@@ -3,7 +3,7 @@ interface PdfColumn {
   key: string;
 }
 
-interface GeneratePdfOptions {
+export interface GeneratePdfOptions {
   title: string;
   subtitle?: string;
   columns: PdfColumn[];
@@ -11,6 +11,10 @@ interface GeneratePdfOptions {
   orientation?: "portrait" | "landscape";
   companyName?: string;
   companySubtitle?: string;
+  /** Logo image URL or data URL drawn on the top left of the header. */
+  logo?: string;
+  /** Short text crest used when logo image is absent (e.g. "BMA"). */
+  logoText?: string;
   /** Brand accent color (#hex) from Settings → Branding. Defaults to classic purple. */
   accent?: string;
   /** Branding watermark image URL — drawn big, centred, 35% opacity behind
@@ -234,6 +238,54 @@ export async function loadWatermarkImage(src: string): Promise<WmImage | null> {
   }
 }
 
+interface LogoImage {
+  dataUrl: string;
+  aspect: number;
+}
+
+export async function loadLogoImage(src: string): Promise<LogoImage | null> {
+  if (!src || !src.trim()) return null;
+  const trimmed = src.trim();
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("logo load failed"));
+      img.src = trimmed;
+    });
+    if (!img.naturalWidth || !img.naturalHeight) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    return { dataUrl: canvas.toDataURL("image/png"), aspect: img.naturalHeight / img.naturalWidth };
+  } catch {
+    try {
+      const res = await fetch(trimmed);
+      const blob = await res.blob();
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      if (!img.naturalWidth || !img.naturalHeight) return null;
+      return { dataUrl, aspect: img.naturalHeight / img.naturalWidth };
+    } catch {
+      return null;
+    }
+  }
+}
+
 /**
  * Draw the watermark — centred on the page, un-rotated, 35% opacity.
  * Must be called BEFORE the page's content so the seal sits behind it.
@@ -308,6 +360,8 @@ export async function generatePdf(options: GeneratePdfOptions) {
     orientation = "portrait",
     companyName = "Bangladesh Madrasah Association",
     companySubtitle = "বাংলাদেশ মাদ্রাসা এসোসিয়েশন",
+    logo,
+    logoText,
     accent,
     watermark,
     watermarkText,
@@ -326,7 +380,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
   const pal = accentPalette(accent);
   const primary = pal.rgb;
   const textDark: Rgb = [30, 30, 30];
-  const textMuted: Rgb = [120, 120, 120];
+  const textMuted: Rgb = [110, 110, 115];
 
   // Watermark FIRST, so header band / title / table all paint on top of it.
   // (Page 1 only — pages 2+ are drawn from the autotable willDrawPage hook.)
@@ -334,49 +388,96 @@ export async function generatePdf(options: GeneratePdfOptions) {
   const wmText = wmImg ? "" : (watermarkText || companyName.split(/\s+/).map((w) => w[0]).join("").toUpperCase());
   drawWatermark(doc, pageWidth, pageHeight, wmImg, wmText);
 
-  doc.setFillColor(...primary);
-  doc.rect(0, 0, pageWidth, 18, "F");
+  // Top header: Clean, uncolored header with association logo & name on left
+  const startX = 14;
+  const startY = 7;
+  const logoImg = logo ? await loadLogoImage(logo) : null;
 
-  doc.setTextColor(...pal.onRgb);
-  doc.setFont(FONT, "bold");
-  doc.setFontSize(14);
-  // English documents pass an empty subtitle — keep the single line centred
-  // in the band instead of leaving it top-aligned.
-  doc.text(companyName, 14, companySubtitle ? 10 : 11.5);
-  if (companySubtitle) {
-    doc.setFontSize(8);
-    doc.setFont(FONT, "normal");
-    doc.text(companySubtitle, 14, 15);
+  let textX = startX;
+  if (logoImg) {
+    const maxLogoW = 14;
+    const maxLogoH = 12;
+    let logoW = maxLogoW;
+    let logoH = logoW * logoImg.aspect;
+    if (logoH > maxLogoH) {
+      logoH = maxLogoH;
+      logoW = logoH / logoImg.aspect;
+    }
+    const logoX = startX;
+    const logoY = startY + (12 - logoH) / 2;
+    try {
+      doc.addImage(logoImg.dataUrl, "PNG", logoX, logoY, logoW, logoH, undefined, "FAST");
+    } catch {
+      // fallback if addImage encounters unexpected error
+    }
+    textX = startX + logoW + 3.5;
+  } else {
+    // Subtle fallback crest badge with initials (e.g. "BMA")
+    const crestSize = 11;
+    const crestX = startX;
+    const crestY = startY + 0.5;
+    doc.setDrawColor(215, 218, 224);
+    doc.setFillColor(245, 247, 250);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(crestX, crestY, crestSize, crestSize, 1.5, 1.5, "FD");
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...textDark);
+    doc.text(logoText || "BMA", crestX + crestSize / 2, crestY + crestSize / 2 + 1.2, { align: "center" });
+    textX = startX + crestSize + 3.5;
   }
 
+  // Association Name (and optional Subtitle)
+  doc.setTextColor(...textDark);
+  doc.setFont(FONT, "bold");
+  doc.setFontSize(13);
+  if (companySubtitle) {
+    doc.text(companyName, textX, startY + 5);
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    doc.text(companySubtitle, textX, startY + 10);
+  } else {
+    doc.text(companyName, textX, startY + 7.5);
+  }
+
+  // Printed metadata on right side
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  doc.setFontSize(8);
-  doc.text(`Printed: ${dateStr}`, pageWidth - 14, 8, { align: "right" });
-  doc.text(`Total: ${data.length} records`, pageWidth - 14, 12, { align: "right" });
-  doc.text(`A4 · ${orientation}`, pageWidth - 14, 16, { align: "right" });
+  doc.setFont(FONT, "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...textMuted);
+  doc.text(`Printed: ${dateStr}`, pageWidth - 14, startY + 3.5, { align: "right" });
+  doc.text(`Total: ${data.length} records`, pageWidth - 14, startY + 7.5, { align: "right" });
+  doc.text(`A4 · ${orientation}`, pageWidth - 14, startY + 11.5, { align: "right" });
 
-  let yPos = 28;
+  // Subtle neutral divider line under header
+  const dividerY = startY + 14;
+  doc.setDrawColor(226, 230, 236);
+  doc.setLineWidth(0.4);
+  doc.line(14, dividerY, pageWidth - 14, dividerY);
+
+  let yPos = dividerY + 8;
   doc.setTextColor(...textDark);
   doc.setFont(FONT, "bold");
   doc.setFontSize(14);
   const titleLines = doc.splitTextToSize(title.toUpperCase(), pageWidth - 28);
   doc.text(titleLines, pageWidth / 2, yPos, { align: "center" });
-  yPos += titleLines.length * 7;
+  yPos += titleLines.length * 6.5;
 
   if (subtitle) {
     doc.setFontSize(9);
     doc.setFont(FONT, "normal");
     doc.setTextColor(...textMuted);
-    doc.text(subtitle, pageWidth / 2, yPos + 2, { align: "center" });
-    yPos += 8;
+    doc.text(subtitle, pageWidth / 2, yPos + 1, { align: "center" });
+    yPos += 7;
   }
 
-  yPos += 4;
+  yPos += 3;
   doc.setDrawColor(...primary);
   doc.setLineWidth(0.5);
   doc.line(14, yPos, pageWidth - 14, yPos);
-  yPos += 6;
+  yPos += 5;
 
   // Photo column — only when at least one row actually has an image.
   const withImage = Boolean(imageKey && data.some((row) => String(row[imageKey] ?? "").trim()));
