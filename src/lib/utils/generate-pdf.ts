@@ -158,6 +158,19 @@ const FONT_BOLD_VFS = "HindSiliguri-Bold.ttf";
 export const FONT_NAME = "HindSiliguri";
 
 export async function loadFont(doc: any) {
+  // Ensure document fonts (Hind Siliguri) are ready in the browser
+  if (typeof document !== "undefined" && document.fonts) {
+    try {
+      await document.fonts.ready;
+      await Promise.all([
+        document.fonts.load("400 16px 'Hind Siliguri'"),
+        document.fonts.load("700 16px 'Hind Siliguri'"),
+      ]);
+    } catch {
+      // ignore
+    }
+  }
+
   if (!fontBase64) {
     const response = await fetch(FONT_FILE);
     const buffer = await response.arrayBuffer();
@@ -193,6 +206,153 @@ export async function loadFont(doc: any) {
     doc.addFont(FONT_BOLD_VFS, FONT_NAME, "bold");
   } else {
     doc.addFont(FONT_VFS, FONT_NAME, "bold");
+  }
+}
+
+// ── Bengali Text Shaping for jsPDF ─────────────────────────────────────────
+// jsPDF does not have OpenType GSUB/GPOS complex script shaping (HarfBuzz),
+// which causes Bengali characters, vowel marks (kars), and conjuncts to break.
+// We render any string containing Bengali characters onto an offscreen canvas
+// at 4x resolution (384 DPI) using the browser's native text shaping engine
+// with Hind Siliguri, and insert the rasterised image directly into jsPDF.
+
+export interface BengaliRenderResult {
+  dataUrl: string;
+  widthMm: number;
+  heightMm: number;
+  padXMm: number;
+  padYMm: number;
+  ascentMm: number;
+}
+
+const banglaTextCache = new Map<string, BengaliRenderResult>();
+
+export function hasBengali(text: string): boolean {
+  return /[\u0980-\u09FF]/.test(text);
+}
+
+export function renderBengaliText(
+  text: string,
+  fontSizePt: number,
+  fontStyle: "normal" | "bold" = "normal",
+  textColor: Rgb = [30, 30, 30]
+): BengaliRenderResult {
+  const cacheKey = `${text}_${fontSizePt}_${fontStyle}_${textColor.join(",")}`;
+  const cached = banglaTextCache.get(cacheKey);
+  if (cached) return cached;
+
+  if (typeof document === "undefined") {
+    return { dataUrl: "", widthMm: 0, heightMm: 0, padXMm: 0, padYMm: 0, ascentMm: 0 };
+  }
+
+  const DPI_SCALE = 4;
+  const basePx = fontSizePt * (96 / 72);
+  const canvasFontSizePx = Math.round(basePx * DPI_SCALE);
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return { dataUrl: "", widthMm: 0, heightMm: 0, padXMm: 0, padYMm: 0, ascentMm: 0 };
+  }
+
+  const weight = fontStyle === "bold" ? "700" : "400";
+  const fontDecl = `${weight} ${canvasFontSizePx}px 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif`;
+  ctx.font = fontDecl;
+
+  const metrics = ctx.measureText(text);
+  const textWidthPx = metrics.width;
+
+  const ascent = metrics.actualBoundingBoxAscent || canvasFontSizePx * 0.85;
+  const descent = metrics.actualBoundingBoxDescent || canvasFontSizePx * 0.25;
+
+  const padX = 4 * DPI_SCALE;
+  const padY = 2 * DPI_SCALE;
+
+  const widthPx = Math.ceil(textWidthPx + padX * 2);
+  const heightPx = Math.ceil(ascent + descent + padY * 2);
+
+  canvas.width = Math.max(1, widthPx);
+  canvas.height = Math.max(1, heightPx);
+
+  ctx.font = fontDecl;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+  ctx.fillText(text, padX, padY + ascent);
+
+  const mmPerPx = 25.4 / (96 * DPI_SCALE);
+  const widthMm = widthPx * mmPerPx;
+  const heightMm = heightPx * mmPerPx;
+  const padXMm = padX * mmPerPx;
+  const padYMm = padY * mmPerPx;
+  const ascentMm = ascent * mmPerPx;
+
+  const result: BengaliRenderResult = {
+    dataUrl: canvas.toDataURL("image/png"),
+    widthMm,
+    heightMm,
+    padXMm,
+    padYMm,
+    ascentMm,
+  };
+
+  banglaTextCache.set(cacheKey, result);
+  return result;
+}
+
+export function drawPdfText(
+  doc: any,
+  text: string,
+  x: number,
+  y: number,
+  options: {
+    fontSize: number;
+    fontStyle?: "normal" | "bold";
+    textColor?: Rgb;
+    align?: "left" | "center" | "right";
+  }
+) {
+  if (!text || !String(text).trim()) return;
+  const str = String(text);
+  const fontStyle = options.fontStyle || "normal";
+  const fontSize = options.fontSize;
+  const textColor = options.textColor || [30, 30, 30];
+  const align = options.align || "left";
+
+  if (!hasBengali(str)) {
+    doc.setFont(FONT_NAME, fontStyle);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(...textColor);
+    doc.text(str, x, y, { align });
+    return;
+  }
+
+  const rendered = renderBengaliText(str, fontSize, fontStyle, textColor);
+  if (!rendered.dataUrl) {
+    doc.setFont(FONT_NAME, fontStyle);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(...textColor);
+    doc.text(str, x, y, { align });
+    return;
+  }
+
+  let drawX = x;
+  if (align === "center") {
+    drawX = x - rendered.widthMm / 2;
+  } else if (align === "right") {
+    drawX = x - rendered.widthMm + rendered.padXMm;
+  } else {
+    drawX = x - rendered.padXMm;
+  }
+
+  const drawY = y - (rendered.padYMm + rendered.ascentMm);
+
+  try {
+    doc.addImage(rendered.dataUrl, "PNG", drawX, drawY, rendered.widthMm, rendered.heightMm, undefined, "FAST");
+  } catch {
+    doc.setFont(FONT_NAME, fontStyle);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(...textColor);
+    doc.text(str, x, y, { align });
   }
 }
 
@@ -449,17 +609,26 @@ export async function generatePdf(options: GeneratePdfOptions) {
   }
 
   // Association Name (and optional Subtitle)
-  doc.setTextColor(...textDark);
-  doc.setFont(FONT, "bold");
-  doc.setFontSize(13);
   if (companySubtitle) {
-    doc.text(companyName, textX, startY + 5);
-    doc.setFont(FONT, "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...textMuted);
-    doc.text(companySubtitle, textX, startY + 10);
+    drawPdfText(doc, companyName, textX, startY + 5.5, {
+      fontSize: 13,
+      fontStyle: "bold",
+      textColor: textDark,
+      align: "left",
+    });
+    drawPdfText(doc, companySubtitle, textX, startY + 10.5, {
+      fontSize: 8,
+      fontStyle: "normal",
+      textColor: textMuted,
+      align: "left",
+    });
   } else {
-    doc.text(companyName, textX, startY + 7.5);
+    drawPdfText(doc, companyName, textX, startY + 7.5, {
+      fontSize: 13,
+      fontStyle: "bold",
+      textColor: textDark,
+      align: "left",
+    });
   }
 
   // Printed metadata on right side
@@ -479,19 +648,39 @@ export async function generatePdf(options: GeneratePdfOptions) {
   doc.line(14, dividerY, pageWidth - 14, dividerY);
 
   let yPos = dividerY + 8;
-  doc.setTextColor(...textDark);
-  doc.setFont(FONT, "bold");
-  doc.setFontSize(14);
-  const titleLines = doc.splitTextToSize(title.toUpperCase(), pageWidth - 28);
-  doc.text(titleLines, pageWidth / 2, yPos, { align: "center" });
-  yPos += titleLines.length * 6.5;
+  if (hasBengali(title)) {
+    drawPdfText(doc, title, pageWidth / 2, yPos, {
+      fontSize: 14,
+      fontStyle: "bold",
+      textColor: textDark,
+      align: "center",
+    });
+    yPos += 7;
+  } else {
+    doc.setTextColor(...textDark);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(14);
+    const titleLines = doc.splitTextToSize(title.toUpperCase(), pageWidth - 28);
+    doc.text(titleLines, pageWidth / 2, yPos, { align: "center" });
+    yPos += titleLines.length * 6.5;
+  }
 
   if (subtitle) {
-    doc.setFontSize(9);
-    doc.setFont(FONT, "normal");
-    doc.setTextColor(...textMuted);
-    doc.text(subtitle, pageWidth / 2, yPos + 1, { align: "center" });
-    yPos += 7;
+    if (hasBengali(subtitle)) {
+      drawPdfText(doc, subtitle, pageWidth / 2, yPos + 1, {
+        fontSize: 9,
+        fontStyle: "normal",
+        textColor: textMuted,
+        align: "center",
+      });
+      yPos += 7;
+    } else {
+      doc.setFontSize(9);
+      doc.setFont(FONT, "normal");
+      doc.setTextColor(...textMuted);
+      doc.text(subtitle, pageWidth / 2, yPos + 1, { align: "center" });
+      yPos += 7;
+    }
   }
 
   yPos += 3;
@@ -606,36 +795,74 @@ export async function generatePdf(options: GeneratePdfOptions) {
     willDrawPage: (data: any) => {
       if (data.pageNumber > 1) drawWatermark(doc, pageWidth, pageHeight, wmImg, wmText);
     },
-    ...(withImage
-      ? {
-          didDrawCell: (data: any) => {
-            if (data.section !== "body" || data.column.index !== 1) return;
-            const png = imgSrcs.get(data.row.index);
-            if (!png) return;
-            try {
-              const props = doc.getImageProperties(png);
-              const maxW = data.cell.width - 4;
-              const maxH = data.cell.height - 4;
-              let w = maxW;
-              let h = (maxW * props.height) / props.width;
-              if (h > maxH) {
-                h = maxH;
-                w = (maxH * props.width) / props.height;
-              }
-              doc.addImage(
-                png,
-                "PNG",
-                data.cell.x + (data.cell.width - w) / 2,
-                data.cell.y + (data.cell.height - h) / 2,
-                w,
-                h
-              );
-            } catch {
-              // skip broken image
+    willDrawCell: (hookData: any) => {
+      const cellText = Array.isArray(hookData.cell.text)
+        ? hookData.cell.text.join(" ")
+        : String(hookData.cell.text ?? "");
+      if (hasBengali(cellText)) {
+        hookData.cell._bengaliRawText = cellText;
+        hookData.cell.text = [];
+      }
+    },
+    didDrawCell: (data: any) => {
+      if (withImage && data.section === "body" && data.column.index === 1) {
+        const png = imgSrcs.get(data.row.index);
+        if (png) {
+          try {
+            const props = doc.getImageProperties(png);
+            const maxW = data.cell.width - 4;
+            const maxH = data.cell.height - 4;
+            let w = maxW;
+            let h = (maxW * props.height) / props.width;
+            if (h > maxH) {
+              h = maxH;
+              w = (maxH * props.width) / props.height;
             }
-          },
+            doc.addImage(
+              png,
+              "PNG",
+              data.cell.x + (data.cell.width - w) / 2,
+              data.cell.y + (data.cell.height - h) / 2,
+              w,
+              h
+            );
+          } catch {
+            // skip broken image
+          }
         }
-      : {}),
+      }
+
+      // Bengali text rendering for any table cell
+      const rawText = data.cell._bengaliRawText;
+      if (rawText && hasBengali(rawText)) {
+        const cell = data.cell;
+        const isHead = data.section === "head";
+        const fontStyle = (cell.styles.fontStyle === "bold" || isHead) ? "bold" : "normal";
+        const fontSize = cell.styles.fontSize || (isHead ? 7 : 8);
+        const halign = cell.styles.halign || "left";
+        const textColor: Rgb = isHead
+          ? pal.onRgb
+          : (Array.isArray(cell.styles.textColor) ? cell.styles.textColor : [30, 30, 30]);
+
+        const rendered = renderBengaliText(rawText, fontSize, fontStyle, textColor);
+        if (rendered.dataUrl) {
+          let drawX = cell.x + 2;
+          if (halign === "center") {
+            drawX = cell.x + (cell.width - rendered.widthMm) / 2;
+          } else if (halign === "right") {
+            drawX = cell.x + cell.width - rendered.widthMm - 2;
+          } else {
+            drawX = cell.x + 2 - rendered.padXMm;
+          }
+          const drawY = cell.y + (cell.height - rendered.heightMm) / 2;
+          try {
+            doc.addImage(rendered.dataUrl, "PNG", drawX, drawY, rendered.widthMm, rendered.heightMm, undefined, "FAST");
+          } catch {
+            // skip
+          }
+        }
+      }
+    },
     didDrawPage: (data) => {
       const footerY = pageHeight - 10;
       doc.setDrawColor(200, 200, 200);

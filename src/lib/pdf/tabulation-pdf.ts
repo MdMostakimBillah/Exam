@@ -7,7 +7,9 @@
 import {
   FONT_NAME,
   accentPalette,
+  drawPdfText,
   drawWatermark,
+  hasBengali,
   loadFont,
   loadWatermarkImage,
 } from "@/lib/utils/generate-pdf";
@@ -127,25 +129,55 @@ export async function exportTabulationPdf(options: TabulationPdfOptions): Promis
 
     doc.setFillColor(...primary);
     doc.rect(0, 0, pageW, BAND_H, "F");
-    doc.setTextColor(...pal.onRgb);
-    doc.setFont(FONT_NAME, "bold");
-    doc.setFontSize(13);
-    doc.text(companyName, MARGIN_X, 8.5);
-    if (companySubtitle) {
-      doc.setFont(FONT_NAME, "normal");
-      doc.setFontSize(7.5);
-      doc.text(companySubtitle, MARGIN_X, 13);
+    if (hasBengali(companyName)) {
+      drawPdfText(doc, companyName, MARGIN_X, 8.5, {
+        fontSize: 13,
+        fontStyle: "bold",
+        textColor: pal.onRgb,
+        align: "left",
+      });
+    } else {
+      doc.setTextColor(...pal.onRgb);
+      doc.setFont(FONT_NAME, "bold");
+      doc.setFontSize(13);
+      doc.text(companyName, MARGIN_X, 8.5);
     }
+    if (companySubtitle) {
+      if (hasBengali(companySubtitle)) {
+        drawPdfText(doc, companySubtitle, MARGIN_X, 13, {
+          fontSize: 7.5,
+          fontStyle: "normal",
+          textColor: pal.onRgb,
+          align: "left",
+        });
+      } else {
+        doc.setFont(FONT_NAME, "normal");
+        doc.setFontSize(7.5);
+        doc.text(companySubtitle, MARGIN_X, 13);
+      }
+    }
+    doc.setFont(FONT_NAME, "normal");
     doc.setFontSize(7.5);
+    doc.setTextColor(...pal.onRgb);
     doc.text(`Printed: ${dateStr}`, pageW - MARGIN_X, 8.5, { align: "right" });
     doc.text(examName, pageW - MARGIN_X, 13, { align: "right" });
 
-    doc.setTextColor(...textDark);
-    doc.setFont(FONT_NAME, "bold");
-    doc.setFontSize(12);
-    doc.text(`${labels.title} — ${sheet.className}`, pageW / 2, TITLE_Y, {
-      align: "center",
-    });
+    const titleText = `${labels.title} — ${sheet.className}`;
+    if (hasBengali(titleText)) {
+      drawPdfText(doc, titleText, pageW / 2, TITLE_Y, {
+        fontSize: 12,
+        fontStyle: "bold",
+        textColor: textDark,
+        align: "center",
+      });
+    } else {
+      doc.setTextColor(...textDark);
+      doc.setFont(FONT_NAME, "bold");
+      doc.setFontSize(12);
+      doc.text(titleText, pageW / 2, TITLE_Y, {
+        align: "center",
+      });
+    }
 
     doc.setFont(FONT_NAME, "normal");
     doc.setFontSize(7.5);
