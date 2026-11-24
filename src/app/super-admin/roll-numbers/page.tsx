@@ -16,8 +16,9 @@ import { useClasses } from "@/lib/storage/classes";
 import { useAllRegistrations } from "@/lib/storage/registrations";
 import { formatDate } from "@/lib/storage/storage";
 import { Registration } from "@/lib/types";
-import { Hash, Search, Sparkles, Loader2, AlertTriangle, Users } from "lucide-react";
+import { Hash, Search, Sparkles, Loader2, AlertTriangle, Users, FileDown } from "lucide-react";
 import { LoadingBar } from "@/components/ui/loading-bar";
+import { SeatPlanModal } from "@/components/seat-plan/seat-plan-modal";
 
 function genderLabel(g: string | undefined, isBn: boolean): string {
   if (!g) return '-';
@@ -40,6 +41,7 @@ export default function RollNumbersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(30);
+  const [isSeatPlanOpen, setIsSeatPlanOpen] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setPage(1); }, [selectedClass, selectedGender, search, pageSize]);
@@ -419,6 +421,22 @@ export default function RollNumbersPage() {
                 ? (isBn ? `${genderLabel(selectedGender, isBn)} রোল তৈরি করুন` : `Generate ${genderLabel(selectedGender, false)} Roll`)
                 : (isBn ? 'রোল তৈরি করুন' : 'Generate Roll')}
             </button>
+
+            <button
+              type="button"
+              onClick={() => setIsSeatPlanOpen(true)}
+              disabled={!selectedClass}
+              className={cn(
+                "flex items-center justify-center gap-2 px-4 h-10 rounded-md text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto shrink-0 border",
+                isDark
+                  ? "border-white/10 bg-white/[0.05] text-white hover:bg-white/[0.08]"
+                  : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 shadow-sm"
+              )}
+              title={isBn ? "আসন বিন্যাস পিডিএফ তৈরি ও ডাউনলোড করুন" : "Generate & download seat plan PDF"}
+            >
+              <FileDown className="h-4 w-4 text-brand-accent" />
+              {isBn ? 'আসন বিন্যাস (PDF)' : 'Seat Plan (PDF)'}
+            </button>
           </div>
 
           {selectedClass && (
@@ -470,7 +488,7 @@ export default function RollNumbersPage() {
           </div>
         ) : (
           <div className={`${card}`}>
-            <div className={`px-5 py-4 border-b flex items-center justify-between ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+            <div className={`px-5 py-4 border-b flex items-center justify-between gap-3 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
               <div className="flex items-center gap-2">
                 <Users className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
@@ -478,9 +496,20 @@ export default function RollNumbersPage() {
                 </h3>
                 <span className={`text-[11px] ${subtext}`}>({filtered.length})</span>
               </div>
-              <span className={`text-[11px] ${subtext}`}>
-                {isBn ? 'সাজানো: রোল নম্বর ও নিবন্ধনের ক্রমিক' : 'Sorted by exam roll and registration order'}
-              </span>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsSeatPlanOpen(true)}
+                  disabled={!selectedClass}
+                  className="flex items-center gap-1.5 text-xs text-brand-accent hover:underline font-medium transition-colors disabled:opacity-40 disabled:no-underline"
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  {isBn ? 'আসন বিন্যাস ডাউনলোড' : 'Download Seat Plan'}
+                </button>
+                <span className={`text-[11px] hidden sm:inline ${subtext}`}>
+                  {isBn ? 'সাজানো: রোল নম্বর ও নিবন্ধনের ক্রমিক' : 'Sorted by exam roll and registration order'}
+                </span>
+              </div>
             </div>
 
             {studentsQuery.isPending ? (
@@ -598,6 +627,17 @@ export default function RollNumbersPage() {
             )}
           </div>
         )}
+        {/* Seat Plan Modal */}
+        <SeatPlanModal
+          open={isSeatPlanOpen}
+          onClose={() => setIsSeatPlanOpen(false)}
+          className={selectedClass}
+          sessionName={currentSession?.name}
+          students={students}
+          firstReg={firstReg}
+          institutionMap={institutionMap}
+          initialGender={selectedGender}
+        />
       </div>
     </div>
   );
