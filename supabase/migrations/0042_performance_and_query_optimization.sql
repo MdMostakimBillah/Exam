@@ -70,6 +70,10 @@ CREATE INDEX IF NOT EXISTS idx_students_student_id
 CREATE INDEX IF NOT EXISTS idx_students_user_id
   ON public.students(user_id);
 
+-- Students: session + created_at for fast pagination and listing
+CREATE INDEX IF NOT EXISTS idx_students_session_created
+  ON public.students(session_id, created_at DESC);
+
 -- Students: institution + session + created_at
 CREATE INDEX IF NOT EXISTS idx_students_inst_session_created
   ON public.students(institution_id, session_id, created_at DESC);

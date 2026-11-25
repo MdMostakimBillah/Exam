@@ -131,18 +131,39 @@ async function resolveViewSessionOverride(
 let currentSessionPromise: Promise<AcademicSession | undefined> | null = null;
 let currentSessionCachedAt = 0;
 let cachedCurrentSessionValue: AcademicSession | undefined = undefined;
-const CURRENT_SESSION_TTL_MS = 10_000;
+const CURRENT_SESSION_TTL_MS = 60_000;
+const CURRENT_SESSION_STORAGE_KEY = 'bma_current_session';
+
+export function getCachedCurrentSessionSync(): AcademicSession | undefined {
+  if (cachedCurrentSessionValue) return cachedCurrentSessionValue;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(CURRENT_SESSION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        cachedCurrentSessionValue = parsed;
+        return parsed;
+      }
+    } catch {}
+  }
+  return undefined;
+}
 
 export function invalidateCurrentSessionCache(): void {
   currentSessionPromise = null;
   currentSessionCachedAt = 0;
   cachedCurrentSessionValue = undefined;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(CURRENT_SESSION_STORAGE_KEY);
+    } catch {}
+  }
 }
 
 /**
  * The session this user is currently viewing: the local view override
  * if valid, otherwise the global current session.
- * Uses a 10s in-memory cache and promise deduplication to prevent
+ * Uses a 60s in-memory cache and promise deduplication to prevent
  * duplicate queries when multiple components/hooks initialize together.
  */
 export async function fetchCurrentSession(forceRefresh = false): Promise<AcademicSession | undefined> {
@@ -165,6 +186,11 @@ export async function fetchCurrentSession(forceRefresh = false): Promise<Academi
       const result = override ?? globalCurrent;
       cachedCurrentSessionValue = result;
       currentSessionCachedAt = Date.now();
+      if (typeof window !== 'undefined' && result) {
+        try {
+          localStorage.setItem(CURRENT_SESSION_STORAGE_KEY, JSON.stringify(result));
+        } catch {}
+      }
       return result;
     } catch (err) {
       console.warn('[sessions] fetchCurrentSession error:', err);
@@ -190,11 +216,12 @@ export function useCurrentSession() {
   return useQuery<AcademicSession | undefined>({
     queryKey: ['academic_sessions', 'current'],
     queryFn: () => fetchCurrentSession(),
+    initialData: getCachedCurrentSessionSync,
     // Live: lets other users notice when the super-admin changes the
     // global session (override auto-expiry is resolved inside queryFn).
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
-    staleTime: 5_000,
+    staleTime: 30_000,
   });
 }
 

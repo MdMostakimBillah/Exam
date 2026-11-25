@@ -59,6 +59,8 @@ async function selectResilient<T>(
 
 const INSTITUTIONS_STALE_TIME = 60 * 1000; // 1 min (was 5 min) - keeps lists fresh after RLS or data fixes
 
+const INSTITUTION_SLUG_CACHE = new Map<string, Institution>();
+
 function mapInstitution(data: any): Institution {
   return {
     id: data.id,
@@ -119,7 +121,11 @@ export async function fetchInstitutions(): Promise<Institution[]> {
     throw error;
   }
   if (!data) return [];
-  return data.map(mapInstitution);
+  const list = data.map(mapInstitution);
+  for (const inst of list) {
+    if (inst.slug) INSTITUTION_SLUG_CACHE.set(inst.slug, inst);
+  }
+  return list;
 }
 
 export async function fetchInstitutionById(id: string): Promise<Institution | undefined> {
@@ -132,7 +138,9 @@ export async function fetchInstitutionById(id: string): Promise<Institution | un
     throw error;
   }
   if (!data) return undefined;
-  return mapInstitution(data);
+  const mapped = mapInstitution(data);
+  if (mapped.slug) INSTITUTION_SLUG_CACHE.set(mapped.slug, mapped);
+  return mapped;
 }
 
 export async function fetchInstitutionBySlug(slug: string): Promise<Institution | undefined> {
@@ -145,7 +153,9 @@ export async function fetchInstitutionBySlug(slug: string): Promise<Institution 
     throw error;
   }
   if (!data) return undefined;
-  return mapInstitution(data);
+  const mapped = mapInstitution(data);
+  if (mapped.slug) INSTITUTION_SLUG_CACHE.set(mapped.slug, mapped);
+  return mapped;
 }
 
 /**
@@ -283,7 +293,15 @@ export function useInstitutionName() {
   }, [institutions, bn]);
 }
 export function useInstitutionById(id: string) { return useQuery({ queryKey: ['institutions', id], queryFn: () => fetchInstitutionById(id), enabled: !!id, staleTime: INSTITUTIONS_STALE_TIME }); }
-export function useInstitutionBySlug(slug: string) { return useQuery({ queryKey: ['institutions', 'slug', slug], queryFn: () => fetchInstitutionBySlug(slug), enabled: !!slug, staleTime: INSTITUTIONS_STALE_TIME }); }
+export function useInstitutionBySlug(slug: string) {
+  return useQuery({
+    queryKey: ['institutions', 'slug', slug],
+    queryFn: () => fetchInstitutionBySlug(slug),
+    initialData: () => INSTITUTION_SLUG_CACHE.get(slug),
+    enabled: !!slug,
+    staleTime: INSTITUTIONS_STALE_TIME,
+  });
+}
 
 export function useUpdateInstitution() {
   const qc = useQueryClient();

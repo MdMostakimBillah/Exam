@@ -10,7 +10,7 @@ import { TableCheckbox } from "@/components/ui/table-checkbox";
 import { Pagination } from "@/components/ui/pagination";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
-import { useStudentsByInstitution, useDeleteStudent } from "@/lib/storage/students";
+import { useStudentsByInstitution, useDeleteStudent, useStudentPhotos } from "@/lib/storage/students";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { useInstitutionStudentRegistrationMeta, normalizeRegistrationStatus, type StudentRegistrationMeta } from "@/lib/storage/registrations";
@@ -115,6 +115,9 @@ export default function InstitutionStudentsPage() {
     const start = (safePage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, safePage, pageSize]);
+
+  const pageStudentIds = useMemo(() => paginatedStudents.map(s => s.id), [paginatedStudents]);
+  const { data: photoMap = {} } = useStudentPhotos(pageStudentIds);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'ক্রমিক' : 'SN', key: 'sn' },
@@ -360,8 +363,8 @@ export default function InstitutionStudentsPage() {
                     <TableCell className={`w-12 text-[11px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{(safePage - 1) * pageSize + idx + 1}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        {student.photo ? (
-                          <Image src={student.photo} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
+                        {photoMap[student.id] || student.photo ? (
+                          <Image src={photoMap[student.id] || student.photo || ''} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
                         ) : (
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                             {(student.firstName || student.lastName || '?').charAt(0).toUpperCase()}
@@ -477,8 +480,8 @@ export default function InstitutionStudentsPage() {
                       "h-20 w-20 rounded-full flex items-center justify-center overflow-hidden mb-3 ring-2 ring-offset-2",
                       isDark ? "ring-white/10 ring-offset-[#0D0D0D]" : "ring-zinc-200 ring-offset-white"
                     )}>
-                      {viewingStudent.photo ? (
-                        <Image src={viewingStudent.photo} alt="" width={80} height={80} unoptimized className="h-full w-full object-cover" />
+                      {photoMap[viewingStudent.id] || viewingStudent.photo ? (
+                        <Image src={photoMap[viewingStudent.id] || viewingStudent.photo || ''} alt="" width={80} height={80} unoptimized className="h-full w-full object-cover" />
                       ) : (
                         <div className={cn("h-full w-full flex items-center justify-center text-lg font-bold", isDark ? "bg-white/[0.08] text-white" : "bg-zinc-100 text-zinc-700")}>
                           {initials}

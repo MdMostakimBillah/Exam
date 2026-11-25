@@ -7,6 +7,9 @@ const SUPABASE_TABLE = 'students';
 
 const STUDENT_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,gender,father_name,mother_name,phone,address,photo_url,status,created_at,updated_at';
 
+// Lightweight columns list omitting multi-KB base64 photo_url for ultra-fast list queries
+export const STUDENT_LIST_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,gender,father_name,mother_name,phone,address,status,created_at,updated_at';
+
 const DEFAULT_PAGE_SIZE = 20;
 
 /**
@@ -66,7 +69,7 @@ export async function fetchStudents(sessionId?: string, page?: number, pageSize?
     const to = from + pageSize - 1;
     let query = supabase
       .from(SUPABASE_TABLE)
-      .select(STUDENT_COLUMNS)
+      .select(STUDENT_LIST_COLUMNS)
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
     const { data, error } = await query.range(from, to);
@@ -85,7 +88,7 @@ export async function fetchStudents(sessionId?: string, page?: number, pageSize?
     const from = p * PAGE;
     let query = supabase
       .from(SUPABASE_TABLE)
-      .select(STUDENT_COLUMNS)
+      .select(STUDENT_LIST_COLUMNS)
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
     const { data, error } = await query.range(from, from + PAGE - 1);
@@ -127,7 +130,7 @@ export async function fetchStudentsByInstitution(institutionId: string, sessionI
     const to = from + pageSize - 1;
     let query = supabase
       .from(SUPABASE_TABLE)
-      .select(STUDENT_COLUMNS)
+      .select(STUDENT_LIST_COLUMNS)
       .eq('institution_id', institutionId)
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
@@ -147,7 +150,7 @@ export async function fetchStudentsByInstitution(institutionId: string, sessionI
     const from = p * PAGE;
     let query = supabase
       .from(SUPABASE_TABLE)
-      .select(STUDENT_COLUMNS)
+      .select(STUDENT_LIST_COLUMNS)
       .eq('institution_id', institutionId)
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
@@ -383,7 +386,7 @@ export function useStudents(sessionId?: string, page?: number, pageSize?: number
 // Own column list including exam_roll (0013) plus the biographical fields the
 // Admit Card page prints — kept separate from STUDENT_COLUMNS so every other
 // students page keeps working before migration 0013 is run.
-const CLASS_ROLL_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,gender,father_name,mother_name,phone,address,photo_url,status,created_at,updated_at';
+const CLASS_ROLL_COLUMNS = 'id,institution_id,session_id,first_name,last_name,first_name_bn,last_name_bn,student_id,class,section,roll,exam_roll,date_of_birth,gender,father_name,mother_name,phone,address,status,created_at,updated_at';
 
 /**
  * All students of one class in a session (across every institution),
@@ -427,6 +430,34 @@ export function useStudentById(id: string) {
     queryKey: ['students', id],
     queryFn: () => fetchStudentById(id),
     enabled: !!id,
+  });
+}
+
+/**
+ * On-demand batch photo lookup for active/visible page rows (e.g. 30 students),
+ * avoiding downloading megabytes of base64 photos across all session students.
+ */
+export function useStudentPhotos(studentIds: string[]) {
+  const idsKey = studentIds.slice().sort().join(',');
+  return useQuery<Record<string, string>>({
+    queryKey: ['students', 'photos', idsKey],
+    queryFn: async () => {
+      if (!studentIds.length) return {};
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from(SUPABASE_TABLE)
+        .select('id, photo_url')
+        .in('id', studentIds)
+        .not('photo_url', 'is', null);
+      if (error || !data) return {};
+      const map: Record<string, string> = {};
+      for (const row of data) {
+        if (row.photo_url) map[row.id] = row.photo_url;
+      }
+      return map;
+    },
+    enabled: studentIds.length > 0,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
