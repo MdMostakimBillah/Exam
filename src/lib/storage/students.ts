@@ -436,27 +436,41 @@ export function useStudentById(id: string) {
 /**
  * On-demand batch photo lookup for active/visible page rows (e.g. 30 students),
  * avoiding downloading megabytes of base64 photos across all session students.
+ * Requests are chunked into batches of 50 IDs to avoid query URI length limits.
  */
 export function useStudentPhotos(studentIds: string[]) {
-  const idsKey = studentIds.slice().sort().join(',');
+  const uniqueIds = Array.from(new Set(studentIds.filter(Boolean)));
+  const idsKey = uniqueIds.slice().sort().join(',');
   return useQuery<Record<string, string>>({
     queryKey: ['students', 'photos', idsKey],
     queryFn: async () => {
-      if (!studentIds.length) return {};
+      if (!uniqueIds.length) return {};
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from(SUPABASE_TABLE)
-        .select('id, photo_url')
-        .in('id', studentIds)
-        .not('photo_url', 'is', null);
-      if (error || !data) return {};
+      const CHUNK_SIZE = 50;
+      const chunks: string[][] = [];
+      for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+        chunks.push(uniqueIds.slice(i, i + CHUNK_SIZE));
+      }
+      const results = await Promise.all(
+        chunks.map(chunk =>
+          supabase
+            .from(SUPABASE_TABLE)
+            .select('id, photo_url')
+            .in('id', chunk)
+            .not('photo_url', 'is', null)
+        )
+      );
       const map: Record<string, string> = {};
-      for (const row of data) {
-        if (row.photo_url) map[row.id] = row.photo_url;
+      for (const res of results) {
+        if (res.data) {
+          for (const row of res.data) {
+            if (row.photo_url) map[row.id] = row.photo_url;
+          }
+        }
       }
       return map;
     },
-    enabled: studentIds.length > 0,
+    enabled: uniqueIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 }

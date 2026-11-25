@@ -1,6 +1,6 @@
 "use client";
 import { useState, useCallback, useMemo } from "react";
-import { X, FileDown, Eye, LayoutTemplate, RotateCcw, Check } from "lucide-react";
+import { X, FileDown, Eye, LayoutTemplate, RotateCcw, Check, Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
@@ -28,6 +28,8 @@ interface PdfExportModalProps {
   imageKey?: string;
   /** Header label for the photo column in the exported PDF. */
   imageHeader?: string;
+  /** Whether data (e.g. photos) is currently loading. Disables download until ready. */
+  loading?: boolean;
 }
 
 export function PdfExportModal({
@@ -42,6 +44,7 @@ export function PdfExportModal({
   logoText,
   imageKey,
   imageHeader,
+  loading = false,
 }: PdfExportModalProps) {
   const { theme } = useTheme();
   const { lang } = useLang();
@@ -68,11 +71,10 @@ export function PdfExportModal({
     () => new Set(allColumns.filter((c) => c.visible !== false).map((c) => c.key))
   );
 
-  // Photo option only makes sense when at least one row actually has an image.
+  // Photo option is enabled whenever imageKey is provided for the dataset.
   const photosAvailable = useMemo(() => {
-    if (!imageKey) return false;
-    return data.some((row) => String(row[imageKey] ?? "").trim());
-  }, [data, imageKey]);
+    return Boolean(imageKey);
+  }, [imageKey]);
 
   const toggleKey = useCallback((key: string) => {
     setSelectedKeys((prev) => {
@@ -145,10 +147,18 @@ export function PdfExportModal({
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownload}
-              disabled={activeColumns.length === 0}
+              disabled={activeColumns.length === 0 || loading}
               className="flex items-center gap-2 px-4 py-2 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <Eye className="h-3.5 w-3.5" /> {isBn ? 'প্রিভিউ' : 'Preview'}
+              {loading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {isBn ? 'লোড হচ্ছে...' : 'Loading...'}
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5" /> {isBn ? 'প্রিভিউ' : 'Preview'}
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
@@ -305,10 +315,18 @@ export function PdfExportModal({
           </button>
           <button
             onClick={handleDownload}
-            disabled={activeColumns.length === 0}
+            disabled={activeColumns.length === 0 || loading}
             className="flex items-center gap-2 px-5 py-2.5 rounded-md text-[11px] font-medium bg-brand-accent text-brand-accent-fg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
+            {loading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {isBn ? 'লোড হচ্ছে...' : 'Loading...'}
+              </>
+            ) : (
+              <>
+                <FileDown className="h-3.5 w-3.5" /> {isBn ? 'ডাউনলোড পিডিএফ' : 'Download PDF'}
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useRegistrations, useUpdateRegistration, useDeleteRegistration } from "@/lib/storage/registrations";
+import { useStudentPhotos } from "@/lib/storage/students";
 import { useInstitutionName } from "@/lib/storage/institutions";
 import { useClasses } from "@/lib/storage/classes";
 import { useToast } from "@/components/ui/toast";
@@ -97,6 +98,30 @@ export default function RegistrationsPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, safePage, pageSize]);
 
+  const pageStudentIds = useMemo(() => {
+    return paginatedRegistrations.map(r => r.studentId).filter(Boolean);
+  }, [paginatedRegistrations]);
+
+  const targetRegs = useMemo(() => {
+    return selection.selectedCount > 0
+      ? filtered.filter(r => selection.isSelected(r.id))
+      : filtered;
+  }, [selection, filtered]);
+
+  const exportStudentIds = useMemo(() => {
+    if (!showPdfModal) return [];
+    return targetRegs.map(r => r.studentId).filter(Boolean);
+  }, [showPdfModal, targetRegs]);
+
+  const allNeededStudentIds = useMemo(() => {
+    const ids = new Set<string>(pageStudentIds);
+    if (editingReg?.studentId) ids.add(editingReg.studentId);
+    for (const id of exportStudentIds) ids.add(id);
+    return Array.from(ids);
+  }, [pageStudentIds, editingReg?.studentId, exportStudentIds]);
+
+  const { data: photoMap = {}, isFetching: isPhotosFetching } = useStudentPhotos(allNeededStudentIds);
+
   const pdfColumns = useMemo<PdfColumn[]>(() => [
     { header: isBn ? "ক্রমিক" : "SN", key: "sn" },
     { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: "registrationNumber" },
@@ -108,16 +133,17 @@ export default function RegistrationsPage() {
     { header: isBn ? "স্ট্যাটাস" : "Status", key: "status" },
   ], [isBn]);
 
-  const pdfData = useMemo(() => filtered.map((r, i) => ({
-    sn: String(i + 1),
+  const pdfData = useMemo(() => targetRegs.map((r, idx) => ({
+    sn: String(idx + 1),
     registrationNumber: r.registrationNumber,
     studentName: r.studentName,
+    photo: photoMap[r.studentId] || r.studentPhoto || '',
     className: r.className || '-',
     institutionName: instName(r.institutionName, r.institutionId),
     examName: r.examName,
     date: formatDate(r.createdAt),
     status: r.status,
-  })), [filtered, instName]);
+  })), [targetRegs, instName, photoMap]);
 
   const statusCounts = useMemo(() => ({
     all: registrations.length,
@@ -318,7 +344,9 @@ export default function RegistrationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedRegistrations.map((reg, idx) => (
+                {paginatedRegistrations.map((reg, idx) => {
+                  const photoUrl = photoMap[reg.studentId] || reg.studentPhoto;
+                  return (
                   <TableRow key={reg.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(reg.id) ? 'bg-brand-accent-soft' : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox
@@ -330,8 +358,8 @@ export default function RegistrationsPage() {
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{reg.registrationNumber}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        {reg.studentPhoto ? (
-                          <Image src={reg.studentPhoto} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
+                        {photoUrl ? (
+                          <Image src={photoUrl} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
                         ) : (
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
                             {reg.studentName.charAt(0)}
@@ -360,7 +388,8 @@ export default function RegistrationsPage() {
                       </TableActionMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
             <div className={`px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
@@ -405,13 +434,16 @@ export default function RegistrationsPage() {
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 rounded-md border bg-zinc-500/5 border-zinc-500/10">
-                {editingReg.studentPhoto ? (
-                  <Image src={editingReg.studentPhoto} alt={editingReg.studentName} width={48} height={48} unoptimized className="rounded-md object-cover shrink-0 h-12 w-12" />
-                ) : (
-                  <div className={`h-12 w-12 rounded-md flex items-center justify-center text-sm font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                    {editingReg.studentName.charAt(0)}
-                  </div>
-                )}
+                {(() => {
+                  const editPhoto = editingReg ? (photoMap[editingReg.studentId] || editingReg.studentPhoto) : null;
+                  return editPhoto ? (
+                    <Image src={editPhoto} alt={editingReg.studentName} width={48} height={48} unoptimized className="rounded-md object-cover shrink-0 h-12 w-12" />
+                  ) : (
+                    <div className={`h-12 w-12 rounded-md flex items-center justify-center text-sm font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                      {editingReg.studentName.charAt(0)}
+                    </div>
+                  );
+                })()}
                 <div>
                   <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>{editingReg.studentName}</p>
                   <p className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>{editingReg.registrationNumber}</p>
@@ -515,10 +547,10 @@ export default function RegistrationsPage() {
         onClose={() => setShowPdfModal(false)}
         title={isBn ? "নিবন্ধন তালিকা" : "Registrations List"}
         columns={pdfColumns}
-        data={selection.selectedCount > 0
-          ? pdfData.filter((_, i) => selection.isSelected(filtered[i].id))
-          : pdfData
-        }
+        data={pdfData}
+        imageKey="photo"
+        imageHeader={isBn ? 'ছবি' : 'Photo'}
+        loading={isPhotosFetching}
         companyName="Bangladesh Madrasah Association"
         companySubtitle="বাংলাদেশ মাদ্রাসা এসোসিয়েশন"
       />

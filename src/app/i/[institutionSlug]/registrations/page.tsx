@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useRegistrationsByInstitution, useCreateRegistration, useDeleteRegistration, useUpdateRegistration, generateGlobalRegistrationNumber } from "@/lib/storage/registrations";
 import { useExams } from "@/lib/storage/exams";
-import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution } from "@/lib/storage/students";
+import { useStudentsByInstitution, useCreateStudent, useUpdateStudent, useStudentById, fetchStudentIdsByInstitution, useStudentPhotos } from "@/lib/storage/students";
 import { useClasses } from "@/lib/storage/classes";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { notifySuperAdmins } from "@/lib/storage/notifications";
@@ -137,6 +137,31 @@ export default function InstitutionRegistrationsPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, safePage, pageSize]);
 
+  const pageStudentIds = useMemo(() => {
+    return paginatedRegistrations.map(r => r.studentId).filter(Boolean);
+  }, [paginatedRegistrations]);
+
+  const targetRegs = useMemo(() => {
+    return selection.selectedCount > 0
+      ? filtered.filter(r => selection.isSelected(r.id))
+      : filtered;
+  }, [filtered, selection]);
+
+  const exportStudentIds = useMemo(() => {
+    if (!showPdfModal) return [];
+    return targetRegs.map(r => r.studentId).filter(Boolean);
+  }, [showPdfModal, targetRegs]);
+
+  const allNeededStudentIds = useMemo(() => {
+    const ids = new Set<string>(pageStudentIds);
+    if (viewingReg?.studentId) ids.add(viewingReg.studentId);
+    if (editingReg?.studentId) ids.add(editingReg.studentId);
+    for (const id of exportStudentIds) ids.add(id);
+    return Array.from(ids);
+  }, [pageStudentIds, viewingReg?.studentId, editingReg?.studentId, exportStudentIds]);
+
+  const { data: photoMap = {}, isFetching: isPhotosFetching } = useStudentPhotos(allNeededStudentIds);
+
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? "ক্রমিক" : "SN", key: 'sn' },
     { header: isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration Number", key: 'registrationNumber' },
@@ -149,20 +174,18 @@ export default function InstitutionRegistrationsPage() {
     { header: isBn ? "তারিখ" : "Date", key: 'createdAt' },
   ], [isBn]);
 
-  const pdfData = useMemo(() => filtered
-    .map((r, i) => ({ r, sn: i + 1 }))
-    .filter(({ r }) => (selection.selectedCount > 0 ? selection.isSelected(r.id) : true))
-    .map(({ r, sn }) => ({
-      sn: String(sn),
-      registrationNumber: r.registrationNumber,
-      studentName: r.studentName,
-      className: r.className,
-      examName: r.examName,
-      status: r.status,
-      paymentStatus: r.paymentStatus,
-      paymentAmount: `৳${r.paymentAmount.toLocaleString()}`,
-      createdAt: formatDate(r.createdAt),
-    })), [filtered, selection]);
+  const pdfData = useMemo(() => targetRegs.map((r, idx) => ({
+    sn: String(idx + 1),
+    registrationNumber: r.registrationNumber,
+    studentName: r.studentName,
+    photo: photoMap[r.studentId] || r.studentPhoto || '',
+    className: r.className,
+    examName: r.examName,
+    status: r.status,
+    paymentStatus: r.paymentStatus,
+    paymentAmount: `৳${r.paymentAmount.toLocaleString()}`,
+    createdAt: formatDate(r.createdAt),
+  })), [targetRegs, photoMap]);
 
   const statusCounts = {
     all: registrations.length,
@@ -357,7 +380,7 @@ export default function InstitutionRegistrationsPage() {
         motherName: student.motherName || "",
         phone: student.phone || "",
         address: student.address || "",
-        photo: student.photo || "",
+        photo: (student?.id ? photoMap[student.id] : null) || photoMap[reg.studentId] || student.photo || "",
       });
     } else {
       setEditStudentForm({
@@ -543,7 +566,7 @@ export default function InstitutionRegistrationsPage() {
               <TableBody>
                 {paginatedRegistrations.map((reg, idx) => {
                   const student = students.find(s => s.id === reg.studentId);
-                  const photoUrl = reg.studentPhoto || student?.photo;
+                  const photoUrl = photoMap[reg.studentId] || reg.studentPhoto || student?.photo;
                   return (
                   <TableRow key={reg.id} className={`${isDark ? "border-white/[0.04] hover:bg-white/[0.02]" : "border-zinc-100 hover:bg-zinc-50/50"} ${selection.isSelected(reg.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
@@ -817,7 +840,7 @@ export default function InstitutionRegistrationsPage() {
       <Modal open={!!viewingReg} onClose={() => setViewingReg(null)} title="" maxWidth="max-w-xl">
         {viewingReg && (() => {
           const student = students.find(s => s.id === viewingReg.studentId);
-          const studentPhoto = student?.photo;
+          const studentPhoto = (viewingReg?.studentId ? photoMap[viewingReg.studentId] : null) || viewingReg.studentPhoto || student?.photo;
           const initials = viewingReg.studentName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
           const genderLabel = student?.gender === 'MALE' ? (isBn ? 'পুরুষ' : 'Male') : student?.gender === 'FEMALE' ? (isBn ? 'মহিলা' : 'Female') : (isBn ? 'অন্যান্য' : 'Other');
           return (
@@ -1126,6 +1149,9 @@ export default function InstitutionRegistrationsPage() {
         title={isBn ? 'নিবন্ধন তালিকা' : 'Registration List'}
         columns={pdfColumns}
         data={pdfData}
+        imageKey="photo"
+        imageHeader={isBn ? 'ছবি' : 'Photo'}
+        loading={isPhotosFetching}
       />
     </div>
   );

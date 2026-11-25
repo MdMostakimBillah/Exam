@@ -122,7 +122,20 @@ export default function StudentsPage() {
   }, [filtered, safePage, pageSize]);
 
   const pageStudentIds = useMemo(() => paginatedStudents.map(s => s.id), [paginatedStudents]);
-  const { data: photoMap = {} } = useStudentPhotos(pageStudentIds);
+
+  const exportStudentIds = useMemo(() => {
+    if (!showPdfModal) return [];
+    return filtered.filter(s => selection.isSelected(s.id)).map(s => s.id);
+  }, [showPdfModal, selection, filtered]);
+
+  const allNeededStudentIds = useMemo(() => {
+    const ids = new Set<string>(pageStudentIds);
+    if (editingStudent?.id) ids.add(editingStudent.id);
+    for (const id of exportStudentIds) ids.add(id);
+    return Array.from(ids);
+  }, [pageStudentIds, editingStudent?.id, exportStudentIds]);
+
+  const { data: photoMap = {}, isFetching: isPhotosFetching } = useStudentPhotos(allNeededStudentIds);
 
   const pdfColumns: PdfColumn[] = useMemo(() => [
     { header: isBn ? 'ক্রমিক' : 'SN', key: 'sn' },
@@ -146,7 +159,7 @@ export default function StudentsPage() {
       sn: String(sn),
       name: `${s.firstName} ${s.lastName}`,
       regNumber: latestReg.get(s.id)?.registrationNumber || '-',
-      photo: s.photo || '',
+      photo: photoMap[s.id] || s.photo || '',
       institution: getInstitutionName(s.institutionId),
       father: s.fatherName || '-',
       mother: s.motherName || '-',
@@ -156,7 +169,7 @@ export default function StudentsPage() {
       class: s.class,
       roll: s.roll,
       status: normalizeRegistrationStatus(latestReg.get(s.id)?.status) || s.status,
-    })), [filtered, selection, getInstitutionName, latestReg, isBn]);
+    })), [filtered, selection, getInstitutionName, latestReg, isBn, photoMap]);
 
   const excelColumns: ExcelColumn[] = useMemo(() => [
     { header: isBn ? 'ক্রমিক' : 'SN', key: 'sn', width: 7 },
@@ -502,6 +515,7 @@ export default function StudentsPage() {
           data={pdfData}
           imageKey="photo"
           imageHeader={isBn ? 'ছবি' : 'Photo'}
+          loading={isPhotosFetching}
         />
 
         {/* Edit Student Modal */}
