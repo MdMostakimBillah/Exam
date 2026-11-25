@@ -74,6 +74,13 @@ export interface Institution {
   /** Super-admin permission (migration 0033): this institution may open the
    *  Admit Cards page and download ITS OWN cards. Off until granted. */
   allowAdmitCardDownload?: boolean;
+  /** Super-admin permission (migration 0043): this institution may enter blind
+   *  marks within its configured roll range. Off until granted. */
+  allowMarkEntry?: boolean;
+  /** Optional lower numeric exam-roll bound (digits-only) for mark entry. */
+  markEntryRollFrom?: string | null;
+  /** Optional upper numeric exam-roll bound (digits-only) for mark entry. */
+  markEntryRollTo?: string | null;
   /** Super admin: students of this institution see the Marksheet section. */
   allowMarksheetDownload?: boolean;
   /** Super admin: students see the Certificates section. */

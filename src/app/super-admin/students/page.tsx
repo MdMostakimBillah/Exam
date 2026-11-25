@@ -94,13 +94,15 @@ export default function StudentsPage() {
     const fName = (s.fatherName || '').toLowerCase();
     const mName = (s.motherName || '').toLowerCase();
     const ph = (s.phone || '').toLowerCase();
+    const addr = (s.address || '').toLowerCase();
     const matchesSearch = !searchLower
       || sName.includes(searchLower)
       || sCode.includes(searchLower)
       || regCode.includes(searchLower)
       || fName.includes(searchLower)
       || mName.includes(searchLower)
-      || ph.includes(searchLower);
+      || ph.includes(searchLower)
+      || addr.includes(searchLower);
     const matchesClass = !classFilter || s.class === classFilter;
     const matchesInst = !institutionFilter || s.institutionId === institutionFilter;
     const matchesGender = !genderFilter || s.gender === genderFilter;
@@ -145,6 +147,7 @@ export default function StudentsPage() {
     { header: isBn ? 'পিতার নাম' : 'Father', key: 'father' },
     { header: isBn ? 'মাতার নাম' : 'Mother', key: 'mother' },
     { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
+    { header: isBn ? 'ঠিকানা' : 'Address', key: 'address' },
     { header: isBn ? 'জন্ম তারিখ' : 'Date of Birth', key: 'dob' },
     { header: isBn ? 'লিঙ্গ' : 'Gender', key: 'gender' },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class' },
@@ -164,6 +167,7 @@ export default function StudentsPage() {
       father: s.fatherName || '-',
       mother: s.motherName || '-',
       phone: s.phone || '-',
+      address: s.address || '-',
       dob: s.dateOfBirth || '-',
       gender: genderLabel(s.gender, isBn),
       class: s.class,
@@ -179,6 +183,7 @@ export default function StudentsPage() {
     { header: isBn ? 'পিতার নাম' : 'Father', key: 'father' },
     { header: isBn ? 'মাতার নাম' : 'Mother', key: 'mother' },
     { header: isBn ? 'ফোন' : 'Phone', key: 'phone' },
+    { header: isBn ? 'ঠিকানা' : 'Address', key: 'address', width: 28 },
     { header: isBn ? 'জন্ম তারিখ' : 'Date of Birth', key: 'dob', width: 15 },
     { header: isBn ? 'লিঙ্গ' : 'Gender', key: 'gender', width: 10 },
     { header: isBn ? 'শ্রেণী' : 'Class', key: 'class', width: 10 },
@@ -197,6 +202,7 @@ export default function StudentsPage() {
       father: s.fatherName || '-',
       mother: s.motherName || '-',
       phone: s.phone || '-',
+      address: s.address || '-',
       dob: s.dateOfBirth || '-',
       gender: genderLabel(s.gender, isBn),
       class: s.class,
@@ -303,7 +309,7 @@ export default function StudentsPage() {
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDark ? "text-zinc-600" : "text-zinc-400"}`} />
               <Input
-                placeholder={isBn ? "নাম, অভিভাবক, ফোন বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by name, parent, phone or reg number..."}
+                placeholder={isBn ? "নাম, অভিভাবক, ফোন, ঠিকানা বা রেজিস্ট্রেশন নম্বর দিয়ে অনুসন্ধান..." : "Search by name, parent, phone, address or reg number..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`pl-10 ${inputCls}`}
@@ -393,7 +399,7 @@ export default function StudentsPage() {
             </div>
           ) : (
             <>
-            <Table className="min-w-[1400px] whitespace-nowrap">
+            <Table className="min-w-[1550px] whitespace-nowrap">
               <TableHeader>
                 <TableRow className={isDark ? 'border-white/[0.04] hover:bg-transparent' : 'border-zinc-100 hover:bg-transparent'}>
                   <TableHead className="w-10">
@@ -406,6 +412,7 @@ export default function StudentsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'পিতার নাম' : 'Father'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'মাতার নাম' : 'Mother'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ফোন' : 'Phone'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'ঠিকানা' : 'Address'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'জন্ম তারিখ' : 'Date of Birth'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'লিঙ্গ' : 'Gender'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শ্রেণী' : 'Class'}</TableHead>
@@ -440,6 +447,7 @@ export default function StudentsPage() {
                     <TableCell className={`text-[11px] hidden md:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.fatherName || '-'}</TableCell>
                     <TableCell className={`text-[11px] hidden lg:table-cell ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.motherName || '-'}</TableCell>
                     <TableCell className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>{student.phone || '-'}</TableCell>
+                    <TableCell className={`text-[11px] max-w-[220px] truncate ${isDark ? "text-zinc-300" : "text-zinc-600"}`} title={student.address || undefined}>{student.address || '-'}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.dateOfBirth || '-'}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{genderLabel(student.gender, isBn)}</TableCell>
                     <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>{student.class}</TableCell>

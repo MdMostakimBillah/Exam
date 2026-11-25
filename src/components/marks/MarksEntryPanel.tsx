@@ -46,6 +46,11 @@ import {
   useMarksSheetPage,
   type MarksSheetPageParams,
 } from "@/lib/storage/marks";
+import {
+  clampRollRangeToBounds,
+  formatRollRangeLabel,
+  normalizeRollRangePair,
+} from "@/lib/marks/roll-range";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MarksSheetPageRow } from "@/lib/types";
@@ -75,6 +80,10 @@ interface MarksEntryPanelProps {
   scopedInstitutionId?: string;
   /** Display name of the excluded (own) institution, shown in the summary tiles. */
   scopedInstitutionName?: string;
+  /** Super-admin-assigned lower roll bound (digits-only) for institution entry. */
+  allowedRollFrom?: string | null;
+  /** Super-admin-assigned upper roll bound (digits-only) for institution entry. */
+  allowedRollTo?: string | null;
 }
 
 const AUTOSAVE_DELAY = 600;
@@ -97,7 +106,13 @@ function normalizedMarkText(value: number): string {
   return String(Number(value.toFixed(2)));
 }
 
-export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedInstitutionName }: MarksEntryPanelProps) {
+export function MarksEntryPanel({
+  onPendingChange,
+  scopedInstitutionId,
+  scopedInstitutionName,
+  allowedRollFrom,
+  allowedRollTo,
+}: MarksEntryPanelProps) {
   const { lang } = useLang();
   const { theme } = useTheme();
   const { toast } = useToast();
@@ -113,6 +128,16 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   // Institution filter labels follow the active language (English → name_en).
   const instName = useInstitutionName();
 
+  const allowedBounds = useMemo(
+    () => normalizeRollRangePair(allowedRollFrom, allowedRollTo),
+    [allowedRollFrom, allowedRollTo],
+  );
+  const hasAllowedBounds = Boolean(allowedBounds.from || allowedBounds.to);
+  const allowedRangeLabel = useMemo(
+    () => formatRollRangeLabel(allowedBounds.from, allowedBounds.to, isBn),
+    [allowedBounds.from, allowedBounds.to, isBn],
+  );
+
   const [examId, setExamId] = useState("");
   const [classId, setClassId] = useState("");
   const [institutionId, setInstitutionId] = useState("");
@@ -120,11 +145,12 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   // Roll range: raw inputs are what the user typed (digits only on commit),
-  // the committed values are what the RPC receives.
-  const [rollFromInput, setRollFromInput] = useState("");
-  const [rollToInput, setRollToInput] = useState("");
-  const [rollFrom, setRollFrom] = useState("");
-  const [rollTo, setRollTo] = useState("");
+  // initialized to any super-admin-permitted bounds; clamped values are what
+  // the RPC receives so staff can narrow inside their quota without exceeding it.
+  const [rollFromInput, setRollFromInput] = useState(() => allowedBounds.from ?? "");
+  const [rollToInput, setRollToInput] = useState(() => allowedBounds.to ?? "");
+  const [rollFrom, setRollFrom] = useState(() => allowedBounds.from ?? "");
+  const [rollTo, setRollTo] = useState(() => allowedBounds.to ?? "");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [cells, setCells] = useState<Record<string, CellState>>({});
@@ -172,18 +198,28 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   // institution filter is hidden and ignored while scoped.
   const isScoped = Boolean(scopedInstitutionId);
 
+  const clampedRange = useMemo(
+    () => clampRollRangeToBounds(rollFrom, rollTo, allowedRollFrom, allowedRollTo),
+    [allowedRollFrom, allowedRollTo, rollFrom, rollTo],
+  );
+  const hasCustomTextFilters = Boolean(
+    search ||
+      (rollFrom || "") !== (allowedBounds.from ?? "") ||
+      (rollTo || "") !== (allowedBounds.to ?? ""),
+  );
+
   const queryParams: MarksSheetPageParams = useMemo(() => ({
     examId,
     classId,
     institutionId: isScoped ? null : institutionId || null,
     subjectId,
     search,
-    rollFrom,
-    rollTo,
+    rollFrom: clampedRange.rollFrom,
+    rollTo: clampedRange.rollTo,
     page,
     pageSize,
     sessionId: currentSession?.id,
-  }), [classId, currentSession?.id, examId, institutionId, isScoped, page, pageSize, rollFrom, rollTo, search, subjectId]);
+  }), [clampedRange.rollFrom, clampedRange.rollTo, classId, currentSession?.id, examId, institutionId, isScoped, page, pageSize, search, subjectId]);
 
   const marksQuery = useMarksSheetPage(queryParams);
   const rows = marksQuery.data?.rows || EMPTY_ROWS;
@@ -502,13 +538,14 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
   }, [hasPendingSave]);
 
   // Text search and the roll range always reset together (filters, exam, class).
+  // When super admin assigned a permitted roll range, reset restores those bounds.
   const clearTextFilters = () => {
     setSearchInput("");
     setSearch("");
-    setRollFromInput("");
-    setRollToInput("");
-    setRollFrom("");
-    setRollTo("");
+    setRollFromInput(allowedBounds.from ?? "");
+    setRollToInput(allowedBounds.to ?? "");
+    setRollFrom(allowedBounds.from ?? "");
+    setRollTo(allowedBounds.to ?? "");
     setPage(1);
   };
 
@@ -709,10 +746,19 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
         <div className={`flex items-center gap-3 border-b px-5 py-4 ${borderClass}`}>
           <div className={chip}><BookOpen className="h-4 w-4" /></div>
           <div className="min-w-0 flex-1">
-            <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("বিষয়ভিত্তিক নম্বর প্রবেশ", "Subject-first mark entry")}</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className={`text-sm font-semibold ${headingClass}`}>{bi("বিষয়ভিত্তিক নম্বর প্রবেশ", "Subject-first mark entry")}</h3>
+              {hasAllowedBounds && (
+                <Badge status="ACTIVE">
+                  {bi("অনুমোদিত রোল", "Permitted rolls")}: {allowedRangeLabel}
+                </Badge>
+              )}
+            </div>
             <p className={`mt-0.5 text-[11px] ${mutedClass}`}>
               {isScoped
-                ? bi("নিজ প্রতিষ্ঠানের শিক্ষার্থী বাদ — অন্য প্রতিষ্ঠানের কাগজের নম্বর দিন। শুধু অনুমোদিত নিবন্ধন।", "Your own institution's students are excluded — mark other institutions' papers. Approved registrations only.")
+                ? hasAllowedBounds
+                  ? bi(`নিজ প্রতিষ্ঠানের শিক্ষার্থী বাদ — কেবল অনুমোদিত রোল রেঞ্জ (${allowedRangeLabel})-এর নম্বর দিন।`, `Your own institution's students are excluded — mark papers within your permitted roll range (${allowedRangeLabel}).`)
+                  : bi("নিজ প্রতিষ্ঠানের শিক্ষার্থী বাদ — অন্য প্রতিষ্ঠানের কাগজের নম্বর দিন। শুধু অনুমোদিত নিবন্ধন।", "Your own institution's students are excluded — mark other institutions' papers. Approved registrations only.")
                 : bi("শুধু অনুমোদিত নিবন্ধনকারী শিক্ষার্থীদের নম্বর দেখা যাবে।", "Only approved registrations are eligible.")}
             </p>
           </div>
@@ -791,13 +837,16 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
               />
             </div>
           </Field>
-          <Field label={bi("রোল রেঞ্জ", "Roll range")} htmlFor="marks-entry-roll-from">
+          <Field
+            label={hasAllowedBounds ? `${bi("রোল রেঞ্জ", "Roll range")} (${allowedRangeLabel})` : bi("রোল রেঞ্জ", "Roll range")}
+            htmlFor="marks-entry-roll-from"
+          >
             <div className="flex items-center gap-2">
               <Input
                 id="marks-entry-roll-from"
                 value={rollFromInput}
                 onChange={(event) => setRollFromInput(event.target.value.replace(/\D/g, ""))}
-                placeholder={bi("থেকে", "From")}
+                placeholder={allowedBounds.from || bi("থেকে", "From")}
                 inputMode="numeric"
                 className={`text-center ${inputClass}`}
                 disabled={!subjectId}
@@ -807,7 +856,7 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
                 id="marks-entry-roll-to"
                 value={rollToInput}
                 onChange={(event) => setRollToInput(event.target.value.replace(/\D/g, ""))}
-                placeholder={bi("পর্যন্ত", "To")}
+                placeholder={allowedBounds.to || bi("পর্যন্ত", "To")}
                 inputMode="numeric"
                 className={`text-center ${inputClass}`}
                 disabled={!subjectId}
@@ -816,6 +865,23 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
           </Field>
         </div>
       </div>
+
+      {hasAllowedBounds && clampedRange.outOfRange && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>
+              {bi(
+                `প্রবেশ করা রোল রেঞ্জ আপনার প্রতিষ্ঠানের অনুমোদিত সীমা (${allowedRangeLabel})-এর বাইরে।`,
+                `Entered roll filter falls outside your institution's permitted range (${allowedRangeLabel}).`,
+              )}
+            </span>
+          </div>
+          <Button type="button" size="sm" variant="secondary" onClick={() => guardAction(bi("রোল ফিল্টার অনুমোদিত সীমায় ফিরবে", "Roll filter will reset to permitted range"), clearTextFilters)}>
+            {bi("অনুমোদিত সীমা প্রয়োগ করুন", "Use permitted range")}
+          </Button>
+        </div>
+      )}
 
       {examId && setupLoading && (
         <div className={`${card} p-8 text-center text-sm ${mutedClass}`}>{bi("সেটআপ লোড হচ্ছে...", "Loading exam setup...")}</div>
@@ -920,13 +986,15 @@ export function MarksEntryPanel({ onPendingChange, scopedInstitutionId, scopedIn
                 <Users className={`h-7 w-7 ${isDark ? "text-zinc-500" : "text-zinc-400"}`} />
               </div>
               <p className={`text-sm font-medium ${headingClass}`}>
-                {search || rollFrom || rollTo
+                {hasCustomTextFilters
                   ? bi("এই ফিল্টারে কোনো শিক্ষার্থী মেলেনি", "No students match these filters")
                   : summary?.totalCandidates === 0
-                    ? bi("এই ক্লাসে কোনো অনুমোদিত নিবন্ধন নেই", "There are no approved registrations for this class")
+                    ? hasAllowedBounds
+                      ? bi(`অনুমোদিত রোল রেঞ্জে (${allowedRangeLabel}) কোনো শিক্ষার্থী পাওয়া যায়নি`, `No approved students found in permitted roll range (${allowedRangeLabel})`)
+                      : bi("এই ক্লাসে কোনো অনুমোদিত নিবন্ধন নেই", "There are no approved registrations for this class")
                     : bi("কোনো শিক্ষার্থী পাওয়া যায়নি", "No students found")}
               </p>
-              {(search || rollFrom || rollTo) && (
+              {hasCustomTextFilters && (
                 <Button type="button" className="mt-4" variant="secondary" onClick={() => guardAction(bi("ফিল্টার মুছে যাবে", "Filters will be cleared"), clearTextFilters)}>
                   {bi("ফিল্টার মুছুন", "Clear filters")}
                 </Button>

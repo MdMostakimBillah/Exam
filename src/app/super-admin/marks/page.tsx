@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { BarChart3, BookOpen, ChevronRight, ListChecks, Settings2, Table2, type LucideIcon } from "lucide-react";
+import { BarChart3, BookOpen, ChevronRight, KeyRound, ListChecks, Settings2, Table2, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { MarkEntryPermissionsPanel } from "@/components/marks/MarkEntryPermissionsPanel";
 import { MarksEntryPanel } from "@/components/marks/MarksEntryPanel";
 import { MarksSetupPanel } from "@/components/marks/MarksSetupPanel";
 import { TabulationPanel } from "@/components/marks/TabulationPanel";
@@ -12,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
 
-type MarksTab = "setup" | "entry" | "tabulation";
+type MarksTab = "setup" | "entry" | "tabulation" | "access";
 
 export default function MarksPage() {
   const { lang } = useLang();
@@ -160,6 +161,9 @@ export default function MarksPage() {
             <TabsTrigger value="tabulation" className={activeTab === "tabulation" ? "font-semibold text-brand-accent" : undefined}>
               <Table2 className="h-4 w-4" /> {bi("ট্যাবুলেশন", "Tabulation")}
             </TabsTrigger>
+            <TabsTrigger value="access" className={activeTab === "access" ? "font-semibold text-brand-accent" : undefined}>
+              <KeyRound className="h-4 w-4" /> {bi("অ্যাক্সেস অনুমতি", "Institution Access")}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="setup" keepMounted>
@@ -170,6 +174,9 @@ export default function MarksPage() {
           </TabsContent>
           <TabsContent value="tabulation">
             <TabulationPanel />
+          </TabsContent>
+          <TabsContent value="access">
+            <MarkEntryPermissionsPanel />
           </TabsContent>
         </Tabs>
       </div>

@@ -12,7 +12,8 @@ import { createInstitutionWithAccountServer } from "@/lib/auth/institution-actio
 import { useInstitutionStudentCounts } from "@/lib/storage/students";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { Institution } from "@/lib/types";
-import { Building2, Search, Users, Mail, Phone, Trash2, Eye, Check, X, Ban, Plus, FileDown, Edit } from "lucide-react";
+import { Building2, Search, Users, Mail, Phone, Trash2, Eye, Check, X, Ban, Plus, FileDown, Edit, Lock, Unlock } from "lucide-react";
+import { formatRollRangeLabel } from "@/lib/marks/roll-range";
 import { TableActionMenu, TableActionItem, TableActionDivider } from "@/components/ui/table-action-menu";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { useTheme } from "@/contexts/theme-context";
@@ -372,6 +373,7 @@ export default function InstitutionsPage() {
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কোড' : 'Code'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden md:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'যোগাযোগ' : 'Contact'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'শিক্ষার্থী' : 'Students'}</TableHead>
+                  <TableHead className={`text-[10px] font-medium uppercase tracking-wider hidden lg:table-cell ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'নম্বর প্রবেশ' : 'Mark Entry'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'স্ট্যাটাস' : 'Status'}</TableHead>
                   <TableHead className={`text-[10px] font-medium uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{isBn ? 'কার্যকলাপ' : 'Action'}</TableHead>
                 </TableRow>
@@ -417,6 +419,32 @@ export default function InstitutionsPage() {
                       <span className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5" /> {liveStudentCount(inst)}
                       </span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Link
+                        href={`/super-admin/institutions/${inst.id}`}
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                          inst.allowMarkEntry
+                            ? isDark
+                              ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            : isDark
+                              ? 'bg-white/[0.04] text-zinc-500 hover:bg-white/[0.08]'
+                              : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200/70'
+                        }`}
+                      >
+                        {inst.allowMarkEntry ? (
+                          <>
+                            <Unlock className="h-3 w-3 shrink-0" />
+                            <span>{formatRollRangeLabel(inst.markEntryRollFrom, inst.markEntryRollTo, isBn)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="h-3 w-3 shrink-0" />
+                            <span>{isBn ? 'বন্ধ' : 'Restricted'}</span>
+                          </>
+                        )}
+                      </Link>
                     </TableCell>
                     <TableCell><Badge status={inst.status} /></TableCell>
                     <TableCell>

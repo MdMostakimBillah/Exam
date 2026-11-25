@@ -4,26 +4,30 @@ import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLang } from '@/contexts/language-context';
 import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/auth/institution-actions';
+import { normalizeRollDigits, normalizeRollRangePair } from '@/lib/marks/roll-range';
 
 const SUPABASE_TABLE = 'institutions';
 
-const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,allow_admit_card_download,allow_marksheet_download,allow_certificate_download,total_students,total_applications,created_at,updated_at';
+const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,allow_admit_card_download,allow_mark_entry,mark_entry_roll_from,mark_entry_roll_to,allow_marksheet_download,allow_certificate_download,total_students,total_applications,created_at,updated_at';
 
 /**
- * While any of the columns added by migrations 0022, 0033 and 0038 is
+ * While any of the columns added by migrations 0022, 0033, 0038 and 0043 is
  * pending, PostgREST rejects this list in the WHOLE select/RETURNING.
  * `selectResilient` below strips only the column(s) the error names and
  * retries, so columns that already exist keep reading and saving.
  */
 
 const isPreMigrationError = (error: unknown): boolean =>
-  /(principal_signature_url|allow_admit_card_download|allow_marksheet_download|allow_certificate_download)/.test(
+  /(principal_signature_url|allow_admit_card_download|allow_mark_entry|mark_entry_roll_from|mark_entry_roll_to|allow_marksheet_download|allow_certificate_download)/.test(
     String((error as { message?: string })?.message ?? '')
   );
 
 /** Which not-yet-applied column the failed statement complained about. */
 const missingLegacyColumn = (error: unknown): string | null => {
   const msg = String((error as { message?: string })?.message ?? '');
+  if (/allow_mark_entry/.test(msg)) return 'allow_mark_entry';
+  if (/mark_entry_roll_from/.test(msg)) return 'mark_entry_roll_from';
+  if (/mark_entry_roll_to/.test(msg)) return 'mark_entry_roll_to';
   if (/allow_marksheet_download/.test(msg)) return 'allow_marksheet_download';
   if (/allow_certificate_download/.test(msg)) return 'allow_certificate_download';
   if (/allow_admit_card_download/.test(msg)) return 'allow_admit_card_download';
@@ -35,12 +39,9 @@ type PgResult<T> = { data: T; error: { message?: string; code?: string; details?
 
 /**
  * Run a SELECT, retrying while PostgREST rejects a column this database
- * does not have yet (migrations 0022/0033/0038 pending). Each retry strips
- * ONLY the column the error names and retries — the old "legacy" fallback
- * dropped all four at once, so columns that DO exist became unreadable
- * (allow_admit_card_download was written but rendered `undefined` while
- * 0038 was pending: the switch saved, toasted, then snapped back).
- * Up to four rounds cover every pending column at once (0038 adds two).
+ * does not have yet (migrations 0022/0033/0038/0043 pending). Each retry strips
+ * ONLY the column the error names and retries — up to seven rounds cover every
+ * pending column at once.
  */
 async function selectResilient<T>(
   build: (select: string) => PromiseLike<PgResult<T>>,
@@ -48,7 +49,7 @@ async function selectResilient<T>(
 ): Promise<PgResult<T>> {
   let select = initial;
   let result = await build(select);
-  for (let i = 0; i < 4 && result.error && isPreMigrationError(result.error); i++) {
+  for (let i = 0; i < 7 && result.error && isPreMigrationError(result.error); i++) {
     const missing = missingLegacyColumn(result.error);
     if (!missing || !select.includes(`,${missing}`)) break;
     select = select.replace(`,${missing}`, '');
@@ -80,6 +81,9 @@ function mapInstitution(data: any): Institution {
     logo: data.logo_url,
     principalSignature: data.principal_signature_url ?? '',
     allowAdmitCardDownload: data.allow_admit_card_download ?? false,
+    allowMarkEntry: data.allow_mark_entry ?? false,
+    markEntryRollFrom: data.mark_entry_roll_from ?? null,
+    markEntryRollTo: data.mark_entry_roll_to ?? null,
     allowMarksheetDownload: data.allow_marksheet_download ?? false,
     allowCertificateDownload: data.allow_certificate_download ?? false,
     totalStudents: data.total_students,
@@ -194,57 +198,75 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   if (data.logo !== undefined) u.logo_url = data.logo;
   if (data.principalSignature !== undefined) u.principal_signature_url = data.principalSignature;
   if (data.allowAdmitCardDownload !== undefined) u.allow_admit_card_download = data.allowAdmitCardDownload;
+  if (data.allowMarkEntry !== undefined) u.allow_mark_entry = data.allowMarkEntry;
+  if (data.markEntryRollFrom !== undefined && data.markEntryRollTo !== undefined) {
+    const normalized = normalizeRollRangePair(data.markEntryRollFrom, data.markEntryRollTo);
+    u.mark_entry_roll_from = normalized.from;
+    u.mark_entry_roll_to = normalized.to;
+  } else {
+    if (data.markEntryRollFrom !== undefined) {
+      u.mark_entry_roll_from = normalizeRollDigits(data.markEntryRollFrom) || null;
+    }
+    if (data.markEntryRollTo !== undefined) {
+      u.mark_entry_roll_to = normalizeRollDigits(data.markEntryRollTo) || null;
+    }
+  }
   if (data.allowMarksheetDownload !== undefined) u.allow_marksheet_download = data.allowMarksheetDownload;
   if (data.allowCertificateDownload !== undefined) u.allow_certificate_download = data.allowCertificateDownload;
-  let { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(INSTITUTION_COLUMNS).single();
-  const missingColumn = error && isPreMigrationError(error) ? missingLegacyColumn(error) : null;
-  if (missingColumn) {
-    // 0022/0033/0038 not applied yet: the SELECT (PostgREST's RETURNING)
-    // named a column this database doesn't have — the statement failed
-    // atomically, so retry with the legacy column list. Only remove the
-    // missing column from the UPDATE PAYLOAD when the payload actually
-    // writes THAT column: blanket-dropping every new column used to
-    // silently discard fields that DO exist (granting the admit-card flag
-    // while 0038 is pending saved only updated_at — and toasted
-    // "enabled" anyway).
-    const payloadKey: Record<string, string | undefined> = {
-      principal_signature_url: "principalSignature",
-      allow_admit_card_download: "allowAdmitCardDownload",
-      allow_marksheet_download: "allowMarksheetDownload",
-      allow_certificate_download: "allowCertificateDownload",
-    };
+  const payloadKey: Record<string, keyof Institution> = {
+    principal_signature_url: 'principalSignature',
+    allow_admit_card_download: 'allowAdmitCardDownload',
+    allow_mark_entry: 'allowMarkEntry',
+    mark_entry_roll_from: 'markEntryRollFrom',
+    mark_entry_roll_to: 'markEntryRollTo',
+    allow_marksheet_download: 'allowMarksheetDownload',
+    allow_certificate_download: 'allowCertificateDownload',
+  };
+  const migrationFile: Record<string, string> = {
+    allow_admit_card_download: '0033_admit_card_download_permission.sql',
+    allow_mark_entry: '0043_mark_entry_permission_and_roll_range.sql',
+    mark_entry_roll_from: '0043_mark_entry_permission_and_roll_range.sql',
+    mark_entry_roll_to: '0043_mark_entry_permission_and_roll_range.sql',
+    allow_marksheet_download: '0038_student_download_permissions.sql',
+    allow_certificate_download: '0038_student_download_permissions.sql',
+  };
+  let selectCols = INSTITUTION_COLUMNS;
+  let blockedMigrationCol: string | null = null;
+  let { data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(selectCols).single();
+  for (let i = 0; i < 7 && error && isPreMigrationError(error); i++) {
+    const missingColumn = missingLegacyColumn(error);
+    if (!missingColumn) break;
     const dropKey = payloadKey[missingColumn];
-    if (dropKey && data[dropKey as keyof Institution] !== undefined) {
+    const wasRequested = Boolean(dropKey && data[dropKey] !== undefined);
+    if (wasRequested) {
       delete u[missingColumn];
+      if (!blockedMigrationCol && missingColumn !== 'principal_signature_url') {
+        blockedMigrationCol = missingColumn;
+      }
     }
-    ({ data: result, error } = await selectResilient(
-      (sel) => supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(sel).single(),
-      INSTITUTION_COLUMNS.replace(`,${missingColumn}`, ''),
-    ));
+    if (selectCols.includes(`,${missingColumn}`)) {
+      selectCols = selectCols.replace(`,${missingColumn}`, '');
+    } else if (!wasRequested) {
+      break;
+    }
+    ({ data: result, error } = await supabase.from(SUPABASE_TABLE).update(u).eq('id', id).select(selectCols).single());
   }
   if (error) {
     console.error("[updateInstitution] Supabase error:", error.message, error.code, error.details);
     throw error;
   }
-  // The caller asked for a column the database does not have yet: the other
-  // fields saved, but this one silently didn't — say so instead of lying.
-  if (missingColumn && missingColumn !== 'principal_signature_url') {
-    const asked =
-      (missingColumn === 'allow_admit_card_download' && data.allowAdmitCardDownload !== undefined) ||
-      (missingColumn === 'allow_marksheet_download' && data.allowMarksheetDownload !== undefined) ||
-      (missingColumn === 'allow_certificate_download' && data.allowCertificateDownload !== undefined);
-    if (asked) {
-      const migration =
-        missingColumn === 'allow_admit_card_download' ? '0033_admit_card_download_permission.sql' : '0038_student_download_permissions.sql';
-      throw new Error(
-        `Migration ${migration.split('_')[0]} not applied yet — run supabase/migrations/${migration} in the Supabase SQL Editor`
-      );
-    }
+  if (blockedMigrationCol) {
+    const migration = migrationFile[blockedMigrationCol] || '0043_mark_entry_permission_and_roll_range.sql';
+    throw new Error(
+      `Migration ${migration.split('_')[0]} not applied yet — run supabase/migrations/${migration} in the Supabase SQL Editor`
+    );
   }
   if (data.name !== undefined && data.name.trim()) {
     await syncInstitutionNameCopies(id, data.name.trim());
   }
-  return mapInstitution(result);
+  const mapped = mapInstitution(result);
+  if (mapped.slug) INSTITUTION_SLUG_CACHE.set(mapped.slug, mapped);
+  return mapped;
 }
 
 /**
