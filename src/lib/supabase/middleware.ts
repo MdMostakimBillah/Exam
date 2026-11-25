@@ -2,6 +2,35 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  const redirect = (to: string) => {
+    const url = request.nextUrl.clone()
+    url.pathname = to
+    return NextResponse.redirect(url)
+  }
+
+  // Fast path for requests without any Supabase auth cookies:
+  // Avoids a redundant roundtrip to Supabase Auth API for public visitors
+  // and enables instant redirects on guarded routes.
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+
+  if (!hasAuthCookie) {
+    if (pathname.startsWith('/super-admin')) {
+      return redirect('/login')
+    }
+    if (pathname.match(/^\/i\/[^/]+/)) {
+      return redirect('/login')
+    }
+    if (pathname.startsWith('/student/dashboard') || pathname.startsWith('/student/payments')) {
+      return redirect('/student/login')
+    }
+    // Public routes without auth cookie proceed immediately
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -34,8 +63,6 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
-
   const needsRole =
     pathname.startsWith('/super-admin') ||
     pathname.startsWith('/student/dashboard') ||
@@ -58,12 +85,6 @@ export async function updateSession(request: NextRequest) {
   const isStudent = role === 'student'
   const isStaff =
     role === 'institution_admin' || role === 'staff' || role === 'viewer' || role === 'super_admin'
-
-  const redirect = (to: string) => {
-    const url = request.nextUrl.clone()
-    url.pathname = to
-    return NextResponse.redirect(url)
-  }
 
   // Protect super-admin routes (super_admin only)
   if (pathname.startsWith('/super-admin')) {

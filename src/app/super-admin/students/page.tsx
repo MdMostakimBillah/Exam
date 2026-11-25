@@ -11,7 +11,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useStudents, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
-import { useAllRegistrations, normalizeRegistrationStatus } from "@/lib/storage/registrations";
+import { useStudentRegistrationMeta, normalizeRegistrationStatus, type StudentRegistrationMeta } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
 import { TableActionMenu, TableActionItem } from "@/components/ui/table-action-menu";
@@ -55,7 +55,7 @@ export default function StudentsPage() {
 
   const { data: students = [], isFetching } = useStudents();
   const { data: institutions = [] } = useInstitutions();
-  const { data: regs = [] } = useAllRegistrations();
+  const { data: regMeta = [] } = useStudentRegistrationMeta();
   const updateStudentMutation = useUpdateStudent();
   const deleteStudentMutation = useDeleteStudent();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
@@ -65,8 +65,8 @@ export default function StudentsPage() {
 
   // Latest registration per student (used for Registration Number + status).
   const latestReg = useMemo(() => {
-    const map = new Map<string, Registration>();
-    for (const r of regs) {
+    const map = new Map<string, StudentRegistrationMeta>();
+    for (const r of regMeta) {
       if (!r.studentId) continue;
       const existing = map.get(r.studentId);
       if (!existing || new Date(r.createdAt || 0) >= new Date(existing.createdAt || 0)) {
@@ -74,7 +74,7 @@ export default function StudentsPage() {
       }
     }
     return map;
-  }, [regs]);
+  }, [regMeta]);
   const getRegNumber = (studentId: string) => latestReg.get(studentId)?.registrationNumber || '-';
   const getRegStatus = (studentId: string) => normalizeRegistrationStatus(latestReg.get(studentId)?.status);
 

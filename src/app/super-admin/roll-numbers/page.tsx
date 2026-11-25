@@ -13,7 +13,7 @@ import { useStudentsByClass } from "@/lib/storage/students";
 import { useClassRollSummaries, useGenerateExamRolls, getRollPrefix, type ClassRollSummary } from "@/lib/storage/exam-rolls";
 import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
 import { useClasses } from "@/lib/storage/classes";
-import { useAllRegistrations } from "@/lib/storage/registrations";
+import { useStudentRegistrationMeta, type StudentRegistrationMeta } from "@/lib/storage/registrations";
 import { formatDate } from "@/lib/storage/storage";
 import { Registration } from "@/lib/types";
 import { Hash, Search, Sparkles, Loader2, AlertTriangle, Users, FileDown } from "lucide-react";
@@ -56,7 +56,7 @@ export default function RollNumbersPage() {
   const students = useMemo(() => studentsQuery.data ?? [], [studentsQuery.data]);
   const { data: institutions = [] } = useInstitutions();
   const { data: allClasses = [] } = useClasses();
-  const { data: regs = [] } = useAllRegistrations(sessionId);
+  const { data: regMeta = [] } = useStudentRegistrationMeta(sessionId);
   const generateMutation = useGenerateExamRolls();
 
   // Fallback: map a class name to its classes.code (e.g. 'Five' -> 'CLS-05'
@@ -76,8 +76,8 @@ export default function RollNumbersPage() {
   // Earliest registration per student — the exact order the generator
   // assigns numbers in (first registered student = first roll number).
   const firstReg = useMemo(() => {
-    const map = new Map<string, Registration>();
-    for (const r of regs) {
+    const map = new Map<string, StudentRegistrationMeta>();
+    for (const r of regMeta) {
       if (!r.studentId) continue;
       const existing = map.get(r.studentId);
       if (!existing || new Date(r.createdAt || 0) < new Date(existing.createdAt || 0)) {
@@ -85,7 +85,7 @@ export default function RollNumbersPage() {
       }
     }
     return map;
-  }, [regs]);
+  }, [regMeta]);
 
   const summary: ClassRollSummary | undefined = summaries.find(s => s.className === selectedClass);
   const total = summary?.total ?? students.length;

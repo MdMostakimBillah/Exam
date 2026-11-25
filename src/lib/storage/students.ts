@@ -282,6 +282,17 @@ export function useInstitutionStudentCounts(sessionId?: string) {
     queryKey: ['students', 'counts', 'by-institution', sessionId],
     queryFn: async () => {
       const supabase = createClient();
+      // Fast path: use PostgreSQL server-side aggregation RPC if available
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_session_institution_student_counts', {
+          p_session_id: sessionId!,
+        });
+        if (!rpcErr && rpcData && typeof rpcData === 'object') {
+          return rpcData as Record<string, number>;
+        }
+      } catch {}
+
+      // Fallback: lightweight table query
       const { data, error } = await supabase
         .from(SUPABASE_TABLE)
         .select('institution_id')
@@ -315,6 +326,17 @@ export function useClassStudentCounts(sessionId?: string) {
     queryKey: ['students', 'counts', 'by-class', sessionId],
     queryFn: async () => {
       const supabase = createClient();
+      // Fast path: use PostgreSQL server-side aggregation RPC if available
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_session_class_student_counts', {
+          p_session_id: sessionId!,
+        });
+        if (!rpcErr && rpcData && typeof rpcData === 'object') {
+          return rpcData as Record<string, number>;
+        }
+      } catch {}
+
+      // Fallback: lightweight table query
       const { data, error } = await supabase
         .from(SUPABASE_TABLE)
         .select('class')

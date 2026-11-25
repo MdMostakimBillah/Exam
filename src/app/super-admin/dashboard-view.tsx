@@ -12,7 +12,7 @@ import type { LucideIcon } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useCurrentSession } from "@/lib/storage/sessions";
-import { useDashboardStats, useDashboardInstitutions, useDashboardRegistrations, useDashboardPayments } from "@/lib/storage/dashboard";
+import { useDashboardStats, useDashboardInstitutions, useDashboardPendingRegistrations, useDashboardPendingPayments } from "@/lib/storage/dashboard";
 import { useInstitutionName } from "@/lib/storage/institutions";
 import type { DashboardStats } from "@/lib/data/dashboard";
 import Link from "next/link";
@@ -39,23 +39,6 @@ const ZERO_STATS: DashboardStats = {
   payments_total: 0,
   payments_due: 0,
 };
-
-const isPendingReg = (r: { status: string }) =>
-  r.status !== 'APPROVED' && r.status !== 'VERIFIED' && r.status !== 'REJECTED';
-
-/**
- * Epoch ms of midnight in Asia/Dhaka (UTC+6, no DST) for the day `now` falls
- * on. The server stores UTC timestamps, so "today" is derived here rather than
- * via `new Date().setHours(0,0,0,0)`, which would use the browser's timezone.
- */
-function startOfDhakaDay(now: Date = new Date()): number {
-  const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
-  const local = new Date(now.getTime() + DHAKA_OFFSET_MS);
-  return (
-    Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) -
-    DHAKA_OFFSET_MS
-  );
-}
 
 /**
  * KPI card in the dashboard's original style: accent icon tile on the left,
@@ -169,57 +152,32 @@ export function SuperAdminDashboardView({ isLoading }: { isLoading?: boolean }) 
   const sessionId = currentSession?.id;
   const statsQuery = useDashboardStats(sessionId);
   const institutionsQuery = useDashboardInstitutions();
-  const registrationsQuery = useDashboardRegistrations(sessionId);
-  const paymentsQuery = useDashboardPayments(sessionId);
+  const pendingRegsQuery = useDashboardPendingRegistrations(sessionId);
+  const pendingPaymentsQuery = useDashboardPendingPayments(sessionId);
 
   const stats = statsQuery.data ?? ZERO_STATS;
   const institutions = useMemo(() => institutionsQuery.data ?? [], [institutionsQuery.data]);
-  const registrations = useMemo(() => registrationsQuery.data ?? [], [registrationsQuery.data]);
-  const payments = useMemo(() => paymentsQuery.data ?? [], [paymentsQuery.data]);
+  const pendingRegs = useMemo(() => pendingRegsQuery.data ?? [], [pendingRegsQuery.data]);
+  const pendingPayments = useMemo(() => pendingPaymentsQuery.data ?? [], [pendingPaymentsQuery.data]);
 
   // Disabled queries (no session yet) sit in isPending forever — only treat
   // them as loading while a session actually exists.
-  const regsLoading = !!sessionId && registrationsQuery.isPending;
-  const paysLoading = !!sessionId && paymentsQuery.isPending;
+  const regsLoading = !!sessionId && pendingRegsQuery.isPending;
+  const paysLoading = !!sessionId && pendingPaymentsQuery.isPending;
   const showSkeleton =
     sessionQuery.isPending
     || institutionsQuery.isPending
     || (!!sessionId && statsQuery.isPending);
 
-  // ---- Today (Asia/Dhaka) metrics, derived from the already-fetched lists ----
-  const dayStartMs = startOfDhakaDay();
-  const isToday = (iso?: string) => (iso ? new Date(iso).getTime() >= dayStartMs : false);
-
+  // ---- Today (Asia/Dhaka) metrics, sourced from the single-roundtrip stats RPC ----
   const today = useMemo(() => {
-    const paidToday = payments.filter((p) => p.status === "PAID" && isToday(p.createdAt));
-    const dueToday = payments.filter((p) => p.status === "PENDING" && isToday(p.createdAt));
-    const regToday = registrations.filter((r) => isToday(r.createdAt));
-    // Approved today = approval timestamp (updatedAt) landed today, not merely
-    // an old registration that still carries APPROVED.
-    const approvedToday = registrations.filter(
-      (r) => r.status === "APPROVED" && isToday(r.updatedAt)
-    );
     return {
-      due: dueToday.reduce((s, p) => s + Number(p.amount || 0), 0),
-      paid: paidToday.length,
-      registrations: regToday.length,
-      approved: approvedToday.length,
+      due: stats.payments_due_today ?? 0,
+      paid: stats.payments_paid_today ?? 0,
+      registrations: stats.registrations_today ?? 0,
+      approved: stats.registrations_approved_today ?? 0,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payments, registrations, dayStartMs]);
-
-  // ---- Actionable queues ----
-  const pendingRegs = useMemo(() =>
-    registrations
-      .filter(isPendingReg)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [registrations]);
-
-  const pendingPayments = useMemo(() =>
-    payments
-      .filter(p => p.status === 'PENDING')
-      .sort((a, b) => new Date(b.submittedAt || b.createdAt).getTime() - new Date(a.submittedAt || a.createdAt).getTime()),
-    [payments]);
+  }, [stats]);
 
   // ---- Institutions-added graph (current year, one bar per month) ----
   const year = new Date().getFullYear();

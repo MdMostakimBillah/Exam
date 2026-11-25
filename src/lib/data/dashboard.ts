@@ -30,6 +30,10 @@ export interface DashboardStats {
   results_total: number;
   payments_total: number;
   payments_due: number;
+  registrations_today?: number;
+  registrations_approved_today?: number;
+  payments_paid_today?: number;
+  payments_due_today?: number;
 }
 
 export async function fetchDashboardData(): Promise<{ data: DashboardData; stats: DashboardStats }> {

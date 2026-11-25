@@ -13,7 +13,7 @@ import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal
 import { useStudentsByInstitution, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useCurrentSession } from "@/lib/storage/sessions";
-import { useAllRegistrationsByInstitution, normalizeRegistrationStatus } from "@/lib/storage/registrations";
+import { useInstitutionStudentRegistrationMeta, normalizeRegistrationStatus, type StudentRegistrationMeta } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
@@ -57,13 +57,13 @@ export default function InstitutionStudentsPage() {
   const { data: inst } = useInstitutionBySlug(slug);
   const { data: currentSession } = useCurrentSession();
   const { data: students = [] } = useStudentsByInstitution(inst?.id || '', currentSession?.id);
-  const { data: regs = [] } = useAllRegistrationsByInstitution(inst?.id || '', currentSession?.id);
+  const { data: regMeta = [] } = useInstitutionStudentRegistrationMeta(inst?.id || '', currentSession?.id);
   const deleteStudentMutation = useDeleteStudent();
 
   // Latest registration per student (used for Registration Number + status).
   const latestReg = useMemo(() => {
-    const map = new Map<string, Registration>();
-    for (const r of regs) {
+    const map = new Map<string, StudentRegistrationMeta>();
+    for (const r of regMeta) {
       if (!r.studentId) continue;
       const existing = map.get(r.studentId);
       if (!existing || new Date(r.createdAt || 0) >= new Date(existing.createdAt || 0)) {
@@ -71,7 +71,7 @@ export default function InstitutionStudentsPage() {
       }
     }
     return map;
-  }, [regs]);
+  }, [regMeta]);
   const getRegNumber = (studentId: string) => latestReg.get(studentId)?.registrationNumber || '-';
   const getRegStatus = (studentId: string) => normalizeRegistrationStatus(latestReg.get(studentId)?.status);
 

@@ -15,7 +15,7 @@ interface SeatPlanModalProps {
   className: string;
   sessionName?: string;
   students: Student[];
-  firstReg: Map<string, Registration>;
+  firstReg: Map<string, { registrationNumber?: string; createdAt?: string } | Registration>;
   institutionMap: Map<string, string>;
   initialGender?: string;
 }

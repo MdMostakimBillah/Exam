@@ -37,7 +37,7 @@ export async function fetchGlobalCurrentSession(): Promise<AcademicSession | und
     .from(SUPABASE_TABLE)
     .select(SESSION_COLUMNS)
     .eq('is_current', true)
-    .single();
+    .maybeSingle();
   if (error || !data) {
     const sessions = await fetchSessions();
     return sessions.find(s => s.isCurrent);
@@ -81,6 +81,7 @@ export function getViewSessionOverride(userId: string): ViewSessionOverride | nu
 }
 
 export async function setViewSessionOverride(userId: string, sessionId: string): Promise<void> {
+  invalidateCurrentSessionCache();
   const base = await fetchGlobalCurrentSession();
   if (typeof window === 'undefined') return;
   localStorage.setItem(
@@ -90,6 +91,7 @@ export async function setViewSessionOverride(userId: string, sessionId: string):
 }
 
 export function clearViewSessionOverride(userId: string): void {
+  invalidateCurrentSessionCache();
   if (typeof window === 'undefined') return;
   localStorage.removeItem(viewSessionKey(userId));
 }
@@ -125,15 +127,51 @@ async function resolveViewSessionOverride(
   }
 }
 
+// In-memory cache & promise deduplication for high-frequency queries
+let currentSessionPromise: Promise<AcademicSession | undefined> | null = null;
+let currentSessionCachedAt = 0;
+let cachedCurrentSessionValue: AcademicSession | undefined = undefined;
+const CURRENT_SESSION_TTL_MS = 10_000;
+
+export function invalidateCurrentSessionCache(): void {
+  currentSessionPromise = null;
+  currentSessionCachedAt = 0;
+  cachedCurrentSessionValue = undefined;
+}
+
 /**
  * The session this user is currently viewing: the local view override
  * if valid, otherwise the global current session.
+ * Uses a 10s in-memory cache and promise deduplication to prevent
+ * duplicate queries when multiple components/hooks initialize together.
  */
-export async function fetchCurrentSession(): Promise<AcademicSession | undefined> {
-  const globalCurrent = await fetchGlobalCurrentSession();
-  if (!globalCurrent) return undefined;
-  const override = await resolveViewSessionOverride(globalCurrent);
-  return override ?? globalCurrent;
+export async function fetchCurrentSession(forceRefresh = false): Promise<AcademicSession | undefined> {
+  const now = Date.now();
+  if (!forceRefresh && cachedCurrentSessionValue && (now - currentSessionCachedAt < CURRENT_SESSION_TTL_MS)) {
+    return cachedCurrentSessionValue;
+  }
+  if (!forceRefresh && currentSessionPromise) {
+    return currentSessionPromise;
+  }
+
+  currentSessionPromise = (async () => {
+    try {
+      const globalCurrent = await fetchGlobalCurrentSession();
+      if (!globalCurrent) {
+        cachedCurrentSessionValue = undefined;
+        return undefined;
+      }
+      const override = await resolveViewSessionOverride(globalCurrent);
+      const result = override ?? globalCurrent;
+      cachedCurrentSessionValue = result;
+      currentSessionCachedAt = Date.now();
+      return result;
+    } finally {
+      currentSessionPromise = null;
+    }
+  })();
+
+  return currentSessionPromise;
 }
 
 export const getCurrentSession = fetchCurrentSession;
@@ -146,9 +184,9 @@ export function useSessions() {
 }
 
 export function useCurrentSession() {
-  return useQuery({
+  return useQuery<AcademicSession | undefined>({
     queryKey: ['academic_sessions', 'current'],
-    queryFn: fetchCurrentSession,
+    queryFn: () => fetchCurrentSession(),
     // Live: lets other users notice when the super-admin changes the
     // global session (override auto-expiry is resolved inside queryFn).
     refetchInterval: 30_000,
@@ -178,6 +216,7 @@ export function useCreateSession() {
       return mapSession(result);
     },
     onSuccess: () => {
+      invalidateCurrentSessionCache();
       queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
     },
   });
@@ -206,6 +245,7 @@ export function useUpdateSession() {
       return mapSession(result);
     },
     onSuccess: () => {
+      invalidateCurrentSessionCache();
       queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
     },
   });
@@ -231,6 +271,7 @@ export function useDeleteSession() {
       if (error) throw error;
     },
     onSuccess: () => {
+      invalidateCurrentSessionCache();
       queryClient.invalidateQueries({ queryKey: ['academic_sessions'] });
     },
   });
@@ -255,6 +296,7 @@ export function useSetCurrentSession() {
       return mapSession(result);
     },
     onSuccess: () => {
+      invalidateCurrentSessionCache();
       // The global current session changed — refresh every cached dataset
       // so all pages show the new session's (initially empty) data at once.
       queryClient.invalidateQueries();

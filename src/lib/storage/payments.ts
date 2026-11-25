@@ -5,7 +5,8 @@ import { fetchCurrentSession } from './sessions';
 
 const SUPABASE_TABLE = 'payments';
 
-const PAYMENT_COLUMNS = 'id,session_id,transaction_id,institution_id,institution_name,exam_id,exam_name,student_count,amount,payment_method,status,date,registration_id,student_id,student_name,reference,payment_date,notes,submitted_by_student,submitted_at,receipt_number,account_number,proof_image,verified_by_super_admin,verified_at,rejection_reason,created_at,updated_at';
+const PAYMENT_LIST_COLUMNS = 'id,session_id,transaction_id,institution_id,institution_name,exam_id,exam_name,student_count,amount,payment_method,status,date,registration_id,student_id,student_name,reference,payment_date,notes,submitted_by_student,submitted_at,receipt_number,account_number,verified_by_super_admin,verified_at,rejection_reason,created_at,updated_at';
+const PAYMENT_COLUMNS = `${PAYMENT_LIST_COLUMNS},proof_image`;
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -50,7 +51,7 @@ export async function fetchPayments(sessionId?: string, page: number = 1, pageSi
   const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(PAYMENT_COLUMNS)
+    .select(PAYMENT_LIST_COLUMNS)
     .eq('session_id', sid)
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -66,7 +67,7 @@ export async function fetchPaymentsByInstitution(institutionId: string, sessionI
   const to = from + pageSize - 1;
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(PAYMENT_COLUMNS)
+    .select(PAYMENT_LIST_COLUMNS)
     .eq('session_id', sid)
     .eq('institution_id', institutionId)
     .order('created_at', { ascending: false })
@@ -83,7 +84,7 @@ export async function fetchPaymentById(id: string): Promise<Payment | undefined>
 
 /**
  * Fetch ALL payments for a session (pages past the 1000-row per-request cap),
- * newest first. Used by the super-admin payments page for accurate totals.
+ * newest first. Excludes proof_image for high performance on list views.
  */
 export async function fetchAllPayments(sessionId?: string): Promise<Payment[]> {
   const supabase = createClient();
@@ -95,7 +96,7 @@ export async function fetchAllPayments(sessionId?: string): Promise<Payment[]> {
     const from = page * PAGE;
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select(PAYMENT_COLUMNS)
+      .select(PAYMENT_LIST_COLUMNS)
       .eq('session_id', sid)
       .order('created_at', { ascending: false })
       .range(from, from + PAGE - 1);
@@ -120,7 +121,7 @@ export async function fetchAllPaymentsByInstitution(institutionId: string, sessi
     const from = page * PAGE;
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select(PAYMENT_COLUMNS)
+      .select(PAYMENT_LIST_COLUMNS)
       .eq('session_id', sid)
       .eq('institution_id', institutionId)
       .order('created_at', { ascending: false })

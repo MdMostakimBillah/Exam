@@ -171,7 +171,7 @@ export async function fetchAllRegistrationsByInstitution(institutionId: string, 
     const from = page * PAGE;
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select(REGISTRATION_SELECT)
+      .select(REGISTRATION_COLUMNS)
       .eq('session_id', sid)
       .eq('institution_id', institutionId)
       .order('created_at', { ascending: false })
@@ -185,7 +185,8 @@ export async function fetchAllRegistrationsByInstitution(institutionId: string, 
 
 /**
  * Fetch ALL registrations across every institution for a session (pages past the
- * 1000-row per-request cap), newest first. Used by the super-admin students list.
+ * 1000-row per-request cap), newest first.
+ * Uses REGISTRATION_COLUMNS (without heavy student photo joins) for high performance.
  */
 export async function fetchAllRegistrations(sessionId?: string): Promise<Registration[]> {
   const supabase = createClient();
@@ -197,7 +198,7 @@ export async function fetchAllRegistrations(sessionId?: string): Promise<Registr
     const from = page * PAGE;
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select(REGISTRATION_SELECT)
+      .select(REGISTRATION_COLUMNS)
       .eq('session_id', sid)
       .order('created_at', { ascending: false })
       .range(from, from + PAGE - 1);
@@ -222,6 +223,95 @@ export function useAllRegistrations(sessionId?: string, enabled = true) {
     queryKey: ['registrations', 'all', sessionId],
     queryFn: () => fetchAllRegistrations(sessionId),
     enabled,
+    staleTime: 30 * 1000,
+  });
+}
+
+export interface StudentRegistrationMeta {
+  studentId: string;
+  registrationNumber: string;
+  status: string;
+  createdAt: string;
+}
+
+/**
+ * Ultra-lightweight query returning ONLY (studentId, registrationNumber, status, createdAt)
+ * without full registration objects or student table joins.
+ * Replaces massive downloads on student list and roll number views.
+ */
+export async function fetchStudentRegistrationMeta(sessionId?: string): Promise<StudentRegistrationMeta[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('student_id, registration_number, status, created_at')
+    .eq('session_id', sid)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data.map((d: any) => ({
+    studentId: d.student_id,
+    registrationNumber: d.registration_number || '',
+    status: d.status || '',
+    createdAt: d.created_at || '',
+  }));
+}
+
+export function useStudentRegistrationMeta(sessionId?: string) {
+  return useQuery({
+    queryKey: ['registrations', 'student-meta', sessionId],
+    queryFn: () => fetchStudentRegistrationMeta(sessionId),
+    staleTime: 30 * 1000,
+  });
+}
+
+export async function fetchInstitutionStudentRegistrationMeta(institutionId: string, sessionId?: string): Promise<StudentRegistrationMeta[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid || !institutionId) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('student_id, registration_number, status, created_at')
+    .eq('session_id', sid)
+    .eq('institution_id', institutionId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data.map((d: any) => ({
+    studentId: d.student_id,
+    registrationNumber: d.registration_number || '',
+    status: d.status || '',
+    createdAt: d.created_at || '',
+  }));
+}
+
+export function useInstitutionStudentRegistrationMeta(institutionId: string, sessionId?: string) {
+  return useQuery({
+    queryKey: ['registrations', 'student-meta', institutionId, sessionId],
+    queryFn: () => fetchInstitutionStudentRegistrationMeta(institutionId, sessionId),
+    enabled: !!institutionId,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Lightweight fee sum query for payments calculation without fetching entire registrations table.
+ */
+export async function fetchRegistrationFeeSummary(sessionId?: string): Promise<{ paymentAmount: number }[]> {
+  const supabase = createClient();
+  const sid = sessionId || (await fetchCurrentSession())?.id;
+  if (!sid) return [];
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('payment_amount')
+    .eq('session_id', sid);
+  if (error || !data) return [];
+  return data.map((d: any) => ({ paymentAmount: Number(d.payment_amount || 0) }));
+}
+
+export function useRegistrationFeeSummary(sessionId?: string) {
+  return useQuery({
+    queryKey: ['registrations', 'fee-summary', sessionId],
+    queryFn: () => fetchRegistrationFeeSummary(sessionId),
     staleTime: 30 * 1000,
   });
 }

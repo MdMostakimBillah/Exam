@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { useAllPayments, useUpdatePayment, computeDue } from "@/lib/storage/payments";
+import { useAllPayments, useUpdatePayment, computeDue, fetchPaymentById } from "@/lib/storage/payments";
 import { useInstitutionName } from "@/lib/storage/institutions";
-import { useUpdateRegistration, useAllRegistrations, useAllRegistrationsByInstitution } from "@/lib/storage/registrations";
+import { useUpdateRegistration, useAllRegistrationsByInstitution, useRegistrationFeeSummary } from "@/lib/storage/registrations";
 import { Payment, Registration } from "@/lib/types";
 import { formatDate } from "@/lib/storage/storage";
 import { CreditCard, Search, FileDown, Eye, CheckCircle, XCircle, Wallet, Users, Clock } from "lucide-react";
@@ -54,9 +54,8 @@ export default function PaymentsPage() {
   const [selectedRegs, setSelectedRegs] = useState<string[]>([]);
 
   const { data: fetchedPayments, isFetching: isFetchingPayments } = useAllPayments();
-  const { data: fetchedRegistrations } = useAllRegistrations();
+  const { data: registrationFees = [] } = useRegistrationFeeSummary();
   const payments = fetchedPayments ?? EMPTY_REGS_PAYMENT;
-  const registrations = fetchedRegistrations ?? EMPTY_REGS;
   const updatePaymentMutation = useUpdatePayment();
   const updateRegistrationMutation = useUpdateRegistration();
 
@@ -76,8 +75,8 @@ export default function PaymentsPage() {
   }), [payments, search, statusFilter, instName]);
 
   // Due = all student fees − approved (PAID) payments
-  const totalFees = useMemo(() => registrations.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0), [registrations]);
-  const dueAmount = useMemo(() => computeDue(registrations, payments), [registrations, payments]);
+  const totalFees = useMemo(() => registrationFees.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0), [registrationFees]);
+  const dueAmount = useMemo(() => computeDue(registrationFees, payments), [registrationFees, payments]);
   const paidAmount = useMemo(() => payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + p.amount, 0), [payments]);
   const pendingAmount = useMemo(() => payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0), [payments]);
   const studentSubmittedCount = useMemo(() => payments.filter(p => p.submittedByStudent && p.status === "PENDING").length, [payments]);
@@ -360,7 +359,14 @@ export default function PaymentsPage() {
                     <TableCell>
                       {payment.status === "PENDING" && (
                         <TableActionMenu id={payment.id} openId={menuOpenId} onToggle={setMenuOpenId} isDark={isDark}>
-                          <TableActionItem onClick={() => { setReviewingPayment(payment); setMenuOpenId(null); }} isDark={isDark}>
+                          <TableActionItem onClick={async () => {
+                            setMenuOpenId(null);
+                            setReviewingPayment(payment);
+                            if (!payment.proofImage) {
+                              const full = await fetchPaymentById(payment.id);
+                              if (full?.proofImage) setReviewingPayment(full);
+                            }
+                          }} isDark={isDark}>
                             <Eye className="h-3.5 w-3.5" /> {isBn ? "বিস্তারিত" : "Review"}
                           </TableActionItem>
                           <TableActionItem onClick={() => { setConfirmAction({ type: "approve", payment }); setMenuOpenId(null); }} isDark={isDark} variant="success">
