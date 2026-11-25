@@ -80,13 +80,22 @@ function classSortKey(className: string): number {
 export async function fetchClassRollSummaries(sessionId?: string): Promise<ClassRollSummary[]> {
   if (!sessionId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from(STUDENTS_TABLE)
-    .select('class, exam_roll')
-    .eq('session_id', sessionId);
-  if (error) throw error;
+  const PAGE = 1000;
+  const all: { class: string | null; exam_roll: string | null }[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(STUDENTS_TABLE)
+      .select('class, exam_roll')
+      .eq('session_id', sessionId)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
   const map = new Map<string, ClassRollSummary>();
-  for (const row of data || []) {
+  for (const row of all) {
     const cls = row.class;
     if (!cls) continue;
     const summary = map.get(cls) || { className: cls, total: 0, rolled: 0 };

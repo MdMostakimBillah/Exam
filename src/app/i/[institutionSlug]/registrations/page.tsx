@@ -76,6 +76,7 @@ export default function InstitutionRegistrationsPage() {
     dateOfBirth: "", gender: "MALE" as "MALE" | "FEMALE" | "OTHER",
     fatherName: "", motherName: "", phone: "", address: "", photo: "",
   });
+  const [editPhotoDirty, setEditPhotoDirty] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [pageSize, setPageSize] = useState<number>(30);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -365,6 +366,7 @@ export default function InstitutionRegistrationsPage() {
 
   const handleEdit = (reg: Registration) => {
     setEditingReg(reg);
+    setEditPhotoDirty(false);
     setMenuOpenId(null);
     // Find the student from the students list
     const student = students.find(s => s.id === reg.studentId);
@@ -415,7 +417,7 @@ export default function InstitutionRegistrationsPage() {
             motherName: capitalizeWords(editStudentForm.motherName.trim()),
             phone: editStudentForm.phone.trim(),
             address: capitalizeWords(editStudentForm.address.trim()),
-            photo: editStudentForm.photo || undefined,
+            ...(editPhotoDirty ? { photo: editStudentForm.photo || "" } : {}),
           },
         });
       }
@@ -446,6 +448,7 @@ export default function InstitutionRegistrationsPage() {
         maxSizeBytes: MAX_IMAGE_SIZE,
       });
       setEditStudentForm(prev => ({ ...prev, photo: webpDataUrl }));
+      setEditPhotoDirty(true);
     } catch (err: any) {
       console.error("[photo-compress] failed:", err);
       setPhotoError(isBn ? "ছবি প্রসেস করা যায়নি। অন্য ছবি দিন।" : "Could not process image. Please try another.");
@@ -1082,7 +1085,7 @@ export default function InstitutionRegistrationsPage() {
                         <input type="file" accept="image/*" onChange={handleEditPhotoChange} disabled={compressingPhoto} className="hidden" />
                       </label>
                       {editStudentForm.photo && !compressingPhoto && (
-                        <button onClick={() => setEditStudentForm(prev => ({ ...prev, photo: "" }))} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
+                        <button onClick={() => { setEditStudentForm(prev => ({ ...prev, photo: "" })); setEditPhotoDirty(true); }} className="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
                           {isBn ? 'সরান' : 'Remove'}
                         </button>
                       )}

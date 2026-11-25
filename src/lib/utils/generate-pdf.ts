@@ -109,14 +109,32 @@ export function accentPalette(accent?: string): AccentPalette {
 
 /** Load any image (data URL or remote URL), center-crop to a square PNG thumbnail. */
 async function imageToPng(src: string): Promise<string | null> {
-  try {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
+  const loadImg = (url: string, withCors: boolean) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      if (withCors) img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
       img.onerror = () => reject(new Error("image load failed"));
-      img.src = src;
+      img.src = url;
     });
+
+  try {
+    let img: HTMLImageElement;
+    try {
+      img = await loadImg(src, true);
+    } catch {
+      const res = await fetch(src);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      img = await loadImg(dataUrl, false);
+    }
+    if (!img.naturalWidth || !img.naturalHeight) return null;
     const S = 160;
     const canvas = document.createElement("canvas");
     canvas.width = S;
@@ -226,9 +244,45 @@ export interface BengaliRenderResult {
 }
 
 const banglaTextCache = new Map<string, BengaliRenderResult>();
+const banglaMeasureCache = new Map<string, number>();
+let measureCanvasCtx: CanvasRenderingContext2D | null = null;
 
 export function hasBengali(text: string): boolean {
   return /[\u0980-\u09FF]/.test(text);
+}
+
+/**
+ * Lightweight width measurement for Bengali text in mm without PNG rasterisation.
+ * Used during line wrapping and ellipsis truncation before the final draw call.
+ */
+export function measureBengaliTextWidthMm(
+  text: string,
+  fontSizePt: number,
+  fontStyle: "normal" | "bold" = "normal"
+): number {
+  if (!text || typeof document === "undefined") return 0;
+  const key = `${text}_${fontSizePt}_${fontStyle}`;
+  const cached = banglaMeasureCache.get(key);
+  if (cached !== undefined) return cached;
+
+  if (!measureCanvasCtx) {
+    const c = document.createElement("canvas");
+    measureCanvasCtx = c.getContext("2d");
+  }
+  if (!measureCanvasCtx) return 0;
+
+  const DPI_SCALE = 4;
+  const basePx = fontSizePt * (96 / 72);
+  const canvasFontSizePx = Math.round(basePx * DPI_SCALE);
+  const weight = fontStyle === "bold" ? "700" : "400";
+  measureCanvasCtx.font = `${weight} ${canvasFontSizePx}px 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', sans-serif`;
+
+  const padX = 4 * DPI_SCALE;
+  const widthPx = Math.ceil(measureCanvasCtx.measureText(text).width + padX * 2);
+  const widthMm = widthPx * (25.4 / (96 * DPI_SCALE));
+  if (banglaMeasureCache.size > 4000) banglaMeasureCache.clear();
+  banglaMeasureCache.set(key, widthMm);
+  return widthMm;
 }
 
 export function renderBengaliText(
@@ -693,15 +747,27 @@ export async function generatePdf(options: GeneratePdfOptions) {
   const withImage = Boolean(imageKey && data.some((row) => String(row[imageKey] ?? "").trim()));
   const imgSrcs = new Map<number, string>();
   if (withImage && imageKey) {
+    const uniqueRaw = Array.from(
+      new Set(
+        data
+          .map((row) => String(row[imageKey] ?? "").trim())
+          .filter(Boolean)
+      )
+    );
     const cache = new Map<string, string | null>();
+    const IMG_BATCH = 12;
+    for (let i = 0; i < uniqueRaw.length; i += IMG_BATCH) {
+      const batch = uniqueRaw.slice(i, i + IMG_BATCH);
+      await Promise.all(
+        batch.map(async (raw) => {
+          cache.set(raw, await imageToPng(raw));
+        })
+      );
+    }
     for (let i = 0; i < data.length; i++) {
       const raw = String(data[i][imageKey] ?? "").trim();
       if (!raw) continue;
-      let png = cache.get(raw);
-      if (png === undefined) {
-        png = await imageToPng(raw);
-        cache.set(raw, png);
-      }
+      const png = cache.get(raw);
       if (png) imgSrcs.set(i, png);
     }
   }

@@ -243,17 +243,25 @@ export async function fetchStudentRegistrationMeta(sessionId?: string): Promise<
   const supabase = createClient();
   const sid = sessionId || (await fetchCurrentSession())?.id;
   if (!sid) return [];
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select('student_id, registration_number, status, created_at')
-    .eq('session_id', sid)
-    .order('created_at', { ascending: false });
-  if (error) {
-    console.error('[registrations] fetchStudentRegistrationMeta error:', error);
-    return [];
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select('student_id, registration_number, status, created_at')
+      .eq('session_id', sid)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error('[registrations] fetchStudentRegistrationMeta error:', error);
+      break;
+    }
+    if (!data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
   }
-  if (!data) return [];
-  return data.map((d: any) => ({
+  return all.map((d: any) => ({
     studentId: d.student_id,
     registrationNumber: d.registration_number || '',
     status: d.status || '',

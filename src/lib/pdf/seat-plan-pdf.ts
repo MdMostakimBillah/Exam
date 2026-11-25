@@ -7,7 +7,7 @@ import {
   loadFont,
   loadLogoImage,
   loadWatermarkImage,
-  renderBengaliText,
+  measureBengaliTextWidthMm,
 } from "@/lib/utils/generate-pdf";
 
 export interface SeatPlanStudent {
@@ -45,15 +45,42 @@ export interface SeatPlanPdfOptions {
 async function loadPhotoAsDataUrl(src: string, targetW = 160, targetH = 196): Promise<string | null> {
   if (!src || !src.trim()) return null;
   const trimmed = src.trim();
-  try {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
+  const loadImg = (url: string, withCors: boolean) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      if (withCors) img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
       img.onerror = () => reject(new Error("photo load failed"));
-      img.src = trimmed;
+      img.src = url;
     });
+
+  try {
+    let img: HTMLImageElement;
+    try {
+      img = await loadImg(trimmed, true);
+    } catch {
+      // Fallback via fetch for storage URLs that fail direct img CORS check
+      const res = await fetch(trimmed);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const fetchedUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      img = await loadImg(fetchedUrl, false);
+    }
     if (!img.naturalWidth || !img.naturalHeight) return null;
+
+    // Fast path: server-resized card photos are already exact targetW x targetH JPEG
+    if (
+      img.naturalWidth === targetW &&
+      img.naturalHeight === targetH &&
+      trimmed.startsWith("data:image/jpeg")
+    ) {
+      return trimmed;
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = targetW;
@@ -101,15 +128,13 @@ function truncateText(
   if (!text) return "";
   const trimmed = text.trim();
   if (hasBengali(trimmed)) {
+    if (measureBengaliTextWidthMm(trimmed, fontSizePt, fontStyle) <= maxMm) return trimmed;
     let cur = trimmed;
     while (cur.length > 2) {
-      const rendered = renderBengaliText(cur, fontSizePt, fontStyle);
-      if (rendered.widthMm <= maxMm) return cur;
       cur = cur.slice(0, -1).trim();
       if (cur.length <= 2) return cur;
       const test = cur + "…";
-      const testRender = renderBengaliText(test, fontSizePt, fontStyle);
-      if (testRender.widthMm <= maxMm) return test;
+      if (measureBengaliTextWidthMm(test, fontSizePt, fontStyle) <= maxMm) return test;
     }
     return cur;
   }
@@ -145,7 +170,7 @@ function splitTextToFit(
     const testLine = currentLine ? `${currentLine} ${word}` : word;
     let width = 0;
     if (hasBengali(testLine)) {
-      width = renderBengaliText(testLine, fontSizePt, "normal").widthMm;
+      width = measureBengaliTextWidthMm(testLine, fontSizePt, "normal");
     } else {
       doc.setFont(FONT_NAME, "normal");
       doc.setFontSize(fontSizePt);
@@ -270,13 +295,17 @@ export async function exportSeatPlanPdf(options: SeatPlanPdfOptions): Promise<vo
     logo ? loadLogoImage(logo) : Promise.resolve(null),
   ]);
 
-  // Preload unique student photos in batches
+  // Preload unique student photos in parallel batches
   const photoCache = new Map<string, string | null>();
   const uniquePhotos = Array.from(
-    new Set(sorted.map((s) => s.photo).filter((p): p is string => Boolean(p && p.trim())))
+    new Set(
+      sorted
+        .map((s) => s.photo?.trim())
+        .filter((p): p is string => Boolean(p))
+    )
   );
 
-  const BATCH_SIZE = 12;
+  const BATCH_SIZE = 24;
   for (let i = 0; i < uniquePhotos.length; i += BATCH_SIZE) {
     const batch = uniquePhotos.slice(i, i + BATCH_SIZE);
     await Promise.all(
@@ -423,8 +452,9 @@ export async function exportSeatPlanPdf(options: SeatPlanPdfOptions): Promise<vo
       const photoH = 22;
 
       let photoDrawn = false;
-      if (student.photo && photoCache.has(student.photo)) {
-        const photoData = photoCache.get(student.photo);
+      const rawPhoto = student.photo?.trim();
+      if (rawPhoto && photoCache.has(rawPhoto)) {
+        const photoData = photoCache.get(rawPhoto);
         if (photoData) {
           try {
             doc.addImage(photoData, "JPEG", photoX, photoY, photoW, photoH, undefined, "FAST");

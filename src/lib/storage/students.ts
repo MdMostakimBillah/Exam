@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Student } from '../types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -396,14 +397,23 @@ const CLASS_ROLL_COLUMNS = 'id,institution_id,session_id,first_name,last_name,fi
 export async function fetchStudentsByClass(sessionId?: string, className?: string): Promise<Student[]> {
   const supabase = createClient();
   if (!sessionId || !className) return [];
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select(CLASS_ROLL_COLUMNS)
-    .eq('session_id', sessionId)
-    .eq('class', className)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return (data || []).map(mapStudent);
+  const PAGE = 1000;
+  const all: any[] = [];
+  for (let page = 0; page < 50; page++) {
+    const from = page * PAGE;
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select(CLASS_ROLL_COLUMNS)
+      .eq('session_id', sessionId)
+      .eq('class', className)
+      .order('created_at', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all.map(mapStudent);
 }
 
 export function useStudentsByClass(sessionId?: string, className?: string) {
@@ -433,45 +443,365 @@ export function useStudentById(id: string) {
   });
 }
 
-/**
- * On-demand batch photo lookup for active/visible page rows (e.g. 30 students),
- * avoiding downloading megabytes of base64 photos across all session students.
- * Requests are chunked into batches of 50 IDs to avoid query URI length limits.
- */
-export function useStudentPhotos(studentIds: string[]) {
-  const uniqueIds = Array.from(new Set(studentIds.filter(Boolean)));
-  const idsKey = uniqueIds.slice().sort().join(',');
-  return useQuery<Record<string, string>>({
-    queryKey: ['students', 'photos', idsKey],
-    queryFn: async () => {
-      if (!uniqueIds.length) return {};
-      const supabase = createClient();
-      const CHUNK_SIZE = 50;
-      const chunks: string[][] = [];
-      for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
-        chunks.push(uniqueIds.slice(i, i + CHUNK_SIZE));
+export type StudentPhotoVariant = 'thumb' | 'card' | 'full';
+
+export interface UseStudentPhotosOptions {
+  variant?: StudentPhotoVariant;
+  enabled?: boolean;
+}
+
+const PHOTO_CACHE_TTL_MS = 5 * 60 * 1000;
+const PHOTO_IDB_NAME = 'scholarx_photo_cache_v1';
+const PHOTO_IDB_STORE = 'photos';
+const PHOTO_FETCH_CHUNK_SIZE = 40;
+const PHOTO_FETCH_CONCURRENCY = 3;
+
+interface CachedPhotoEntry {
+  photo: string | null;
+  ts: number;
+}
+
+const photoMemCache: Record<StudentPhotoVariant, Map<string, CachedPhotoEntry>> = {
+  thumb: new Map(),
+  card: new Map(),
+  full: new Map(),
+};
+
+const inflightPhotoRequests = new Map<string, Promise<string | null>>();
+
+let photoDbPromise: Promise<IDBDatabase | null> | null = null;
+
+function openPhotoCacheDb(): Promise<IDBDatabase | null> {
+  if (typeof window === 'undefined' || !('indexedDB' in window)) return Promise.resolve(null);
+  if (photoDbPromise) return photoDbPromise;
+  photoDbPromise = new Promise<IDBDatabase | null>((resolve) => {
+    try {
+      const req = window.indexedDB.open(PHOTO_IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(PHOTO_IDB_STORE)) {
+          db.createObjectStore(PHOTO_IDB_STORE, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+  return photoDbPromise;
+}
+
+async function readIdbPhotos(
+  ids: string[],
+  variant: StudentPhotoVariant,
+  now: number
+): Promise<Map<string, CachedPhotoEntry>> {
+  const result = new Map<string, CachedPhotoEntry>();
+  if (ids.length === 0) return result;
+  const db = await openPhotoCacheDb();
+  if (!db) return result;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(PHOTO_IDB_STORE, 'readonly');
+      const store = tx.objectStore(PHOTO_IDB_STORE);
+      for (const id of ids) {
+        const key = `${variant}:${id}`;
+        const req = store.get(key);
+        req.onsuccess = () => {
+          const val = req.result as { key: string; photo: string | null; ts: number } | undefined;
+          if (val && now - val.ts < PHOTO_CACHE_TTL_MS) {
+            result.set(id, { photo: val.photo ?? null, ts: val.ts });
+          }
+        };
       }
-      const results = await Promise.all(
-        chunks.map(chunk =>
-          supabase
-            .from(SUPABASE_TABLE)
-            .select('id, photo_url')
-            .in('id', chunk)
-            .not('photo_url', 'is', null)
-        )
-      );
-      const map: Record<string, string> = {};
-      for (const res of results) {
-        if (res.data) {
-          for (const row of res.data) {
-            if (row.photo_url) map[row.id] = row.photo_url;
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => resolve(result);
+      tx.onabort = () => resolve(result);
+    } catch {
+      resolve(result);
+    }
+  });
+}
+
+async function writeIdbPhotos(
+  entries: Array<{ id: string; photo: string | null; ts: number }>,
+  variant: StudentPhotoVariant
+): Promise<void> {
+  if (entries.length === 0) return;
+  const db = await openPhotoCacheDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(PHOTO_IDB_STORE, 'readwrite');
+      const store = tx.objectStore(PHOTO_IDB_STORE);
+      for (const entry of entries) {
+        store.put({
+          key: `${variant}:${entry.id}`,
+          photo: entry.photo,
+          ts: entry.ts,
+        });
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+export function invalidateStudentPhotoCache(studentId?: string): void {
+  const variants: StudentPhotoVariant[] = ['thumb', 'card', 'full'];
+  for (const v of variants) {
+    if (studentId) {
+      photoMemCache[v].delete(studentId);
+    } else {
+      photoMemCache[v].clear();
+    }
+  }
+  void openPhotoCacheDb().then((db) => {
+    if (!db) return;
+    try {
+      const tx = db.transaction(PHOTO_IDB_STORE, 'readwrite');
+      const store = tx.objectStore(PHOTO_IDB_STORE);
+      if (studentId) {
+        for (const v of variants) store.delete(`${v}:${studentId}`);
+      } else {
+        store.clear();
+      }
+    } catch {
+      // Ignore cache cleanup errors
+    }
+  });
+}
+
+function readFreshMemoryPhotos(
+  ids: string[],
+  variant: StudentPhotoVariant
+): { map: Record<string, string>; allHit: boolean; oldestTs: number | undefined } {
+  const now = Date.now();
+  const cache = photoMemCache[variant];
+  const map: Record<string, string> = {};
+  let allHit = ids.length > 0;
+  let oldestTs: number | undefined;
+
+  for (const id of ids) {
+    const entry = cache.get(id);
+    if (!entry || now - entry.ts >= PHOTO_CACHE_TTL_MS) {
+      allHit = false;
+      continue;
+    }
+    if (entry.photo) map[id] = entry.photo;
+    if (oldestTs === undefined || entry.ts < oldestTs) {
+      oldestTs = entry.ts;
+    }
+  }
+
+  return { map, allHit, oldestTs };
+}
+
+async function fetchPhotoChunkFromNetwork(
+  chunk: string[],
+  variant: StudentPhotoVariant
+): Promise<{ ok: boolean; photos: Record<string, string> }> {
+  // Fast path: Next.js batch photo route with server-side thumbnail/card sizing via sharp
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/students/photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: chunk, variant }),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { photos?: Record<string, string> };
+        return { ok: true, photos: json.photos || {} };
+      }
+      if (res.status === 401) {
+        return { ok: false, photos: {} };
+      }
+    } catch {
+      // Fall through to direct Supabase query fallback
+    }
+  }
+
+  // Fallback path: direct PostgREST batch lookup
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('id, photo_url')
+    .in('id', chunk)
+    .not('photo_url', 'is', null);
+
+  if (error || !data) {
+    return { ok: false, photos: {} };
+  }
+
+  const photos: Record<string, string> = {};
+  for (const row of data) {
+    if (row.photo_url) photos[row.id] = row.photo_url;
+  }
+  return { ok: true, photos };
+}
+
+/**
+ * Fetches student photos with a 3-tier normalized cache (memory -> IndexedDB -> network),
+ * in-flight per-ID deduplication, priority-ordered chunking, and bounded concurrency.
+ */
+export async function fetchStudentPhotos(
+  studentIds: string[],
+  variant: StudentPhotoVariant = 'thumb'
+): Promise<Record<string, string>> {
+  const orderedIds = Array.from(new Set(studentIds.filter(Boolean)));
+  if (orderedIds.length === 0) return {};
+
+  const now = Date.now();
+  const mem = photoMemCache[variant];
+  const resolved = new Map<string, string | null>();
+  const missingAfterMem: string[] = [];
+
+  for (const id of orderedIds) {
+    const entry = mem.get(id);
+    if (entry && now - entry.ts < PHOTO_CACHE_TTL_MS) {
+      resolved.set(id, entry.photo);
+    } else {
+      missingAfterMem.push(id);
+    }
+  }
+
+  // Tier 2: IndexedDB lookup in a single batched transaction
+  const missingAfterIdb: string[] = [];
+  if (missingAfterMem.length > 0) {
+    const idbHits = await readIdbPhotos(missingAfterMem, variant, now);
+    for (const id of missingAfterMem) {
+      const hit = idbHits.get(id);
+      if (hit) {
+        mem.set(id, hit);
+        resolved.set(id, hit.photo);
+      } else {
+        missingAfterIdb.push(id);
+      }
+    }
+  }
+
+  // Tier 3: Deduplicate in-flight requests and fetch remaining IDs in priority order
+  const inflightWaits: Array<{ id: string; promise: Promise<string | null> }> = [];
+  const toFetch: string[] = [];
+  const deferredResolvers = new Map<string, (val: string | null) => void>();
+
+  for (const id of missingAfterIdb) {
+    const reqKey = `${variant}:${id}`;
+    const existingPromise = inflightPhotoRequests.get(reqKey);
+    if (existingPromise) {
+      inflightWaits.push({ id, promise: existingPromise });
+    } else {
+      toFetch.push(id);
+      const promise = new Promise<string | null>((resolve) => {
+        deferredResolvers.set(id, resolve);
+      });
+      inflightPhotoRequests.set(reqKey, promise);
+    }
+  }
+
+  if (toFetch.length > 0) {
+    const chunks: string[][] = [];
+    for (let i = 0; i < toFetch.length; i += PHOTO_FETCH_CHUNK_SIZE) {
+      chunks.push(toFetch.slice(i, i + PHOTO_FETCH_CHUNK_SIZE));
+    }
+
+    let nextChunkIdx = 0;
+    const worker = async () => {
+      while (nextChunkIdx < chunks.length) {
+        const chunkIdx = nextChunkIdx++;
+        const chunk = chunks[chunkIdx];
+        try {
+          const { ok, photos } = await fetchPhotoChunkFromNetwork(chunk, variant);
+          const ts = Date.now();
+          const idbBatch: Array<{ id: string; photo: string | null; ts: number }> = [];
+
+          for (const id of chunk) {
+            const val = photos[id] || null;
+            resolved.set(id, val);
+            if (ok) {
+              mem.set(id, { photo: val, ts });
+              idbBatch.push({ id, photo: val, ts });
+            }
+            deferredResolvers.get(id)?.(val);
+            inflightPhotoRequests.delete(`${variant}:${id}`);
+          }
+
+          if (idbBatch.length > 0) {
+            void writeIdbPhotos(idbBatch, variant);
+          }
+        } catch {
+          for (const id of chunk) {
+            resolved.set(id, null);
+            deferredResolvers.get(id)?.(null);
+            inflightPhotoRequests.delete(`${variant}:${id}`);
           }
         }
       }
-      return map;
+    };
+
+    const workerCount = Math.min(PHOTO_FETCH_CONCURRENCY, chunks.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  }
+
+  if (inflightWaits.length > 0) {
+    await Promise.all(
+      inflightWaits.map(async ({ id, promise }) => {
+        const val = await promise;
+        resolved.set(id, val);
+      })
+    );
+  }
+
+  const out: Record<string, string> = {};
+  for (const id of orderedIds) {
+    const val = resolved.get(id);
+    if (val) out[id] = val;
+  }
+  return out;
+}
+
+/**
+ * On-demand batch photo lookup with normalized per-student caching (memory + IndexedDB)
+ * and server-side thumbnail/card resizing so repeated views and PDF exports are fast.
+ */
+export function useStudentPhotos(
+  studentIds: string[],
+  options?: UseStudentPhotosOptions
+) {
+  const variant: StudentPhotoVariant = options?.variant ?? 'thumb';
+  const enabled = options?.enabled ?? true;
+
+  const { orderedUniqueIds, idsKey } = useMemo(() => {
+    const ordered = Array.from(new Set(studentIds.filter(Boolean)));
+    const key = ordered.slice().sort().join(',');
+    return { orderedUniqueIds: ordered, idsKey: key };
+  }, [studentIds]);
+
+  return useQuery<Record<string, string>>({
+    queryKey: ['students', 'photos', variant, idsKey],
+    queryFn: () => fetchStudentPhotos(orderedUniqueIds, variant),
+    initialData: () => {
+      if (!enabled || orderedUniqueIds.length === 0) return undefined;
+      const snap = readFreshMemoryPhotos(orderedUniqueIds, variant);
+      return snap.allHit ? snap.map : undefined;
     },
-    enabled: uniqueIds.length > 0,
-    staleTime: 5 * 60 * 1000,
+    initialDataUpdatedAt: () => {
+      if (!enabled || orderedUniqueIds.length === 0) return undefined;
+      const snap = readFreshMemoryPhotos(orderedUniqueIds, variant);
+      return snap.allHit ? snap.oldestTs : undefined;
+    },
+    placeholderData: (prev) => {
+      if (orderedUniqueIds.length === 0) return prev;
+      const snap = readFreshMemoryPhotos(orderedUniqueIds, variant);
+      return Object.keys(snap.map).length > 0 ? snap.map : prev;
+    },
+    enabled: enabled && orderedUniqueIds.length > 0,
+    staleTime: PHOTO_CACHE_TTL_MS,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -479,7 +809,8 @@ export function useCreateStudent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => createStudent(data),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      if (created?.id) invalidateStudentPhotoCache(created.id);
       qc.invalidateQueries({ queryKey: ['students'] });
     },
   });
@@ -489,7 +820,10 @@ export function useUpdateStudent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Student> }) => updateStudent(id, data),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      if (variables?.data?.photo !== undefined) {
+        invalidateStudentPhotoCache(variables.id);
+      }
       qc.invalidateQueries({ queryKey: ['students'] });
       // Registration/Payment/Result/Certificate/Admit-card rows display the
       // student's name — refetch them too so an edit here shows up on those
@@ -508,7 +842,8 @@ export function useDeleteStudent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteStudent(id),
-    onSuccess: () => {
+    onSuccess: (_result, id) => {
+      invalidateStudentPhotoCache(id);
       // Invalidate ALL related queries so deleted student data disappears everywhere
       qc.invalidateQueries({ queryKey: ['students'] });
       qc.invalidateQueries({ queryKey: ['registrations'] });

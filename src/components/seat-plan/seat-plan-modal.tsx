@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { X, FileDown, Loader2, Users, AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
+import { X, FileDown, Loader2, Users, AlertCircle, CheckCircle2, ShieldAlert, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { useToast } from "@/components/ui/toast";
 import { useBranding, BRANDING_DEFAULTS } from "@/lib/storage/branding";
+import { useStudentPhotos } from "@/lib/storage/students";
 import { Student, Registration } from "@/lib/types";
 import { exportSeatPlanPdf, SeatPlanStudent } from "@/lib/pdf/seat-plan-pdf";
 
@@ -18,6 +19,42 @@ interface SeatPlanModalProps {
   firstReg: Map<string, { registrationNumber?: string; createdAt?: string } | Registration>;
   institutionMap: Map<string, string>;
   initialGender?: string;
+}
+
+function genderText(g: string | undefined, isBn: boolean): string {
+  if (!g) return isBn ? "শিক্ষার্থী" : "Student";
+  const up = g.trim().toUpperCase();
+  if (up === "MALE") return isBn ? "ছাত্র (পুরুষ)" : "Male";
+  if (up === "FEMALE") return isBn ? "ছাত্রী (মহিলা)" : "Female";
+  if (up === "OTHER") return isBn ? "অন্যান্য" : "Other";
+  return g;
+}
+
+function SeatPreviewPhoto({ src, alt }: { src?: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (src && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={alt}
+        onError={() => setFailed(true)}
+        className="w-12 h-[58px] rounded border border-zinc-200 dark:border-zinc-700 object-cover bg-white shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="w-12 h-[58px] rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center shrink-0">
+      <Users className="h-4 w-4 text-zinc-400 mb-0.5" />
+      <span className="text-[7px] text-zinc-400 uppercase font-mono">PHOTO</span>
+    </div>
+  );
 }
 
 export function SeatPlanModal({
@@ -41,9 +78,11 @@ export function SeatPlanModal({
 
   const [selectedGender, setSelectedGender] = useState<string>(initialGender);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [previewPage, setPreviewPage] = useState<number>(1);
 
   useEffect(() => {
     setSelectedGender(initialGender);
+    setPreviewPage(1);
   }, [initialGender, open]);
 
   // Compute gender options with counts of students who actually have an exam roll
@@ -99,21 +138,37 @@ export function SeatPlanModal({
     return filtered;
   }, [students, selectedGender]);
 
+  // Sort strictly in numerical exam roll order (priority order for fetching & preview)
   const eligibleStudents = useMemo(() => {
-    return targetStudents.filter((s) => Boolean(s.examRoll && s.examRoll.trim()));
+    return targetStudents
+      .filter((s) => Boolean(s.examRoll && s.examRoll.trim()))
+      .sort((a, b) => (a.examRoll || "").localeCompare(b.examRoll || "", undefined, { numeric: true }));
   }, [targetStudents]);
 
   const pendingCount = targetStudents.length - eligibleStudents.length;
 
+  const eligibleIds = useMemo(() => eligibleStudents.map((s) => s.id), [eligibleStudents]);
+
+  const { data: photoMap = {}, isFetching: isPhotosFetching } = useStudentPhotos(eligibleIds, {
+    variant: "card",
+    enabled: open && eligibleIds.length > 0,
+  });
+
   const rollRange = useMemo(() => {
-    const rolls = eligibleStudents
-      .map((s) => s.examRoll as string)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const rolls = eligibleStudents.map((s) => s.examRoll as string);
     return rolls.length ? `${rolls[0]} – ${rolls[rolls.length - 1]}` : null;
   }, [eligibleStudents]);
 
   const CARDS_PER_PAGE = 21; // 3 columns x 7 rows
   const pageCount = Math.max(1, Math.ceil(eligibleStudents.length / CARDS_PER_PAGE));
+
+  const PREVIEW_SIZE = 6; // 3 columns x 2 rows in modal preview
+  const previewTotalPages = Math.max(1, Math.ceil(eligibleStudents.length / PREVIEW_SIZE));
+  const safePreviewPage = Math.min(Math.max(1, previewPage), previewTotalPages);
+  const previewCards = useMemo(() => {
+    const start = (safePreviewPage - 1) * PREVIEW_SIZE;
+    return eligibleStudents.slice(start, start + PREVIEW_SIZE);
+  }, [eligibleStudents, safePreviewPage]);
 
   const handleDownload = async () => {
     if (eligibleStudents.length === 0) {
@@ -125,7 +180,7 @@ export function SeatPlanModal({
 
     setIsExporting(true);
     try {
-      // Map to SeatPlanStudent
+      // Map to SeatPlanStudent with resolved student photos
       const seatPlanList: SeatPlanStudent[] = eligibleStudents.map((s) => {
         const reg = firstReg.get(s.id);
         const nameBn = [s.firstNameBn, s.lastNameBn].filter(Boolean).join(" ");
@@ -138,7 +193,7 @@ export function SeatPlanModal({
           regNumber: reg?.registrationNumber || "-",
           name: resolvedName,
           institution: institutionMap.get(s.institutionId) || "Madrasah",
-          photo: s.photo,
+          photo: photoMap[s.id] || s.photo,
           gender: s.gender,
           className: s.class || className,
           studentId: s.studentId,
@@ -200,7 +255,9 @@ export function SeatPlanModal({
 
       {/* Modal Dialog */}
       <div
-        className={`relative z-50 w-full max-w-xl max-h-[92vh] flex flex-col rounded-lg shadow-2xl overflow-hidden ${cardCls}`}
+        role="dialog"
+        aria-modal="true"
+        className={`relative z-50 w-full max-w-3xl max-h-[92vh] flex flex-col rounded-lg shadow-2xl overflow-hidden ${cardCls}`}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${borderCls}`}>
@@ -219,8 +276,10 @@ export function SeatPlanModal({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={isExporting}
+            aria-label={isBn ? "বন্ধ করুন" : "Close"}
             className={`rounded-md p-1.5 transition-colors disabled:opacity-40 ${
               isDark
                 ? "text-zinc-400 hover:text-white hover:bg-white/[0.08]"
@@ -280,7 +339,10 @@ export function SeatPlanModal({
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setSelectedGender(opt.id)}
+                    onClick={() => {
+                      setSelectedGender(opt.id);
+                      setPreviewPage(1);
+                    }}
                     className={`flex flex-col items-start px-3 py-2.5 rounded-md border text-left transition-all ${
                       isSelected
                         ? "border-brand-accent bg-brand-accent-soft text-brand-accent shadow-sm"
@@ -380,47 +442,135 @@ export function SeatPlanModal({
             </div>
           ) : null}
 
-          {/* 4. Mini visual card layout preview */}
+          {/* 4. Live visual seat plan card preview with real photos */}
           <div>
-            <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-2 ${mutedText}`}>
-              {isBn ? "আসন কার্ডের নমুনা প্রিভিউ" : "Card Layout Preview"}
-            </label>
-            <div className={`p-3 rounded-md border ${borderCls} bg-white dark:bg-zinc-900 flex items-center gap-3 shadow-inner`}>
-              {/* Photo Box */}
-              <div className="w-12 h-14 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center shrink-0">
-                <Users className="h-4 w-4 text-zinc-400 mb-1" />
-                <span className="text-[8px] text-zinc-400 uppercase font-mono">PHOTO</span>
-              </div>
-
-              {/* Text Info */}
-              <div className="flex-1 min-w-0 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300">
-                    {isBn ? `শ্রেণী: ${className}` : `Class: ${className}`}
+            <div className="flex items-center justify-between mb-2">
+              <label className={`block text-[10px] font-semibold uppercase tracking-wider ${mutedText}`}>
+                {isBn ? "আসন কার্ডের লাইভ প্রিভিউ" : "Live Seat Card Preview"}
+              </label>
+              <div className="flex items-center gap-2">
+                {isPhotosFetching && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-brand-accent font-medium">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {isBn ? "ছবি লোড হচ্ছে..." : "Loading photos..."}
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
-                    {selectedGender ? selectedGender : (isBn ? "সকল" : "All")}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">
-                    {isBn ? "রোল:" : "ROLL:"}
-                  </span>
-                  <span className="text-sm font-mono font-bold text-zinc-900 dark:text-white">
-                    {rollRange ? rollRange.split(" ")[0] : "10001"}
-                  </span>
-                  <span className="text-[9px] text-zinc-400 ml-auto font-mono">
-                    Reg: 2026000001
-                  </span>
-                </div>
-                <p className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                  {isBn ? "মোহাম্মদ আব্দুল্লাহ" : "MD. ABDULLAH AL MAHMUD"}
-                </p>
-                <p className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate">
-                  {brand.brandName || "Darul Uloom Kamil Madrasah"}
-                </p>
+                )}
+                {eligibleStudents.length > PREVIEW_SIZE && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                      disabled={safePreviewPage <= 1}
+                      aria-label="Previous preview page"
+                      className={`p-1 rounded border ${borderCls} disabled:opacity-40`}
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </button>
+                    <span className={`text-[10px] font-mono px-1 ${mutedText}`}>
+                      {safePreviewPage}/{previewTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPage((p) => Math.min(previewTotalPages, p + 1))}
+                      disabled={safePreviewPage >= previewTotalPages}
+                      aria-label="Next preview page"
+                      className={`p-1 rounded border ${borderCls} disabled:opacity-40`}
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
+
+            {previewCards.length > 0 ? (
+              <div className={`p-3 rounded-md border ${borderCls} ${subtleCls} grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5`}>
+                {previewCards.map((s) => {
+                  const reg = firstReg.get(s.id);
+                  const nameBn = [s.firstNameBn, s.lastNameBn].filter(Boolean).join(" ");
+                  const nameEn = [s.firstName, s.lastName].filter(Boolean).join(" ");
+                  const resolvedName = (isBn ? (nameBn || nameEn) : (nameEn || nameBn)) || "—";
+                  const photoSrc = photoMap[s.id] || s.photo;
+                  const instLabel = institutionMap.get(s.institutionId) || "Madrasah";
+
+                  return (
+                    <div
+                      key={s.id}
+                      className="rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm"
+                    >
+                      <div className="px-2 py-1 bg-zinc-50 dark:bg-zinc-800/80 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between text-[9px]">
+                        <span className="font-bold text-zinc-700 dark:text-zinc-300 truncate">
+                          {isBn ? `শ্রেণী: ${s.class || className}` : `Class: ${s.class || className}`}
+                        </span>
+                        <span className="text-zinc-500 dark:text-zinc-400 shrink-0 ml-1">
+                          {genderText(s.gender, isBn)}
+                        </span>
+                      </div>
+                      <div className="p-2 flex items-start gap-2">
+                        <div className="flex flex-col items-center shrink-0">
+                          <SeatPreviewPhoto src={photoSrc} alt={resolvedName} />
+                          {s.studentId && (
+                            <span className="text-[7px] font-mono text-zinc-400 mt-0.5 truncate max-w-[48px]">
+                              {s.studentId}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[9px] font-semibold text-zinc-500 dark:text-zinc-400">
+                              {isBn ? "রোল:" : "ROLL:"}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                              {s.examRoll}
+                            </span>
+                          </div>
+                          <p className="text-[9px] font-mono text-zinc-600 dark:text-zinc-400 truncate">
+                            {isBn ? "রেজি:" : "Reg:"} {reg?.registrationNumber || "-"}
+                          </p>
+                          <p className="text-[10px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                            {resolvedName}
+                          </p>
+                          <p className="text-[9px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-tight">
+                            {instLabel}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={`p-3 rounded-md border ${borderCls} bg-white dark:bg-zinc-900 flex items-center gap-3 shadow-inner`}>
+                <SeatPreviewPhoto alt="Sample student" />
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300">
+                      {isBn ? `শ্রেণী: ${className}` : `Class: ${className}`}
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                      {selectedGender ? selectedGender : (isBn ? "সকল" : "All")}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">
+                      {isBn ? "রোল:" : "ROLL:"}
+                    </span>
+                    <span className="text-sm font-mono font-bold text-zinc-900 dark:text-white">
+                      10001
+                    </span>
+                    <span className="text-[9px] text-zinc-400 ml-auto font-mono">
+                      Reg: 2026000001
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                    {isBn ? "মোহাম্মদ আব্দুল্লাহ" : "MD. ABDULLAH AL MAHMUD"}
+                  </p>
+                  <p className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate">
+                    {brand.brandName || "Darul Uloom Kamil Madrasah"}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -442,13 +592,18 @@ export function SeatPlanModal({
           <button
             type="button"
             onClick={handleDownload}
-            disabled={isExporting || eligibleStudents.length === 0}
+            disabled={isExporting || isPhotosFetching || eligibleStudents.length === 0}
             className="flex items-center gap-2 px-5 py-2.5 rounded-md text-xs font-semibold bg-brand-accent text-brand-accent-fg hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed shadow transition-all"
           >
             {isExporting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>{isBn ? "পিডিএফ প্রস্তুত হচ্ছে..." : "Generating PDF..."}</span>
+              </>
+            ) : isPhotosFetching ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{isBn ? "ছবি লোড হচ্ছে..." : "Loading Photos..."}</span>
               </>
             ) : (
               <>

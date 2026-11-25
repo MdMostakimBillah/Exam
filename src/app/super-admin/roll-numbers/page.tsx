@@ -9,16 +9,65 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { useCurrentSession } from "@/lib/storage/sessions";
-import { useStudentsByClass } from "@/lib/storage/students";
+import { useStudentsByClass, useStudentPhotos } from "@/lib/storage/students";
 import { useClassRollSummaries, useGenerateExamRolls, getRollPrefix, type ClassRollSummary } from "@/lib/storage/exam-rolls";
 import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
 import { useClasses } from "@/lib/storage/classes";
 import { useStudentRegistrationMeta, type StudentRegistrationMeta } from "@/lib/storage/registrations";
 import { formatDate } from "@/lib/storage/storage";
 import { Registration } from "@/lib/types";
-import { Hash, Search, Sparkles, Loader2, AlertTriangle, Users, FileDown } from "lucide-react";
+import { Hash, Search, Sparkles, Loader2, AlertTriangle, Users, FileDown, LayoutGrid, List } from "lucide-react";
 import { LoadingBar } from "@/components/ui/loading-bar";
 import { SeatPlanModal } from "@/components/seat-plan/seat-plan-modal";
+
+function StudentPhotoThumb({
+  src,
+  alt,
+  fallbackText,
+  sizeClass,
+  isDark,
+  placeholderLabel,
+}: {
+  src?: string;
+  alt: string;
+  fallbackText: string;
+  sizeClass: string;
+  isDark: boolean;
+  placeholderLabel?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (src && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={alt}
+        onError={() => setFailed(true)}
+        className={`${sizeClass} rounded-md object-cover shrink-0 bg-white border ${isDark ? "border-white/10" : "border-zinc-200"}`}
+      />
+    );
+  }
+
+  if (placeholderLabel) {
+    return (
+      <div className={`${sizeClass} rounded-md border flex flex-col items-center justify-center shrink-0 ${isDark ? "border-white/10 bg-white/[0.04]" : "border-zinc-200 bg-zinc-100"}`}>
+        <Users className="h-4 w-4 text-zinc-400 mb-0.5" />
+        <span className="text-[7px] text-zinc-400 uppercase font-mono">{placeholderLabel}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${sizeClass} rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-100 text-zinc-600"}`}>
+      {fallbackText}
+    </div>
+  );
+}
 
 function genderLabel(g: string | undefined, isBn: boolean): string {
   if (!g) return '-';
@@ -41,10 +90,12 @@ export default function RollNumbersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(30);
+  const [viewMode, setViewMode] = useState<'list' | 'seat-plan'>('list');
+  const [seatPage, setSeatPage] = useState(1);
   const [isSeatPlanOpen, setIsSeatPlanOpen] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { setPage(1); }, [selectedClass, selectedGender, search, pageSize]);
+  useEffect(() => { setPage(1); setSeatPage(1); }, [selectedClass, selectedGender, search, pageSize]);
 
   // ---- Data ----
   const sessionQuery = useCurrentSession();
@@ -212,6 +263,27 @@ export default function RollNumbersPage() {
     const start = (safePage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, safePage, pageSize]);
+
+  const SEAT_PLAN_PAGE_SIZE = 21; // 3 columns x 7 rows (matches A4 Seat Plan PDF)
+  const seatPlanStudents = useMemo(
+    () => filtered.filter((s) => Boolean(s.examRoll && s.examRoll.trim())),
+    [filtered]
+  );
+  const seatTotalPages = Math.max(1, Math.ceil(seatPlanStudents.length / SEAT_PLAN_PAGE_SIZE));
+  const safeSeatPage = Math.min(Math.max(1, seatPage), seatTotalPages);
+  const seatPageStudents = useMemo(() => {
+    const start = (safeSeatPage - 1) * SEAT_PLAN_PAGE_SIZE;
+    return seatPlanStudents.slice(start, start + SEAT_PLAN_PAGE_SIZE);
+  }, [seatPlanStudents, safeSeatPage]);
+
+  const visiblePhotoIds = useMemo(
+    () => (viewMode === 'seat-plan' ? seatPageStudents : rows).map((s) => s.id),
+    [viewMode, seatPageStudents, rows]
+  );
+  const { data: photoMap = {}, isFetching: isPhotosFetching } = useStudentPhotos(visiblePhotoIds, {
+    variant: viewMode === 'seat-plan' ? 'card' : 'thumb',
+    enabled: Boolean(selectedClass) && visiblePhotoIds.length > 0,
+  });
 
   const classOptions = useMemo(() => summaries.map(s => ({
     label: `${s.className} (${s.total}${s.rolled ? ` · ${s.rolled} ${isBn ? 'রোল' : 'rolled'}` : ''})`,
@@ -488,15 +560,57 @@ export default function RollNumbersPage() {
           </div>
         ) : (
           <div className={`${card}`}>
-            <div className={`px-5 py-4 border-b flex items-center justify-between gap-3 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+            <div className={`px-5 py-4 border-b flex flex-wrap items-center justify-between gap-3 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
               <div className="flex items-center gap-2">
-                <Users className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+                {viewMode === 'seat-plan'
+                  ? <LayoutGrid className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+                  : <Users className={`h-4 w-4 ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />}
                 <h3 className={`text-sm font-semibold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                  {isBn ? 'রোল নম্বর তালিকা' : 'Roll Number List'}
+                  {viewMode === 'seat-plan'
+                    ? (isBn ? 'আসন বিন্যাস (Seat Plan)' : 'Seat Plan')
+                    : (isBn ? 'রোল নম্বর তালিকা' : 'Roll Number List')}
                 </h3>
-                <span className={`text-[11px] ${subtext}`}>({filtered.length})</span>
+                <span className={`text-[11px] ${subtext}`}>
+                  ({viewMode === 'seat-plan' ? seatPlanStudents.length : filtered.length})
+                </span>
+                {isPhotosFetching && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-brand-accent ml-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {isBn ? 'ছবি লোড হচ্ছে...' : 'Loading photos...'}
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* View Mode Toggle: Roll List vs Seat Plan */}
+                <div className={`inline-flex rounded-md p-0.5 border ${isDark ? "border-white/10 bg-white/[0.03]" : "border-zinc-200 bg-zinc-100"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
+                      viewMode === 'list'
+                        ? "bg-brand-accent text-brand-accent-fg shadow-sm"
+                        : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
+                    )}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                    {isBn ? 'রোল তালিকা' : 'Roll List'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('seat-plan')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
+                      viewMode === 'seat-plan'
+                        ? "bg-brand-accent text-brand-accent-fg shadow-sm"
+                        : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
+                    )}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    {isBn ? 'আসন বিন্যাস' : 'Seat Plan'}
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setIsSeatPlanOpen(true)}
@@ -506,7 +620,7 @@ export default function RollNumbersPage() {
                   <FileDown className="h-3.5 w-3.5" />
                   {isBn ? 'আসন বিন্যাস ডাউনলোড' : 'Download Seat Plan'}
                 </button>
-                <span className={`text-[11px] hidden sm:inline ${subtext}`}>
+                <span className={`text-[11px] hidden lg:inline ${subtext}`}>
                   {isBn ? 'সাজানো: রোল নম্বর ও নিবন্ধনের ক্রমিক' : 'Sorted by exam roll and registration order'}
                 </span>
               </div>
@@ -518,22 +632,104 @@ export default function RollNumbersPage() {
                   <div key={i} className={`h-5 rounded ${isDark ? "bg-white/[0.05]" : "bg-zinc-200/70"}`} />
                 ))}
               </div>
-            ) : filtered.length === 0 ? (
+            ) : (viewMode === 'seat-plan' ? seatPlanStudents.length === 0 : filtered.length === 0) ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${iconBg}`}>
                   <Users className={`h-7 w-7 ${iconColor}`} />
                 </div>
                 <p className={`text-sm font-medium ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>
-                  {search
-                    ? (isBn ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')
-                    : (isBn ? `এই শ্রেণীতে কোনো শিক্ষার্থী নেই` : 'No students in this class')}
+                  {viewMode === 'seat-plan'
+                    ? (isBn ? 'আসন বিন্যাসের জন্য কোনো রোলপ্রাপ্ত শিক্ষার্থী নেই' : 'No rolled students for seat plan')
+                    : search
+                      ? (isBn ? 'কোনো শিক্ষার্থী পাওয়া যায়নি' : 'No students found')
+                      : (isBn ? `এই শ্রেণীতে কোনো শিক্ষার্থী নেই` : 'No students in this class')}
                 </p>
                 <p className={`text-xs mt-1 ${subtext}`}>
-                  {search
-                    ? (isBn ? 'অনুসন্ধান পরিবর্তন করুন' : 'Try a different search')
-                    : (isBn ? 'নিবন্ধন পেজ থেকে শিক্ষার্থী যোগ করুন' : 'Add students from the registrations page')}
+                  {viewMode === 'seat-plan'
+                    ? (isBn ? 'প্রথমে এই শ্রেণীর পরীক্ষার রোল নম্বর তৈরি করুন' : 'Generate exam rolls for this class first')
+                    : search
+                      ? (isBn ? 'অনুসন্ধান পরিবর্তন করুন' : 'Try a different search')
+                      : (isBn ? 'নিবন্ধন পেজ থেকে শিক্ষার্থী যোগ করুন' : 'Add students from the registrations page')}
                 </p>
               </div>
+            ) : viewMode === 'seat-plan' ? (
+              <>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                  {seatPageStudents.map((s) => {
+                    const reg = firstReg.get(s.id);
+                    const nameBn = [s.firstNameBn, s.lastNameBn].filter(Boolean).join(" ");
+                    const nameEn = [s.firstName, s.lastName].filter(Boolean).join(" ");
+                    const displayName = (isBn ? (nameBn || nameEn) : (nameEn || nameBn)) || "-";
+                    const photoUrl = photoMap[s.id] || s.photo;
+                    const instLabel = institutionMap.get(s.institutionId) || 'Unknown';
+                    const initials = (s.firstName || s.lastName || '?').charAt(0).toUpperCase();
+
+                    return (
+                      <div
+                        key={s.id}
+                        className={cn(
+                          "rounded-md border overflow-hidden transition-shadow",
+                          isDark ? "border-white/[0.08] bg-white/[0.02]" : "border-zinc-200 bg-white shadow-sm"
+                        )}
+                      >
+                        <div className={cn(
+                          "px-3 py-1.5 border-b flex items-center justify-between text-[10px]",
+                          isDark ? "border-white/[0.06] bg-white/[0.03]" : "border-zinc-100 bg-zinc-50"
+                        )}>
+                          <span className={`font-semibold ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
+                            {isBn ? `শ্রেণী: ${s.class || selectedClass}` : `Class: ${s.class || selectedClass}`}
+                          </span>
+                          <span className={subtext}>{genderLabel(s.gender, isBn)}</span>
+                        </div>
+                        <div className="p-3 flex items-start gap-3">
+                          <div className="flex flex-col items-center shrink-0">
+                            <StudentPhotoThumb
+                              src={photoUrl}
+                              alt={displayName}
+                              fallbackText={initials}
+                              sizeClass="w-[54px] h-[66px]"
+                              isDark={isDark}
+                              placeholderLabel="PHOTO"
+                            />
+                            {s.studentId && (
+                              <span className={`text-[9px] font-mono mt-1 ${subtext}`}>
+                                {s.studentId}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className={`text-[10px] font-semibold uppercase ${subtext}`}>
+                                {isBn ? 'রোল:' : 'ROLL:'}
+                              </span>
+                              <span className={`text-base font-mono font-bold leading-none ${isDark ? "text-white" : "text-zinc-900"}`}>
+                                {s.examRoll}
+                              </span>
+                            </div>
+                            <p className={`text-[11px] font-mono ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                              {isBn ? 'রেজি:' : 'Reg:'} {reg?.registrationNumber || '-'}
+                            </p>
+                            <p className={`text-xs font-semibold truncate ${isDark ? "text-zinc-100" : "text-zinc-900"}`}>
+                              {displayName}
+                            </p>
+                            <p className={`text-[11px] line-clamp-2 leading-snug ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
+                              {instLabel}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className={`px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${isDark ? "border-white/[0.06]" : "border-zinc-100"}`}>
+                  <span className={`text-xs ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>
+                    {isBn
+                      ? `${(safeSeatPage - 1) * SEAT_PLAN_PAGE_SIZE + 1}–${Math.min(safeSeatPage * SEAT_PLAN_PAGE_SIZE, seatPlanStudents.length)} / ${seatPlanStudents.length} শিক্ষার্থী (প্রতি পৃষ্ঠায় ২১টি কার্ড)`
+                      : `Showing ${(safeSeatPage - 1) * SEAT_PLAN_PAGE_SIZE + 1}–${Math.min(safeSeatPage * SEAT_PLAN_PAGE_SIZE, seatPlanStudents.length)} of ${seatPlanStudents.length} students (21 cards / page)`}
+                  </span>
+                  <Pagination currentPage={safeSeatPage} totalPages={seatTotalPages} onPageChange={setSeatPage} className="py-0" />
+                </div>
+              </>
             ) : (
               <>
                 <Table>
@@ -553,15 +749,27 @@ export default function RollNumbersPage() {
                     {rows.map((s, idx) => {
                       const reg = firstReg.get(s.id);
                       const seq = (safePage - 1) * pageSize + idx + 1;
+                      const photoUrl = photoMap[s.id] || s.photo;
+                      const fullName = `${s.firstName} ${s.lastName}`.trim();
+                      const initials = (s.firstName || s.lastName || '?').charAt(0).toUpperCase();
                       return (
                         <TableRow key={s.id} className={isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50'}>
                           <TableCell className={`text-[11px] ${subtext}`}>{seq}</TableCell>
                           <TableCell>
-                            <div className="flex flex-col">
-                              <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
-                                {s.firstName} {s.lastName}
-                              </span>
-                              <span className={`text-[10px] font-mono ${subtext}`}>{s.studentId}</span>
+                            <div className="flex items-center gap-2.5">
+                              <StudentPhotoThumb
+                                src={photoUrl}
+                                alt={fullName}
+                                fallbackText={initials}
+                                sizeClass="h-8 w-8"
+                                isDark={isDark}
+                              />
+                              <div className="flex flex-col">
+                                <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
+                                  {fullName}
+                                </span>
+                                <span className={`text-[10px] font-mono ${subtext}`}>{s.studentId}</span>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className={`text-[11px] ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
