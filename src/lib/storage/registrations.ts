@@ -248,7 +248,11 @@ export async function fetchStudentRegistrationMeta(sessionId?: string): Promise<
     .select('student_id, registration_number, status, created_at')
     .eq('session_id', sid)
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error) {
+    console.error('[registrations] fetchStudentRegistrationMeta error:', error);
+    return [];
+  }
+  if (!data) return [];
   return data.map((d: any) => ({
     studentId: d.student_id,
     registrationNumber: d.registration_number || '',
@@ -275,7 +279,11 @@ export async function fetchInstitutionStudentRegistrationMeta(institutionId: str
     .eq('session_id', sid)
     .eq('institution_id', institutionId)
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error) {
+    console.error('[registrations] fetchInstitutionStudentRegistrationMeta error:', error);
+    return [];
+  }
+  if (!data) return [];
   return data.map((d: any) => ({
     studentId: d.student_id,
     registrationNumber: d.registration_number || '',

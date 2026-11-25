@@ -70,7 +70,11 @@ export async function fetchStudents(sessionId?: string, page?: number, pageSize?
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
     const { data, error } = await query.range(from, to);
-    if (error || !data) return [];
+    if (error) {
+      console.error('[students] fetchStudents error:', error);
+      return [];
+    }
+    if (!data) return [];
     return data.map(mapStudent);
   }
 
@@ -85,7 +89,11 @@ export async function fetchStudents(sessionId?: string, page?: number, pageSize?
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
     const { data, error } = await query.range(from, from + PAGE - 1);
-    if (error || !data) break;
+    if (error) {
+      console.error('[students] fetchStudents error:', error);
+      break;
+    }
+    if (!data) break;
     all.push(...data);
     if (data.length < PAGE) break;
   }
@@ -124,7 +132,11 @@ export async function fetchStudentsByInstitution(institutionId: string, sessionI
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
     const { data, error } = await query.range(from, to);
-    if (error || !data) return [];
+    if (error) {
+      console.error('[students] fetchStudentsByInstitution error:', error);
+      return [];
+    }
+    if (!data) return [];
     return data.map(mapStudent);
   }
 
@@ -140,7 +152,11 @@ export async function fetchStudentsByInstitution(institutionId: string, sessionI
       .order('created_at', { ascending: false });
     if (sid) query = query.eq('session_id', sid);
     const { data, error } = await query.range(from, from + PAGE - 1);
-    if (error || !data) break;
+    if (error) {
+      console.error('[students] fetchStudentsByInstitution error:', error);
+      break;
+    }
+    if (!data) break;
     all.push(...data);
     if (data.length < PAGE) break;
   }

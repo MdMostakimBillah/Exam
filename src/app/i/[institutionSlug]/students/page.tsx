@@ -81,12 +81,20 @@ export default function InstitutionStudentsPage() {
     const reg = latestReg.get(s.id);
     const regNum = reg?.registrationNumber || '';
     const regStatus = normalizeRegistrationStatus(reg?.status);
-    const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase())
-      || s.studentId.toLowerCase().includes(search.toLowerCase())
-      || regNum.toLowerCase().includes(search.toLowerCase())
-      || (s.fatherName || '').toLowerCase().includes(search.toLowerCase())
-      || (s.motherName || '').toLowerCase().includes(search.toLowerCase())
-      || (s.phone || '').toLowerCase().includes(search.toLowerCase());
+    const searchLower = search.toLowerCase().trim();
+    const sName = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
+    const sCode = (s.studentId || '').toLowerCase();
+    const regCode = regNum.toLowerCase();
+    const fName = (s.fatherName || '').toLowerCase();
+    const mName = (s.motherName || '').toLowerCase();
+    const ph = (s.phone || '').toLowerCase();
+    const matchesSearch = !searchLower
+      || sName.includes(searchLower)
+      || sCode.includes(searchLower)
+      || regCode.includes(searchLower)
+      || fName.includes(searchLower)
+      || mName.includes(searchLower)
+      || ph.includes(searchLower);
     const matchesClass = !classFilter || s.class === classFilter;
     const matchesGender = !genderFilter || s.gender === genderFilter;
     const matchesStatus = !statusFilter || regStatus === statusFilter;
@@ -338,12 +346,12 @@ export default function InstitutionStudentsPage() {
                           <Image src={student.photo} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
                         ) : (
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                            {student.firstName.charAt(0)}
+                            {(student.firstName || student.lastName || '?').charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
                           <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
-                            {student.firstName} {student.lastName}
+                            {[student.firstName, student.lastName].filter(Boolean).join(' ') || '-'}
                           </span>
                           {student.firstNameBn && (
                             <p className={`text-[10px] ${isDark ? "text-zinc-500" : "text-zinc-400"}`}>{student.firstNameBn}</p>

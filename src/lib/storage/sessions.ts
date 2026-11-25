@@ -40,7 +40,7 @@ export async function fetchGlobalCurrentSession(): Promise<AcademicSession | und
     .maybeSingle();
   if (error || !data) {
     const sessions = await fetchSessions();
-    return sessions.find(s => s.isCurrent);
+    return sessions.find(s => s.isCurrent) || sessions[0];
   }
   return mapSession(data);
 }
@@ -166,6 +166,9 @@ export async function fetchCurrentSession(forceRefresh = false): Promise<Academi
       cachedCurrentSessionValue = result;
       currentSessionCachedAt = Date.now();
       return result;
+    } catch (err) {
+      console.warn('[sessions] fetchCurrentSession error:', err);
+      return undefined;
     } finally {
       currentSessionPromise = null;
     }

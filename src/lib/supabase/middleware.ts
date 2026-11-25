@@ -15,7 +15,7 @@ export async function updateSession(request: NextRequest) {
   // and enables instant redirects on guarded routes.
   const hasAuthCookie = request.cookies
     .getAll()
-    .some((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+    .some((c) => c.name.includes('auth-token') || c.name.startsWith('sb-'))
 
   if (!hasAuthCookie) {
     if (pathname.startsWith('/super-admin')) {

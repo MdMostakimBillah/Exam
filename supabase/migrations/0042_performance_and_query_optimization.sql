@@ -126,6 +126,8 @@ BEGIN
 END;
 $$;
 
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated, anon;
+
 CREATE OR REPLACE FUNCTION public.get_user_institution_id()
 RETURNS UUID
 LANGUAGE plpgsql
@@ -137,6 +139,8 @@ BEGIN
   RETURN (SELECT institution_id FROM public.profiles WHERE id = auth.uid());
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.get_user_institution_id() TO authenticated, anon;
 
 
 -- =====================================================

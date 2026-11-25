@@ -11,6 +11,7 @@ import { useTableSelection } from "@/hooks/use-table-selection";
 import { PdfExportModal, type PdfColumn } from "@/components/ui/pdf-export-modal";
 import { useStudents, useUpdateStudent, useDeleteStudent } from "@/lib/storage/students";
 import { useInstitutions, useInstitutionName } from "@/lib/storage/institutions";
+import { useCurrentSession } from "@/lib/storage/sessions";
 import { useStudentRegistrationMeta, normalizeRegistrationStatus, type StudentRegistrationMeta } from "@/lib/storage/registrations";
 import { useToast } from "@/components/ui/toast";
 import { Users, Search, Download, GraduationCap, UserCheck, FileDown, Edit, Trash2 } from "lucide-react";
@@ -53,9 +54,11 @@ export default function StudentsPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: students = [], isFetching } = useStudents();
+  const { data: currentSession } = useCurrentSession();
+  const sessionId = currentSession?.id;
+  const { data: students = [], isFetching } = useStudents(sessionId);
   const { data: institutions = [] } = useInstitutions();
-  const { data: regMeta = [] } = useStudentRegistrationMeta();
+  const { data: regMeta = [] } = useStudentRegistrationMeta(sessionId);
   const updateStudentMutation = useUpdateStudent();
   const deleteStudentMutation = useDeleteStudent();
   const classes = useMemo(() => [...new Set(students.map(s => s.class))], [students]);
@@ -82,12 +85,20 @@ export default function StudentsPage() {
     const reg = latestReg.get(s.id);
     const regNum = reg?.registrationNumber || '';
     const regStatus = normalizeRegistrationStatus(reg?.status);
-    const matchesSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase())
-      || s.studentId.toLowerCase().includes(search.toLowerCase())
-      || regNum.toLowerCase().includes(search.toLowerCase())
-      || (s.fatherName || '').toLowerCase().includes(search.toLowerCase())
-      || (s.motherName || '').toLowerCase().includes(search.toLowerCase())
-      || (s.phone || '').toLowerCase().includes(search.toLowerCase());
+    const searchLower = search.toLowerCase().trim();
+    const sName = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
+    const sCode = (s.studentId || '').toLowerCase();
+    const regCode = regNum.toLowerCase();
+    const fName = (s.fatherName || '').toLowerCase();
+    const mName = (s.motherName || '').toLowerCase();
+    const ph = (s.phone || '').toLowerCase();
+    const matchesSearch = !searchLower
+      || sName.includes(searchLower)
+      || sCode.includes(searchLower)
+      || regCode.includes(searchLower)
+      || fName.includes(searchLower)
+      || mName.includes(searchLower)
+      || ph.includes(searchLower);
     const matchesClass = !classFilter || s.class === classFilter;
     const matchesInst = !institutionFilter || s.institutionId === institutionFilter;
     const matchesGender = !genderFilter || s.gender === genderFilter;
@@ -382,11 +393,11 @@ export default function StudentsPage() {
                           <Image src={student.photo} alt="" width={32} height={32} unoptimized className="rounded-md object-cover shrink-0 h-8 w-8" />
                         ) : (
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-white/[0.08] text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
-                            {student.firstName.charAt(0)}
+                            {(student.firstName || student.lastName || '?').charAt(0).toUpperCase()}
                           </div>
                         )}
                         <span className={`text-sm font-medium ${isDark ? "text-zinc-100" : "text-zinc-800"}`}>
-                          {student.firstName} {student.lastName}
+                          {[student.firstName, student.lastName].filter(Boolean).join(' ') || '-'}
                         </span>
                       </div>
                     </TableCell>
