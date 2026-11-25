@@ -379,7 +379,7 @@ export default function InstitutionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((inst) => (
+                {filtered.map((inst, idx) => (
                   <TableRow key={inst.id} className={`${isDark ? 'border-white/[0.04] hover:bg-white/[0.02]' : 'border-zinc-100 hover:bg-zinc-50/50'} ${selection.isSelected(inst.id) ? ('bg-brand-accent-soft') : ''}`}>
                     <TableCell className="w-10">
                       <TableCheckbox checked={selection.isSelected(inst.id)} onChange={() => selection.toggle(inst.id)} />
@@ -448,7 +448,13 @@ export default function InstitutionsPage() {
                     </TableCell>
                     <TableCell><Badge status={inst.status} /></TableCell>
                     <TableCell>
-                      <TableActionMenu id={inst.id} openId={openDropdown} onToggle={setOpenDropdown} isDark={isDark}>
+                      <TableActionMenu
+                        id={inst.id}
+                        openId={openDropdown}
+                        onToggle={setOpenDropdown}
+                        isDark={isDark}
+                        placement={idx >= filtered.length - 2 && filtered.length > 2 ? "top" : "auto"}
+                      >
                         {inst.status === 'PENDING' && (
                           <>
                             <TableActionItem onClick={() => { handleStatusChange(inst.id, 'ACTIVE'); setOpenDropdown(null); }} isDark={isDark} variant="success">

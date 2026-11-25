@@ -17,7 +17,7 @@ export interface GeneratePdfOptions {
   logoText?: string;
   /** Brand accent color (#hex) from Settings → Branding. Defaults to classic purple. */
   accent?: string;
-  /** Branding watermark image URL — drawn big, centred, 35% opacity behind
+  /** Branding watermark image URL — drawn big, centred, 12% opacity behind
    *  EVERY page (same asset the admit card uses). Empty → text watermark. */
   watermark?: string;
   /** Short crest text used when there is no watermark image (e.g. "BMA"). */
@@ -411,9 +411,9 @@ export function drawPdfText(
 }
 
 // ── Watermark ─────────────────────────────────────────────────────────────
-// Same rule as the admit card: BIG, centred, 35% opacity, under the content,
+// Same rule as the admit card: BIG, centred, 12% opacity, under the content,
 // on every page of every PDF.
-const WM_OPACITY = 0.35;
+const WM_OPACITY = 0.12;
 const WM_ANGLE = 0; // degrees — flat/horizontal, matching the card's un-rotated
 // watermark (was 30° counter-clockwise). The centring math below works for any
 // angle, so only this constant changes if the tilt ever comes back.
@@ -522,7 +522,7 @@ export async function loadLogoImage(src: string): Promise<LogoImage | null> {
 }
 
 /**
- * Draw the watermark — centred on the page, un-rotated, 35% opacity.
+ * Draw the watermark — centred on the page, un-rotated, 12% opacity.
  * Must be called BEFORE the page's content so the seal sits behind it.
  *
  * jsPDF's rotated addImage anchors the rotation at the rect's bottom-left
@@ -853,7 +853,7 @@ export async function generatePdf(options: GeneratePdfOptions) {
       valign: "middle",
     },
     // No zebra fill on purpose: an opaque alternating fill would slice the
-    // 35%-opacity watermark into horizontal bands. Grid rules carry the rows.
+    // 12%-opacity watermark into horizontal bands. Grid rules carry the rows.
     columnStyles,
     bodyStyles: { valign: "middle", ...(withImage ? { minCellHeight: 16 } : {}) },
     margin: { left: 14, right: 14 },

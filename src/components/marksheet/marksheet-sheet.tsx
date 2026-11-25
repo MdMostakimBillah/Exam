@@ -293,7 +293,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
           isolation: "isolate",
         }}
       >
-        {/* Brand watermark — 130 mm, 35% opacity, flat (angle 0°), the same
+        {/* Brand watermark — 130 mm, 12% opacity, flat (angle 0°), the same
             seal treatment as the admit card / certificate, so the PDF matches
             the on-screen preview. */}
         <div
@@ -302,7 +302,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
             left: "50%",
             top: "50%",
             transform: "translate(-50%, -50%)",
-            opacity: 0.35,
+            opacity: 0.12,
             zIndex: 0,
             display: "flex",
             alignItems: "center",
@@ -324,7 +324,7 @@ export const MarksheetSheet = forwardRef<HTMLDivElement, MarksheetSheetProps>(
                 fontFamily: HEADING_FONT,
                 fontSize: 150,
                 fontWeight: 400,
-                // Light grey, not ink: at 0.35 opacity black reads as printed
+                // Light grey, not ink: at 0.12 opacity black reads as printed
                 // text over the marks table instead of a watermark.
                 color: FAINT,
                 letterSpacing: 10,

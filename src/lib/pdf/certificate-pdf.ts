@@ -8,7 +8,7 @@
  * Same single-source-of-truth approach as the admit card: the
  * <CertificateTemplate> HTML/CSS shown in the preview modal is rasterized
  * straight into the PDF. A4 **landscape** (297×210 mm), watermark carried
- * over from the preview at its shared 130 mm / 35% / 0° treatment.
+ * over from the preview at its shared 130 mm / 12% / 0° treatment.
  *
  * The font/image waits, clone font injection and html2canvas baseline shim
  * are local copies of the proven admit-card implementations (that module is

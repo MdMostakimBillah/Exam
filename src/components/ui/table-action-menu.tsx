@@ -9,38 +9,101 @@ interface TableActionMenuProps {
   onToggle: (id: string | null) => void;
   isDark: boolean;
   children: React.ReactNode;
+  /**
+   * Dropdown placement relative to the 3-dot trigger button.
+   * - "auto": dynamically flips to "top" when space below the button is tight (< 220px)
+   * - "top": always opens above the button (bottom-anchored)
+   * - "bottom": always opens below the button (top-anchored)
+   */
+  placement?: "auto" | "top" | "bottom";
 }
 
-export function TableActionMenu({ id, openId, onToggle, isDark, children }: TableActionMenuProps) {
+interface MenuCoords {
+  top?: number;
+  bottom?: number;
+  right: number;
+  maxHeight?: number;
+  isTop: boolean;
+}
+
+export function TableActionMenu({
+  id,
+  openId,
+  onToggle,
+  isDark,
+  children,
+  placement = "auto",
+}: TableActionMenuProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<MenuCoords>({ right: 0, isTop: false });
   const isOpen = openId === id;
 
-  const updatePos = useCallback(() => {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  const calculatePos = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const right = Math.max(8, window.innerWidth - rect.right);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Standard action menus in tables are 140px-220px high
+    const menuHeight = menuRef.current?.offsetHeight || 180;
+
+    const shouldShowTop =
+      (placement === "top" && spaceAbove >= 100) ||
+      (placement !== "bottom" && (spaceBelow < menuHeight + 20 || spaceBelow < 220) && spaceAbove > spaceBelow);
+
+    if (shouldShowTop) {
+      setCoords({
+        bottom: Math.max(8, window.innerHeight - rect.top + 4),
+        right,
+        maxHeight: Math.max(120, spaceAbove - 16),
+        isTop: true,
+      });
+    } else {
+      setCoords({
+        top: Math.max(8, rect.bottom + 4),
+        right,
+        maxHeight: Math.max(120, spaceBelow - 16),
+        isTop: false,
+      });
     }
-  }, []);
+  }, [placement]);
 
   useEffect(() => {
     if (isOpen) {
-      updatePos();
-      const onScroll = () => updatePos();
-      window.addEventListener("scroll", onScroll, true);
-      return () => window.removeEventListener("scroll", onScroll, true);
+      calculatePos();
+      const onScrollOrResize = () => calculatePos();
+      window.addEventListener("scroll", onScrollOrResize, true);
+      window.addEventListener("resize", onScrollOrResize);
+      return () => {
+        window.removeEventListener("scroll", onScrollOrResize, true);
+        window.removeEventListener("resize", onScrollOrResize);
+      };
     }
-  }, [isOpen, updatePos]);
+  }, [isOpen, calculatePos]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen) {
+      calculatePos();
+    }
+    onToggle(isOpen ? null : id);
+  };
 
   return (
     <>
       <button
         ref={btnRef}
-        onClick={() => onToggle(isOpen ? null : id)}
+        type="button"
+        onClick={handleToggle}
         className={cn(
           "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-          isDark ? "hover:bg-white/[0.08] text-zinc-400" : "hover:bg-zinc-100 text-zinc-500"
+          isDark ? "hover:bg-white/[0.08] text-zinc-400" : "hover:bg-zinc-100 text-zinc-500",
+          isOpen && (isDark ? "bg-white/[0.08] text-zinc-200" : "bg-zinc-100 text-zinc-800")
         )}
+        aria-label="Actions"
+        aria-expanded={isOpen}
       >
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
@@ -48,11 +111,20 @@ export function TableActionMenu({ id, openId, onToggle, isDark, children }: Tabl
         <>
           <div className="fixed inset-0 z-40" onClick={() => onToggle(null)} />
           <div
+            ref={menuRef}
             className={cn(
-              "fixed z-50 w-40 rounded-md border py-1 shadow-lg",
-              isDark ? "bg-[#1a1a1c] border-white/[0.08]" : "bg-white border-zinc-200"
+              "fixed z-50 w-44 rounded-md border py-1 shadow-xl overflow-y-auto animate-scaleIn",
+              coords.isTop ? "origin-bottom-right" : "origin-top-right",
+              isDark
+                ? "bg-[#1a1a1c] border-white/[0.08] shadow-black/60"
+                : "bg-white border-zinc-200 shadow-zinc-900/15"
             )}
-            style={{ top: pos.top, right: pos.right }}
+            style={{
+              top: coords.top,
+              bottom: coords.bottom,
+              right: coords.right,
+              maxHeight: coords.maxHeight,
+            }}
           >
             {children}
           </div>
@@ -77,7 +149,7 @@ export function TableActionItem({ onClick, isDark, variant = "default", children
     warning: isDark ? "text-amber-400 hover:bg-white/[0.04]" : "text-amber-600 hover:bg-amber-50",
   };
   return (
-    <button onClick={onClick} className={cn("flex items-center gap-2 w-full px-3 py-2 text-[11px]", colors[variant])}>
+    <button type="button" onClick={onClick} className={cn("flex items-center gap-2 w-full px-3 py-2 text-[11px]", colors[variant])}>
       {children}
     </button>
   );

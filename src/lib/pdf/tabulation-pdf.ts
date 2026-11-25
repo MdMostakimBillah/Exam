@@ -1,6 +1,6 @@
 // Tabulation mark-sheet export — one A4-landscape sheet per class, carrying
 // the SAME watermark every other ScholarX PDF uses (the shared drawWatermark:
-// 130mm seal, 35% opacity, flat, centred behind the content). jsPDF +
+// 130mm seal, 12% opacity, flat, centred behind the content). jsPDF +
 // jspdf-autotable are imported on demand so they stay out of the page bundle
 // (same code-splitting rule as admit-card-pdf.ts).
 

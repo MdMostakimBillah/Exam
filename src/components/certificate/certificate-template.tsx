@@ -7,7 +7,7 @@
  * rasterized PDF lands exactly on the page with no guesswork. Every style is
  * inline (html2canvas clones the DOM and needs computed values, not
  * Tailwind variants it can mis-resolve). The brand watermark follows the
- * shared rules: 130 mm wide, opacity 0.35, angle 0°.
+ * shared rules: 130 mm wide, opacity 0.12, angle 0°.
  */
 
 import { memo } from "react";
@@ -124,14 +124,14 @@ function CertificateTemplateImpl({
         flexShrink: 0,
       }}
     >
-      {/* Brand watermark — 130 mm, 35% opacity, flat (angle 0°) */}
+      {/* Brand watermark — 130 mm, 12% opacity, flat (angle 0°) */}
       <div
         style={{
           position: "absolute",
           left: "50%",
           top: "50%",
           transform: "translate(-50%, -50%)",
-          opacity: 0.35,
+          opacity: 0.12,
           zIndex: 0,
           display: "flex",
           alignItems: "center",
