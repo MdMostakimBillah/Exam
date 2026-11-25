@@ -37,25 +37,28 @@ export interface StudentLoginResult {
 // which reset on every page load and was trivially bypassed, and it wrote a
 // predictable Supabase Auth password (`student_<id>_<phoneOrEmail>`).
 
+const STUDENT_SESSION_COLUMNS = "id,student_id,first_name,last_name,phone,institution_id,class,section,roll,photo_url,institutions(name,name_en,allow_marksheet_download,allow_certificate_download)";
+
 export async function getStudentSession(): Promise<StudentSession | null> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? (await supabase.auth.getUser()).data.user;
   if (!user) return null;
 
   let { data: student, error: studentError } = await supabase
     .from("students")
-    .select("*, institutions(name,name_en,allow_marksheet_download,allow_certificate_download)")
+    .select(STUDENT_SESSION_COLUMNS)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (studentError) {
     // 0038 not applied yet: PostgREST rejects the whole select for an
     // unknown column — retry without the two flags (they read as off).
     ({ data: student } = await supabase
       .from("students")
-      .select("*, institutions(name,name_en)")
+      .select("id,student_id,first_name,last_name,phone,institution_id,class,section,roll,photo_url,institutions(name,name_en)")
       .eq("user_id", user.id)
-      .single());
+      .maybeSingle());
   }
 
   if (!student) return null;
@@ -65,17 +68,17 @@ export async function getStudentSession(): Promise<StudentSession | null> {
     studentId: student.student_id,
     firstName: student.first_name,
     lastName: student.last_name,
-    email: student.email || "",
+    email: (student as any).email || user.email || "",
     phone: student.phone || "",
     institutionId: student.institution_id,
-    institutionName: student.institutions?.name || "",
-    institutionNameEn: student.institutions?.name_en || "",
+    institutionName: (student as any).institutions?.name || "",
+    institutionNameEn: (student as any).institutions?.name_en || "",
     class: student.class,
     section: student.section || "",
     roll: student.roll || "",
     photo: student.photo_url,
-    allowMarksheetDownload: !!student.institutions?.allow_marksheet_download,
-    allowCertificateDownload: !!student.institutions?.allow_certificate_download,
+    allowMarksheetDownload: !!(student as any).institutions?.allow_marksheet_download,
+    allowCertificateDownload: !!(student as any).institutions?.allow_certificate_download,
   };
 }
 

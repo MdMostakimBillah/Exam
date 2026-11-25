@@ -376,6 +376,7 @@ export function useStudents(sessionId?: string, page?: number, pageSize?: number
     queryKey: ['students', sessionId, page, pageSize],
     queryFn: () => fetchStudents(sessionId, page, pageSize),
     staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -417,6 +418,7 @@ export function useStudentsByInstitution(institutionId: string, sessionId?: stri
     queryFn: () => fetchStudentsByInstitution(institutionId, sessionId, page, pageSize),
     enabled: !!institutionId,
     staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 

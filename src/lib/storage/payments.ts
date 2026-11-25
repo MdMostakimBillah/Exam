@@ -250,7 +250,7 @@ export async function fetchPaymentsByStudent(studentId: string): Promise<Payment
   const supabase = createClient();
   const { data, error } = await supabase
     .from(SUPABASE_TABLE)
-    .select(PAYMENT_COLUMNS)
+    .select(PAYMENT_LIST_COLUMNS)
     .eq('student_id', studentId)
     .order('created_at', { ascending: false });
   if (error || !data) return [];
@@ -262,6 +262,7 @@ export function usePaymentsByStudent(studentId: string, options?: { enabled?: bo
     queryKey: ['payments', 'student', studentId],
     queryFn: () => fetchPaymentsByStudent(studentId),
     enabled: !!studentId && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
   });
 }
 

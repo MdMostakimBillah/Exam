@@ -22,6 +22,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { Student, Registration } from "@/lib/types";
 import { LoadingBar } from "@/components/ui/loading-bar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /** Bilingual gender label (module-level so memos can depend on it safely). */
 function genderLabel(g: Student["gender"] | undefined, isBn: boolean): string {
@@ -56,7 +57,8 @@ export default function StudentsPage() {
 
   const { data: currentSession } = useCurrentSession();
   const sessionId = currentSession?.id;
-  const { data: students = [], isFetching } = useStudents(sessionId);
+  const { data: students = [], isLoading: studentsLoading, isFetching: studentsFetching } = useStudents(sessionId);
+  const isInitialLoading = studentsLoading || (studentsFetching && students.length === 0);
   const { data: institutions = [] } = useInstitutions();
   const { data: regMeta = [] } = useStudentRegistrationMeta(sessionId);
   const updateStudentMutation = useUpdateStudent();
@@ -248,7 +250,7 @@ export default function StudentsPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
-      <LoadingBar isLoading={isFetching} />
+      <LoadingBar isLoading={studentsFetching} />
       <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
         {/* Page Header */}
         <div className="mb-8">
@@ -349,7 +351,23 @@ export default function StudentsPage() {
               </div>
             </div>
           </div>
-          {filtered.length === 0 ? (
+          {isInitialLoading ? (
+            <div className="p-4 space-y-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-2 border-b border-zinc-100 dark:border-white/[0.04]">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                  <Skeleton className="h-4 w-32 rounded" />
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-4 w-28 rounded hidden md:block" />
+                  <Skeleton className="h-4 w-20 rounded hidden lg:block" />
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-4 w-12 rounded" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className={`h-14 w-14 rounded-md flex items-center justify-center mb-4 ${isDark ? 'bg-white/[0.06]' : 'bg-zinc-100'}`}>
                 <Users className={`h-7 w-7 ${iconColor}`} />

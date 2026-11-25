@@ -9,6 +9,7 @@ import { useLang } from "@/contexts/language-context";
 import { cn } from "@/lib/utils/helpers";
 import { formatDate } from "@/lib/storage/storage";
 import { PageLoading } from "@/components/ui/page-loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AnimatedCounter, FadeIn, StaggerContainer, StaggerItem, useEntranceClock,
 } from "@/components/animation";
@@ -53,7 +54,8 @@ export default function StudentDashboardPage() {
     }
   }, [student, studentLoading, router]);
 
-  if (studentLoading || !student) return <PageLoading isDark={isDark} />;
+  if (studentLoading) return <StudentDashboardSkeleton isDark={isDark} />;
+  if (!student) return <PageLoading isDark={isDark} />;
 
   const loading = registrationsLoading;
 
@@ -167,8 +169,25 @@ export default function StudentDashboardPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className={`h-6 w-6 animate-spin ${iconColor}`} />
+          <div className="divide-y divide-zinc-100 dark:divide-white/[0.04]">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="px-5 py-4 flex items-center justify-between gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-40 rounded" />
+                    <Skeleton className="h-4 w-16 rounded-full" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-3 w-28 rounded" />
+                    <Skeleton className="h-3 w-24 rounded" />
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-right flex flex-col items-end">
+                  <Skeleton className="h-4 w-14 rounded" />
+                  <Skeleton className="h-3 w-16 rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : registrations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
@@ -228,6 +247,66 @@ export default function StudentDashboardPage() {
         )}
       </div>
       </FadeIn>
+    </div>
+  );
+}
+
+function StudentDashboardSkeleton({ isDark }: { isDark: boolean }) {
+  const card = isDark
+    ? "bg-[#141416] border border-white/[0.06] rounded-xl"
+    : "bg-white border border-zinc-200 rounded-xl shadow-sm";
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Skeleton */}
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-48 rounded-md" />
+        <Skeleton className="h-4 w-72 rounded-md" />
+      </div>
+
+      {/* Stats Cards Skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className={`${card} px-4 py-3 flex items-center gap-3`}>
+            <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+            <div className="flex-1 space-y-1.5 min-w-0">
+              <Skeleton className="h-5 w-16 rounded" />
+              <Skeleton className="h-3 w-20 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Registrations List Skeleton */}
+      <div className={card}>
+        <div className={`px-5 py-4 border-b ${isDark ? "border-white/[0.06]" : "border-zinc-100"} flex items-center justify-between`}>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-32 rounded" />
+          </div>
+          <Skeleton className="h-3 w-8 rounded-full" />
+        </div>
+        <div className="divide-y divide-zinc-100 dark:divide-white/[0.04]">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="px-5 py-4 flex items-center justify-between gap-4">
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-36 rounded" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-3 w-28 rounded" />
+                  <Skeleton className="h-3 w-24 rounded" />
+                </div>
+              </div>
+              <div className="space-y-1.5 text-right flex flex-col items-end">
+                <Skeleton className="h-4 w-14 rounded" />
+                <Skeleton className="h-3 w-16 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -30,6 +30,10 @@ CREATE INDEX IF NOT EXISTS idx_registrations_session_created
 CREATE INDEX IF NOT EXISTS idx_registrations_student_id
   ON public.registrations(student_id);
 
+-- Registrations: student_id + created_at for student space queries
+CREATE INDEX IF NOT EXISTS idx_registrations_student_created
+  ON public.registrations(student_id, created_at DESC);
+
 -- Registrations: institution + session + created_at
 CREATE INDEX IF NOT EXISTS idx_registrations_inst_session_created
   ON public.registrations(institution_id, session_id, created_at DESC);
@@ -62,6 +66,10 @@ CREATE INDEX IF NOT EXISTS idx_payments_session_status_created
 CREATE INDEX IF NOT EXISTS idx_students_student_id
   ON public.students(student_id);
 
+-- Students: auth user_id index for instant student portal session lookups
+CREATE INDEX IF NOT EXISTS idx_students_user_id
+  ON public.students(user_id);
+
 -- Students: institution + session + created_at
 CREATE INDEX IF NOT EXISTS idx_students_inst_session_created
   ON public.students(institution_id, session_id, created_at DESC);
@@ -92,6 +100,14 @@ CREATE INDEX IF NOT EXISTS idx_certificates_exam_id
 
 CREATE INDEX IF NOT EXISTS idx_certificates_session_created
   ON public.certificates(session_id, created_at DESC);
+
+-- Certificates: student_id + status + created_at for student portal lookups
+CREATE INDEX IF NOT EXISTS idx_certificates_student_created
+  ON public.certificates(student_id, status, created_at DESC);
+
+-- Results: student_id + created_at for student portal marksheet lookups
+CREATE INDEX IF NOT EXISTS idx_results_student_created
+  ON public.results(student_id, created_at DESC);
 
 -- Marks: foreign key indexes
 CREATE INDEX IF NOT EXISTS idx_marks_student_id

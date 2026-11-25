@@ -8,6 +8,7 @@ import { notifySuperAdmins } from "@/lib/storage/notifications";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 import { cn, MAX_IMAGE_SIZE } from "@/lib/utils/helpers";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   CreditCard,
@@ -275,8 +276,23 @@ export default function PaymentSubmitPage() {
 
         <div className="p-5">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className={`h-6 w-6 animate-spin ${isDark ? "text-zinc-400" : "text-zinc-500"}`} />
+            <div className="space-y-4">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-28" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Skeleton className="h-9 w-full rounded-lg" />
+                  <Skeleton className="h-9 w-full rounded-lg" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-9 w-full rounded-lg" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-9 w-full rounded-lg" />
+              </div>
             </div>
           ) : error && !registration ? (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
