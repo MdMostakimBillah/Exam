@@ -12,6 +12,7 @@ import {
   Save,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   Unlock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toast";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
-import { formatRollRangeLabel, normalizeRollDigits, normalizeRollRangePair } from "@/lib/marks/roll-range";
+import {
+  type MarkEntryRollRange,
+  formatMultipleRollRangesLabel,
+  formatRollRangeLabel,
+  normalizeRollDigits,
+  normalizeRollRangePair,
+} from "@/lib/marks/roll-range";
+import { ManageRollRangesModal } from "@/components/marks/ManageRollRangesModal";
 import {
   useInstitutionName,
   useInstitutions,
@@ -61,6 +69,7 @@ export function MarkEntryPermissionsPanel() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [confirmDisableAll, setConfirmDisableAll] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [manageModalInst, setManageModalInst] = useState<Institution | null>(null);
 
   const activeInstitutions = useMemo(
     () =>
@@ -181,6 +190,30 @@ export function MarkEntryPermissionsPanel() {
         "error",
         err instanceof Error ? err.message : bi("সংরক্ষণ ব্যর্থ", "Save failed"),
       );
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleSaveModalRanges = async (ranges: MarkEntryRollRange[]) => {
+    if (!manageModalInst) return;
+    setSavingId(manageModalInst.id);
+    try {
+      await updateInstitution.mutateAsync({
+        id: manageModalInst.id,
+        data: {
+          markEntryRollRanges: ranges,
+        },
+      });
+      // Clear any dirty single draft for this institution
+      setDrafts((prev) => {
+        const nextDrafts = { ...prev };
+        delete nextDrafts[manageModalInst.id];
+        return nextDrafts;
+      });
+      toast("success", bi("রোল রেঞ্জসমূহ সফলভাবে সংরক্ষিত হয়েছে", "Roll ranges saved successfully"));
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : bi("সংরক্ষণ ব্যর্থ", "Save failed"));
     } finally {
       setSavingId(null);
     }
@@ -365,32 +398,80 @@ export function MarkEntryPermissionsPanel() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          value={draft.from}
-                          onChange={(e) => setDraftField(inst, "from", e.target.value)}
-                          placeholder={bi("থেকে", "From")}
-                          inputMode="numeric"
-                          disabled={busy}
-                          className={`h-8 w-28 text-center text-xs font-mono ${inputClass}`}
-                          aria-label={`${inst.code} roll from`}
-                        />
-                        <span className={`text-xs ${mutedClass}`}>→</span>
-                        <Input
-                          value={draft.to}
-                          onChange={(e) => setDraftField(inst, "to", e.target.value)}
-                          placeholder={bi("পর্যন্ত", "To")}
-                          inputMode="numeric"
-                          disabled={busy}
-                          className={`h-8 w-28 text-center text-xs font-mono ${inputClass}`}
-                          aria-label={`${inst.code} roll to`}
-                        />
-                      </div>
+                      {inst.markEntryRollRanges && inst.markEntryRollRanges.length > 1 ? (
+                        <div className="flex flex-wrap items-center gap-1.5 max-w-sm">
+                          {inst.markEntryRollRanges.slice(0, 3).map((r, i) => (
+                            <span
+                              key={i}
+                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono ${
+                                isDark ? "bg-white/[0.06] text-zinc-300" : "bg-zinc-100 text-zinc-700"
+                              }`}
+                            >
+                              {r.className && (
+                                <span className="font-sans text-brand-accent font-semibold">{r.className}:</span>
+                              )}
+                              {r.from}–{r.to}
+                            </span>
+                          ))}
+                          {inst.markEntryRollRanges.length > 3 && (
+                            <span className={`text-[10px] ${mutedClass}`}>
+                              +{inst.markEntryRollRanges.length - 3} {bi("আরও", "more")}
+                            </span>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[11px] px-2 ml-1"
+                            onClick={() => setManageModalInst(inst)}
+                          >
+                            <SlidersHorizontal className="h-3 w-3 mr-1" />
+                            {bi("রেঞ্জসমূহ", "Ranges")} ({inst.markEntryRollRanges.length})
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            value={draft.from}
+                            onChange={(e) => setDraftField(inst, "from", e.target.value)}
+                            placeholder={bi("থেকে", "From")}
+                            inputMode="numeric"
+                            disabled={busy}
+                            className={`h-8 w-24 text-center text-xs font-mono ${inputClass}`}
+                            aria-label={`${inst.code} roll from`}
+                          />
+                          <span className={`text-xs ${mutedClass}`}>→</span>
+                          <Input
+                            value={draft.to}
+                            onChange={(e) => setDraftField(inst, "to", e.target.value)}
+                            placeholder={bi("পর্যন্ত", "To")}
+                            inputMode="numeric"
+                            disabled={busy}
+                            className={`h-8 w-24 text-center text-xs font-mono ${inputClass}`}
+                            aria-label={`${inst.code} roll to`}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            title={bi("একাধিক শ্রেণি ও রোল রেঞ্জ সেট করুন", "Configure multiple class roll ranges")}
+                            onClick={() => setManageModalInst(inst)}
+                          >
+                            <SlidersHorizontal className="h-3.5 w-3.5 text-zinc-500" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {inst.allowMarkEntry ? (
                         <Badge status="ACTIVE">
-                          {formatRollRangeLabel(inst.markEntryRollFrom, inst.markEntryRollTo, isBn)}
+                          {formatMultipleRollRangesLabel(
+                            inst.markEntryRollRanges,
+                            inst.markEntryRollFrom,
+                            inst.markEntryRollTo,
+                            isBn,
+                          )}
                         </Badge>
                       ) : (
                         <Badge>{bi("বন্ধ", "Restricted")}</Badge>
@@ -454,6 +535,16 @@ export function MarkEntryPermissionsPanel() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      <ManageRollRangesModal
+        open={Boolean(manageModalInst)}
+        onClose={() => setManageModalInst(null)}
+        institution={manageModalInst}
+        onSave={handleSaveModalRanges}
+        isDark={isDark}
+        isBn={isBn}
+        saving={savingId === manageModalInst?.id}
+      />
     </div>
   );
 }

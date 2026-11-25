@@ -13,11 +13,18 @@ import { usePaymentsByInstitution } from "@/lib/storage/payments";
 import { useResultsByInstitution } from "@/lib/storage/results";
 import { useCertificatesByInstitution } from "@/lib/storage/certificates";
 import { Student, Registration } from "@/lib/types";
-import { Building2, Users, CreditCard, Award, ArrowLeft, Mail, Phone, MapPin, Calendar, FileCheck, FileText, Edit, ListChecks, RotateCcw, Save } from "lucide-react";
+import { Building2, Users, CreditCard, Award, ArrowLeft, Mail, Phone, MapPin, Calendar, FileCheck, FileText, Edit, ListChecks, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatRollRangeLabel, normalizeRollDigits, normalizeRollRangePair } from "@/lib/marks/roll-range";
+import {
+  type MarkEntryRollRange,
+  formatMultipleRollRangesLabel,
+  formatRollRangeLabel,
+  normalizeRollDigits,
+  normalizeRollRangePair,
+} from "@/lib/marks/roll-range";
+import { ManageRollRangesModal } from "@/components/marks/ManageRollRangesModal";
 import { useTheme } from "@/contexts/theme-context";
 import { useLang } from "@/contexts/language-context";
 
@@ -46,6 +53,7 @@ export default function InstitutionDetailPage() {
   });
   const [updating, setUpdating] = useState(false);
   const [rollRangeDraft, setRollRangeDraft] = useState<{ id: string; from: string; to: string } | null>(null);
+  const [manageRangesOpen, setManageRangesOpen] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -216,6 +224,32 @@ export default function InstitutionDetailPage() {
             clear
               ? (isBn ? 'রোল রেঞ্জ মুছে ফেলা হয়েছে (সকল রোল)' : 'Roll range cleared (all rolls)')
               : `${isBn ? 'রোল রেঞ্জ সংরক্ষিত' : 'Roll range saved'}: ${formatRollRangeLabel(normalized.from, normalized.to, isBn)}`
+          );
+        },
+        onError: (err) =>
+          toast(
+            'error',
+            err instanceof Error ? err.message : (isBn ? 'সংরক্ষণ ব্যর্থ' : 'Save failed')
+          ),
+      }
+    );
+  };
+
+  const handleSaveMultipleRanges = (ranges: MarkEntryRollRange[]) => {
+    if (!inst) return;
+    updateInstitution.mutate(
+      {
+        id: inst.id,
+        data: {
+          markEntryRollRanges: ranges,
+        },
+      },
+      {
+        onSuccess: () => {
+          setRollRangeDraft(null);
+          toast(
+            'success',
+            isBn ? 'রোল রেঞ্জসমূহ সফলভাবে সংরক্ষিত হয়েছে' : 'Roll ranges saved successfully'
           );
         },
         onError: (err) =>
@@ -549,7 +583,7 @@ export default function InstitutionDetailPage() {
                           </p>
                           {inst.allowMarkEntry && (
                             <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                              {formatRollRangeLabel(inst.markEntryRollFrom, inst.markEntryRollTo, isBn)}
+                              {formatMultipleRollRangesLabel(inst.markEntryRollRanges, inst.markEntryRollFrom, inst.markEntryRollTo, isBn)}
                             </span>
                           )}
                         </div>
@@ -565,17 +599,37 @@ export default function InstitutionDetailPage() {
                   <div className={`mt-3 rounded-md border p-3 ${isDark ? 'border-white/[0.06] bg-white/[0.02]' : 'border-zinc-200/80 bg-zinc-50/70'}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-                        {isBn ? 'অনুমোদিত রোল রেঞ্জ (ঐচ্ছিক)' : 'Permitted roll range (optional)'}
+                        {isBn ? 'অনুমোদিত রোল রেঞ্জ' : 'Permitted roll ranges'}
                       </span>
                       <span className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                        {formatRollRangeLabel(inst.markEntryRollFrom, inst.markEntryRollTo, isBn)}
+                        {formatMultipleRollRangesLabel(inst.markEntryRollRanges, inst.markEntryRollFrom, inst.markEntryRollTo, isBn)}
                       </span>
                     </div>
+
+                    {inst.markEntryRollRanges && inst.markEntryRollRanges.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2.5">
+                        {inst.markEntryRollRanges.map((r, i) => (
+                          <span
+                            key={i}
+                            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-mono ${
+                              isDark ? "bg-white/[0.08] text-zinc-300" : "bg-zinc-200/70 text-zinc-800"
+                            }`}
+                          >
+                            {r.className && (
+                              <span className="font-sans text-brand-accent font-semibold">{r.className}:</span>
+                            )}
+                            {r.from}–{r.to}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     <p className={`text-[10px] mb-2.5 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
                       {isBn
-                        ? 'ফাঁকা রাখলে সকল রোল অনুমোদিত; নির্দিষ্ট রোল ব্লক দিতে শুরুর ও শেষ রোল লিখুন।'
-                        : 'Leave empty to allow all rolls, or set From / To roll numbers to restrict mark entry range.'}
+                        ? 'ফাঁকা রাখলে সকল রোল অনুমোদিত; নির্দিষ্ট রোল ব্লক দিতে শুরুর ও শেষ রোল লিখুন অথবা একাধিক শ্রেণি কনফিগার করুন।'
+                        : 'Leave empty to allow all rolls, or set From / To roll numbers, or configure multiple class ranges.'}
                     </p>
+
                     <div className="flex flex-wrap items-center gap-2">
                       <Input
                         value={effectiveRollFrom}
@@ -616,7 +670,7 @@ export default function InstitutionDetailPage() {
                         onClick={() => handleMarkEntryRangeSave(false)}
                       >
                         <Save className="mr-1 h-3 w-3" />
-                        {isBn ? 'রেঞ্জ সংরক্ষণ' : 'Save range'}
+                        {isBn ? 'সংরক্ষণ' : 'Save'}
                       </Button>
                       {(inst.markEntryRollFrom || inst.markEntryRollTo || effectiveRollFrom || effectiveRollTo) && (
                         <Button
@@ -632,6 +686,17 @@ export default function InstitutionDetailPage() {
                         </Button>
                       )}
                     </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full mt-2.5 h-8 text-xs flex items-center justify-center gap-1.5"
+                      onClick={() => setManageRangesOpen(true)}
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                      {isBn ? 'একাধিক রোল রেঞ্জ ও শ্রেণি কনফিগার করুন' : 'Configure Multiple Roll Ranges'}
+                    </Button>
                   </div>
                 </div>
                 <div className={`mt-4 pt-4 border-t ${isDark ? 'border-white/[0.06]' : 'border-zinc-100'}`}>
@@ -787,6 +852,16 @@ export default function InstitutionDetailPage() {
             </button>
           </ModalFooter>
         </Modal>
+
+        <ManageRollRangesModal
+          open={manageRangesOpen}
+          onClose={() => setManageRangesOpen(false)}
+          institution={inst || null}
+          onSave={handleSaveMultipleRanges}
+          isDark={isDark}
+          isBn={isBn}
+          saving={updateInstitution.isPending}
+        />
       </div>
     </div>
   );

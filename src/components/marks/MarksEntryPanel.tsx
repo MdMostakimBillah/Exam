@@ -48,8 +48,10 @@ import {
 } from "@/lib/storage/marks";
 import {
   clampRollRangeToBounds,
+  findMatchingRollRanges,
   formatRollRangeLabel,
   normalizeRollRangePair,
+  type MarkEntryRollRange,
 } from "@/lib/marks/roll-range";
 import { useCurrentSession } from "@/lib/storage/sessions";
 import { useQueryClient } from "@tanstack/react-query";
@@ -84,6 +86,8 @@ interface MarksEntryPanelProps {
   allowedRollFrom?: string | null;
   /** Super-admin-assigned upper roll bound (digits-only) for institution entry. */
   allowedRollTo?: string | null;
+  /** Super-admin-assigned multiple roll ranges (optionally tied to classes) */
+  allowedRollRanges?: MarkEntryRollRange[];
 }
 
 const AUTOSAVE_DELAY = 600;
@@ -112,6 +116,7 @@ export function MarksEntryPanel({
   scopedInstitutionName,
   allowedRollFrom,
   allowedRollTo,
+  allowedRollRanges,
 }: MarksEntryPanelProps) {
   const { lang } = useLang();
   const { theme } = useTheme();
@@ -131,11 +136,6 @@ export function MarksEntryPanel({
   const allowedBounds = useMemo(
     () => normalizeRollRangePair(allowedRollFrom, allowedRollTo),
     [allowedRollFrom, allowedRollTo],
-  );
-  const hasAllowedBounds = Boolean(allowedBounds.from || allowedBounds.to);
-  const allowedRangeLabel = useMemo(
-    () => formatRollRangeLabel(allowedBounds.from, allowedBounds.to, isBn),
-    [allowedBounds.from, allowedBounds.to, isBn],
   );
 
   const [examId, setExamId] = useState("");
@@ -171,6 +171,68 @@ export function MarksEntryPanel({
   const { data: setup, isLoading: setupLoading } = useExamMarkSetup(examId);
   const exam = useMemo(() => exams.find((item) => item.id === examId), [examId, exams]);
 
+  // Multiple roll ranges: either passed down for this institution or derived from super admin selection
+  const effectiveRanges = useMemo(() => {
+    if (allowedRollRanges && allowedRollRanges.length > 0) return allowedRollRanges;
+    if (institutionId) {
+      const inst = institutions.find((i) => i.id === institutionId);
+      if (inst?.markEntryRollRanges && inst.markEntryRollRanges.length > 0) {
+        return inst.markEntryRollRanges;
+      }
+    }
+    return [];
+  }, [allowedRollRanges, institutionId, institutions]);
+
+  const selectedClass = useMemo(
+    () => allClasses.find((c) => c.id === classId || c.code === classId || c.name === classId),
+    [allClasses, classId],
+  );
+
+  const matchingClassRanges = useMemo(() => {
+    if (effectiveRanges.length === 0) return [];
+    return findMatchingRollRanges(
+      effectiveRanges,
+      selectedClass?.id || classId,
+      selectedClass?.name,
+    );
+  }, [effectiveRanges, selectedClass, classId]);
+
+  // Active allowed bounds: specific to selected class if configured, otherwise general institution bounds
+  const activeAllowedBounds = useMemo(() => {
+    if (matchingClassRanges.length > 0) {
+      const froms = matchingClassRanges.map((r) => r.from).filter(Boolean).map(BigInt);
+      const tos = matchingClassRanges.map((r) => r.to).filter(Boolean).map(BigInt);
+      return {
+        from: froms.length > 0 ? String(froms.reduce((min, c) => (c < min ? c : min))) : null,
+        to: tos.length > 0 ? String(tos.reduce((max, c) => (c > max ? c : max))) : null,
+      };
+    }
+    return allowedBounds;
+  }, [allowedBounds, matchingClassRanges]);
+
+  const hasAllowedBounds = Boolean(activeAllowedBounds.from || activeAllowedBounds.to);
+  const allowedRangeLabel = useMemo(
+    () => formatRollRangeLabel(activeAllowedBounds.from, activeAllowedBounds.to, isBn),
+    [activeAllowedBounds.from, activeAllowedBounds.to, isBn],
+  );
+
+  // Auto-fill roll range when class (and subject) are selected according to super admin configuration
+  useEffect(() => {
+    if (!classId) return;
+    if (matchingClassRanges.length > 0) {
+      const first = matchingClassRanges[0];
+      setRollFromInput(first.from);
+      setRollToInput(first.to);
+      setRollFrom(first.from);
+      setRollTo(first.to);
+    } else if (allowedBounds.from || allowedBounds.to) {
+      setRollFromInput(allowedBounds.from ?? "");
+      setRollToInput(allowedBounds.to ?? "");
+      setRollFrom(allowedBounds.from ?? "");
+      setRollTo(allowedBounds.to ?? "");
+    }
+  }, [classId, matchingClassRanges, allowedBounds.from, allowedBounds.to]);
+
   const classEntries = useMemo(() => {
     const byId = new Map(allClasses.map((item) => [item.id, item]));
     const byCode = new Map(allClasses.map((item) => [item.code, item]));
@@ -199,13 +261,13 @@ export function MarksEntryPanel({
   const isScoped = Boolean(scopedInstitutionId);
 
   const clampedRange = useMemo(
-    () => clampRollRangeToBounds(rollFrom, rollTo, allowedRollFrom, allowedRollTo),
-    [allowedRollFrom, allowedRollTo, rollFrom, rollTo],
+    () => clampRollRangeToBounds(rollFrom, rollTo, activeAllowedBounds.from, activeAllowedBounds.to),
+    [activeAllowedBounds.from, activeAllowedBounds.to, rollFrom, rollTo],
   );
   const hasCustomTextFilters = Boolean(
     search ||
-      (rollFrom || "") !== (allowedBounds.from ?? "") ||
-      (rollTo || "") !== (allowedBounds.to ?? ""),
+      (rollFrom || "") !== (activeAllowedBounds.from ?? "") ||
+      (rollTo || "") !== (activeAllowedBounds.to ?? ""),
   );
 
   const queryParams: MarksSheetPageParams = useMemo(() => ({
@@ -846,7 +908,7 @@ export function MarksEntryPanel({
                 id="marks-entry-roll-from"
                 value={rollFromInput}
                 onChange={(event) => setRollFromInput(event.target.value.replace(/\D/g, ""))}
-                placeholder={allowedBounds.from || bi("থেকে", "From")}
+                placeholder={activeAllowedBounds.from || bi("থেকে", "From")}
                 inputMode="numeric"
                 className={`text-center ${inputClass}`}
                 disabled={!subjectId}
@@ -856,12 +918,47 @@ export function MarksEntryPanel({
                 id="marks-entry-roll-to"
                 value={rollToInput}
                 onChange={(event) => setRollToInput(event.target.value.replace(/\D/g, ""))}
-                placeholder={allowedBounds.to || bi("পর্যন্ত", "To")}
+                placeholder={activeAllowedBounds.to || bi("পর্যন্ত", "To")}
                 inputMode="numeric"
                 className={`text-center ${inputClass}`}
                 disabled={!subjectId}
               />
             </div>
+            {matchingClassRanges.length === 1 && (
+              <p className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                <Check className="h-3 w-3 shrink-0" />
+                {bi("শ্রেণি অনুযায়ী অটো-ফিল:", "Auto-filled for class:")} {matchingClassRanges[0].from} – {matchingClassRanges[0].to}
+              </p>
+            )}
+            {matchingClassRanges.length > 1 && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                <span className="text-[10px] text-zinc-500 font-medium">{bi("শ্রেণির রেঞ্জসমূহ:", "Class ranges:")}</span>
+                {matchingClassRanges.map((r, idx) => {
+                  const isSelected = rollFromInput === r.from && rollToInput === r.to;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setRollFromInput(r.from);
+                        setRollToInput(r.to);
+                        setRollFrom(r.from);
+                        setRollTo(r.to);
+                      }}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition-all ${
+                        isSelected
+                          ? "bg-brand-accent text-brand-accent-fg border-brand-accent font-semibold"
+                          : isDark
+                          ? "bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:bg-white/[0.08]"
+                          : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200"
+                      }`}
+                    >
+                      {r.from} – {r.to}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </Field>
         </div>
       </div>

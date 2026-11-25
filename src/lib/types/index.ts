@@ -52,6 +52,14 @@ export interface Profile {
   updatedAt: string;
 }
 
+export interface MarkEntryRollRange {
+  id?: string;
+  classId?: string;
+  className?: string;
+  from: string;
+  to: string;
+}
+
 export interface Institution {
   id: string;
   name: string;
@@ -81,6 +89,8 @@ export interface Institution {
   markEntryRollFrom?: string | null;
   /** Optional upper numeric exam-roll bound (digits-only) for mark entry. */
   markEntryRollTo?: string | null;
+  /** Multiple roll ranges (migration 0044), optionally tied to specific classes. */
+  markEntryRollRanges?: MarkEntryRollRange[];
   /** Super admin: students of this institution see the Marksheet section. */
   allowMarksheetDownload?: boolean;
   /** Super admin: students see the Certificates section. */

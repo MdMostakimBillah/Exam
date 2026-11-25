@@ -24,7 +24,8 @@
 ALTER TABLE public.institutions
   ADD COLUMN IF NOT EXISTS allow_mark_entry BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS mark_entry_roll_from TEXT,
-  ADD COLUMN IF NOT EXISTS mark_entry_roll_to TEXT;
+  ADD COLUMN IF NOT EXISTS mark_entry_roll_to TEXT,
+  ADD COLUMN IF NOT EXISTS mark_entry_roll_ranges JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE OR REPLACE FUNCTION public.protect_mark_entry_permission()
 RETURNS TRIGGER
@@ -44,10 +45,12 @@ BEGIN
       NEW.allow_mark_entry := false;
       NEW.mark_entry_roll_from := NULL;
       NEW.mark_entry_roll_to := NULL;
+      NEW.mark_entry_roll_ranges := '[]'::jsonb;
     ELSE
       NEW.allow_mark_entry := OLD.allow_mark_entry;
       NEW.mark_entry_roll_from := OLD.mark_entry_roll_from;
       NEW.mark_entry_roll_to := OLD.mark_entry_roll_to;
+      NEW.mark_entry_roll_ranges := COALESCE(OLD.mark_entry_roll_ranges, '[]'::jsonb);
     END IF;
   END IF;
 
@@ -61,6 +64,9 @@ BEGIN
   END IF;
   NEW.mark_entry_roll_from := v_from;
   NEW.mark_entry_roll_to := v_to;
+  IF NEW.mark_entry_roll_ranges IS NULL OR jsonb_typeof(NEW.mark_entry_roll_ranges) <> 'array' THEN
+    NEW.mark_entry_roll_ranges := '[]'::jsonb;
+  END IF;
 
   RETURN NEW;
 END;
@@ -89,6 +95,7 @@ DECLARE
   v_session_id UUID;
   v_exclude_institution_id UUID;
   v_allow_mark_entry BOOLEAN;
+  v_allowed_ranges JSONB := '[]'::jsonb;
   v_allowed_from_txt TEXT;
   v_allowed_to_txt TEXT;
   v_allowed_from_num NUMERIC;
@@ -122,8 +129,8 @@ BEGIN
       RAISE EXCEPTION 'Only a super admin or institution staff may enter marks';
     END IF;
 
-    SELECT i.allow_mark_entry, i.mark_entry_roll_from, i.mark_entry_roll_to
-    INTO v_allow_mark_entry, v_allowed_from_txt, v_allowed_to_txt
+    SELECT i.allow_mark_entry, i.mark_entry_roll_from, i.mark_entry_roll_to, COALESCE(i.mark_entry_roll_ranges, '[]'::jsonb)
+    INTO v_allow_mark_entry, v_allowed_from_txt, v_allowed_to_txt, v_allowed_ranges
     FROM public.institutions i
     WHERE i.id = v_exclude_institution_id;
 
@@ -245,7 +252,38 @@ BEGIN
       CONTINUE;
     END IF;
 
-    IF v_allowed_from_num IS NOT NULL OR v_allowed_to_num IS NOT NULL THEN
+    IF jsonb_array_length(v_allowed_ranges) > 0 THEN
+      IF v_exam_roll IS NULL
+        OR v_exam_roll !~ '^[0-9]+$'
+        OR NOT EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(v_allowed_ranges) rng
+          WHERE (
+            rng->>'classId' IS NULL
+            OR btrim(COALESCE(rng->>'classId', '')) = ''
+            OR rng->>'classId' IN (v_class_id::text, v_registration_class, v_class_code)
+            OR rng->>'className' = v_registration_class
+          )
+          AND (
+            NULLIF(regexp_replace(COALESCE(rng->>'from', ''), '\D', '', 'g'), '') IS NULL
+            OR v_exam_roll::numeric >= (regexp_replace(COALESCE(rng->>'from', ''), '\D', '', 'g'))::numeric
+          )
+          AND (
+            NULLIF(regexp_replace(COALESCE(rng->>'to', ''), '\D', '', 'g'), '') IS NULL
+            OR v_exam_roll::numeric <= (regexp_replace(COALESCE(rng->>'to', ''), '\D', '', 'g'))::numeric
+          )
+        ) THEN
+        v_rejected := v_rejected || JSONB_BUILD_ARRAY(JSONB_BUILD_OBJECT(
+          'registration_id', v_registration_id,
+          'subject_id', v_subject_id,
+          'reason', FORMAT(
+            'exam roll %s is outside your institution''s configured permitted roll ranges for this class',
+            COALESCE(v_exam_roll, 'unassigned')
+          )
+        ));
+        CONTINUE;
+      END IF;
+    ELSIF v_allowed_from_num IS NOT NULL OR v_allowed_to_num IS NOT NULL THEN
       IF v_exam_roll IS NULL
         OR v_exam_roll !~ '^[0-9]+$'
         OR (v_allowed_from_num IS NOT NULL AND v_exam_roll::numeric < v_allowed_from_num)
@@ -381,6 +419,7 @@ DECLARE
   v_cleared INTEGER;
   v_exclude_institution_id UUID;
   v_allow_mark_entry BOOLEAN;
+  v_allowed_ranges JSONB := '[]'::jsonb;
   v_allowed_from_txt TEXT;
   v_allowed_to_txt TEXT;
   v_allowed_from_num NUMERIC;
@@ -388,6 +427,7 @@ DECLARE
   v_tmp_num NUMERIC;
   v_found BOOLEAN;
   v_exam_roll TEXT;
+  v_registration_class TEXT;
 BEGIN
   IF public.is_super_admin() THEN
     v_exclude_institution_id := NULL;
@@ -399,8 +439,8 @@ BEGIN
       RAISE EXCEPTION 'Only a super admin or institution staff may clear marks';
     END IF;
 
-    SELECT i.allow_mark_entry, i.mark_entry_roll_from, i.mark_entry_roll_to
-    INTO v_allow_mark_entry, v_allowed_from_txt, v_allowed_to_txt
+    SELECT i.allow_mark_entry, i.mark_entry_roll_from, i.mark_entry_roll_to, COALESCE(i.mark_entry_roll_ranges, '[]'::jsonb)
+    INTO v_allow_mark_entry, v_allowed_from_txt, v_allowed_to_txt, v_allowed_ranges
     FROM public.institutions i
     WHERE i.id = v_exclude_institution_id;
 
@@ -426,8 +466,8 @@ BEGIN
     RETURN JSONB_BUILD_OBJECT('success', false, 'cleared', 0, 'reason', 'Exam not found');
   END IF;
 
-  SELECT true, NULLIF(BTRIM(st.exam_roll), '')
-  INTO v_found, v_exam_roll
+  SELECT true, NULLIF(BTRIM(st.exam_roll), ''), r.class_name
+  INTO v_found, v_exam_roll, v_registration_class
   FROM public.registrations r
   LEFT JOIN public.students st
     ON st.id = r.student_id
@@ -444,7 +484,37 @@ BEGIN
     );
   END IF;
 
-  IF v_allowed_from_num IS NOT NULL OR v_allowed_to_num IS NOT NULL THEN
+  IF jsonb_array_length(v_allowed_ranges) > 0 THEN
+    IF v_exam_roll IS NULL
+      OR v_exam_roll !~ '^[0-9]+$'
+      OR NOT EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(v_allowed_ranges) rng
+        WHERE (
+          rng->>'classId' IS NULL
+          OR btrim(COALESCE(rng->>'classId', '')) = ''
+          OR rng->>'classId' = v_registration_class
+          OR rng->>'className' = v_registration_class
+        )
+        AND (
+          NULLIF(regexp_replace(COALESCE(rng->>'from', ''), '\D', '', 'g'), '') IS NULL
+          OR v_exam_roll::numeric >= (regexp_replace(COALESCE(rng->>'from', ''), '\D', '', 'g'))::numeric
+        )
+        AND (
+          NULLIF(regexp_replace(COALESCE(rng->>'to', ''), '\D', '', 'g'), '') IS NULL
+          OR v_exam_roll::numeric <= (regexp_replace(COALESCE(rng->>'to', ''), '\D', '', 'g'))::numeric
+        )
+      ) THEN
+      RETURN JSONB_BUILD_OBJECT(
+        'success', false,
+        'cleared', 0,
+        'reason', FORMAT(
+          'Exam roll %s is outside your institution''s configured permitted roll ranges',
+          COALESCE(v_exam_roll, 'unassigned')
+        )
+      );
+    END IF;
+  ELSIF v_allowed_from_num IS NOT NULL OR v_allowed_to_num IS NOT NULL THEN
     IF v_exam_roll IS NULL
       OR v_exam_roll !~ '^[0-9]+$'
       OR (v_allowed_from_num IS NOT NULL AND v_exam_roll::numeric < v_allowed_from_num)
@@ -520,6 +590,7 @@ DECLARE
   v_institution_id UUID;
   v_exclude_institution_id UUID;
   v_allow_mark_entry BOOLEAN;
+  v_allowed_ranges JSONB := '[]'::jsonb;
   v_allowed_from_txt TEXT;
   v_allowed_to_txt TEXT;
   v_allowed_from_num NUMERIC;
@@ -544,8 +615,8 @@ BEGIN
       RAISE EXCEPTION 'Only a super admin or institution staff may view the marks sheet';
     END IF;
 
-    SELECT i.allow_mark_entry, i.mark_entry_roll_from, i.mark_entry_roll_to
-    INTO v_allow_mark_entry, v_allowed_from_txt, v_allowed_to_txt
+    SELECT i.allow_mark_entry, i.mark_entry_roll_from, i.mark_entry_roll_to, COALESCE(i.mark_entry_roll_ranges, '[]'::jsonb)
+    INTO v_allow_mark_entry, v_allowed_from_txt, v_allowed_to_txt, v_allowed_ranges
     FROM public.institutions i
     WHERE i.id = v_exclude_institution_id;
 

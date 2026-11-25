@@ -4,11 +4,11 @@ import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLang } from '@/contexts/language-context';
 import { deleteInstitutionServer, type DeleteInstitutionResult } from '@/lib/auth/institution-actions';
-import { normalizeRollDigits, normalizeRollRangePair } from '@/lib/marks/roll-range';
+import { normalizeRollDigits, normalizeRollRangePair, normalizeRollRanges } from '@/lib/marks/roll-range';
 
 const SUPABASE_TABLE = 'institutions';
 
-const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,allow_admit_card_download,allow_mark_entry,mark_entry_roll_from,mark_entry_roll_to,allow_marksheet_download,allow_certificate_download,total_students,total_applications,created_at,updated_at';
+const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,district,contact_person,contact_person_phone,admin_user_id,status,logo_url,principal_signature_url,allow_admit_card_download,allow_mark_entry,mark_entry_roll_from,mark_entry_roll_to,mark_entry_roll_ranges,allow_marksheet_download,allow_certificate_download,total_students,total_applications,created_at,updated_at';
 
 /**
  * While any of the columns added by migrations 0022, 0033, 0038 and 0043 is
@@ -18,7 +18,7 @@ const INSTITUTION_COLUMNS = 'id,name,name_en,code,slug,email,phone,address,city,
  */
 
 const isPreMigrationError = (error: unknown): boolean =>
-  /(principal_signature_url|allow_admit_card_download|allow_mark_entry|mark_entry_roll_from|mark_entry_roll_to|allow_marksheet_download|allow_certificate_download)/.test(
+  /(principal_signature_url|allow_admit_card_download|allow_mark_entry|mark_entry_roll_from|mark_entry_roll_to|mark_entry_roll_ranges|allow_marksheet_download|allow_certificate_download)/.test(
     String((error as { message?: string })?.message ?? '')
   );
 
@@ -26,6 +26,7 @@ const isPreMigrationError = (error: unknown): boolean =>
 const missingLegacyColumn = (error: unknown): string | null => {
   const msg = String((error as { message?: string })?.message ?? '');
   if (/allow_mark_entry/.test(msg)) return 'allow_mark_entry';
+  if (/mark_entry_roll_ranges/.test(msg)) return 'mark_entry_roll_ranges';
   if (/mark_entry_roll_from/.test(msg)) return 'mark_entry_roll_from';
   if (/mark_entry_roll_to/.test(msg)) return 'mark_entry_roll_to';
   if (/allow_marksheet_download/.test(msg)) return 'allow_marksheet_download';
@@ -84,6 +85,11 @@ function mapInstitution(data: any): Institution {
     allowMarkEntry: data.allow_mark_entry ?? false,
     markEntryRollFrom: data.mark_entry_roll_from ?? null,
     markEntryRollTo: data.mark_entry_roll_to ?? null,
+    markEntryRollRanges: Array.isArray(data.mark_entry_roll_ranges) && data.mark_entry_roll_ranges.length > 0
+      ? data.mark_entry_roll_ranges
+      : (data.mark_entry_roll_from || data.mark_entry_roll_to
+          ? [{ from: data.mark_entry_roll_from ?? '', to: data.mark_entry_roll_to ?? '' }]
+          : []),
     allowMarksheetDownload: data.allow_marksheet_download ?? false,
     allowCertificateDownload: data.allow_certificate_download ?? false,
     totalStudents: data.total_students,
@@ -199,6 +205,24 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
   if (data.principalSignature !== undefined) u.principal_signature_url = data.principalSignature;
   if (data.allowAdmitCardDownload !== undefined) u.allow_admit_card_download = data.allowAdmitCardDownload;
   if (data.allowMarkEntry !== undefined) u.allow_mark_entry = data.allowMarkEntry;
+  if (data.markEntryRollRanges !== undefined) {
+    const normalizedRanges = normalizeRollRanges(data.markEntryRollRanges);
+    u.mark_entry_roll_ranges = normalizedRanges;
+    if (data.markEntryRollFrom === undefined && data.markEntryRollTo === undefined) {
+      const digits = normalizedRanges
+        .map((r) => ({ from: normalizeRollDigits(r.from), to: normalizeRollDigits(r.to) }))
+        .filter((r) => r.from || r.to);
+      if (digits.length > 0) {
+        const froms = digits.map((r) => r.from).filter(Boolean).map(BigInt);
+        const tos = digits.map((r) => r.to).filter(Boolean).map(BigInt);
+        if (froms.length > 0) u.mark_entry_roll_from = String(froms.reduce((min, cur) => (cur < min ? cur : min)));
+        if (tos.length > 0) u.mark_entry_roll_to = String(tos.reduce((max, cur) => (cur > max ? cur : max)));
+      } else {
+        u.mark_entry_roll_from = null;
+        u.mark_entry_roll_to = null;
+      }
+    }
+  }
   if (data.markEntryRollFrom !== undefined && data.markEntryRollTo !== undefined) {
     const normalized = normalizeRollRangePair(data.markEntryRollFrom, data.markEntryRollTo);
     u.mark_entry_roll_from = normalized.from;
@@ -219,14 +243,16 @@ export async function updateInstitution(id: string, data: Partial<Institution>):
     allow_mark_entry: 'allowMarkEntry',
     mark_entry_roll_from: 'markEntryRollFrom',
     mark_entry_roll_to: 'markEntryRollTo',
+    mark_entry_roll_ranges: 'markEntryRollRanges',
     allow_marksheet_download: 'allowMarksheetDownload',
-    allow_certificate_download: 'allowCertificateDownload',
+    allowCertificateDownload: 'allowCertificateDownload',
   };
   const migrationFile: Record<string, string> = {
     allow_admit_card_download: '0033_admit_card_download_permission.sql',
     allow_mark_entry: '0043_mark_entry_permission_and_roll_range.sql',
     mark_entry_roll_from: '0043_mark_entry_permission_and_roll_range.sql',
     mark_entry_roll_to: '0043_mark_entry_permission_and_roll_range.sql',
+    mark_entry_roll_ranges: '0043_mark_entry_permission_and_roll_range.sql',
     allow_marksheet_download: '0038_student_download_permissions.sql',
     allow_certificate_download: '0038_student_download_permissions.sql',
   };

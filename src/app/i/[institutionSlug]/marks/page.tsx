@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Info, ListChecks, Lock } from "lucide-react";
 import { MarksEntryPanel } from "@/components/marks/MarksEntryPanel";
 import { useAuth } from "@/lib/auth/auth";
-import { formatRollRangeLabel } from "@/lib/marks/roll-range";
+import { formatMultipleRollRangesLabel, formatRollRangeLabel } from "@/lib/marks/roll-range";
 import { useInstitutionBySlug } from "@/lib/storage/institutions";
 import { useLang } from "@/contexts/language-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -142,8 +142,17 @@ export default function InstitutionMarksPage() {
     );
   }
 
-  const hasRange = Boolean(inst.markEntryRollFrom || inst.markEntryRollTo);
-  const rangeLabel = formatRollRangeLabel(inst.markEntryRollFrom, inst.markEntryRollTo, isBn);
+  const hasRange = Boolean(
+    (inst.markEntryRollRanges && inst.markEntryRollRanges.length > 0) ||
+      inst.markEntryRollFrom ||
+      inst.markEntryRollTo,
+  );
+  const rangeLabel = formatMultipleRollRangesLabel(
+    inst.markEntryRollRanges,
+    inst.markEntryRollFrom,
+    inst.markEntryRollTo,
+    isBn,
+  );
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-[#0a0a0b]" : "bg-zinc-50"}`}>
@@ -188,6 +197,7 @@ export default function InstitutionMarksPage() {
           scopedInstitutionName={isBn ? inst.name : (inst.nameEn || inst.name)}
           allowedRollFrom={!isSuper ? inst.markEntryRollFrom : undefined}
           allowedRollTo={!isSuper ? inst.markEntryRollTo : undefined}
+          allowedRollRanges={!isSuper ? inst.markEntryRollRanges : undefined}
         />
       </div>
     </div>

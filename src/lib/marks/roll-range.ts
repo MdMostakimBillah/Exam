@@ -1,3 +1,7 @@
+import type { MarkEntryRollRange } from "@/lib/types";
+
+export type { MarkEntryRollRange };
+
 /**
  * Pure helpers for numeric exam-roll range normalization, clamping, and display.
  *
@@ -108,4 +112,79 @@ export function formatRollRangeLabel(
   if (norm.from) return isBn ? `${norm.from}+ থেকে` : `From ${norm.from}+`;
   if (norm.to) return isBn ? `০ – ${norm.to}` : `Up to ${norm.to}`;
   return isBn ? "সকল রোল" : "All rolls";
+}
+
+/**
+ * Sanitize and normalize an array of mark entry roll ranges.
+ * Strips non-digits, swaps inverted from/to, and generates IDs if missing.
+ */
+export function normalizeRollRanges(
+  ranges?: MarkEntryRollRange[] | null,
+): MarkEntryRollRange[] {
+  if (!Array.isArray(ranges)) return [];
+  return ranges
+    .map((r, idx) => {
+      const pair = normalizeRollRangePair(r.from, r.to);
+      const cleanClassId = r.classId ? String(r.classId).trim() : "";
+      const cleanClassName = r.className ? String(r.className).trim() : "";
+      return {
+        id: r.id || `rng-${idx + 1}-${Date.now().toString(36)}`,
+        classId: cleanClassId || undefined,
+        className: cleanClassName || undefined,
+        from: pair.from ?? "",
+        to: pair.to ?? "",
+      };
+    })
+    .filter((r) => r.from !== "" || r.to !== "");
+}
+
+/**
+ * Find ranges applicable to a specific class (by class ID, code, or name).
+ * If specific class ranges exist, returns them.
+ * Otherwise falls back to general ranges (ranges with no class assigned).
+ */
+export function findMatchingRollRanges(
+  ranges?: MarkEntryRollRange[] | null,
+  classId?: string | null,
+  className?: string | null,
+): MarkEntryRollRange[] {
+  if (!ranges || ranges.length === 0) return [];
+  const normalized = normalizeRollRanges(ranges);
+
+  if (classId || className) {
+    const classMatches = normalized.filter((r) => {
+      if (!r.classId && !r.className) return false;
+      return (
+        (classId && (r.classId === classId || r.className === classId)) ||
+        (className && (r.className === className || r.classId === className))
+      );
+    });
+    if (classMatches.length > 0) return classMatches;
+  }
+
+  // Fallback to general ranges (unassigned to a specific class)
+  return normalized.filter((r) => !r.classId && !r.className);
+}
+
+/**
+ * Human-readable bilingual summary for multiple roll ranges.
+ */
+export function formatMultipleRollRangesLabel(
+  ranges?: MarkEntryRollRange[] | null,
+  fallbackFrom?: string | null,
+  fallbackTo?: string | null,
+  isBn = false,
+): string {
+  const normRanges = normalizeRollRanges(ranges);
+  if (normRanges.length > 0) {
+    if (normRanges.length === 1) {
+      const r = normRanges[0];
+      const prefix = r.className ? `${r.className}: ` : "";
+      return prefix + formatRollRangeLabel(r.from, r.to, isBn);
+    }
+    return isBn
+      ? `${normRanges.length}টি রোল রেঞ্জ নির্ধারিত`
+      : `${normRanges.length} roll ranges configured`;
+  }
+  return formatRollRangeLabel(fallbackFrom, fallbackTo, isBn);
 }
